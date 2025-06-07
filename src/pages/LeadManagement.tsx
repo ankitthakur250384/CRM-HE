@@ -14,6 +14,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/common/Card';
+import { FormInput } from '../components/common/FormInput';
 import { Input } from '../components/common/Input';
 import { Button } from '../components/common/Button';
 import { Select } from '../components/common/Select';
@@ -36,6 +37,7 @@ const LEAD_STATUS_OPTIONS = [
   { value: 'qualified', label: 'Qualified' },
   { value: 'unqualified', label: 'Unqualified' },
   { value: 'lost', label: 'Lost' },
+  { value: 'converted', label: 'Converted to Deal' },
 ];
 
 const MACHINERY_OPTIONS = [
@@ -47,8 +49,7 @@ const MACHINERY_OPTIONS = [
 
 const SHIFT_OPTIONS = [
   { value: 'day', label: 'Day Shift' },
-  { value: 'night', label: 'Night Shift' },
-  { value: '24x7', label: '24x7' },
+  { value: 'night', label: 'Night Shift' }
 ];
 
 export function LeadManagement() {
@@ -86,6 +87,10 @@ export function LeadManagement() {
     assignedTo: '',
     designation: '',
   });
+
+  const [dealValue, setDealValue] = useState<number>(0);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [isDealValueModalOpen, setIsDealValueModalOpen] = useState(false);
 
   useEffect(() => {
     fetchLeads();
@@ -126,18 +131,25 @@ export function LeadManagement() {
 
   const filterLeads = () => {
     let filtered = [...leads];
-    
+
+    // Filter by search term
     if (searchTerm) {
-      filtered = filtered.filter(lead => 
+      filtered = filtered.filter(lead =>
         lead.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        lead.siteLocation.toLowerCase().includes(searchTerm.toLowerCase())
+        lead.companyName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        lead.phone.includes(searchTerm)
       );
     }
-    
+
+    // Filter by status
     if (statusFilter !== 'all') {
       filtered = filtered.filter(lead => lead.status === statusFilter);
+    } else {
+      // By default, exclude converted leads from the pipeline
+      filtered = filtered.filter(lead => lead.status !== 'converted');
     }
-    
+
     setFilteredLeads(filtered);
   };
 
@@ -218,28 +230,34 @@ export function LeadManagement() {
   };
 
   const handleCustomerSelect = async (customer: Customer) => {
-    if (!selectedLead) return;
+    setSelectedCustomer(customer);
+    setIsCustomerSelectionModalOpen(false);
+    setIsDealValueModalOpen(true);
+  };
+
+  const handleDealCreation = async () => {
+    if (!selectedLead || !selectedCustomer) return;
 
     try {
       console.log('Creating deal from lead:', selectedLead);
-      console.log('Selected customer:', customer);
+      console.log('Selected customer:', selectedCustomer);
       
       // Create a new deal from the lead with the selected customer
       const deal = await createDeal({
-        title: `Deal for ${customer.name}`,
-        description: `Deal created from lead for ${customer.name}${customer.companyName ? ` (${customer.companyName})` : ''}`,
+        title: `Deal for ${selectedCustomer.name}`,
+        description: `Deal created from lead for ${selectedCustomer.name}${selectedCustomer.companyName ? ` (${selectedCustomer.companyName})` : ''}`,
         leadId: selectedLead.id,
-        customerId: customer.id,
+        customerId: selectedCustomer.id,
         stage: 'qualification',
-        value: 0, // This will be set in the deals form
+        value: dealValue,
         expectedCloseDate: new Date().toISOString(),
         customer: {
-          name: customer.name,
-          email: customer.email || selectedLead.email,
-          phone: customer.phone || selectedLead.phone,
-          company: customer.companyName || '',
-          address: customer.address || '',
-          designation: customer.designation || 'N/A'
+          name: selectedCustomer.name,
+          email: selectedCustomer.email || selectedLead.email,
+          phone: selectedCustomer.phone || selectedLead.phone,
+          company: selectedCustomer.companyName || '',
+          address: selectedCustomer.address || '',
+          designation: selectedCustomer.designation || 'N/A'
         },
         probability: 0,
         createdBy: user?.id || '',
@@ -248,12 +266,14 @@ export function LeadManagement() {
 
       console.log('Deal created successfully:', deal);
       
-      // Update lead status to qualified since it's been converted to a deal
-      await updateLeadStatus(selectedLead.id, 'qualified');
+      // Update lead status to converted since it's been converted to a deal
+      await updateLeadStatus(selectedLead.id, 'converted');
       
       showToast('Lead converted to deal successfully', 'success');
-      setIsCustomerSelectionModalOpen(false);
+      setIsDealValueModalOpen(false);
       setSelectedLead(null);
+      setSelectedCustomer(null);
+      setDealValue(0); // Reset deal value
       navigate('/deals');
     } catch (error) {
       console.error('Error converting lead to deal:', error);
@@ -328,49 +348,46 @@ export function LeadManagement() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex flex-col sm:flex-row gap-4 flex-1">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
-            <Input
-              placeholder="Search leads..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
-            />
-          </div>
-          
-          <Select
-            options={[
-              { value: 'all', label: 'All Status' },
-              ...LEAD_STATUS_OPTIONS
-            ]}
-            value={statusFilter}
-            onChange={(value) => setStatusFilter(value as LeadStatus | 'all')}
-            className="w-40"
-          />
-        </div>
-        
-        <Button
-          onClick={() => setIsCreateModalOpen(true)}
-          leftIcon={<Plus size={16} />}
-        >
-          New Lead
-        </Button>
-      </div>
-
       <Card>
-        <CardHeader>
-          <CardTitle>Lead Pipeline</CardTitle>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Leads Pipeline</CardTitle>
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <Search className="w-4 h-4 text-gray-500" />
+              <Input
+                type="text"
+                placeholder="Search leads..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-[200px]"
+              />
+            </div>
+            <Select
+              value={statusFilter}
+              onChange={(value) => setStatusFilter(value as LeadStatus | 'all')}
+              options={[
+                { value: 'all', label: 'All Status' },
+                ...LEAD_STATUS_OPTIONS
+              ]}
+              className="w-[150px]"
+            />
+            <Button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="inline-flex items-center whitespace-nowrap"
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Add Lead
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
-        {isLoading ? (
+          {isLoading ? (
             <div className="text-center py-4">Loading leads...</div>
-        ) : filteredLeads.length === 0 ? (
+          ) : filteredLeads.length === 0 ? (
             <div className="text-center py-4 text-gray-500">
               No leads found. Create a new lead to get started.
-          </div>
-        ) : (
+            </div>
+          ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
@@ -402,7 +419,7 @@ export function LeadManagement() {
                         <div>
                           <div className="font-medium text-gray-900">{lead.customerName}</div>
                           {lead.companyName && (
-                  <div className="text-sm text-gray-500">{lead.companyName}</div>
+                            <div className="text-sm text-gray-500">{lead.companyName}</div>
                           )}
                         </div>
                       </td>
@@ -475,21 +492,21 @@ export function LeadManagement() {
       >
         <form onSubmit={handleCreateLead} className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Input
+            <FormInput
               label="Full Name"
               value={formData.fullName}
               onChange={(e) => setFormData(prev => ({ ...prev, fullName: e.target.value }))}
               required
             />
 
-            <Input
+            <FormInput
               label="Company Name"
               value={formData.companyName}
               onChange={(e) => setFormData(prev => ({ ...prev, companyName: e.target.value }))}
               helperText="Optional"
             />
 
-            <Input
+            <FormInput
               label="Phone Number"
               type="tel"
               value={formData.phoneNumber}
@@ -497,7 +514,7 @@ export function LeadManagement() {
               required
             />
 
-            <Input
+            <FormInput
               label="Email Address"
               type="email"
               value={formData.email}
@@ -516,14 +533,14 @@ export function LeadManagement() {
               required
             />
 
-            <Input
-              label="Location / Site Address"
+            <FormInput
+              label="Site Location"
               value={formData.location}
               onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
               required
             />
 
-            <Input
+            <FormInput
               label="Start Date"
               type="date"
               value={formData.startDate}
@@ -532,18 +549,12 @@ export function LeadManagement() {
               required
             />
 
-            <Input
+            <FormInput
               label="Number of Rental Days"
               type="number"
               min="1"
-              onWheel={(e) => e.currentTarget.blur()}
-              onKeyDown={(e) => {
-                if (e.key === '-' || e.key === 'e' || e.key === '.') {
-                  e.preventDefault();
-                }
-              }}
               value={formData.rentalDays}
-              onChange={(e) => {
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                 const value = Math.max(1, parseInt(e.target.value) || 1);
                 setFormData(prev => ({ ...prev, rentalDays: value.toString() }));
               }}
@@ -558,7 +569,7 @@ export function LeadManagement() {
               required
             />
 
-            <Input
+            <FormInput
               label="Designation"
               value={formData.designation}
               onChange={(e) => setFormData(prev => ({ ...prev, designation: e.target.value }))}
@@ -615,17 +626,56 @@ export function LeadManagement() {
         onClose={() => {
           setIsCustomerSelectionModalOpen(false);
           setSelectedLead(null);
+          setSelectedCustomer(null);
+          setDealValue(0); // Reset deal value
         }}
         onSelect={handleCustomerSelect}
         initialCustomerData={selectedLead ? {
           name: selectedLead.customerName,
           email: selectedLead.email,
           phone: selectedLead.phone,
-          companyName: selectedLead.companyName || 'Korean.org',
-          address: selectedLead.siteLocation || 'N/A',
-          designation: selectedLead.designation || 'Founder'
+          companyName: selectedLead.companyName,
+          designation: selectedLead.designation,
         } : undefined}
       />
+
+      {/* Deal Value Modal */}
+      <Modal
+        isOpen={isDealValueModalOpen}
+        onClose={() => {
+          setIsDealValueModalOpen(false);
+          setSelectedLead(null);
+          setSelectedCustomer(null);
+          setDealValue(0);
+        }}
+        title="Enter Deal Value"
+        size="sm"
+      >
+        <div className="space-y-6">
+          <FormInput
+            label="Deal Value"
+            type="number"
+            value={dealValue}
+            onChange={(e) => setDealValue(Number(e.target.value))}
+            required
+            helperText="Enter the estimated value of this deal"
+          />
+          <div className="flex justify-end gap-3">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setIsDealValueModalOpen(false);
+                setSelectedLead(null);
+                setSelectedCustomer(null);
+                setDealValue(0);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={handleDealCreation}>Create Deal</Button>
+          </div>
+        </div>
+      </Modal>
 
       {/* Toast Notifications */}
       {toast.show && (

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Plus, 
   Search, 
@@ -17,7 +17,8 @@ import {
   Clock,
   MapPin,
   Truck,
-  Settings
+  Settings,
+  RefreshCw
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/common/Card';
@@ -33,7 +34,7 @@ import { Quotation } from '../types/quotation';
 import { Template } from '../types/template';
 import { Deal } from '../types/deal';
 import { getQuotations } from '../services/quotationService';
-import { getDeals } from '../services/dealService';
+import { getDeals, getDealById } from '../services/dealService';
 import { getDefaultTemplateConfig, getTemplateById } from '../services/configService';
 import { mergeQuotationWithTemplate } from '../utils/templateMerger';
 import { formatCurrency } from '../utils/formatters';
@@ -55,6 +56,7 @@ export function QuotationManagement() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
   const [defaultTemplate, setDefaultTemplate] = useState<Template | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -69,6 +71,7 @@ export function QuotationManagement() {
     description?: string;
     variant?: 'success' | 'error' | 'warning';
   }>({ show: false, title: '' });
+  const [isEditingQuotation, setIsEditingQuotation] = useState<string | null>(null);
 
   useEffect(() => {
     fetchData();
@@ -80,6 +83,9 @@ export function QuotationManagement() {
 
   const fetchData = async () => {
     try {
+      setIsLoading(true);
+      setError(null);
+      
       const [quotationsData, dealsData] = await Promise.all([
         getQuotations(),
         getDeals()
@@ -97,6 +103,7 @@ export function QuotationManagement() {
       await loadDefaultTemplate();
     } catch (error) {
       console.error('Error fetching data:', error);
+      setError('Failed to load quotations. Please try again.');
       showToast('Error fetching data', 'error');
     } finally {
       setIsLoading(false);
@@ -120,8 +127,9 @@ export function QuotationManagement() {
 
     if (searchTerm) {
       filtered = filtered.filter(quotation =>
-        quotation.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        quotation.customerContact?.company?.toLowerCase().includes(searchTerm.toLowerCase())
+        (quotation.customerContact?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (quotation.customerContact?.company || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (quotation.selectedEquipment?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -157,8 +165,35 @@ export function QuotationManagement() {
 
     // Navigate to quotation creation with the selected deal
     navigate(`/quotations/create?dealId=${selectedDealId}`);
-    setIsCreateModalOpen(false);
+    
     setSelectedDealId('');
+  };
+
+  const handleEditQuotation = async (quotation: Quotation) => {
+    try {
+      setIsEditingQuotation(quotation.id);
+      console.log('Editing quotation:', quotation);
+      
+      if (!quotation.leadId) {
+        showToast('Invalid quotation data', 'error', 'Missing lead ID');
+        return;
+      }
+
+      // Verify that the deal still exists
+      const deal = await getDealById(quotation.leadId);
+      if (!deal) {
+        showToast('Associated deal not found', 'error', 'The deal associated with this quotation no longer exists');
+        return;
+      }
+
+      console.log('Navigating to:', `/quotations/create?dealId=${quotation.leadId}&quotationId=${quotation.id}`);
+      navigate(`/quotations/create?dealId=${quotation.leadId}&quotationId=${quotation.id}`);
+    } catch (error) {
+      console.error('Error preparing quotation edit:', error);
+      showToast('Error preparing quotation edit', 'error');
+    } finally {
+      setIsEditingQuotation(null);
+    }
   };
 
   const handleDownloadPDF = async (quotation: Quotation) => {
@@ -226,14 +261,18 @@ export function QuotationManagement() {
       // Use the template merger utility
       const content = mergeQuotationWithTemplate(quotation, defaultTemplate);
       
-      // Simulate sending email (in a real app, this would call an API)
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
       // Create mailto link with the quotation content
       const subject = `Quotation from ASP Cranes - ${quotation.id.slice(0, 8).toUpperCase()}`;
-      const body = `Dear ${quotation.customerContact?.name || 'Customer'},\n\nPlease find your quotation details below:\n\n${content}\n\nBest regards,\nASP Cranes Team`;
+      const emailBody = `Dear ${quotation.customerContact.name || 'Customer'},
+
+Please find your quotation details for ${quotation.selectedEquipment.name} below:
+
+${content}
+
+Best regards,
+ASP Cranes Team`;
       
-      const mailtoLink = `mailto:${quotation.customerContact?.email || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+      const mailtoLink = `mailto:${quotation.customerContact.email || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
       window.open(mailtoLink);
       
       showToast('Email prepared successfully', 'success', 'Your email client should open with the quotation details.');
@@ -245,13 +284,16 @@ export function QuotationManagement() {
     }
   };
 
-  const dealOptions = [
-    { value: '', label: 'Select a qualified deal...' },
-    ...deals.map(deal => ({
-      value: deal.id,
-      label: `${deal.customer.name} - ${deal.title} (${formatCurrency(deal.value)})`
-    }))
-  ];
+  // Transform deals into select options
+  const dealOptions = useMemo(() => {
+    return [
+      { value: '', label: 'Select a qualified deal...' },
+      ...deals.map(deal => ({
+        value: deal.id,
+        label: `${deal.customer.name} - ${deal.customer.company} (${formatCurrency(deal.value)})`
+      }))
+    ];
+  }, [deals]);
 
   if (!user || (user.role !== 'sales_agent' && user.role !== 'admin')) {
     return (
@@ -262,457 +304,295 @@ export function QuotationManagement() {
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex flex-col sm:flex-row gap-4 flex-1">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h1 className="text-2xl font-semibold text-gray-900">Quotation Management</h1>
+          <Button 
+            onClick={handleCreateQuotation}
+            disabled={isLoading}
+            className="flex items-center gap-2"
+          >
+            {isLoading ? (
+              <RefreshCw className="w-4 h-4 animate-spin" />
+            ) : (
+              <Plus className="w-4 h-4" />
+            )}
+            New Quotation
+          </Button>
+        </div>
+
+        <div className="flex items-center gap-4 mb-6">
+          <div className="flex-1">
             <Input
+              type="text"
+              name="quotation_search"
+              id="quotation_search"
               placeholder="Search quotations..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+              leftIcon={<Search className="w-4 h-4" />}
+              disabled={isLoading}
             />
           </div>
-          
-          <Select
-            options={STATUS_OPTIONS}
-            value={statusFilter}
-            onChange={setStatusFilter}
-            className="w-40"
-          />
-        </div>
-        
-        <Button
-          onClick={handleCreateQuotation}
-          leftIcon={<Plus size={16} />}
-        >
-          New Quotation
-        </Button>
-      </div>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>Quotation History</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="text-center py-4">Loading quotations...</div>
-          ) : filteredQuotations.length === 0 ? (
-            <div className="text-center py-4 text-gray-500">
-              No quotations found. Create a new quotation to get started.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Customer
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Equipment
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Duration
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Total Amount
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Created
-                    </th>
-                    <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {filteredQuotations.map((quotation) => (
-                    <tr key={quotation.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div>
-                          <div className="font-medium text-gray-900">
-                            {quotation.customerContact?.name || quotation.customerName || 'Unknown Customer'}
-                          </div>
-                          <div className="text-sm text-gray-500">
-                            {quotation.customerContact?.company || 'No Company'}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {quotation.selectedEquipment?.name || 'No Equipment'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {quotation.numberOfDays} days
-                        </div>
-                        <div className="text-sm text-gray-500">
-                          {quotation.workingHours}h/day
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">
-                          {formatCurrency(quotation.totalRent)}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <StatusBadge status={quotation.status} />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(quotation.createdAt).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex justify-end gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedQuotation(quotation);
-                              setIsDetailsOpen(true);
-                            }}
-                            title="View Details"
-                          >
-                            <FileText size={16} />
-                          </Button>
-                          
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedQuotation(quotation);
-                              setIsPreviewOpen(true);
-                            }}
-                            title="Preview"
-                            disabled={!defaultTemplate}
-                          >
-                            <Eye size={16} />
-                          </Button>
-                          
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleDownloadPDF(quotation)}
-                            disabled={isGeneratingPDF || !defaultTemplate}
-                            title="Download PDF"
-                          >
-                            <Download size={16} />
-                          </Button>
-                          
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => handleSendToCustomer(quotation)}
-                            disabled={isSendingEmail || !defaultTemplate}
-                            title="Send to Customer"
-                          >
-                            <Send size={16} />
-                          </Button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Create Quotation Modal - Deal Selection */}
-      <Modal
-        isOpen={isCreateModalOpen}
-        onClose={() => {
-          setIsCreateModalOpen(false);
-          setSelectedDealId('');
-        }}
-        title="Create New Quotation"
-        size="lg"
-      >
-        <div className="space-y-6">
-          <div>
-            <h3 className="text-lg font-medium text-gray-900 mb-4">
-              Select a Qualified Deal
-            </h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Choose from qualified deals to create a quotation. Only deals in qualification or proposal stage are shown.
-            </p>
-            
+          <div className="w-48">
             <Select
-              options={dealOptions}
-              value={selectedDealId}
-              onChange={setSelectedDealId}
-              className="w-full"
-              label="Available Deals"
+              options={STATUS_OPTIONS}
+              value={statusFilter}
+              onChange={setStatusFilter}
+              leftIcon={<Filter className="w-4 h-4" />}
+              disabled={isLoading}
             />
-            
-            {selectedDealId && (
-              <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                {(() => {
-                  const selectedDeal = deals.find(d => d.id === selectedDealId);
-                  if (!selectedDeal) return null;
-                  
-                  return (
-                    <div className="space-y-2">
-                      <h4 className="font-medium text-blue-900">Selected Deal Details</h4>
-                      <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                          <span className="text-blue-700 font-medium">Customer:</span>
-                          <p className="text-blue-800">{selectedDeal.customer.name}</p>
-                        </div>
-                        <div>
-                          <span className="text-blue-700 font-medium">Company:</span>
-                          <p className="text-blue-800">{selectedDeal.customer.company}</p>
-                        </div>
-                        <div>
-                          <span className="text-blue-700 font-medium">Value:</span>
-                          <p className="text-blue-800">{formatCurrency(selectedDeal.value)}</p>
-                        </div>
-                        <div>
-                          <span className="text-blue-700 font-medium">Stage:</span>
-                          <p className="text-blue-800 capitalize">{selectedDeal.stage}</p>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })()}
+          </div>
+        </div>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Quotation History</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <RefreshCw className="w-8 h-8 animate-spin text-primary-600" />
+              </div>
+            ) : error ? (
+              <div className="text-center py-8 text-red-500">
+                <X className="w-12 h-12 mx-auto mb-4 text-red-400" />
+                <p className="text-lg font-medium">{error}</p>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={fetchData}
+                  className="mt-4"
+                >
+                  Try Again
+                </Button>
+              </div>
+            ) : filteredQuotations.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <FileText className="w-12 h-12 mx-auto mb-4 text-gray-400" />
+                <p className="text-lg font-medium">No quotations found</p>
+                <p className="text-sm">Create a new quotation to get started.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200">
+                  <thead className="bg-gray-50">
+                    <tr>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Customer
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Equipment
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Duration
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Total Rent
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Status
+                      </th>
+                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        Actions
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {filteredQuotations.map((quotation) => (
+                      <tr key={quotation.id}>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="flex items-start flex-col">
+                            <div className="text-sm font-medium text-gray-900">
+                              {quotation.customerContact.name}
+                            </div>
+                            <div className="text-sm text-gray-500">
+                              {quotation.customerContact.company}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{quotation.selectedEquipment.name}</div>
+                          <div className="text-sm text-gray-500">{quotation.machineType}</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-900">{quotation.numberOfDays} days</div>
+                          <div className="text-sm text-gray-500">{quotation.workingHours} hrs/day</div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                          {formatCurrency(quotation.totalRent)}
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <StatusBadge status={quotation.status} />
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                          <div className="flex items-center gap-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleEditQuotation(quotation)}
+                              title="Edit Quotation"
+                              disabled={isLoading || isEditingQuotation === quotation.id}
+                            >
+                              {isEditingQuotation === quotation.id ? (
+                                <RefreshCw size={16} className="animate-spin" />
+                              ) : (
+                                <Edit2 size={16} />
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleDownloadPDF(quotation)}
+                              disabled={isGeneratingPDF || !defaultTemplate || isLoading}
+                              title="Download PDF"
+                            >
+                              {isGeneratingPDF ? (
+                                <RefreshCw size={16} className="animate-spin" />
+                              ) : (
+                                <Download size={16} />
+                              )}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => handleSendToCustomer(quotation)}
+                              disabled={isSendingEmail || !defaultTemplate || isLoading}
+                              title="Send to Customer"
+                            >
+                              {isSendingEmail ? (
+                                <RefreshCw size={16} className="animate-spin" />
+                              ) : (
+                                <Send size={16} />
+                              )}
+                            </Button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
-          </div>
-          
-          <div className="flex justify-end gap-3 pt-4 border-t">
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsCreateModalOpen(false);
-                setSelectedDealId('');
-              }}
-            >
-              Cancel
-            </Button>
-            <Button
-              onClick={handleProceedWithDeal}
-              disabled={!selectedDealId}
-            >
-              Create Quotation
-            </Button>
-          </div>
-        </div>
-      </Modal>
+          </CardContent>
+        </Card>
 
-      {/* Quotation Details Modal */}
-      <Modal
-        isOpen={isDetailsOpen}
-        onClose={() => {
-          setIsDetailsOpen(false);
-          setSelectedQuotation(null);
-        }}
-        title="Quotation Details"
-        size="xl"
-      >
-        {selectedQuotation && (
+        {/* Create Quotation Modal - Deal Selection */}
+        <Modal
+          isOpen={isCreateModalOpen}
+          onClose={() => {
+            setIsCreateModalOpen(false);
+            setSelectedDealId('');
+          }}
+          title="Create New Quotation"
+          size="lg"
+        >
           <div className="space-y-6">
-            {/* Customer Information */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <User className="h-5 w-5" />
-                  Customer Information
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Name</label>
-                    <p className="text-gray-900">{selectedQuotation.customerContact?.name || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Company</label>
-                    <p className="text-gray-900">{selectedQuotation.customerContact?.company || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Email</label>
-                    <p className="text-gray-900">{selectedQuotation.customerContact?.email || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Phone</label>
-                    <p className="text-gray-900">{selectedQuotation.customerContact?.phone || 'N/A'}</p>
-                  </div>
-                  <div className="col-span-2">
-                    <label className="text-sm font-medium text-gray-500">Address</label>
-                    <p className="text-gray-900">{selectedQuotation.customerContact?.address || 'N/A'}</p>
-                  </div>
+            <div>
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                Select a Qualified Deal
+              </h3>
+              <p className="text-sm text-gray-600 mb-4">
+                Choose from qualified deals to create a quotation. Only deals in qualification or proposal stage are shown.
+              </p>
+            
+              <Select
+                options={isLoading ? [{ value: '', label: 'Loading deals...' }] : dealOptions}
+                value={selectedDealId}
+                onChange={setSelectedDealId}
+                className="w-full"
+                label="Available Deals"
+                disabled={isLoading}
+              />
+              
+              {selectedDealId && (
+                <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  {(() => {
+                    const selectedDeal = deals.find(d => d.id === selectedDealId);
+                    if (!selectedDeal) return null;
+                    
+                    return (
+                      <div className="space-y-2">
+                        <h4 className="font-medium text-blue-900">Selected Deal Details</h4>
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                          <div>
+                            <span className="text-blue-700 font-medium">Customer:</span>
+                            <p className="text-blue-800">{selectedDeal.customer.name}</p>
+                          </div>
+                          <div>
+                            <span className="text-blue-700 font-medium">Company:</span>
+                            <p className="text-blue-800">{selectedDeal.customer.company}</p>
+                          </div>
+                          <div>
+                            <span className="text-blue-700 font-medium">Value:</span>
+                            <p className="text-blue-800">{formatCurrency(selectedDeal.value)}</p>
+                          </div>
+                          <div>
+                            <span className="text-blue-700 font-medium">Stage:</span>
+                            <p className="text-blue-800 capitalize">{selectedDeal.stage}</p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </div>
-              </CardContent>
-            </Card>
-
-            {/* Equipment & Project Details */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <Truck className="h-5 w-5" />
-                  Equipment & Project Details
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Equipment</label>
-                    <p className="text-gray-900">{selectedQuotation.selectedEquipment?.name || 'N/A'}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Order Type</label>
-                    <p className="text-gray-900 capitalize">{selectedQuotation.orderType}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Duration</label>
-                    <p className="text-gray-900">{selectedQuotation.numberOfDays} days</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Working Hours</label>
-                    <p className="text-gray-900">{selectedQuotation.workingHours} hours/day</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Shift</label>
-                    <p className="text-gray-900">{selectedQuotation.shift === 'double' ? 'Double Shift' : 'Single Shift'}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Time</label>
-                    <p className="text-gray-900">{selectedQuotation.dayNight === 'day' ? 'Day Shift' : 'Night Shift'}</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Pricing Details */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2">
-                  <IndianRupee className="h-5 w-5" />
-                  Pricing Details
-                </CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Base Rate</label>
-                    <p className="text-gray-900">{formatCurrency(selectedQuotation.baseRate)}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Usage Type</label>
-                    <p className="text-gray-900 capitalize">{selectedQuotation.usage}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Risk Factor</label>
-                    <p className="text-gray-900 capitalize">{selectedQuotation.riskFactor}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Site Distance</label>
-                    <p className="text-gray-900">{selectedQuotation.siteDistance} km</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Mob/Demob Cost</label>
-                    <p className="text-gray-900">{formatCurrency(selectedQuotation.mobDemob)}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Extra Charges</label>
-                    <p className="text-gray-900">{formatCurrency(selectedQuotation.extraCharge)}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Food Resources</label>
-                    <p className="text-gray-900">{selectedQuotation.foodResources} person(s)</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-500">Accommodation</label>
-                    <p className="text-gray-900">{selectedQuotation.accomResources} person(s)</p>
-                  </div>
-                  <div className="col-span-2 pt-4 border-t">
-                    <label className="text-sm font-medium text-gray-500">Total Amount</label>
-                    <p className="text-2xl font-bold text-gray-900">{formatCurrency(selectedQuotation.totalRent)}</p>
-                    <p className="text-sm text-gray-500">
-                      {selectedQuotation.includeGst ? 'Including GST (18%)' : 'Excluding GST'}
-                    </p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
+              )}
+            </div>
+            
             <div className="flex justify-end gap-3 pt-4 border-t">
               <Button
                 variant="outline"
                 onClick={() => {
-                  setIsDetailsOpen(false);
-                  setSelectedQuotation(null);
-                  setIsPreviewOpen(true);
+                  setIsCreateModalOpen(false);
+                  setSelectedDealId('');
                 }}
-                leftIcon={<Eye size={16} />}
-                disabled={!defaultTemplate}
+                disabled={isLoading}
               >
-                Preview Template
+                Cancel
               </Button>
               <Button
-                variant="outline"
-                onClick={() => handleDownloadPDF(selectedQuotation)}
-                disabled={isGeneratingPDF || !defaultTemplate}
-                leftIcon={<Download size={16} />}
+                onClick={handleProceedWithDeal}
+                disabled={!selectedDealId || isLoading}
+                className="flex items-center gap-2"
               >
-                {isGeneratingPDF ? 'Generating PDF...' : 'Download PDF'}
-              </Button>
-              <Button
-                onClick={() => handleSendToCustomer(selectedQuotation)}
-                disabled={isSendingEmail || !defaultTemplate}
-                leftIcon={<Send size={16} />}
-              >
-                {isSendingEmail ? 'Sending...' : 'Send to Customer'}
+                {isLoading ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Plus className="w-4 h-4" />
+                )}
+                Create Quotation
               </Button>
             </div>
           </div>
-        )}
-      </Modal>
+        </Modal>
 
-      {/* Preview Modal */}
-      <Modal
-        isOpen={isPreviewOpen}
-        onClose={() => {
-          setIsPreviewOpen(false);
-          setSelectedQuotation(null);
-        }}
-        title="Quotation Preview"
-        size="full"
-      >
-        {selectedQuotation && defaultTemplate && (
-          <TemplatePreview
-            template={defaultTemplate}
-            quotation={selectedQuotation}
-            onDownloadPDF={() => handleDownloadPDF(selectedQuotation)}
-            onSendEmail={() => handleSendToCustomer(selectedQuotation)}
+        {/* Template Preview Modal */}
+        <Modal
+          isOpen={isPreviewOpen}
+          onClose={() => setIsPreviewOpen(false)}
+          title="Quotation Preview"
+          size="full"
+        >
+          {selectedQuotation && defaultTemplate && (
+            <TemplatePreview
+              quotation={selectedQuotation}
+              template={defaultTemplate}
+              onDownloadPDF={() => handleDownloadPDF(selectedQuotation)}
+              onSendEmail={() => handleSendToCustomer(selectedQuotation)}
+            />
+          )}
+        </Modal>
+
+        {toast.show && (
+          <Toast
+            title={toast.title}
+            variant={toast.variant}
+            isVisible={toast.show}
+            onClose={() => setToast({ show: false, title: '' })}
           />
         )}
-        {selectedQuotation && !defaultTemplate && (
-          <div className="text-center py-8">
-            <p className="text-gray-500">No default template configured.</p>
-            <p className="text-sm text-gray-400 mt-2">
-              Please set a default template in Configuration settings to preview quotations.
-            </p>
-          </div>
-        )}
-      </Modal>
-
-      {/* Toast Notifications */}
-      {toast.show && (
-        <Toast
-          title={toast.title}
-          description={toast.description}
-          variant={toast.variant}
-          isVisible={toast.show}
-          onClose={() => setToast({ show: false, title: '' })}
-        />
-      )}
+      </div>
     </div>
   );
 }

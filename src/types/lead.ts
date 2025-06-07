@@ -1,4 +1,4 @@
-export type LeadStatus = 'new' | 'in_process' | 'qualified' | 'unqualified' | 'lost';
+export type LeadStatus = 'new' | 'in_process' | 'qualified' | 'unqualified' | 'lost' | 'converted';
 
 type DealStatus = 'qualification' | 'proposal' | 'negotiation' | 'won' | 'lost';
 

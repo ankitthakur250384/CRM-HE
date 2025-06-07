@@ -19,6 +19,7 @@ import { useAuthStore } from '../store/authStore';
 import { Deal } from '../types/deal';
 import { getDeals, updateDealStage } from '../services/dealService';
 import { formatCurrency } from '../utils/formatters';
+import { useNavigate } from 'react-router-dom';
 
 const STAGE_OPTIONS = [
   { value: 'qualification', label: 'Qualification' },
@@ -38,6 +39,7 @@ export function Deals() {
     show: false,
     title: '',
   });
+  const navigate = useNavigate();
 
   useEffect(() => {
     fetchDeals();
@@ -105,86 +107,109 @@ export function Deals() {
           onClose={() => setToast({ show: false, title: '' })}
         />
       )}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-        <div className="flex flex-col sm:flex-row gap-4 flex-1">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
-            <Input
-              placeholder="Search deals..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="pl-10"
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between">
+          <CardTitle>Deals Pipeline</CardTitle>
+          <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-2">
+              <Search className="w-4 h-4 text-gray-500" />
+              <Input
+                type="text"
+                placeholder="Search deals..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-[200px]"
+              />
+            </div>
+            <Select
+              value={stageFilter}
+              onChange={(value) => setStageFilter(value as Deal['stage'] | 'all')}
+              options={[
+                { value: 'all', label: 'All Stages' },
+                ...STAGE_OPTIONS
+              ]}
+              className="w-[150px]"
             />
           </div>
-          
-          <Select
-            options={[
-              { value: 'all', label: 'All Stages' },
-              ...STAGE_OPTIONS
-            ]}
-            value={stageFilter}
-            onChange={(value) => setStageFilter(value as Deal['stage'] | 'all')}
-            className="w-40"
-          />
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {isLoading ? (
-          <div className="col-span-full text-center py-8">Loading deals...</div>
-        ) : filteredDeals.length === 0 ? (
-          <div className="col-span-full text-center py-8 text-gray-500">
-            No deals found.
-          </div>
-        ) : (
-          filteredDeals.map((deal) => (
-            <Card key={deal.id} className="hover:shadow-lg transition-shadow">
-              <CardContent className="p-6">
-                <div className="flex justify-between items-start mb-4">
-                  <h3 className="text-lg font-semibold text-gray-900">{deal.title}</h3>
-                  <Select
-                    options={STAGE_OPTIONS}
-                    value={deal.stage}
-                    onChange={(value) => handleStageChange(deal.id, value as Deal['stage'])}
-                    className="w-32"
-                  />
-                </div>
-                
-                <div className="space-y-3">
-                  <div className="flex items-center text-gray-600">
-                    <IndianRupee className="w-5 h-5 mr-2" />
-                    <span>{formatCurrency(deal.value)}</span>
-                  </div>
-                  
-                  <div className="flex items-center text-gray-600">
-                    <Building2 className="w-5 h-5 mr-2" />
-                    <span>{deal.customer.name}</span>
-                    {deal.customer.company && (
-                      <span className="ml-1 text-gray-400">({deal.customer.company})</span>
-                    )}
-                  </div>
-                  
-                  <div className="flex items-center text-gray-600">
-                    <Calendar className="w-5 h-5 mr-2" />
-                    <span>{new Date(deal.expectedCloseDate).toLocaleDateString()}</span>
-                  </div>
-                </div>
-                
-                {deal.notes && (
-                  <p className="mt-4 text-sm text-gray-500">{deal.notes}</p>
-                )}
-                
-                <div className="mt-4 pt-4 border-t border-gray-100">
-                  <Button variant="outline" size="sm" className="w-full justify-between">
-                    View Details
-                    <ArrowRight className="w-4 h-4" />
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          ))
-        )}
-      </div>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex justify-center items-center h-64">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+            </div>
+          ) : deals.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              No deals found. Create your first deal to get started.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Deal
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Customer
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Value
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Stage
+                    </th>
+                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Expected Close
+                    </th>
+                    <th scope="col" className="relative px-6 py-3">
+                      <span className="sr-only">Actions</span>
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {deals.map((deal) => (
+                    <tr key={deal.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm font-medium text-gray-900">{deal.title}</div>
+                        <div className="text-sm text-gray-500">{deal.description}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{deal.customer.name}</div>
+                        <div className="text-sm text-gray-500">{deal.customer.company}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">{formatCurrency(deal.value)}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <Select
+                          value={deal.stage}
+                          onChange={(value) => handleStageChange(deal.id, value as Deal['stage'])}
+                          options={STAGE_OPTIONS}
+                          className="w-[150px]"
+                        />
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-900">
+                          {new Date(deal.expectedCloseDate).toLocaleDateString()}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => navigate(`/deals/${deal.id}`)}
+                        >
+                          View Details
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

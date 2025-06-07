@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/common/Card';
 import { Button } from '../components/common/Button';
-import { Input } from '../components/common/Input';
+import { FormInput } from '../components/common/FormInput';
 import { Select } from '../components/common/Select';
 import { TextArea } from '../components/common/TextArea';
 import { Modal } from '../components/common/Modal';
@@ -228,7 +228,7 @@ export function ServicesManagement() {
         <div className="flex flex-col sm:flex-row gap-4 flex-1">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
-            <Input
+            <FormInput
               placeholder="Search services..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -296,14 +296,14 @@ export function ServicesManagement() {
                         </div>
                       </div>
                       <Button
-                        variant={service.isActive ? 'success' : 'ghost'}
+                        variant={service.isActive ? 'default' : 'ghost'}
                         size="sm"
                         onClick={() => handleStatusToggle(service)}
                       >
                         {service.isActive ? (
-                          <CheckCircle2 size={16} />
+                          <CheckCircle2 className="h-4 w-4" />
                         ) : (
-                          <XCircle size={16} />
+                          <XCircle className="h-4 w-4" />
                         )}
                       </Button>
                     </div>
@@ -334,23 +334,23 @@ export function ServicesManagement() {
                             type: service.type,
                             baseRate: service.baseRate.toString(),
                             unit: service.unit,
-                            description: service.description,
+                            description: service.description || '',
                             isActive: service.isActive,
                           });
                           setIsModalOpen(true);
                         }}
                       >
-                        <Edit2 size={16} />
+                        <Edit2 className="h-4 w-4" />
                       </Button>
                       <Button
-                        variant="ghost"
+                        variant="destructive"
                         size="sm"
                         onClick={() => {
                           setSelectedService(service);
                           setIsDeleteModalOpen(true);
                         }}
                       >
-                        <Trash2 size={16} />
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
                   </CardContent>
@@ -372,10 +372,10 @@ export function ServicesManagement() {
         size="lg"
       >
         <form onSubmit={handleSubmit} className="space-y-6">
-          <Input
+          <FormInput
             label="Service Name"
             value={formData.name}
-            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, name: e.target.value }))}
             required
           />
 
@@ -388,13 +388,13 @@ export function ServicesManagement() {
           />
 
           <div className="grid grid-cols-2 gap-4">
-            <Input
+            <FormInput
               label="Base Rate"
               type="number"
               min="0"
               step="0.01"
               value={formData.baseRate}
-              onChange={(e) => setFormData(prev => ({ ...prev, baseRate: e.target.value }))}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, baseRate: e.target.value }))}
               required
             />
 
@@ -410,7 +410,7 @@ export function ServicesManagement() {
           <TextArea
             label="Description"
             value={formData.description}
-            onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+            onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setFormData(prev => ({ ...prev, description: e.target.value }))}
             rows={3}
           />
 
@@ -419,7 +419,7 @@ export function ServicesManagement() {
               type="checkbox"
               id="isActive"
               checked={formData.isActive}
-              onChange={(e) => setFormData(prev => ({ ...prev, isActive: e.target.checked }))}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, isActive: e.target.checked }))}
               className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
             />
             <label htmlFor="isActive" className="text-sm text-gray-700">
@@ -439,7 +439,7 @@ export function ServicesManagement() {
               Cancel
             </Button>
             <Button type="submit">
-              {selectedService ? 'Update' : 'Add'} Service
+              {selectedService ? 'Update Service' : 'Add Service'}
             </Button>
           </div>
         </form>

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Plus, X } from 'lucide-react';
 import { Modal } from './Modal';
 import { Button } from './Button';
-import { Input } from './Input';
+import { FormInput } from './FormInput';
 import { Customer } from '../../types/lead';
 import { getCustomers, createCustomer } from '../../services/firestore/customerService';
 
@@ -114,10 +114,10 @@ export function CustomerSelectionModal({
           <div className="space-y-4">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
-              <Input
+              <FormInput
                 placeholder="Search customers by name, email, or ID..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
             </div>
@@ -154,46 +154,46 @@ export function CustomerSelectionModal({
         </div>
       ) : (
         <div className="space-y-4">
-          <Input
+          <FormInput
             label="Customer Name"
             value={formData.name}
-            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, name: e.target.value }))}
             placeholder="Enter customer name"
             required
           />
-          <Input
+          <FormInput
             label="Company Name"
             value={formData.companyName}
-            onChange={(e) => setFormData(prev => ({ ...prev, companyName: e.target.value }))}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, companyName: e.target.value }))}
             placeholder="Enter company name"
             required
           />
-          <Input
+          <FormInput
             label="Designation"
             value={formData.designation}
-            onChange={(e) => setFormData(prev => ({ ...prev, designation: e.target.value }))}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, designation: e.target.value }))}
             placeholder="Enter designation"
             required
           />
-          <Input
+          <FormInput
             label="Email"
             type="email"
             value={formData.email}
-            onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, email: e.target.value }))}
             placeholder="Enter email address"
             required
           />
-          <Input
+          <FormInput
             label="Phone"
             value={formData.phone}
-            onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
             placeholder="Enter phone number"
             required
           />
-          <Input
+          <FormInput
             label="Address"
             value={formData.address}
-            onChange={(e) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, address: e.target.value }))}
             placeholder="Enter address"
             required
           />

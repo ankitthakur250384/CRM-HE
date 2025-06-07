@@ -1,4 +1,4 @@
-import { OrderType } from './equipment';
+import { OrderType, BaseRates } from './equipment';
 import { Equipment } from './equipment';
 
 export interface CustomerContact {
@@ -11,6 +11,7 @@ export interface CustomerContact {
 }
 
 export interface QuotationInputs {
+  machineType: string;
   orderType: OrderType;
   numberOfDays: number;
   workingHours: number;
@@ -18,12 +19,7 @@ export interface QuotationInputs {
     id: string;
     equipmentId: string;
     name: string;
-    baseRates: {
-      micro: number;
-      small: number;
-      monthly: number;
-      yearly: number;
-    };
+    baseRates: BaseRates;
   };
   foodResources: number;
   accomResources: number;
@@ -31,7 +27,7 @@ export interface QuotationInputs {
   usage: 'normal' | 'heavy';
   riskFactor: 'low' | 'medium' | 'high';
   extraCharge: number;
-  incidentalCharges: number;
+  incidentalCharges: string[];
   otherFactorsCharge: number;
   billing: 'gst' | 'non_gst';
   baseRate: number;
@@ -41,6 +37,9 @@ export interface QuotationInputs {
   mobDemob: number;
   mobRelaxation: number;
   runningCostPerKm: number;
+  otherFactors: string[];
+  dealType?: string;
+  sundayWorking?: 'yes' | 'no';
 }
 
 export interface Quotation extends QuotationInputs {

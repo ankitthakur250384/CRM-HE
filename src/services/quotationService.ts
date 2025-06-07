@@ -3,17 +3,43 @@ import { db } from '../lib/firebase';
 import { collection, addDoc, getDocs, query, where, orderBy, doc, getDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { getLeadById } from './leadService';
 import { getDealById } from './dealService';
-
-const quotationsCollection = collection(db, 'quotations');
+import { quotationsCollection } from './firestore/collections';
 
 // Get all quotations
 export const getQuotations = async (): Promise<Quotation[]> => {
   try {
     const snapshot = await getDocs(quotationsCollection);
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    })) as Quotation[];
+    return snapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        customerContact: {
+          name: data.customerContact?.name || data.customerName || 'Unknown',
+          email: data.customerContact?.email || '',
+          phone: data.customerContact?.phone || '',
+          company: data.customerContact?.company || '',
+          address: data.customerContact?.address || '',
+          designation: data.customerContact?.designation || ''
+        },
+        selectedEquipment: {
+          id: data.selectedEquipment?.id || '',
+          equipmentId: data.selectedEquipment?.equipmentId || '',
+          name: data.selectedEquipment?.name || 'Unknown Equipment',
+          baseRates: data.selectedEquipment?.baseRates || {
+            micro: 0,
+            small: 0,
+            monthly: 0,
+            yearly: 0
+          }
+        },
+        createdAt: data.createdAt || new Date().toISOString(),
+        updatedAt: data.updatedAt || new Date().toISOString(),
+        status: data.status || 'draft',
+        totalRent: data.totalRent || 0,
+        version: data.version || 1
+      } as Quotation;
+    });
   } catch (error) {
     console.error('Error fetching quotations:', error);
     throw error;
@@ -150,11 +176,72 @@ export const getQuotationsForCustomer = async (customerId: string): Promise<Quot
 
 // Get quotation by ID
 export const getQuotationById = async (id: string): Promise<Quotation | null> => {
-  const docRef = doc(quotationsCollection, id);
-  const docSnap = await getDoc(docRef);
-  
-  if (!docSnap.exists()) return null;
-  return { id: docSnap.id, ...docSnap.data() } as Quotation;
+  try {
+    const docRef = doc(quotationsCollection, id);
+    const docSnap = await getDoc(docRef);
+    
+    if (!docSnap.exists()) return null;
+
+    const data = docSnap.data();
+    return {
+      id: docSnap.id,
+      ...data,
+      customerContact: {
+        name: data.customerContact?.name || data.customerName || 'Unknown',
+        email: data.customerContact?.email || '',
+        phone: data.customerContact?.phone || '',
+        company: data.customerContact?.company || '',
+        address: data.customerContact?.address || '',
+        designation: data.customerContact?.designation || ''
+      },
+      selectedEquipment: {
+        id: data.selectedEquipment?.id || '',
+        equipmentId: data.selectedEquipment?.equipmentId || '',
+        name: data.selectedEquipment?.name || 'Unknown Equipment',
+        baseRates: data.selectedEquipment?.baseRates || {
+          micro: 0,
+          small: 0,
+          monthly: 0,
+          yearly: 0
+        }
+      },
+      machineType: data.machineType || '',
+      orderType: data.orderType || 'micro',
+      numberOfDays: data.numberOfDays || 0,
+      workingHours: data.workingHours || 8,
+      foodResources: data.foodResources || 0,
+      accomResources: data.accomResources || 0,
+      siteDistance: data.siteDistance || 0,
+      usage: data.usage || 'normal',
+      riskFactor: data.riskFactor || 'low',
+      extraCharge: data.extraCharge || 0,
+      incidentalCharges: data.incidentalCharges || [],
+      otherFactorsCharge: data.otherFactorsCharge || 0,
+      billing: data.billing || 'gst',
+      baseRate: data.baseRate || 0,
+      includeGst: data.includeGst ?? true,
+      shift: data.shift || 'single',
+      dayNight: data.dayNight || 'day',
+      mobDemob: data.mobDemob || 0,
+      mobRelaxation: data.mobRelaxation || 0,
+      runningCostPerKm: data.runningCostPerKm || 0,
+      version: data.version || 1,
+      createdAt: data.createdAt || new Date().toISOString(),
+      updatedAt: data.updatedAt || new Date().toISOString(),
+      createdBy: data.createdBy || 'system',
+      status: data.status || 'draft',
+      totalRent: data.totalRent || 0,
+      leadId: data.leadId || '',
+      customerId: data.customerId || '',
+      customerName: data.customerName || 'Unknown',
+      otherFactors: data.otherFactors || [],
+      dealType: data.dealType,
+      sundayWorking: data.sundayWorking
+    } as Quotation;
+  } catch (error) {
+    console.error('Error fetching quotation:', error);
+    throw error;
+  }
 };
 
 // Update quotation

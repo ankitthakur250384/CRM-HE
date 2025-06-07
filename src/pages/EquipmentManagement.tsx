@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Search, Edit2, Trash2, Settings, Calendar, Weight, Plane as Crane, IndianRupee, Truck } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/common/Card';
 import { Button } from '../components/common/Button';
-import { Input } from '../components/common/Input';
+import { FormInput } from '../components/common/FormInput';
 import { Select } from '../components/common/Select';
 import { TextArea } from '../components/common/TextArea';
 import { Modal } from '../components/common/Modal';
@@ -243,7 +243,7 @@ export function EquipmentManagement() {
         <div className="flex flex-col sm:flex-row gap-4 flex-1">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
-            <Input
+            <FormInput
               placeholder="Search equipment..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
@@ -458,212 +458,147 @@ export function EquipmentManagement() {
         }}
         size="lg"
       >
-        <form onSubmit={handleSubmit} className="space-y-8">
+        <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-2 gap-8">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Name
-              </label>
-              <Input
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                required
-                className="w-full"
-              />
-            </div>
+            <FormInput
+              label="Name"
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              required
+            />
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Max Lifting Capacity (tons)
-              </label>
-              <Input
-                type="number"
-                value={formData.maxLiftingCapacity}
-                onChange={(e) => setFormData({ ...formData, maxLiftingCapacity: e.target.value })}
-                required
-                className="w-full"
-              />
-            </div>
+            <FormInput
+              label="Max Lifting Capacity (tons)"
+              type="number"
+              value={formData.maxLiftingCapacity}
+              onChange={(e) => setFormData({ ...formData, maxLiftingCapacity: e.target.value })}
+              required
+            />
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Category
-              </label>
-              <Select
-                value={formData.category}
-                onChange={(value) => setFormData({ ...formData, category: value as CraneCategory })}
-                options={CATEGORY_OPTIONS}
-                className="w-full"
-              />
-            </div>
+            <Select
+              label="Category"
+              value={formData.category}
+              onChange={(value) => setFormData({ ...formData, category: value as CraneCategory })}
+              options={CATEGORY_OPTIONS}
+              className="w-full"
+            />
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Unladen Weight (tons)
-              </label>
-              <Input
-                type="number"
-                value={formData.unladenWeight}
-                onChange={(e) => setFormData({ ...formData, unladenWeight: e.target.value })}
-                required
-                className="w-full"
-              />
-            </div>
+            <FormInput
+              label="Unladen Weight (tons)"
+              type="number"
+              value={formData.unladenWeight}
+              onChange={(e) => setFormData({ ...formData, unladenWeight: e.target.value })}
+              required
+            />
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Manufacturing Date (YYYY-MM)
-              </label>
-              <Input
-                type="text"
-                value={formData.manufacturingDate}
-                onChange={(e) => setFormData({ ...formData, manufacturingDate: e.target.value })}
-                placeholder="YYYY-MM"
-                required
-                className="w-full"
-              />
-            </div>
+            <FormInput
+              label="Manufacturing Date (YYYY-MM)"
+              value={formData.manufacturingDate}
+              onChange={(e) => setFormData({ ...formData, manufacturingDate: e.target.value })}
+              placeholder="YYYY-MM"
+              required
+            />
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Running Cost (₹/km)
-              </label>
-              <Input
-                type="number"
-                value={formData.runningCostPerKm}
-                onChange={(e) => setFormData({ ...formData, runningCostPerKm: e.target.value })}
-                required
-                className="w-full"
-              />
-            </div>
+            <FormInput
+              label="Running Cost (₹/km)"
+              type="number"
+              value={formData.runningCostPerKm}
+              onChange={(e) => setFormData({ ...formData, runningCostPerKm: e.target.value })}
+              required
+            />
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Registration Date (YYYY-MM)
-              </label>
-              <Input
-                type="text"
-                value={formData.registrationDate}
-                onChange={(e) => setFormData({ ...formData, registrationDate: e.target.value })}
-                placeholder="YYYY-MM"
-                required
-                className="w-full"
-              />
-            </div>
+            <FormInput
+              label="Registration Date (YYYY-MM)"
+              value={formData.registrationDate}
+              onChange={(e) => setFormData({ ...formData, registrationDate: e.target.value })}
+              placeholder="YYYY-MM"
+              required
+            />
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Status
-              </label>
-              <Select
-                value={formData.status}
-                onChange={(value) => setFormData({ ...formData, status: value as Equipment['status'] })}
-                options={STATUS_OPTIONS}
-                className="w-full"
-              />
-            </div>
-          </div>
-
-          <div className="border-t pt-6">
-            <h4 className="text-base font-medium text-gray-900 mb-4">Base Rates</h4>
-            <div className="grid grid-cols-2 gap-8">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Micro Rate (₹ per hour)
-                </label>
-                <Input
-                  type="number"
-                  value={formData.baseRates.micro}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      baseRates: {
-                        ...formData.baseRates,
-                        micro: e.target.value,
-                      },
-                    })
-                  }
-                  required
-                  className="w-full"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Small Rate (₹ per hour)
-                </label>
-                <Input
-                  type="number"
-                  value={formData.baseRates.small}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      baseRates: {
-                        ...formData.baseRates,
-                        small: e.target.value,
-                      },
-                    })
-                  }
-                  required
-                  className="w-full"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Monthly Rate (₹ per month)
-                </label>
-                <Input
-                  type="number"
-                  value={formData.baseRates.monthly}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      baseRates: {
-                        ...formData.baseRates,
-                        monthly: e.target.value,
-                      },
-                    })
-                  }
-                  required
-                  className="w-full"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Yearly Rate (₹ per month)
-                </label>
-                <Input
-                  type="number"
-                  value={formData.baseRates.yearly}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      baseRates: {
-                        ...formData.baseRates,
-                        yearly: e.target.value,
-                      },
-                    })
-                  }
-                  required
-                  className="w-full"
-                />
-              </div>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Description
-            </label>
-            <TextArea
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              rows={3}
+            <Select
+              label="Status"
+              value={formData.status}
+              onChange={(value) => setFormData({ ...formData, status: value as Equipment['status'] })}
+              options={STATUS_OPTIONS}
               className="w-full"
             />
           </div>
+
+          <div className="space-y-4">
+            <h4 className="text-base font-medium text-gray-900">Base Rates</h4>
+            <div className="grid grid-cols-2 gap-8">
+              <FormInput
+                label="Micro Rate (₹ per hour)"
+                type="number"
+                value={formData.baseRates.micro}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    baseRates: {
+                      ...formData.baseRates,
+                      micro: e.target.value,
+                    },
+                  })
+                }
+                required
+              />
+
+              <FormInput
+                label="Small Rate (₹ per hour)"
+                type="number"
+                value={formData.baseRates.small}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    baseRates: {
+                      ...formData.baseRates,
+                      small: e.target.value,
+                    },
+                  })
+                }
+                required
+              />
+
+              <FormInput
+                label="Monthly Rate (₹ per month)"
+                type="number"
+                value={formData.baseRates.monthly}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    baseRates: {
+                      ...formData.baseRates,
+                      monthly: e.target.value,
+                    },
+                  })
+                }
+                required
+              />
+
+              <FormInput
+                label="Yearly Rate (₹ per month)"
+                type="number"
+                value={formData.baseRates.yearly}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    baseRates: {
+                      ...formData.baseRates,
+                      yearly: e.target.value,
+                    },
+                  })
+                }
+                required
+              />
+            </div>
+          </div>
+
+          <TextArea
+            label="Description"
+            value={formData.description}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            rows={3}
+          />
 
           <div className="flex justify-end gap-3">
             <Button

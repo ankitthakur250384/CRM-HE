@@ -10,11 +10,15 @@ import {
   UserPlus,
   Mail,
   User,
-  Shield
+  Shield,
+  Phone,
+  MapPin,
+  Building2,
+  Users
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/common/Card';
 import { Button } from '../components/common/Button';
-import { Input } from '../components/common/Input';
+import { FormInput } from '../components/common/FormInput';
 import { Select } from '../components/common/Select';
 import { Modal } from '../components/common/Modal';
 import { Toast } from '../components/common/Toast';
@@ -240,10 +244,10 @@ export function UserManagement() {
         <div className="flex flex-col sm:flex-row gap-4 flex-1">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
-            <Input
+            <FormInput
               placeholder="Search users..."
               value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
               className="pl-10"
             />
           </div>
@@ -435,18 +439,18 @@ export function UserManagement() {
         size="lg"
       >
         <form onSubmit={handleSubmit} className="space-y-6">
-          <Input
+          <FormInput
             label="Full Name"
             value={formData.name}
-            onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, name: e.target.value }))}
             required
           />
 
-          <Input
+          <FormInput
             label="Email Address"
             type="email"
             value={formData.email}
-            onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, email: e.target.value }))}
             required
           />
 
@@ -463,7 +467,7 @@ export function UserManagement() {
               type="checkbox"
               id="isActive"
               checked={formData.status === 'active'}
-              onChange={(e) => setFormData(prev => ({ 
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ 
                 ...prev, 
                 status: e.target.checked ? 'active' : 'inactive' 
               }))}
@@ -486,7 +490,7 @@ export function UserManagement() {
               Cancel
             </Button>
             <Button type="submit">
-              {selectedUser ? 'Update' : 'Add'} User
+              {selectedUser ? 'Update User' : 'Add User'}
             </Button>
           </div>
         </form>

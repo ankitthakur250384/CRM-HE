@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import { Navigate, Outlet, useNavigate } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
+import { RefreshCw } from 'lucide-react';
 
 interface AppShellProps {
   requiredRole?: 'sales_agent' | 'operations_manager' | 'operator';
@@ -11,13 +12,34 @@ interface AppShellProps {
 export function AppShell({ requiredRole }: AppShellProps) {
   const { isAuthenticated, user, checkAuth } = useAuthStore();
   const navigate = useNavigate();
+  const [isLoading, setIsLoading] = useState(true);
   
   // Check if token is valid
-  React.useEffect(() => {
-    if (!checkAuth()) {
-      navigate('/login');
-    }
+  useEffect(() => {
+    const validateAuth = async () => {
+      try {
+        setIsLoading(true);
+        const isValid = await checkAuth();
+        if (!isValid) {
+          navigate('/login');
+        }
+      } catch (error) {
+        console.error('Error validating auth:', error);
+        navigate('/login');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+    validateAuth();
   }, [checkAuth, navigate]);
+  
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <RefreshCw className="w-8 h-8 animate-spin text-primary-600" />
+      </div>
+    );
+  }
   
   // If not authenticated, redirect to login
   if (!isAuthenticated) {

@@ -20,17 +20,19 @@ import {
 import { Card, CardHeader, CardTitle, CardContent } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { Input } from '../components/common/Input';
+import { FormInput } from '../components/common/FormInput';
 import { Select } from '../components/common/Select';
 import { Toast } from '../components/common/Toast';
 import { useAuthStore } from '../store/authStore';
 import { Deal } from '../types/deal';
-import { Equipment, OrderType, CraneCategory, BaseRates as EquipmentBaseRates } from '../types/equipment';
+import { Equipment, OrderType, CraneCategory, BaseRates } from '../types/equipment';
 import { Quotation, QuotationInputs } from '../types/quotation';
 import { getDealById } from '../services/dealService';
 import { getEquipment, getEquipmentByCategory } from '../services/firestore/equipmentService';
-import { createQuotation } from '../services/quotationService';
-import { getResourceRatesConfig, getAdditionalParamsConfig } from '../services/configService';
+import { createQuotation, updateQuotation, getQuotationById } from '../services/quotationService';
+import { getResourceRatesConfig, getAdditionalParamsConfig, getQuotationConfig } from '../services/configService';
 import { formatCurrency } from '../utils/formatters';
+import { useQuotationConfigStore } from '../store/quotationConfigStore';
 
 const ORDER_TYPES = [
   { value: 'micro', label: 'Micro' },
@@ -93,7 +95,12 @@ const HELPER_AMOUNT = 12000;
 
 interface QuotationFormState {
   machineType: string;
-  selectedEquipment: string;
+  selectedEquipment: {
+    id: string;
+    equipmentId: string;
+    name: string;
+    baseRates: BaseRates;
+  };
   orderType: OrderType;
   numberOfDays: number;
   workingHours: number;
@@ -125,8 +132,11 @@ export function QuotationCreation() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const dealId = searchParams.get('dealId');
+  const dealId = searchParams.get('dealId') || '';
+  const quotationId = searchParams.get('quotationId');
+  const fresh = searchParams.get('fresh');
 
+  const { orderTypeLimits, fetchConfig } = useQuotationConfigStore();
   const [deal, setDeal] = useState<Deal | null>(null);
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [availableEquipment, setAvailableEquipment] = useState<Equipment[]>([]);
@@ -155,9 +165,19 @@ export function QuotationCreation() {
     variant?: 'success' | 'error' | 'warning';
   }>({ show: false, title: '' });
 
-  const initialFormData: QuotationFormState = {
+  const [formData, setFormData] = useState<QuotationFormState>({
     machineType: '',
-    selectedEquipment: '',
+    selectedEquipment: {
+      id: '',
+      equipmentId: '',
+      name: '',
+      baseRates: {
+        micro: 0,
+        small: 0,
+        monthly: 0,
+        yearly: 0
+      }
+    },
     orderType: 'micro',
     numberOfDays: 0,
     workingHours: 8,
@@ -181,11 +201,7 @@ export function QuotationCreation() {
     createdBy: user?.id || '',
     status: 'draft',
     otherFactors: [],
-    dealType: 'no_advance',
-    sundayWorking: 'no'
-  };
-
-  const [formData, setFormData] = useState<QuotationFormState>(initialFormData);
+  });
 
   const [calculations, setCalculations] = useState({
     baseRate: 0,
@@ -201,12 +217,8 @@ export function QuotationCreation() {
   });
 
   useEffect(() => {
-    if (!dealId) {
-      navigate('/quotations');
-      return;
-    }
     fetchData();
-  }, [dealId]);
+  }, [dealId, quotationId]);
 
   useEffect(() => {
     calculateQuotation();
@@ -229,8 +241,8 @@ export function QuotationCreation() {
   }, [formData.machineType]);
 
   useEffect(() => {
-    if (formData.selectedEquipment && typeof formData.selectedEquipment === 'string') {
-      const selected = availableEquipment.find(eq => eq.id === formData.selectedEquipment);
+    if (formData.selectedEquipment && availableEquipment.length > 0) {
+      const selected = availableEquipment.find(eq => eq.id === formData.selectedEquipment.id);
       if (selected?.baseRates) {
         const baseRate = selected.baseRates[formData.orderType];
         setSelectedEquipmentBaseRate(baseRate);
@@ -245,38 +257,115 @@ export function QuotationCreation() {
 
   const fetchData = async () => {
     try {
-      const [dealData, equipmentData, resourceConfig] = await Promise.all([
-        getDealById(dealId!),
-        getEquipment(),
-        getResourceRatesConfig()
-      ]);
+      setIsLoading(true);
+      console.log('Fetching data with dealId:', dealId, 'quotationId:', quotationId);
 
+      // Fetch deal data
+      if (!dealId) {
+        showToast('Deal ID not found', 'error');
+        navigate('/quotations');
+        return;
+      }
+
+      const dealData = await getDealById(dealId);
+      console.log('Fetched deal data:', dealData);
+      
       if (!dealData) {
         showToast('Deal not found', 'error');
         navigate('/quotations');
         return;
       }
-
       setDeal(dealData);
+
+      // Fetch equipment data
+      const equipmentData = await getEquipment();
+      console.log('Fetched equipment data:', equipmentData);
       setEquipment(equipmentData);
-      setResourceRates({
-        foodRatePerMonth: resourceConfig.foodRatePerMonth,
-        accommodationRatePerMonth: resourceConfig.accommodationRatePerMonth
-      });
+
+      // Fetch resource rates
+      const rates = await getResourceRatesConfig();
+      console.log('Fetched resource rates:', rates);
+      setResourceRates(rates);
+
+      // If editing an existing quotation, load its data
+      if (quotationId) {
+        console.log('Fetching existing quotation:', quotationId);
+        const existingQuotation = await getQuotationById(quotationId);
+        console.log('Fetched quotation data:', existingQuotation);
+        
+        if (existingQuotation) {
+          // Set machine type first to trigger equipment loading
+          setFormData(prev => ({
+            ...prev,
+            machineType: existingQuotation.machineType || '',
+          }));
+
+          // Wait for equipment to load
+          await new Promise(resolve => setTimeout(resolve, 100));
+
+          // Then set the rest of the form data
+          setFormData({
+            machineType: existingQuotation.machineType || '',
+            selectedEquipment: existingQuotation.selectedEquipment || {
+              id: '',
+              equipmentId: '',
+              name: '',
+              baseRates: {
+                micro: 0,
+                small: 0,
+                monthly: 0,
+                yearly: 0
+              }
+            },
+            orderType: existingQuotation.orderType || 'micro',
+            numberOfDays: existingQuotation.numberOfDays || 0,
+            workingHours: existingQuotation.workingHours || 8,
+            foodResources: existingQuotation.foodResources || 0,
+            accomResources: existingQuotation.accomResources || 0,
+            siteDistance: existingQuotation.siteDistance || 0,
+            usage: existingQuotation.usage || 'normal',
+            riskFactor: existingQuotation.riskFactor || 'low',
+            extraCharge: existingQuotation.extraCharge || 0,
+            incidentalCharges: existingQuotation.incidentalCharges || [],
+            otherFactorsCharge: existingQuotation.otherFactorsCharge || 0,
+            billing: existingQuotation.billing || 'gst',
+            baseRate: existingQuotation.baseRate || 0,
+            includeGst: existingQuotation.includeGst ?? true,
+            shift: existingQuotation.shift || 'single',
+            dayNight: existingQuotation.dayNight || 'day',
+            mobDemob: existingQuotation.mobDemob || 0,
+            mobRelaxation: existingQuotation.mobRelaxation || 0,
+            runningCostPerKm: existingQuotation.runningCostPerKm || 0,
+            version: existingQuotation.version || 1,
+            createdBy: existingQuotation.createdBy || user?.id || '',
+            status: existingQuotation.status || 'draft',
+            otherFactors: existingQuotation.otherFactors || [],
+            dealType: existingQuotation.dealType,
+            sundayWorking: existingQuotation.sundayWorking,
+          });
+          console.log('Form data updated with quotation data');
+        } else {
+          showToast('Quotation not found', 'error');
+          navigate('/quotations');
+          return;
+        }
+      }
+
+      // Fetch quotation config
+      await fetchConfig();
+      console.log('Quotation config fetched');
     } catch (error) {
       console.error('Error fetching data:', error);
-      showToast('Error loading data', 'error');
+      showToast('Error fetching data', 'error');
     } finally {
       setIsLoading(false);
     }
   };
 
   const determineOrderType = (days: number): OrderType => {
-    if (days > 25) {
-      return 'monthly';
-    } else if (days > 10) {
-      return 'small';
-    }
+    if (days >= orderTypeLimits.yearly.minDays) return 'yearly';
+    if (days >= orderTypeLimits.monthly.minDays) return 'monthly';
+    if (days >= orderTypeLimits.small.minDays) return 'small';
     return 'micro';
   };
 
@@ -391,7 +480,7 @@ export function QuotationCreation() {
     const distance = Number(formData.siteDistance);
     const trailerCost = Number(formData.mobDemob) || 0;
     const mobRelaxationPercent = Number(formData.mobRelaxation) || 0;
-    const selectedEquip = availableEquipment.find(eq => eq.id === formData.selectedEquipment);
+    const selectedEquip = availableEquipment.find(eq => eq.id === formData.selectedEquipment.id);
     const runningCostPerKm = selectedEquip?.runningCostPerKm || 0;
     
     const distToSiteCost = distance * runningCostPerKm * 2;
@@ -410,13 +499,13 @@ export function QuotationCreation() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
+    
     if (!deal) {
-      showToast('Deal information not found', 'error');
+      showToast('Deal not found', 'error');
       return;
     }
 
-    if (!formData.selectedEquipment) {
+    if (!formData.selectedEquipment.id) {
       showToast('Please select equipment', 'error');
       return;
     }
@@ -429,43 +518,9 @@ export function QuotationCreation() {
     try {
       setIsSaving(true);
 
-      const selectedEquipment = availableEquipment.find(eq => eq.id === formData.selectedEquipment);
-      if (!selectedEquipment) {
-        showToast('Selected equipment not found', 'error');
-        return;
-      }
-
-      const quotationData: Omit<Quotation, 'id' | 'createdAt' | 'updatedAt'> = {
-        orderType: formData.orderType,
-        numberOfDays: formData.numberOfDays,
-        workingHours: formData.workingHours,
-        selectedEquipment: {
-          id: selectedEquipment.id,
-          equipmentId: selectedEquipment.equipmentId,
-          name: selectedEquipment.name,
-          baseRates: selectedEquipment.baseRates
-        },
-        foodResources: formData.foodResources,
-        accomResources: formData.accomResources,
-        siteDistance: formData.siteDistance,
-        usage: formData.usage,
-        riskFactor: formData.riskFactor,
-        extraCharge: formData.extraCharge,
-        incidentalCharges: formData.incidentalCharges.reduce((sum, val) => {
-          const found = INCIDENTAL_OPTIONS.find(opt => opt.value === val);
-          return sum + (found ? found.amount : 0);
-        }, 0),
-        otherFactorsCharge: (formData.otherFactors.includes('rigger') ? RIGGER_AMOUNT : 0) +
-          (formData.otherFactors.includes('helper') ? HELPER_AMOUNT : 0),
-        billing: formData.billing,
-        baseRate: formData.baseRate,
-        includeGst: formData.includeGst,
-        shift: formData.shift,
-        dayNight: formData.dayNight,
-        mobDemob: formData.mobDemob,
-        mobRelaxation: formData.mobRelaxation,
-        runningCostPerKm: formData.runningCostPerKm,
-        leadId: deal.leadId,
+      const quotationData = {
+        ...formData,
+        leadId: deal.id,
         customerId: deal.customerId,
         customerName: deal.customer.name,
         customerContact: {
@@ -474,21 +529,29 @@ export function QuotationCreation() {
           phone: deal.customer.phone,
           company: deal.customer.company,
           address: deal.customer.address,
-          designation: deal.customer.designation || 'N/A'
+          designation: deal.customer.designation
         },
-        totalRent: calculations.totalAmount,
-        version: 1,
-        createdBy: user?.id || '',
-        status: 'draft'
+        totalRent: calculations.totalAmount
       };
 
-      await createQuotation(quotationData);
-      
-      showToast('Quotation created successfully', 'success');
+      let savedQuotation;
+      if (quotationId) {
+        // Update existing quotation
+        savedQuotation = await updateQuotation(quotationId, {
+          ...quotationData,
+          version: formData.version + 1
+        });
+        showToast('Quotation updated successfully', 'success');
+      } else {
+        // Create new quotation
+        savedQuotation = await createQuotation(quotationData);
+        showToast('Quotation created successfully', 'success');
+      }
+
       navigate('/quotations');
     } catch (error) {
-      console.error('Error creating quotation:', error);
-      showToast('Error creating quotation', 'error');
+      console.error('Error saving quotation:', error);
+      showToast('Error saving quotation', 'error');
     } finally {
       setIsSaving(false);
     }
@@ -501,6 +564,42 @@ export function QuotationCreation() {
   ) => {
     setToast({ show: true, title, variant, description });
     setTimeout(() => setToast({ show: false, title: '' }), 3000);
+  };
+
+  const handleEquipmentSelect = (equipmentId: string) => {
+    const selected = availableEquipment.find(eq => eq.id === equipmentId);
+    if (selected) {
+      setFormData(prev => ({
+        ...prev,
+        selectedEquipment: {
+          id: selected.id,
+          equipmentId: selected.equipmentId,
+          name: selected.name,
+          baseRates: selected.baseRates
+        },
+        baseRate: selected.baseRates[prev.orderType],
+        runningCostPerKm: selected.runningCostPerKm || 0
+      }));
+    }
+  };
+
+  const handleMachineTypeChange = (value: string) => {
+    setFormData(prev => ({
+      ...prev,
+      machineType: value,
+      selectedEquipment: {
+        id: '',
+        equipmentId: '',
+        name: '',
+        baseRates: {
+          micro: 0,
+          small: 0,
+          monthly: 0,
+          yearly: 0
+        }
+      }
+    }));
+    setSelectedEquipmentBaseRate(0);
   };
 
   if (!user || (user.role !== 'sales_agent' && user.role !== 'admin')) {
@@ -532,6 +631,20 @@ export function QuotationCreation() {
 
   return (
     <div className="space-y-6">
+      <style>
+        {`
+          /* Remove number input spinners */
+          input[type="number"]::-webkit-inner-spin-button,
+          input[type="number"]::-webkit-outer-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+          }
+          input[type="number"] {
+            -moz-appearance: textfield;
+          }
+        `}
+      </style>
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-4">
@@ -543,7 +656,9 @@ export function QuotationCreation() {
             Back to Quotations
           </Button>
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">Create Quotation</h1>
+            <h1 className="text-2xl font-semibold text-gray-900">
+              {quotationId ? 'Edit Quotation' : 'Create Quotation'}
+            </h1>
             <p className="text-gray-600">For {deal.customer.name} - {deal.title}</p>
           </div>
         </div>
@@ -608,12 +723,12 @@ export function QuotationCreation() {
                 </CardHeader>
                 {expandedCards.duration && (
                   <CardContent className="pt-4 space-y-4">
-                    <Input
+                    <FormInput
                       type="number"
                       label="Number of Days"
-                      value={formData.numberOfDays}
+                      value={formData.numberOfDays || ''}
                       onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                        const days = Number(e.target.value);
+                        const days = e.target.value === '' ? 0 : Number(e.target.value);
                         const newOrderType = determineOrderType(days);
                         setFormData(prev => ({
                           ...prev,
@@ -625,7 +740,7 @@ export function QuotationCreation() {
                       min="1"
                       placeholder="Enter number of days"
                     />
-                    {formData.numberOfDays && selectedEquipmentBaseRate > 0 && (
+                    {formData.numberOfDays > 0 && selectedEquipmentBaseRate > 0 && (
                       <div className="mt-2 space-y-1">
                         {formData.orderType !== 'monthly' ? (
                           <div className="text-sm text-gray-600">
@@ -637,8 +752,9 @@ export function QuotationCreation() {
                           </div>
                         )}
                         <div className="text-sm font-medium text-primary-600">
-                          {Number(formData.numberOfDays) > 25 ? 'Monthly rate' :
-                           Number(formData.numberOfDays) > 10 ? 'Small order rate' :
+                          {Number(formData.numberOfDays) >= orderTypeLimits.yearly.minDays ? 'Yearly rate' :
+                           Number(formData.numberOfDays) >= orderTypeLimits.monthly.minDays ? 'Monthly rate' :
+                           Number(formData.numberOfDays) >= orderTypeLimits.small.minDays ? 'Small order rate' :
                            'Micro order rate'}
                         </div>
                       </div>
@@ -676,9 +792,10 @@ export function QuotationCreation() {
                     />
                     {Number(formData.numberOfDays) > 0 && (
                       <div className="mt-2 text-sm text-amber-600">
-                        {Number(formData.numberOfDays) > 25 ? 'Order type is set to Monthly as duration exceeds 25 days' :
-                         Number(formData.numberOfDays) > 10 ? 'Order type is set to Small as duration is between 11-25 days' :
-                         'Order type is set to Micro as duration is 10 days or less'}
+                        {Number(formData.numberOfDays) >= orderTypeLimits.yearly.minDays ? 'Order type is set to Yearly as duration exceeds ' + (orderTypeLimits.yearly.minDays - 1) + ' days' :
+                         Number(formData.numberOfDays) >= orderTypeLimits.monthly.minDays ? 'Order type is set to Monthly as duration exceeds ' + (orderTypeLimits.monthly.minDays - 1) + ' days' :
+                         Number(formData.numberOfDays) >= orderTypeLimits.small.minDays ? 'Order type is set to Small as duration is between ' + orderTypeLimits.small.minDays + '-' + orderTypeLimits.small.maxDays + ' days' :
+                         'Order type is set to Micro as duration is ' + orderTypeLimits.micro.maxDays + ' days or less'}
                       </div>
                     )}
                   </CardContent>
@@ -707,12 +824,7 @@ export function QuotationCreation() {
                       options={MACHINE_TYPES}
                       value={formData.machineType}
                       onChange={(value) => {
-                        setFormData(prev => ({
-                          ...prev,
-                          machineType: value,
-                          selectedEquipment: '',
-                        }));
-                        setSelectedEquipmentBaseRate(0);
+                        handleMachineTypeChange(value);
                       }}
                       required
                     />
@@ -727,20 +839,9 @@ export function QuotationCreation() {
                             label: `${eq.equipmentId} - ${eq.name} (${formatCurrency(eq.baseRates[formData.orderType])}${formData.orderType === 'monthly' ? '/month' : '/hr'})`,
                           }))
                         ]}
-                        value={formData.selectedEquipment}
+                        value={formData.selectedEquipment.id}
                         onChange={(value) => {
-                          const selected = availableEquipment.find(eq => eq.id === value);
-                          setFormData(prev => ({
-                            ...prev,
-                            selectedEquipment: value,
-                          }));
-                          if (selected?.baseRates) {
-                            const baseRates = selected.baseRates as EquipmentBaseRates;
-                            const newBaseRate = baseRates[formData.orderType];
-                            setSelectedEquipmentBaseRate(newBaseRate);
-                          } else {
-                            setSelectedEquipmentBaseRate(0);
-                          }
+                          handleEquipmentSelect(value);
                         }}
                         required
                       />
@@ -784,7 +885,7 @@ export function QuotationCreation() {
                       }}
                     />
                     <div>
-                      <Input
+                      <FormInput
                         type="number"
                         label="Number of Hours"
                         value={formData.workingHours}
@@ -848,7 +949,7 @@ export function QuotationCreation() {
                 {expandedCards.accommodation && (
                   <CardContent className="pt-4 space-y-4">
                     <div>
-                      <Input
+                      <FormInput
                         type="number"
                         label="Number of Resources (Food)"
                         value={formData.foodResources}
@@ -859,7 +960,7 @@ export function QuotationCreation() {
                       </div>
                     </div>
                     <div>
-                      <Input
+                      <FormInput
                         type="number"
                         label="Number of Resources (Accommodation)"
                         value={formData.accomResources}
@@ -891,7 +992,7 @@ export function QuotationCreation() {
                 {expandedCards.mobDemob && (
                   <CardContent className="pt-4 space-y-4">
                     <div>
-                      <Input
+                      <FormInput
                         type="number"
                         label="Distance to Site (km)"
                         value={formData.siteDistance}
@@ -900,7 +1001,7 @@ export function QuotationCreation() {
                       />
                     </div>
                     <div>
-                      <Input
+                      <FormInput
                         type="number"
                         label="Trailer Cost"
                         value={formData.mobDemob}
@@ -909,7 +1010,7 @@ export function QuotationCreation() {
                       />
                     </div>
                     <div>
-                      <Input
+                      <FormInput
                         type="number"
                         label="Mob Relaxation"
                         value={formData.mobRelaxation}
@@ -959,7 +1060,7 @@ export function QuotationCreation() {
                       onChange={(value) => setFormData(prev => ({ ...prev, dealType: value }))}
                     />
                     
-                    <Input
+                    <FormInput
                       type="number"
                       label="Extra Commercial Charges"
                       value={formData.extraCharge}
@@ -1247,7 +1348,7 @@ export function QuotationCreation() {
                   className="flex-1 py-2.5 bg-primary-600 hover:bg-primary-700"
                   leftIcon={isSaving ? <Clock className="animate-spin" /> : <Save />}
                 >
-                  {isSaving ? 'Creating...' : 'Create Quotation'}
+                  {isSaving ? 'Saving...' : quotationId ? 'Update Quotation' : 'Create Quotation'}
                 </Button>
               </div>
             </div>
