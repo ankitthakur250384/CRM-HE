@@ -1,6 +1,7 @@
-import React from 'react';
+import React, { InputHTMLAttributes } from 'react';
 
-interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
+export interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
+  label?: string;
   error?: string;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
@@ -8,41 +9,48 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   id?: string;
 }
 
-export function Input({ className = '', error, leftIcon, rightIcon, name, id, ...props }: InputProps) {
+export function Input({ label, error, className = '', leftIcon, rightIcon, name, id, ...props }: InputProps) {
   const inputProps = { ...props };
 
   const inputName = name || id || props.placeholder?.toLowerCase().replace(/\s+/g, '_') || 'input_field';
 
   return (
-    <div className="relative">
-      {leftIcon && (
-        <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
-          {leftIcon}
-        </div>
+    <div className="space-y-2">
+      {label && (
+        <label className="block text-sm font-medium text-gray-700">
+          {label}
+        </label>
       )}
-      <input
-        name={inputName}
-        id={id || inputName}
-        className={`
-          block w-full rounded-md
-          border-gray-300 shadow-sm
-          focus:border-primary-500 focus:ring-primary-500
-          disabled:bg-gray-100 disabled:text-gray-500
-          text-sm
-          ${error ? 'border-error-300' : 'border-gray-300'}
-          ${leftIcon ? 'pl-10' : ''}
-          ${rightIcon ? 'pr-10' : ''}
-          ${className}
-        `}
-        {...inputProps}
-      />
-      {rightIcon && (
-        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
-          {rightIcon}
-        </div>
-      )}
+      <div className="relative">
+        {leftIcon && (
+          <div className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+            {leftIcon}
+          </div>
+        )}
+        <input
+          name={inputName}
+          id={id || inputName}
+          className={`
+            block w-full rounded-md
+            border-gray-300 shadow-sm
+            focus:border-primary-500 focus:ring-primary-500
+            disabled:bg-gray-100 disabled:text-gray-500
+            text-sm
+            ${error ? 'border-error-300' : 'border-gray-300'}
+            ${leftIcon ? 'pl-10' : ''}
+            ${rightIcon ? 'pr-10' : ''}
+            ${className}
+          `}
+          {...inputProps}
+        />
+        {rightIcon && (
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400">
+            {rightIcon}
+          </div>
+        )}
+      </div>
       {error && (
-        <p className="mt-1 text-sm text-error-600">{error}</p>
+        <p className="mt-2 text-sm text-red-600">{error}</p>
       )}
     </div>
   );

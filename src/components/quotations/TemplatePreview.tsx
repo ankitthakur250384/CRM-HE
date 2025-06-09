@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../common/Card';
 import { Button } from '../common/Button';
 import { Select } from '../common/Select';
@@ -8,9 +8,63 @@ import { Quotation } from '../../types/quotation';
 import { mergeQuotationWithTemplate, getAvailablePlaceholders } from '../../utils/templateMerger';
 import { Eye, Download, Send, FileText, Info } from 'lucide-react';
 
+// Sample quotation data for preview when no quotation is provided
+const SAMPLE_QUOTATION: Quotation = {
+  id: 'sample-quotation',
+  leadId: 'sample-lead',
+  customerId: 'sample-customer',
+  customerName: 'Sample Company Ltd.',
+  customerContact: {
+    name: 'John Smith',
+    email: 'john.smith@samplecompany.com',
+    phone: '+91 98765 43210',
+    company: 'Sample Company Ltd.',
+    address: '123 Business Park, Tech City, State - 400001',
+    designation: 'Procurement Manager'
+  },
+  orderType: 'monthly',
+  numberOfDays: 30,
+  workingHours: 8,
+  selectedEquipment: {
+    id: 'sample-equipment',
+    equipmentId: 'crane-001',
+    name: '50T Mobile Crane',
+    baseRates: {
+      micro: 5000,
+      small: 4500,
+      monthly: 4000,
+      yearly: 3500
+    }
+  },
+  foodResources: 2,
+  accomResources: 2,
+  siteDistance: 50,
+  usage: 'normal',
+  riskFactor: 'low',
+  extraCharge: 5000,
+  incidentalCharges: ['incident1', 'incident2'],
+  otherFactorsCharge: 2000,
+  billing: 'gst',
+  baseRate: 4000,
+  includeGst: true,
+  shift: 'single',
+  dayNight: 'day',
+  mobDemob: 15000,
+  mobRelaxation: 5000,
+  runningCostPerKm: 100,
+  totalRent: 150000,
+  version: 1,
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
+  createdBy: 'system',
+  status: 'draft',
+  machineType: 'crane',
+  otherFactors: ['rigger', 'area', 'customerReputation']
+};
+
 interface TemplatePreviewProps {
   template: Template;
-  quotation: Quotation;
+  quotation?: Quotation;
   onDownloadPDF?: () => void;
   onSendEmail?: () => void;
   className?: string;
@@ -24,11 +78,27 @@ export function TemplatePreview({
   className = '' 
 }: TemplatePreviewProps) {
   const [showPlaceholders, setShowPlaceholders] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<{
     show: boolean;
     title: string;
     variant?: 'success' | 'error' | 'warning';
   }>({ show: false, title: '' });
+
+  // Validate template
+  useEffect(() => {
+    if (!template) {
+      setError('Template is required');
+      return;
+    }
+    if (!template.content) {
+      setError('Template content is required');
+      return;
+    }
+    setError(null);
+  }, [template]);
+
+  const previewQuotation = quotation || SAMPLE_QUOTATION;
 
   const showToast = (title: string, variant: 'success' | 'error' | 'warning' = 'success') => {
     setToast({ show: true, title, variant });
@@ -36,7 +106,13 @@ export function TemplatePreview({
   };
 
   // Merge template with quotation data
-  const mergedContent = mergeQuotationWithTemplate(quotation, template);
+  let mergedContent = '';
+  try {
+    mergedContent = mergeQuotationWithTemplate(previewQuotation, template);
+  } catch (err) {
+    console.error('Error merging template:', err);
+    setError('Failed to merge template with quotation data');
+  }
 
   // Get available placeholders grouped by category
   const placeholders = getAvailablePlaceholders();
@@ -49,6 +125,10 @@ export function TemplatePreview({
   }, {} as Record<string, typeof placeholders>);
 
   const handleCopyContent = () => {
+    if (!mergedContent) {
+      showToast('No content to copy', 'error');
+      return;
+    }
     navigator.clipboard.writeText(mergedContent).then(() => {
       showToast('Content copied to clipboard', 'success');
     }).catch(() => {
@@ -56,15 +136,33 @@ export function TemplatePreview({
     });
   };
 
+  if (error) {
+    return (
+      <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+        <p className="text-sm text-red-800">
+          <strong>Error:</strong> {error}
+        </p>
+      </div>
+    );
+  }
+
   return (
     <div className={`space-y-6 ${className}`}>
+      <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+        <p className="text-sm text-blue-800">
+          <strong>Preview Mode:</strong> {quotation 
+            ? 'Showing preview with actual quotation data.' 
+            : 'Showing preview with sample data. Actual values will be used when generating the quotation.'}
+        </p>
+      </div>
+      
       {/* Template Info */}
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              Template: {template.name}
+              Template: {template.name || 'Untitled Template'}
             </CardTitle>
             <div className="flex items-center gap-2">
               <Button
@@ -79,6 +177,7 @@ export function TemplatePreview({
                 variant="outline"
                 size="sm"
                 onClick={handleCopyContent}
+                disabled={!mergedContent}
               >
                 Copy Content
               </Button>
@@ -146,31 +245,36 @@ export function TemplatePreview({
               )}
               {onSendEmail && (
                 <Button
+                  variant="outline"
                   size="sm"
                   onClick={onSendEmail}
                   leftIcon={<Send className="w-4 h-4" />}
                 >
-                  Send to Customer
+                  Send Email
                 </Button>
               )}
             </div>
           </div>
         </CardHeader>
         <CardContent>
-          <div className="bg-white border rounded-lg p-6 shadow-sm max-h-[800px] overflow-y-auto">
+          {mergedContent ? (
             <div 
-              dangerouslySetInnerHTML={{ __html: mergedContent }}
+              className="prose max-w-none"
+              dangerouslySetInnerHTML={{ __html: mergedContent }} 
             />
-          </div>
+          ) : (
+            <div className="text-center text-gray-500 py-8">
+              No preview available
+            </div>
+          )}
         </CardContent>
       </Card>
 
-      {/* Toast Notifications */}
+      {/* Toast */}
       {toast.show && (
         <Toast
           title={toast.title}
           variant={toast.variant}
-          isVisible={toast.show}
           onClose={() => setToast({ show: false, title: '' })}
         />
       )}

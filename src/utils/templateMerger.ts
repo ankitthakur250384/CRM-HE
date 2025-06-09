@@ -180,7 +180,15 @@ export function mergeTemplate(template: Template, data: TemplateData): string {
 /**
  * Convenience function to merge a quotation with a template
  */
-export function mergeQuotationWithTemplate(quotation: Quotation, template: Template): string {
+export function mergeQuotationWithTemplate(quotation: Quotation | undefined, template: Template): string {
+  if (!template.content) {
+    return '';
+  }
+
+  if (!quotation) {
+    return template.content;
+  }
+
   const data = {
     // Company information
     company_name: 'ASP Cranes',
@@ -191,7 +199,7 @@ export function mergeQuotationWithTemplate(quotation: Quotation, template: Templ
     company_pan: 'AABCS1429B',
 
     // Customer information
-    customer_name: quotation.customerContact?.name || 'N/A',
+    customer_name: quotation.customerContact?.name || quotation.customerName || 'N/A',
     customer_designation: quotation.customerContact?.designation || 'N/A',
     customer_company: quotation.customerContact?.company || 'N/A',
     customer_address: quotation.customerContact?.address || 'N/A',
@@ -199,22 +207,22 @@ export function mergeQuotationWithTemplate(quotation: Quotation, template: Templ
     customer_email: quotation.customerContact?.email || 'N/A',
 
     // Quotation details
-    quotation_number: quotation.id,
+    quotation_number: quotation.id || 'N/A',
     quotation_date: new Date(quotation.createdAt).toLocaleDateString('en-IN'),
     valid_until: new Date(new Date(quotation.createdAt).setDate(new Date(quotation.createdAt).getDate() + 30)).toLocaleDateString('en-IN'),
     order_type: quotation.orderType === 'monthly' ? 'Monthly' : 'Daily',
 
     // Equipment details
     equipment_name: quotation.selectedEquipment?.name || 'N/A',
-    project_duration: `${quotation.numberOfDays} days`,
-    working_hours: `${quotation.workingHours} hours/day`,
+    project_duration: `${quotation.numberOfDays || 0} days`,
+    working_hours: `${quotation.workingHours || 0} hours/day`,
     shift_type: quotation.shift === 'double' ? 'Double Shift' : 'Single Shift',
-    base_rate: formatCurrency(quotation.baseRate),
+    base_rate: formatCurrency(quotation.baseRate || 0),
 
     // Pricing
-    subtotal: formatCurrency(quotation.totalRent / (quotation.includeGst ? 1.18 : 1)),
-    gst_amount: quotation.includeGst ? formatCurrency(quotation.totalRent - (quotation.totalRent / 1.18)) : '0',
-    total_amount: formatCurrency(quotation.totalRent),
+    subtotal: formatCurrency(quotation.totalRent ? quotation.totalRent / (quotation.includeGst ? 1.18 : 1) : 0),
+    gst_amount: quotation.includeGst ? formatCurrency(quotation.totalRent ? quotation.totalRent - (quotation.totalRent / 1.18) : 0) : '0',
+    total_amount: formatCurrency(quotation.totalRent || 0),
 
     // Terms
     payment_terms: '50% advance, balance against monthly bills',
@@ -225,8 +233,10 @@ export function mergeQuotationWithTemplate(quotation: Quotation, template: Templ
   
   // Replace all placeholders
   Object.entries(data).forEach(([key, value]) => {
-    const regex = new RegExp(`{{${key}}}`, 'g');
-    content = content.replace(regex, value);
+    if (value !== undefined && value !== null) {
+      const regex = new RegExp(`{{${key}}}`, 'g');
+      content = content.replace(regex, value.toString());
+    }
   });
 
   return content;
@@ -373,7 +383,7 @@ export function getAvailablePlaceholders() {
 /**
  * Validate template content for missing or invalid placeholders
  */
-export function validateTemplate(content: string): {
+export function validateTemplate(content: string | undefined): {
   isValid: boolean;
   errors: string[];
   warnings: string[];
@@ -383,6 +393,13 @@ export function validateTemplate(content: string): {
     errors: [] as string[],
     warnings: [] as string[]
   };
+
+  // If content is undefined or empty, return with error
+  if (!content) {
+    result.isValid = false;
+    result.errors.push('Template content is empty');
+    return result;
+  }
 
   // Required placeholders
   const requiredPlaceholders = [

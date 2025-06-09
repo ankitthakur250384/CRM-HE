@@ -7,6 +7,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../common/Card';
 import { Template } from '../../types/template';
 import { Quotation } from '../../types/quotation';
 import { mergeQuotationWithTemplate } from '../../utils/templateMerger';
+import { getTemplates, updateTemplate } from '../../services/firestore/templateService';
 
 interface DefaultTemplateConfigProps {
   onSave?: () => void;
@@ -93,30 +94,13 @@ export function DefaultTemplateConfig({ onSave }: DefaultTemplateConfigProps) {
   const loadTemplatesAndConfig = async () => {
     try {
       setIsLoading(true);
+      const fetchedTemplates = await getTemplates();
+      setTemplates(fetchedTemplates);
       
-      // Load templates from localStorage
-      const savedTemplates = localStorage.getItem('quotation-templates');
-      let templatesList: Template[] = [];
-      
-      if (savedTemplates) {
-        try {
-          templatesList = JSON.parse(savedTemplates);
-        } catch (error) {
-          console.error('Error parsing templates:', error);
-        }
-      }
-      
-      setTemplates(templatesList);
-      
-      // Load current default template setting
-      const savedConfig = localStorage.getItem('default-template-config');
-      if (savedConfig) {
-        try {
-          const config = JSON.parse(savedConfig);
-          setSelectedTemplateId(config.defaultTemplateId || '');
-        } catch (error) {
-          console.error('Error parsing default template config:', error);
-        }
+      // Find and set the default template
+      const defaultTemplate = fetchedTemplates.find(t => t.isDefault);
+      if (defaultTemplate) {
+        setSelectedTemplateId(defaultTemplate.id);
       }
     } catch (error) {
       console.error('Error loading templates and config:', error);
@@ -135,13 +119,22 @@ export function DefaultTemplateConfig({ onSave }: DefaultTemplateConfigProps) {
     try {
       setIsSaving(true);
       
-      // Save the default template configuration
-      const config = {
-        defaultTemplateId: selectedTemplateId,
-        updatedAt: new Date().toISOString()
-      };
+      // Update the old default template to non-default
+      const oldDefaultTemplate = templates.find(t => t.isDefault);
+      if (oldDefaultTemplate && oldDefaultTemplate.id !== selectedTemplateId) {
+        await updateTemplate(oldDefaultTemplate.id, { isDefault: false });
+      }
+
+      // Update the new default template
+      if (selectedTemplateId) {
+        const template = templates.find(t => t.id === selectedTemplateId);
+        if (template) {
+          await updateTemplate(template.id, { isDefault: true });
+        }
+      }
       
-      localStorage.setItem('default-template-config', JSON.stringify(config));
+      // Refresh templates
+      await loadTemplatesAndConfig();
       
       showToast('Default template configuration saved successfully');
       onSave?.();

@@ -7,9 +7,10 @@ import { RefreshCw } from 'lucide-react';
 
 interface AppShellProps {
   requiredRole?: 'sales_agent' | 'operations_manager' | 'operator';
+  children?: React.ReactNode;
 }
 
-export function AppShell({ requiredRole }: AppShellProps) {
+export function AppShell({ requiredRole, children }: AppShellProps) {
   const { isAuthenticated, user, checkAuth } = useAuthStore();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
@@ -57,7 +58,7 @@ export function AppShell({ requiredRole }: AppShellProps) {
       <div className="flex flex-col flex-1 overflow-hidden">
         <Header />
         <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-6">
-          <Outlet />
+          {children || <Outlet />}
         </main>
       </div>
     </div>

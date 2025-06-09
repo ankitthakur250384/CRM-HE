@@ -888,13 +888,13 @@ export function QuotationCreation() {
                       <FormInput
                         type="number"
                         label="Number of Hours"
-                        value={formData.workingHours}
+                        value={formData.workingHours || ''}
                         onChange={(e) => {
                           const value = e.target.value;
                           if (value === '' || /^\d*\.?\d*$/.test(value)) {
-                            const numValue = parseFloat(value);
+                            const numValue = value === '' ? 8 : parseFloat(value);
                             if (!value || (numValue >= 1 && numValue <= 24)) {
-                              setFormData(prev => ({ ...prev, workingHours: numValue || 8 }));
+                              setFormData(prev => ({ ...prev, workingHours: numValue }));
                             }
                           }
                         }}
@@ -951,23 +951,25 @@ export function QuotationCreation() {
                     <div>
                       <FormInput
                         type="number"
-                        label="Number of Resources (Food)"
-                        value={formData.foodResources}
-                        onChange={(e) => setFormData(prev => ({ ...prev, foodResources: Number(e.target.value) }))}
+                        label="Number of Resources"
+                        value={formData.foodResources || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, foodResources: e.target.value === '' ? 0 : Number(e.target.value) }))}
+                        placeholder="Enter number of resources"
                       />
                       <div className="text-sm text-gray-500 mt-1">
-                        Rate: ₹{resourceRates.foodRatePerMonth}/month per person
+                        Rate: ₹2500/month per resource
                       </div>
                     </div>
                     <div>
                       <FormInput
                         type="number"
-                        label="Number of Resources (Accommodation)"
-                        value={formData.accomResources}
-                        onChange={(e) => setFormData(prev => ({ ...prev, accomResources: Number(e.target.value) }))}
+                        label="Number of Resources"
+                        value={formData.accomResources || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, accomResources: e.target.value === '' ? 0 : Number(e.target.value) }))}
+                        placeholder="Enter number of resources"
                       />
                       <div className="text-sm text-gray-500 mt-1">
-                        Rate: ₹{resourceRates.accommodationRatePerMonth}/month per person
+                        Rate: ₹4000/month per resource
                       </div>
                     </div>
                   </CardContent>
@@ -995,8 +997,8 @@ export function QuotationCreation() {
                       <FormInput
                         type="number"
                         label="Distance to Site (km)"
-                        value={formData.siteDistance}
-                        onChange={(e) => setFormData(prev => ({ ...prev, siteDistance: Number(e.target.value) }))}
+                        value={formData.siteDistance || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, siteDistance: e.target.value === '' ? 0 : Number(e.target.value) }))}
                         placeholder="Enter distance in kilometers"
                       />
                     </div>
@@ -1004,8 +1006,8 @@ export function QuotationCreation() {
                       <FormInput
                         type="number"
                         label="Trailer Cost"
-                        value={formData.mobDemob}
-                        onChange={(e) => setFormData(prev => ({ ...prev, mobDemob: Number(e.target.value) }))}
+                        value={formData.mobDemob || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, mobDemob: e.target.value === '' ? 0 : Number(e.target.value) }))}
                         placeholder="Enter additional trailer charges"
                       />
                     </div>
@@ -1013,8 +1015,8 @@ export function QuotationCreation() {
                       <FormInput
                         type="number"
                         label="Mob Relaxation"
-                        value={formData.mobRelaxation}
-                        onChange={(e) => setFormData(prev => ({ ...prev, mobRelaxation: Number(e.target.value) }))}
+                        value={formData.mobRelaxation || ''}
+                        onChange={(e) => setFormData(prev => ({ ...prev, mobRelaxation: e.target.value === '' ? 0 : Number(e.target.value) }))}
                         placeholder="Enter relaxation value (X%)"
                       />
                       <div className="text-sm text-gray-500 mt-1">
@@ -1063,8 +1065,9 @@ export function QuotationCreation() {
                     <FormInput
                       type="number"
                       label="Extra Commercial Charges"
-                      value={formData.extraCharge}
-                      onChange={(e) => setFormData(prev => ({ ...prev, extraCharge: Number(e.target.value) }))}
+                      value={formData.extraCharge || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, extraCharge: e.target.value === '' ? 0 : Number(e.target.value) }))}
+                      placeholder="Enter extra charges"
                     />
                     
                     <Select

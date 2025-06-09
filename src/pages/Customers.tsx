@@ -186,91 +186,117 @@ export function Customers() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {isLoading ? (
-          <div className="col-span-full text-center py-8">Loading customers...</div>
-        ) : filteredCustomers.length === 0 ? (
-          <div className="col-span-full text-center py-8 text-gray-500">
-            No customers found. Add new customers to get started.
-          </div>
-        ) : (
-          filteredCustomers.map((customer) => {
-            const customerContacts = contacts[customer.id] || [];
-
-            return (
-              <Card key={customer.id} className="flex flex-col">
-                <CardContent className="p-6 flex-1">
-                  <div className="flex flex-col h-full">
-                    <div className="flex justify-between items-start mb-4">
-                      <div className="flex items-center gap-2">
-                        <h3 className="text-lg font-semibold truncate">{customer.name}</h3>
-                        <Badge variant="outline" className="text-xs">
-                          {customer.customerId}
-                        </Badge>
-                      </div>
-                    </div>
-
-                    <div className="space-y-3 flex-1">
-                      <div className="flex items-center text-gray-600">
-                        <Mail className="h-4 w-4 mr-2 flex-shrink-0" />
-                        <span className="text-sm truncate">{customer.email}</span>
-                      </div>
-                      <div className="flex items-center text-gray-600">
-                        <Phone className="h-4 w-4 mr-2 flex-shrink-0" />
-                        <span className="text-sm truncate">{customer.phone}</span>
-                      </div>
-                      <div className="flex items-center text-gray-600">
-                        <MapPin className="h-4 w-4 mr-2 flex-shrink-0" />
-                        <span className="text-sm truncate">{customer.address}</span>
-                      </div>
-                      <div className="flex items-center text-gray-600">
-                        <Building2 className="h-4 w-4 mr-2 flex-shrink-0" />
-                        <span className="text-sm truncate">{customer.companyName || 'N/A'}</span>
-                      </div>
-                      <div className="flex items-center text-gray-600">
-                        <Users className="h-4 w-4 mr-2 flex-shrink-0" />
-                        <span className="text-sm truncate">{customer.designation || 'N/A'}</span>
-                      </div>
-                    </div>
-
-                    <div className="flex justify-end gap-2 mt-4 pt-4 border-t">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => {
-                          setSelectedCustomer(customer);
-                          setFormData({
-                            name: customer.name,
-                            email: customer.email,
-                            phone: customer.phone,
-                            address: customer.address,
-                            companyName: customer.companyName || '',
-                            designation: customer.designation || '',
-                          });
-                          setIsModalOpen(true);
-                        }}
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="text-error-600 hover:text-error-700 hover:bg-error-50"
-                        onClick={() => {
-                          setSelectedCustomer(customer);
-                          setIsDeleteModalOpen(true);
-                        }}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            );
-          })
-        )}
-      </div>
+      <Card>
+        <CardContent>
+          {isLoading ? (
+            <div className="text-center py-8">Loading customers...</div>
+          ) : filteredCustomers.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              No customers found. Add new customers to get started.
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Customer
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Contact
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Company
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Location
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Actions
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {filteredCustomers.map((customer) => (
+                    <tr key={customer.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center gap-2">
+                          <div>
+                            <div className="text-sm font-medium text-gray-900">{customer.name}</div>
+                            <div className="text-sm text-gray-500">{customer.designation || 'N/A'}</div>
+                          </div>
+                          <Badge variant="outline" className="text-xs">
+                            {customer.customerId}
+                          </Badge>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm">
+                          <div className="flex items-center text-gray-900">
+                            <Mail className="h-4 w-4 mr-2 flex-shrink-0" />
+                            {customer.email}
+                          </div>
+                          <div className="flex items-center text-gray-500 mt-1">
+                            <Phone className="h-4 w-4 mr-2 flex-shrink-0" />
+                            {customer.phone}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center text-sm text-gray-900">
+                          <Building2 className="h-4 w-4 mr-2 flex-shrink-0" />
+                          {customer.companyName || 'N/A'}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="flex items-center text-sm text-gray-500">
+                          <MapPin className="h-4 w-4 mr-2 flex-shrink-0" />
+                          {customer.address}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                        <div className="flex items-center gap-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedCustomer(customer);
+                              setFormData({
+                                name: customer.name,
+                                email: customer.email,
+                                phone: customer.phone,
+                                address: customer.address,
+                                companyName: customer.companyName || '',
+                                designation: customer.designation || '',
+                              });
+                              setIsModalOpen(true);
+                            }}
+                            title="Edit Customer"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-error-600 hover:text-error-700 hover:bg-error-50"
+                            onClick={() => {
+                              setSelectedCustomer(customer);
+                              setIsDeleteModalOpen(true);
+                            }}
+                            title="Delete Customer"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Add/Edit Customer Modal */}
       <Modal

@@ -19,7 +19,8 @@ import { Config } from './pages/Config';
 import { Customers } from './pages/Customers';
 import { Deals } from './pages/Deals';
 import { useAuthStore } from './store/authStore';
-import QuotationTemplates from './pages/QuotationTemplates';
+import { QuotationTemplates } from './pages/QuotationTemplates';
+import { QuotationTemplateEditor } from './pages/QuotationTemplateEditor';
 
 function DashboardRouter() {
   const { user } = useAuthStore();
@@ -38,7 +39,7 @@ function DashboardRouter() {
     case 'operator':
       return <OperatorDashboard />;
     default:
-      return <Navigate to="/login\" replace />;
+      return <Navigate to="/login" replace />;
   }
 }
 
@@ -49,7 +50,7 @@ function App() {
         <Route path="/login" element={<LoginPage />} />
         
         <Route path="/" element={<AppShell />}>
-          <Route index element={<Navigate to="/dashboard\" replace />} />
+          <Route index element={<Navigate to="/dashboard" replace />} />
           <Route path="dashboard" element={<DashboardRouter />} />
           
           <Route path="leads" element={<LeadManagement />} />
@@ -68,10 +69,14 @@ function App() {
           <Route path="config/services" element={<ServicesManagement />} />
           
           <Route path="feedback" element={<JobSummaryFeedback />} />
+          
+          {/* Templates routes with role protection */}
           <Route path="templates" element={<QuotationTemplates />} />
+          <Route path="templates/new" element={<QuotationTemplateEditor />} />
+          <Route path="templates/edit/:id" element={<QuotationTemplateEditor />} />
         </Route>
         
-        <Route path="*" element={<Navigate to="/dashboard\" replace />} />
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </Router>
   );

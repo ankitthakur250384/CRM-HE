@@ -444,6 +444,18 @@ ASP Cranes Team`;
                             <Button
                               variant="ghost"
                               size="sm"
+                              onClick={() => {
+                                setSelectedQuotation(quotation);
+                                setIsPreviewOpen(true);
+                              }}
+                              title="Preview Quotation"
+                              disabled={!defaultTemplate || isLoading}
+                            >
+                              <Eye size={16} />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
                               onClick={() => handleDownloadPDF(quotation)}
                               disabled={isGeneratingPDF || !defaultTemplate || isLoading}
                               title="Download PDF"
