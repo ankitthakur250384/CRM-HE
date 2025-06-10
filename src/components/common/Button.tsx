@@ -6,6 +6,7 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
   isLoading?: boolean;
+  fullWidth?: boolean;
   className?: string;
   children: React.ReactNode;
 }
@@ -29,6 +30,7 @@ export function Button({
   leftIcon,
   rightIcon,
   isLoading,
+  fullWidth,
   className = '',
   children,
   disabled,
@@ -44,6 +46,7 @@ export function Button({
         disabled:opacity-50 disabled:cursor-not-allowed
         ${variants[variant]}
         ${sizes[size]}
+        ${fullWidth ? 'w-full' : ''}
         ${className}
       `}
       disabled={disabled || isLoading}

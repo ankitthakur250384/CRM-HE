@@ -230,18 +230,30 @@ export function LeadManagement() {
   };
 
   const handleCustomerSelect = async (customer: Customer) => {
+    console.log('Selected customer:', customer);
     setSelectedCustomer(customer);
     setIsCustomerSelectionModalOpen(false);
-    setIsDealValueModalOpen(true);
+    // Small delay to ensure modal transitions smoothly
+    setTimeout(() => {
+      setIsDealValueModalOpen(true);
+    }, 100);
   };
 
   const handleDealCreation = async () => {
-    if (!selectedLead || !selectedCustomer) return;
-
     try {
-      console.log('Creating deal from lead:', selectedLead);
-      console.log('Selected customer:', selectedCustomer);
+      setIsLoading(true);
+      console.log('Creating deal with:', { selectedLead, selectedCustomer, dealValue });
       
+      if (!selectedLead) {
+        showToast('No lead selected', 'error');
+        return;
+      }
+
+      if (!selectedCustomer) {
+        showToast('No customer selected', 'error');
+        return;
+      }
+
       // Create a new deal from the lead with the selected customer
       const deal = await createDeal({
         title: `Deal for ${selectedCustomer.name}`,
@@ -266,18 +278,35 @@ export function LeadManagement() {
 
       console.log('Deal created successfully:', deal);
       
-      // Update lead status to converted since it's been converted to a deal
+      // Update lead status to converted
       await updateLeadStatus(selectedLead.id, 'converted');
       
+      // Update local state
+      setLeads(prev => 
+        prev.map(lead => 
+          lead.id === selectedLead.id 
+            ? { ...lead, status: 'converted' }
+            : lead
+        )
+      );
+
+      // Show success message
       showToast('Lead converted to deal successfully', 'success');
+
+      // Reset state and close modals
       setIsDealValueModalOpen(false);
+      setIsCustomerSelectionModalOpen(false);
       setSelectedLead(null);
       setSelectedCustomer(null);
-      setDealValue(0); // Reset deal value
+      setDealValue(0);
+      
+      // Navigate to deals page
       navigate('/deals');
     } catch (error) {
       console.error('Error converting lead to deal:', error);
       showToast('Error converting lead to deal', 'error');
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -627,7 +656,7 @@ export function LeadManagement() {
           setIsCustomerSelectionModalOpen(false);
           setSelectedLead(null);
           setSelectedCustomer(null);
-          setDealValue(0); // Reset deal value
+          setDealValue(0);
         }}
         onSelect={handleCustomerSelect}
         initialCustomerData={selectedLead ? {
@@ -651,14 +680,17 @@ export function LeadManagement() {
         title="Enter Deal Value"
         size="sm"
       >
-        <div className="space-y-6">
+        <div className="space-y-4">
           <FormInput
             label="Deal Value"
             type="number"
-            value={dealValue}
-            onChange={(e) => setDealValue(Number(e.target.value))}
-            required
-            helperText="Enter the estimated value of this deal"
+            value={dealValue === 0 ? '' : dealValue}
+            onChange={(e) => {
+              const value = e.target.value;
+              setDealValue(value === '' ? 0 : Number(value));
+            }}
+            placeholder="Enter deal value"
+            helperText="Leave empty if deal value is not yet determined"
           />
           <div className="flex justify-end gap-3">
             <Button
@@ -672,7 +704,9 @@ export function LeadManagement() {
             >
               Cancel
             </Button>
-            <Button onClick={handleDealCreation}>Create Deal</Button>
+            <Button onClick={handleDealCreation}>
+              Create Deal
+            </Button>
           </div>
         </div>
       </Modal>

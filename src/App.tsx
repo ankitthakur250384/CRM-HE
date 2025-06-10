@@ -18,6 +18,7 @@ import { UserManagement } from './pages/UserManagement';
 import { Config } from './pages/Config';
 import { Customers } from './pages/Customers';
 import { Deals } from './pages/Deals';
+import { DealDetails } from './pages/DealDetails';
 import { useAuthStore } from './store/authStore';
 import { QuotationTemplates } from './pages/QuotationTemplates';
 import { QuotationTemplateEditor } from './pages/QuotationTemplateEditor';
@@ -55,6 +56,7 @@ function App() {
           
           <Route path="leads" element={<LeadManagement />} />
           <Route path="deals" element={<Deals />} />
+          <Route path="deals/:id" element={<DealDetails />} />
           <Route path="quotations" element={<QuotationManagement />} />
           <Route path="quotations/create" element={<QuotationCreation />} />
           <Route path="customers" element={<Customers />} />

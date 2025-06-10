@@ -44,6 +44,7 @@ export function CustomerSelectionModal({
   useEffect(() => {
     if (isOpen) {
       fetchCustomers();
+      setMode('select'); // Reset to select mode when modal opens
     }
   }, [isOpen]);
 
@@ -72,46 +73,64 @@ export function CustomerSelectionModal({
         address: formData.address.trim() || 'N/A',
         designation: formData.designation.trim() || 'N/A'
       });
+      console.log('Created new customer:', newCustomer);
       onSelect(newCustomer);
-      onClose();
     } catch (error) {
       console.error('Error creating customer:', error);
+      alert('Error creating customer');
     }
+  };
+
+  const handleSelectCustomer = (customer: Customer) => {
+    console.log('Selected existing customer:', customer);
+    onSelect(customer);
   };
 
   const filteredCustomers = customers.filter(customer =>
     customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.customerId.toLowerCase().includes(searchTerm.toLowerCase())
+    customer.customerId?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={mode === 'create' ? 'Add New Customer' : 'Select or Create Customer'}
+      title="Select or Create Customer"
       size="md"
     >
-      {mode === 'select' ? (
-        <div className="space-y-6">
-          <div className="flex gap-4">
-            <Button
-              variant="default"
-              onClick={() => setMode('select')}
-              className="flex-1"
-            >
-              Select Existing Customer
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => setMode('create')}
-              className="flex-1"
-            >
-              Create New Customer
-            </Button>
-          </div>
+      <div className="space-y-6">
+        {/* Always show the selection buttons */}
+        <div className="flex gap-4">
+          <Button
+            variant={mode === 'select' ? "default" : "outline"}
+            onClick={() => setMode('select')}
+            className="flex-1"
+          >
+            Select Existing
+          </Button>
+          <Button
+            variant={mode === 'create' ? "default" : "outline"}
+            onClick={() => {
+              setMode('create');
+              // Reset form with initial data when switching to create mode
+              setFormData({
+                name: initialCustomerData?.name || '',
+                email: initialCustomerData?.email || '',
+                phone: initialCustomerData?.phone || '',
+                address: initialCustomerData?.address || '',
+                companyName: initialCustomerData?.companyName || '',
+                designation: initialCustomerData?.designation || ''
+              });
+            }}
+            className="flex-1"
+          >
+            Create New
+          </Button>
+        </div>
 
-          <div className="space-y-4">
+        {mode === 'select' ? (
+          <>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
               <FormInput
@@ -131,8 +150,8 @@ export function CustomerSelectionModal({
                 filteredCustomers.map((customer) => (
                   <div
                     key={customer.id}
-                    className="p-4 hover:bg-gray-50 cursor-pointer flex justify-between items-center"
-                    onClick={() => onSelect(customer)}
+                    className="p-4 hover:bg-gray-50 cursor-pointer"
+                    onClick={() => handleSelectCustomer(customer)}
                   >
                     <div>
                       <div className="font-medium">{customer.name}</div>
@@ -145,74 +164,67 @@ export function CustomerSelectionModal({
                       <div className="text-sm text-gray-500">{customer.email}</div>
                       <div className="text-sm text-gray-500">{customer.customerId}</div>
                     </div>
-                    <Button variant="ghost" size="sm">Select</Button>
                   </div>
                 ))
               )}
             </div>
+          </>
+        ) : (
+          <div className="space-y-4">
+            <FormInput
+              label="Customer Name"
+              value={formData.name}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+              placeholder="Enter customer name"
+              required
+            />
+            <FormInput
+              label="Company Name"
+              value={formData.companyName}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, companyName: e.target.value }))}
+              placeholder="Enter company name"
+              required
+            />
+            <FormInput
+              label="Designation"
+              value={formData.designation}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, designation: e.target.value }))}
+              placeholder="Enter designation"
+              required
+            />
+            <FormInput
+              label="Email"
+              type="email"
+              value={formData.email}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+              placeholder="Enter email address"
+              required
+            />
+            <FormInput
+              label="Phone"
+              value={formData.phone}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+              placeholder="Enter phone number"
+              required
+            />
+            <FormInput
+              label="Address"
+              value={formData.address}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+              placeholder="Enter address"
+              required
+            />
+            <div className="flex justify-end gap-3">
+              <Button 
+                onClick={handleCreateCustomer}
+                className="bg-blue-500 hover:bg-blue-600 text-white"
+              >
+                Add Customer
+              </Button>
+            </div>
           </div>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          <FormInput
-            label="Customer Name"
-            value={formData.name}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-            placeholder="Enter customer name"
-            required
-          />
-          <FormInput
-            label="Company Name"
-            value={formData.companyName}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, companyName: e.target.value }))}
-            placeholder="Enter company name"
-            required
-          />
-          <FormInput
-            label="Designation"
-            value={formData.designation}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, designation: e.target.value }))}
-            placeholder="Enter designation"
-            required
-          />
-          <FormInput
-            label="Email"
-            type="email"
-            value={formData.email}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-            placeholder="Enter email address"
-            required
-          />
-          <FormInput
-            label="Phone"
-            value={formData.phone}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-            placeholder="Enter phone number"
-            required
-          />
-          <FormInput
-            label="Address"
-            value={formData.address}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-            placeholder="Enter address"
-            required
-          />
-          <div className="flex justify-end gap-3 pt-4">
-            <Button 
-              variant="outline" 
-              onClick={onClose}
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleCreateCustomer}
-              className="bg-blue-500 hover:bg-blue-600 text-white"
-            >
-              Add Customer
-            </Button>
-          </div>
-        </div>
-      )}
+        )}
+      </div>
     </Modal>
   );
 } 
