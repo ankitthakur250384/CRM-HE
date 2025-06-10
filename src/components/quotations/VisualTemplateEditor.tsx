@@ -1,4 +1,4 @@
-import React, { useState, useRef, ChangeEvent } from 'react';
+import React, { useState, useRef, ChangeEvent, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../common/Card';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
@@ -72,6 +72,14 @@ interface VisualTemplateEditorProps {
 interface Placeholder {
   key: string;
   category: string;
+}
+
+interface ResizeState {
+  isResizing: boolean;
+  startX: number;
+  startY: number;
+  startWidth: number;
+  startHeight: number;
 }
 
 const isHeaderContent = (content: ElementContent): content is HeaderContent => {
@@ -198,6 +206,49 @@ export function VisualTemplateEditor({ template, onChange }: VisualTemplateEdito
 
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [resizeState, setResizeState] = useState<ResizeState | null>(null);
+  const imageRef = useRef<HTMLImageElement>(null);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!resizeState || !imageRef.current || !selectedElement) return;
+
+      const element = elements.find(el => el.id === selectedElement);
+      if (!element || !isImageContent(element.content)) return;
+
+      const dx = e.clientX - resizeState.startX;
+      const newWidth = Math.max(50, resizeState.startWidth + dx);
+      
+      handleElementChange(selectedElement, {
+        ...element.content,
+        width: `${newWidth}px`
+      });
+    };
+
+    const handleMouseUp = () => {
+      setResizeState(null);
+    };
+
+    if (resizeState) {
+      document.addEventListener('mousemove', handleMouseMove);
+      document.addEventListener('mouseup', handleMouseUp);
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
+    };
+  }, [resizeState, selectedElement, elements]);
+
+  useEffect(() => {
+    if (resizeState) {
+      document.body.style.cursor = 'ew-resize';
+      document.body.style.userSelect = 'none';
+    } else {
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+    }
+  }, [resizeState]);
 
   const handleAddElement = (type: TemplateElement['type']) => {
     const newElement: TemplateElement = {
@@ -318,22 +369,55 @@ export function VisualTemplateEditor({ template, onChange }: VisualTemplateEdito
 
     if (element.type === 'image' && isImageContent(element.content)) {
       return (
-        <div className={`text-${element.content.align || 'center'}`}>
-          {element.content.url ? (
-            <img 
-              src={element.content.url} 
-              alt={element.content.alt}
-              style={{ 
-                maxWidth: element.content.width || '100%',
-                display: 'inline-block'
-              }}
-            />
-          ) : (
-            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-              <ImageIcon className="mx-auto h-12 w-12 text-gray-400" />
-              <p className="mt-2 text-sm text-gray-500">Click to upload an image</p>
-            </div>
-          )}
+        <div 
+          className={`text-${element.content.align || 'center'} relative group`}
+          style={{ userSelect: resizeState ? 'none' : undefined }}
+        >
+          <div className="relative inline-block">
+            {element.content.url ? (
+              <>
+                <img 
+                  ref={selectedElement === element.id ? imageRef : null}
+                  src={element.content.url} 
+                  alt={element.content.alt}
+                  style={{ 
+                    maxWidth: '100%',
+                    width: element.content.width || 'auto',
+                    display: 'inline-block',
+                    cursor: selectedElement === element.id ? 'move' : 'pointer'
+                  }}
+                />
+                {selectedElement === element.id && (
+                  <>
+                    <div
+                      className="absolute w-4 h-4 bg-blue-500 rounded-full cursor-ew-resize right-0 top-1/2 transform translate-x-1/2 -translate-y-1/2 hover:scale-110 transition-transform"
+                      onMouseDown={(e) => {
+                        e.stopPropagation();
+                        if (!imageRef.current) return;
+                        
+                        const rect = imageRef.current.getBoundingClientRect();
+                        setResizeState({
+                          isResizing: true,
+                          startX: e.clientX,
+                          startY: e.clientY,
+                          startWidth: rect.width,
+                          startHeight: rect.height
+                        });
+                      }}
+                    />
+                    <div className="absolute left-1/2 -bottom-6 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                      {Math.round(imageRef.current?.getBoundingClientRect().width || 0)}px
+                    </div>
+                  </>
+                )}
+              </>
+            ) : (
+              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+                <ImageIcon className="mx-auto h-12 w-12 text-gray-400" />
+                <p className="mt-2 text-sm text-gray-500">Click to upload an image</p>
+              </div>
+            )}
+          </div>
         </div>
       );
     }
