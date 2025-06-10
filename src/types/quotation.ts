@@ -10,17 +10,19 @@ export interface CustomerContact {
   designation?: string;
 }
 
+export type SundayWorking = 'yes' | 'no';
+
 export interface QuotationInputs {
   machineType: string;
-  orderType: OrderType;
-  numberOfDays: number;
-  workingHours: number;
   selectedEquipment: {
     id: string;
     equipmentId: string;
     name: string;
     baseRates: BaseRates;
   };
+  orderType: OrderType;
+  numberOfDays: number;
+  workingHours: number;
   foodResources: number;
   accomResources: number;
   siteDistance: number;
@@ -37,9 +39,9 @@ export interface QuotationInputs {
   mobDemob: number;
   mobRelaxation: number;
   runningCostPerKm: number;
+  dealType: string;
+  sundayWorking: SundayWorking;
   otherFactors: string[];
-  dealType?: string;
-  sundayWorking?: 'yes' | 'no';
 }
 
 export interface Quotation extends QuotationInputs {
@@ -49,6 +51,13 @@ export interface Quotation extends QuotationInputs {
   customerName: string;
   customerContact: CustomerContact;
   totalRent: number;
+  workingCost?: number;
+  mobDemobCost?: number;
+  foodAccomCost?: number;
+  usageLoadFactor?: number;
+  extraCharges?: number;
+  riskAdjustment?: number;
+  gstAmount?: number;
   version: number;
   createdAt: string;
   updatedAt: string;

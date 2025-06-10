@@ -61,10 +61,48 @@ export function AdminDashboard() {
     fetchData();
   }, []);
   
-  // Calculate KPIs
-  const totalRevenue = jobs
-    .filter(job => job.status === 'completed')
-    .length * 50000; // Mock average revenue per job in INR
+  // Calculate total revenue from won deals
+  const totalRevenue = deals
+    .filter(deal => deal.stage === 'won')
+    .reduce((total, deal) => total + deal.value, 0);
+
+  // Calculate monthly percentage change
+  const calculateMonthlyChange = () => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+    const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
+    const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
+
+    // Get won deals for current month
+    const currentMonthDeals = deals.filter(deal => {
+      const dealDate = new Date(deal.updatedAt);
+      return deal.stage === 'won' && 
+             dealDate.getMonth() === currentMonth &&
+             dealDate.getFullYear() === currentYear;
+    });
+
+    // Get won deals for last month
+    const lastMonthDeals = deals.filter(deal => {
+      const dealDate = new Date(deal.updatedAt);
+      return deal.stage === 'won' && 
+             dealDate.getMonth() === lastMonth &&
+             dealDate.getFullYear() === lastMonthYear;
+    });
+
+    const currentMonthRevenue = currentMonthDeals.reduce((total, deal) => total + deal.value, 0);
+    const lastMonthRevenue = lastMonthDeals.reduce((total, deal) => total + deal.value, 0);
+
+    if (lastMonthRevenue === 0) return { value: 100, isPositive: true };
+    
+    const percentageChange = ((currentMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100;
+    return {
+      value: Math.abs(Math.round(percentageChange)),
+      isPositive: percentageChange >= 0
+    };
+  };
+
+  const monthlyChange = calculateMonthlyChange();
   
   const equipmentUtilization = jobs.filter(
     job => job.status === 'in_progress' || job.status === 'scheduled'
@@ -90,7 +128,7 @@ export function AdminDashboard() {
           value={formatCurrency(totalRevenue)}
           icon={<IndianRupee className="h-5 w-5 text-primary-600" />}
           variant="primary"
-          trend={{ value: 15, isPositive: true }}
+          trend={monthlyChange}
         />
         <StatCard
           title="Equipment Utilization"

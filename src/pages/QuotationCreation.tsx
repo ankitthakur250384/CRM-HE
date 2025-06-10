@@ -27,6 +27,7 @@ import { useAuthStore } from '../store/authStore';
 import { Deal } from '../types/deal';
 import { Equipment, OrderType, CraneCategory, BaseRates } from '../types/equipment';
 import { Quotation, QuotationInputs } from '../types/quotation';
+import type { SundayWorking } from '../types/quotation';
 import { getDealById } from '../services/dealService';
 import { getEquipment, getEquipmentByCategory } from '../services/firestore/equipmentService';
 import { createQuotation, updateQuotation, getQuotationById } from '../services/quotationService';
@@ -93,39 +94,16 @@ const INCIDENTAL_OPTIONS = [
 const RIGGER_AMOUNT = 40000;
 const HELPER_AMOUNT = 12000;
 
-interface QuotationFormState {
-  machineType: string;
-  selectedEquipment: {
-    id: string;
-    equipmentId: string;
-    name: string;
-    baseRates: BaseRates;
-  };
-  orderType: OrderType;
-  numberOfDays: number;
-  workingHours: number;
-  foodResources: number;
-  accomResources: number;
-  siteDistance: number;
-  usage: 'normal' | 'heavy';
-  riskFactor: 'low' | 'medium' | 'high';
-  extraCharge: number;
-  incidentalCharges: string[];
-  otherFactorsCharge: number;
-  billing: 'gst' | 'non_gst';
-  baseRate: number;
-  includeGst: boolean;
-  shift: 'single' | 'double';
-  dayNight: 'day' | 'night';
-  mobDemob: number;
-  mobRelaxation: number;
-  runningCostPerKm: number;
+const SUNDAY_WORKING_OPTIONS = [
+  { value: 'yes', label: 'Yes' },
+  { value: 'no', label: 'No' }
+];
+
+interface QuotationFormState extends QuotationInputs {
   version: number;
   createdBy: string;
   status: 'draft' | 'sent' | 'accepted' | 'rejected';
   otherFactors: string[];
-  dealType?: string;
-  sundayWorking?: 'yes' | 'no';
 }
 
 export function QuotationCreation() {
@@ -201,6 +179,8 @@ export function QuotationCreation() {
     createdBy: user?.id || '',
     status: 'draft',
     otherFactors: [],
+    dealType: DEAL_TYPES[0].value,
+    sundayWorking: 'no'
   });
 
   const [calculations, setCalculations] = useState({
@@ -517,6 +497,7 @@ export function QuotationCreation() {
 
     try {
       setIsSaving(true);
+      console.log('Current calculations:', calculations);
 
       const quotationData = {
         ...formData,
@@ -531,8 +512,19 @@ export function QuotationCreation() {
           address: deal.customer.address,
           designation: deal.customer.designation
         },
-        totalRent: calculations.totalAmount
+        totalRent: calculations.totalAmount,
+        baseRate: calculations.baseRate,
+        workingCost: calculations.workingCost,
+        mobDemobCost: calculations.mobDemobCost,
+        foodAccomCost: calculations.foodAccomCost,
+        usageLoadFactor: calculations.usageLoadFactor,
+        extraCharges: calculations.extraCharges,
+        riskAdjustment: calculations.riskAdjustment,
+        gstAmount: calculations.gstAmount,
+        sundayWorking: formData.sundayWorking || 'no'
       };
+
+      console.log('Submitting quotation data:', quotationData);
 
       let savedQuotation;
       if (quotationId) {
@@ -548,6 +540,7 @@ export function QuotationCreation() {
         showToast('Quotation created successfully', 'success');
       }
 
+      console.log('Saved quotation:', savedQuotation);
       navigate('/quotations');
     } catch (error) {
       console.error('Error saving quotation:', error);
@@ -1058,8 +1051,19 @@ export function QuotationCreation() {
                     <Select
                       label="Deal Type"
                       options={DEAL_TYPES}
-                      value={formData.dealType}
-                      onChange={(value) => setFormData(prev => ({ ...prev, dealType: value }))}
+                      value={formData.dealType || DEAL_TYPES[0].value}
+                      onChange={(value) => setFormData(prev => ({ ...prev, dealType: value || DEAL_TYPES[0].value }))}
+                    />
+                    
+                    <Select
+                      label="Sunday Working"
+                      options={SUNDAY_WORKING_OPTIONS}
+                      value={formData.sundayWorking}
+                      onChange={(value) => {
+                        if (value === 'yes' || value === 'no') {
+                          setFormData(prev => ({ ...prev, sundayWorking: value }));
+                        }
+                      }}
                     />
                     
                     <FormInput
@@ -1076,11 +1080,6 @@ export function QuotationCreation() {
                       value={formData.riskFactor}
                       onChange={(value) => setFormData(prev => ({ ...prev, riskFactor: value as 'low' | 'medium' | 'high' }))}
                     />
-                    
-                    <div className="flex items-center mt-1.5 text-sm text-gray-600">
-                      <AlertTriangle className="w-4 h-4 mr-1.5" />
-                      <span>Risk rates: Low - 5% | Medium - 10% | High - 15% of base rate</span>
-                    </div>
                     
                     <div className="space-y-2">
                       <label className="text-sm font-medium text-gray-700">Incidental Charges</label>

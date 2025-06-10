@@ -8,6 +8,7 @@ const templatesCollection = collection(db, 'templates');
 // Get all templates
 export const getTemplates = async (): Promise<Template[]> => {
   try {
+    // First try to get from Firestore
     const snapshot = await getDocs(templatesCollection);
     const templates = snapshot.docs.map(doc => {
       const data = doc.data();
@@ -19,8 +20,19 @@ export const getTemplates = async (): Promise<Template[]> => {
       } as Template;
     });
 
-    // If no templates exist, create the default template
+    // If no templates exist in Firestore, check localStorage
     if (templates.length === 0) {
+      const localTemplates = localStorage.getItem('quotation-templates');
+      if (localTemplates) {
+        const parsedTemplates = JSON.parse(localTemplates);
+        // Migrate local templates to Firestore
+        for (const template of parsedTemplates) {
+          await createTemplate(template);
+        }
+        return parsedTemplates;
+      }
+
+      // If no templates exist anywhere, create the default template
       const defaultTemplate: Omit<Template, 'id'> = {
         name: 'Default Template',
         description: 'Standard quotation template with company branding',

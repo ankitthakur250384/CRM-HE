@@ -1,4 +1,4 @@
-export type JobStatus = 'scheduled' | 'accepted' | 'rejected' | 'in_progress' | 'completed';
+export type JobStatus = 'pending' | 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
 
 export interface Equipment {
   id: string;
@@ -18,14 +18,13 @@ export interface Operator {
 
 export interface Job {
   id: string;
-  leadId: string;
-  customerName: string;
   equipmentId: string;
   operatorId: string;
+  customerId: string;
+  status: JobStatus;
   startDate: string;
   endDate: string;
   location: string;
-  status: JobStatus;
   notes?: string;
   createdAt: string;
   updatedAt: string;

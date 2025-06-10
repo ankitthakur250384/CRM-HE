@@ -297,6 +297,11 @@ export function VisualTemplateEditor({ template, onChange }: VisualTemplateEdito
   };
 
   const renderElementEditor = (element: TemplateElement) => {
+    if (!element) {
+      console.warn('Attempted to render editor for undefined element');
+      return null;
+    }
+
     switch (element.type) {
       case 'table':
         if (!isTableContent(element.content)) return null;

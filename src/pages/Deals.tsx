@@ -1,4 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, ReactNode } from 'react';
+import type {
+  DragDropContext as DragDropContextType,
+  Droppable as DroppableType,
+  Draggable as DraggableType,
+  DropResult,
+  DroppableProvided,
+  DraggableProvided,
+  DroppableStateSnapshot,
+  DraggableStateSnapshot
+} from '@hello-pangea/dnd';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { 
   DollarSign, 
   Users, 
@@ -7,7 +18,8 @@ import {
   Search,
   Plus,
   Building2,
-  IndianRupee
+  IndianRupee,
+  MoreVertical
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/common/Card';
 import { Badge } from '../components/common/Badge';
@@ -16,17 +28,25 @@ import { Input } from '../components/common/Input';
 import { Select } from '../components/common/Select';
 import { Toast } from '../components/common/Toast';
 import { useAuthStore } from '../store/authStore';
-import { Deal } from '../types/deal';
+import { Deal, DealStage } from '../types/deal';
 import { getDeals, updateDealStage } from '../services/dealService';
 import { formatCurrency } from '../utils/formatters';
 import { useNavigate } from 'react-router-dom';
 
-const STAGE_OPTIONS = [
-  { value: 'qualification', label: 'Qualification' },
-  { value: 'proposal', label: 'Proposal' },
-  { value: 'negotiation', label: 'Negotiation' },
-  { value: 'won', label: 'Won' },
-  { value: 'lost', label: 'Lost' },
+const STAGE_COLORS = {
+  qualification: 'bg-blue-100 text-blue-800',
+  proposal: 'bg-yellow-100 text-yellow-800',
+  negotiation: 'bg-purple-100 text-purple-800',
+  won: 'bg-green-100 text-green-800',
+  lost: 'bg-red-100 text-red-800'
+};
+
+const STAGE_CONFIGS = [
+  { id: 'qualification', label: 'Qualification', color: 'bg-blue-50' },
+  { id: 'proposal', label: 'Proposal', color: 'bg-yellow-50' },
+  { id: 'negotiation', label: 'Negotiation', color: 'bg-purple-50' },
+  { id: 'won', label: 'Won', color: 'bg-green-50' },
+  { id: 'lost', label: 'Lost', color: 'bg-red-50' }
 ];
 
 export function Deals() {
@@ -34,7 +54,6 @@ export function Deals() {
   const [deals, setDeals] = useState<Deal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [stageFilter, setStageFilter] = useState<Deal['stage'] | 'all'>('all');
   const [toast, setToast] = useState<{ show: boolean; title: string; variant?: 'success' | 'error' | 'warning' }>({
     show: false,
     title: '',
@@ -47,9 +66,7 @@ export function Deals() {
 
   const fetchDeals = async () => {
     try {
-      console.log('Fetching deals...');
       const data = await getDeals();
-      console.log('Deals fetched:', data);
       setDeals(data);
       setIsLoading(false);
     } catch (error) {
@@ -64,16 +81,21 @@ export function Deals() {
     setTimeout(() => setToast({ show: false, title: '' }), 3000);
   };
 
-  const handleStageChange = async (dealId: string, newStage: Deal['stage']) => {
+  const handleDragEnd = async (result: DropResult) => {
+    if (!result.destination) return;
+
+    const { draggableId, destination } = result;
+    const newStage = destination.droppableId as DealStage;
+
     try {
-      const updatedDeal = await updateDealStage(dealId, newStage);
+      const updatedDeal = await updateDealStage(draggableId, newStage);
       if (updatedDeal) {
         setDeals(prev => 
           prev.map(deal => 
-            deal.id === dealId ? updatedDeal : deal
+            deal.id === draggableId ? updatedDeal : deal
           )
         );
-        showToast(`Deal stage updated to ${newStage}`, 'success');
+        showToast(`Deal moved to ${newStage}`, 'success');
       }
     } catch (error) {
       console.error('Error updating deal stage:', error);
@@ -81,13 +103,16 @@ export function Deals() {
     }
   };
 
-  const filteredDeals = deals.filter(deal => {
-    const matchesSearch = 
-      deal.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      deal.customer.name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStage = stageFilter === 'all' || deal.stage === stageFilter;
-    return matchesSearch && matchesStage;
-  });
+  const filteredDeals = deals.filter(deal =>
+    deal.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    deal.customer.name.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const getDealsByStage = (stage: DealStage) => 
+    filteredDeals.filter(deal => deal.stage === stage);
+
+  const calculateStageTotal = (stage: DealStage) =>
+    getDealsByStage(stage).reduce((sum, deal) => sum + deal.value, 0);
 
   if (!user || (user.role !== 'sales_agent' && user.role !== 'admin')) {
     return (
@@ -107,109 +132,113 @@ export function Deals() {
           onClose={() => setToast({ show: false, title: '' })}
         />
       )}
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Deals Pipeline</CardTitle>
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <Search className="w-4 h-4 text-gray-500" />
-              <Input
-                type="text"
-                placeholder="Search deals..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-[200px]"
-              />
-            </div>
-            <Select
-              value={stageFilter}
-              onChange={(value) => setStageFilter(value as Deal['stage'] | 'all')}
-              options={[
-                { value: 'all', label: 'All Stages' },
-                ...STAGE_OPTIONS
-              ]}
-              className="w-[150px]"
+      
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-semibold text-gray-900">Deals Pipeline</h1>
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-2">
+            <Search className="w-4 h-4 text-gray-500" />
+            <Input
+              type="text"
+              placeholder="Search deals..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-[200px]"
             />
           </div>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="flex justify-center items-center h-64">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
-            </div>
-          ) : deals.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              No deals found. Create your first deal to get started.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Deal
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Customer
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Value
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Stage
-                    </th>
-                    <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Expected Close
-                    </th>
-                    <th scope="col" className="relative px-6 py-3">
-                      <span className="sr-only">Actions</span>
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {deals.map((deal) => (
-                    <tr key={deal.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm font-medium text-gray-900">{deal.title}</div>
-                        <div className="text-sm text-gray-500">{deal.description}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{deal.customer.name}</div>
-                        <div className="text-sm text-gray-500">{deal.customer.company}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{formatCurrency(deal.value)}</div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <Select
-                          value={deal.stage}
-                          onChange={(value) => handleStageChange(deal.id, value as Deal['stage'])}
-                          options={STAGE_OPTIONS}
-                          className="w-[150px]"
-                        />
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
-                          {new Date(deal.expectedCloseDate).toLocaleDateString()}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => navigate(`/deals/${deal.id}`)}
-                        >
-                          View Details
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center items-center h-64">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+        </div>
+      ) : (
+        <DragDropContext onDragEnd={handleDragEnd}>
+          <div className="grid grid-cols-5 gap-4">
+            {STAGE_CONFIGS.map((stage) => (
+              <div key={stage.id} className={`rounded-lg ${stage.color} p-4`}>
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-medium text-gray-900">{stage.label}</h3>
+                  <Badge variant="outline">
+                    {formatCurrency(calculateStageTotal(stage.id as DealStage))}
+                  </Badge>
+                </div>
+                
+                <Droppable droppableId={stage.id}>
+                  {(
+                    provided: DroppableProvided,
+                    snapshot: DroppableStateSnapshot
+                  ): ReactNode => (
+                    <div
+                      ref={provided.innerRef}
+                      {...provided.droppableProps}
+                      className="space-y-3 min-h-[500px]"
+                    >
+                      {getDealsByStage(stage.id as DealStage).map((deal, index) => (
+                        <Draggable key={deal.id} draggableId={deal.id} index={index}>
+                          {(
+                            provided: DraggableProvided,
+                            snapshot: DraggableStateSnapshot
+                          ): ReactNode => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              {...provided.dragHandleProps}
+                              className="bg-white rounded-lg shadow p-4 hover:shadow-md transition-shadow"
+                            >
+                              <div className="flex items-start justify-between">
+                                <div className="space-y-2">
+                                  <h4 className="font-medium text-gray-900 line-clamp-2">
+                                    {deal.title}
+                                  </h4>
+                                  <div className="flex items-center text-sm text-gray-500">
+                                    <Building2 className="h-4 w-4 mr-1" />
+                                    {deal.customer.company || 'No company'}
+                                  </div>
+                                </div>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => navigate(`/deals/${deal.id}`)}
+                                >
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </div>
+                              
+                              <div className="mt-3 pt-3 border-t border-gray-100">
+                                <div className="flex items-center justify-between text-sm">
+                                  <div className="flex items-center text-gray-500">
+                                    <Users className="h-4 w-4 mr-1" />
+                                    {deal.customer.name}
+                                  </div>
+                                  <div className="font-medium text-gray-900">
+                                    {formatCurrency(deal.value)}
+                                  </div>
+                                </div>
+                                <div className="flex items-center justify-between mt-2 text-sm">
+                                  <div className="flex items-center text-gray-500">
+                                    <Calendar className="h-4 w-4 mr-1" />
+                                    {new Date(deal.expectedCloseDate).toLocaleDateString()}
+                                  </div>
+                                  <Badge>
+                                    {Math.round(deal.probability)}%
+                                  </Badge>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
+              </div>
+            ))}
+          </div>
+        </DragDropContext>
+      )}
     </div>
   );
 }

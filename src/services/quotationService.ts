@@ -73,9 +73,6 @@ const calculateTotalRent = (quotationData: QuotationInputs): number => {
     const usagePercentage = quotationData.usage === 'heavy' ? 0.10 : 0.05;
     const usageLoadFactor = quotationData.baseRate * usagePercentage;
 
-    // Calculate elongation cost
-    const elongationCost = workingCost * 0.15;
-    
     // Calculate food and accommodation cost
     const foodDailyRate = 2500 / 26; // ₹2500 per month
     const accomDailyRate = 4000 / 26; // ₹4000 per month
@@ -88,10 +85,9 @@ const calculateTotalRent = (quotationData: QuotationInputs): number => {
     const trailerCost = Number(quotationData.mobDemob || 0);
     const mobRelaxationPercent = Number(quotationData.mobRelaxation || 0);
     const runningCostPerKm = quotationData.runningCostPerKm || 0;
-    
-    const distToSiteCost = distance * runningCostPerKm * 2;
-    const mobRelaxationAmount = (distToSiteCost * mobRelaxationPercent) / 100;
-    const mobDemobCost = (distToSiteCost - mobRelaxationAmount) + trailerCost;
+    const distanceCost = distance * runningCostPerKm * 2; // Round trip
+    const relaxationAmount = (distanceCost * mobRelaxationPercent) / 100;
+    const mobDemobCost = distanceCost + trailerCost - relaxationAmount;
 
     // Calculate risk adjustment
     let riskAdjustment = 0;
@@ -102,25 +98,23 @@ const calculateTotalRent = (quotationData: QuotationInputs): number => {
     }
 
     // Calculate extra charges
-    const extraCharges = 
-      Number(quotationData.extraCharge || 0) +
-      Number(quotationData.incidentalCharges || 0) +
-      Number(quotationData.otherFactorsCharge || 0);
+    const extraCharges = Number(quotationData.extraCharge || 0);
 
     // Calculate subtotal
-    const subtotal = 
+    const subtotal = (
       workingCost +
-      elongationCost +
       foodAccomCost +
       mobDemobCost +
       riskAdjustment +
       usageLoadFactor +
-      extraCharges;
+      extraCharges
+    );
 
-    // Add GST if applicable
+    // Calculate GST
     const gstAmount = quotationData.includeGst ? subtotal * 0.18 : 0;
-    
-    return subtotal + gstAmount;
+    const totalAmount = subtotal + gstAmount;
+
+    return totalAmount;
   } catch (error) {
     console.error('Error calculating total rent:', error);
     return 0;
@@ -139,6 +133,15 @@ export const createQuotation = async (quotationData: Omit<Quotation, 'id' | 'cre
     };
 
     const docRef = await addDoc(quotationsCollection, newQuotation);
+    
+    // Update the deal value with the quotation total
+    if (quotationData.leadId) {
+      const dealRef = doc(db, 'deals', quotationData.leadId);
+      await updateDoc(dealRef, {
+        value: newQuotation.totalRent,
+        updatedAt: timestamp
+      });
+    }
     
     return {
       id: docRef.id,

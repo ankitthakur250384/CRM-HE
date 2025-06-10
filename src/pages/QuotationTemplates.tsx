@@ -180,8 +180,8 @@ export function QuotationTemplates() {
       setError(null);
       const fetchedTemplates = await getTemplates();
       setTemplates(fetchedTemplates);
-    } catch (error) {
-      console.error('Error loading templates:', error);
+      } catch (error) {
+        console.error('Error loading templates:', error);
       setError('Failed to load templates');
       showToast({
         title: 'Error',
