@@ -126,8 +126,8 @@ const defaultTemplate: Template = {
     </div>
   </div>`,
   isDefault: true,
-  createdAt: new Date(),
-  updatedAt: new Date(),
+  createdAt: new Date().toISOString(),
+  updatedAt: new Date().toISOString(),
 };
 
 export function QuotationTemplates() {
@@ -469,7 +469,7 @@ export function QuotationTemplates() {
       <PreviewModal
         isOpen={isPreviewOpen}
         onClose={() => setIsPreviewOpen(false)}
-        template={selectedTemplate}
+        template={previewTemplate}
       />
 
       {/* Toast */}

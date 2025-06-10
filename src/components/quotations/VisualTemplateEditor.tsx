@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../common/Card';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
@@ -14,7 +14,9 @@ import {
   Plus,
   Trash2,
   MoveUp,
-  MoveDown
+  MoveDown,
+  Image as ImageIcon,
+  Upload
 } from 'lucide-react';
 
 interface VisualTemplateEditorProps {
@@ -22,10 +24,19 @@ interface VisualTemplateEditorProps {
   onChange: (updatedTemplate: Template) => void;
 }
 
+interface ImageContent {
+  url: string;
+  alt: string;
+  width?: string;
+  align?: 'left' | 'center' | 'right';
+}
+
+type ElementContent = HeaderContent | TableContent | ListContent | TextContent | ImageContent;
+
 interface TemplateElement {
   id: string;
   type: 'header' | 'text' | 'table' | 'list' | 'image' | 'divider';
-  content: HeaderContent | TableContent | ListContent | TextContent;
+  content: ElementContent;
 }
 
 interface HeaderContent {
@@ -109,12 +120,21 @@ function isTextContent(content: HeaderContent | TableContent | ListContent | Tex
   return 'text' in content && !('level' in content);
 }
 
-function getDefaultContentForType(type: TemplateElement['type']): HeaderContent | TableContent | ListContent | TextContent {
+function isImageContent(content: any): content is ImageContent {
+  return content && 'url' in content;
+}
+
+function getDefaultContentForType(type: TemplateElement['type']): ElementContent {
   switch (type) {
     case 'header':
       return {
         text: 'New Header',
         level: 2,
+        align: 'left'
+      };
+    case 'text':
+      return {
+        text: 'New text block',
         align: 'left'
       };
     case 'table':
@@ -143,10 +163,15 @@ function getDefaultContentForType(type: TemplateElement['type']): HeaderContent 
         items: ['Item 1', 'Item 2'],
         type: 'unordered'
       };
-    case 'text':
+    case 'image':
       return {
-        text: 'New text block',
-        align: 'left'
+        url: '',
+        alt: '',
+        align: 'center'
+      };
+    case 'divider':
+      return {
+        text: ''
       };
     default:
       return {
@@ -210,10 +235,11 @@ export function VisualTemplateEditor({ template, onChange }: VisualTemplateEdito
   });
 
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleAddElement = (type: TemplateElement['type']) => {
     const newElement: TemplateElement = {
-      id: `${type}-${Date.now().toString()}`,
+      id: `${type}-${Date.now()}`,
       type,
       content: getDefaultContentForType(type)
     };
@@ -221,7 +247,21 @@ export function VisualTemplateEditor({ template, onChange }: VisualTemplateEdito
     setSelectedElement(newElement.id);
   };
 
-  const handleElementChange = (id: string, content: HeaderContent | TableContent | ListContent | TextContent) => {
+  const handleAddImage = () => {
+    const newElement: TemplateElement = {
+      id: `image-${Date.now()}`,
+      type: 'image',
+      content: {
+        url: '',
+        alt: '',
+        align: 'center'
+      }
+    };
+    setElements([...elements, newElement]);
+    setSelectedElement(newElement.id);
+  };
+
+  const handleElementChange = (id: string, content: ElementContent) => {
     setElements(elements.map(el => 
       el.id === id ? { ...el, content } : el
     ));
@@ -250,6 +290,27 @@ export function VisualTemplateEditor({ template, onChange }: VisualTemplateEdito
     setElements(elements.filter(el => el.id !== id));
     if (selectedElement === id) {
       setSelectedElement(null);
+    }
+  };
+
+  const handleImageUpload = async (file: File, elementId: string) => {
+    try {
+      // For now, we'll use a simple FileReader to get a data URL
+      // In a production environment, you would upload this to a server
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const url = e.target?.result as string;
+        const element = elements.find(el => el.id === elementId);
+        if (element && isImageContent(element.content)) {
+          handleElementChange(elementId, {
+            ...element.content,
+            url
+          } as ImageContent);
+        }
+      };
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('Error uploading image:', error);
     }
   };
 
@@ -290,6 +351,28 @@ export function VisualTemplateEditor({ template, onChange }: VisualTemplateEdito
             ))}
           </tbody>
         </table>
+      );
+    }
+
+    if (element.type === 'image' && isImageContent(element.content)) {
+      return (
+        <div className={`text-${element.content.align || 'center'}`}>
+          {element.content.url ? (
+            <img 
+              src={element.content.url} 
+              alt={element.content.alt}
+              style={{ 
+                maxWidth: element.content.width || '100%',
+                display: 'inline-block'
+              }}
+            />
+          ) : (
+            <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
+              <ImageIcon className="mx-auto h-12 w-12 text-gray-400" />
+              <p className="mt-2 text-sm text-gray-500">Click to upload an image</p>
+            </div>
+          )}
+        </div>
       );
     }
 
@@ -421,6 +504,98 @@ export function VisualTemplateEditor({ template, onChange }: VisualTemplateEdito
           </div>
         );
 
+      case 'image':
+        if (!isImageContent(element.content)) return null;
+        return (
+          <div className="space-y-4">
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              ref={fileInputRef}
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  handleImageUpload(file, element.id);
+                }
+              }}
+            />
+            
+            <Button
+              variant="outline"
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full"
+            >
+              <Upload className="w-4 h-4 mr-2" />
+              Upload Image
+            </Button>
+
+            <Input
+              label="Image URL"
+              value={element.content.url}
+              onChange={(e) => handleElementChange(element.id, {
+                ...element.content,
+                url: e.target.value
+              } as ImageContent)}
+              placeholder="Enter image URL or upload an image"
+            />
+
+            <Input
+              label="Alt Text"
+              value={element.content.alt}
+              onChange={(e) => handleElementChange(element.id, {
+                ...element.content,
+                alt: e.target.value
+              } as ImageContent)}
+              placeholder="Enter image description"
+            />
+
+            <Input
+              label="Width"
+              value={element.content.width || ''}
+              onChange={(e) => handleElementChange(element.id, {
+                ...element.content,
+                width: e.target.value
+              } as ImageContent)}
+              placeholder="e.g., 100%, 300px"
+            />
+
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">Alignment:</span>
+              <Button
+                variant={element.content.align === 'left' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => handleElementChange(element.id, {
+                  ...element.content,
+                  align: 'left'
+                } as ImageContent)}
+              >
+                <AlignLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={element.content.align === 'center' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => handleElementChange(element.id, {
+                  ...element.content,
+                  align: 'center'
+                } as ImageContent)}
+              >
+                <AlignCenter className="h-4 w-4" />
+              </Button>
+              <Button
+                variant={element.content.align === 'right' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => handleElementChange(element.id, {
+                  ...element.content,
+                  align: 'right'
+                } as ImageContent)}
+              >
+                <AlignRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        );
+
       default:
         return null;
     }
@@ -461,6 +636,15 @@ export function VisualTemplateEditor({ template, onChange }: VisualTemplateEdito
         >
           <List className="h-4 w-4 mr-2" />
           List
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={handleAddImage}
+          className="flex items-center gap-2"
+        >
+          <ImageIcon className="h-4 w-4" />
+          Image
         </Button>
       </div>
 
