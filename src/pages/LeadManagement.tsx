@@ -37,7 +37,6 @@ const LEAD_STATUS_OPTIONS = [
   { value: 'qualified', label: 'Qualified' },
   { value: 'unqualified', label: 'Unqualified' },
   { value: 'lost', label: 'Lost' },
-  { value: 'converted', label: 'Converted to Deal' },
 ];
 
 const MACHINERY_OPTIONS = [

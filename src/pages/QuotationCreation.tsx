@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { 
+  AlertCircle,
   ArrowLeft,
   Save,
   Calculator,
@@ -15,7 +16,8 @@ import {
   FileText,
   Building2,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Info
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/common/Card';
 import { Button } from '../components/common/Button';
@@ -204,6 +206,29 @@ export function QuotationCreation() {
     calculateQuotation();
   }, [formData, selectedEquipmentBaseRate]);
 
+  // Specific effect to ensure immediate recalculation when working hours change
+  useEffect(() => {
+    if (formData.workingHours !== undefined) {
+      calculateQuotation();
+    }
+  }, [formData.workingHours]);
+  
+  // Effect to manage base rate updates when order type changes
+  useEffect(() => {
+    if (formData.orderType && formData.selectedEquipment?.id && !formData.baseRate && availableEquipment.length > 0) {
+      const selected = availableEquipment.find(eq => eq.id === formData.selectedEquipment.id);
+      if (selected?.baseRates) {
+        const baseRate = selected.baseRates[formData.orderType];
+        setSelectedEquipmentBaseRate(baseRate);
+        // Only update baseRate if user hasn't manually set it
+        setFormData(prev => ({
+          ...prev,
+          baseRate
+        }));
+      }
+    }
+  }, [formData.orderType]);
+
   useEffect(() => {
     if (formData.machineType) {
       const fetchEquipment = async () => {
@@ -350,7 +375,12 @@ export function QuotationCreation() {
   };
 
   const calculateQuotation = () => {
-    if (!formData.numberOfDays || !selectedEquipmentBaseRate) {
+    console.log("Calculating quotation with working hours:", formData.workingHours, "and base rate:", formData.baseRate);
+    
+    // Use the editbale base rate from formData if available, otherwise fall back to selectedEquipmentBaseRate
+    const effectiveBaseRate = formData.baseRate || selectedEquipmentBaseRate;
+    
+    if (!formData.numberOfDays || !effectiveBaseRate) {
       setCalculations({
         baseRate: 0,
         totalHours: 0,
@@ -373,16 +403,19 @@ export function QuotationCreation() {
     const shiftMultiplier = formData.shift === 'double' ? 2 : 1;
     
     let workingCost;
+    // Use 8 hours as default if workingHours is 0 or undefined
+    const actualHours = formData.workingHours === 0 ? 8 : Number(formData.workingHours) || 8;
+    
     if (isMonthly) {
-      const actualHours = parseFloat(formData.workingHours.toString()) || 8;
-      const hourlyRate = (selectedEquipmentBaseRate / 26) / actualHours;
+      const hourlyRate = (effectiveBaseRate / 26) / actualHours;
       workingCost = hourlyRate * actualHours * effectiveDays * shiftMultiplier;
     } else {
-      workingCost = selectedEquipmentBaseRate * workingHours * shiftMultiplier;
+      // Make sure we're using actualHours here, not the calculated workingHours
+      workingCost = effectiveBaseRate * actualHours * effectiveDays * shiftMultiplier;
     }
 
     const usagePercentage = formData.usage === 'heavy' ? 0.10 : 0.05;
-    const usageLoadFactor = selectedEquipmentBaseRate * usagePercentage;
+    const usageLoadFactor = effectiveBaseRate * usagePercentage;
     
     let foodAccomCost;
     if (isMonthly) {
@@ -404,9 +437,9 @@ export function QuotationCreation() {
     
     let riskAdjustment = 0;
     switch (formData.riskFactor) {
-      case 'high': riskAdjustment = selectedEquipmentBaseRate * 0.15; break;
-      case 'medium': riskAdjustment = selectedEquipmentBaseRate * 0.10; break;
-      case 'low': riskAdjustment = selectedEquipmentBaseRate * 0.05; break;
+      case 'high': riskAdjustment = effectiveBaseRate * 0.15; break;
+      case 'medium': riskAdjustment = effectiveBaseRate * 0.10; break;
+      case 'low': riskAdjustment = effectiveBaseRate * 0.05; break;
     }
 
     const incidentalChargesTotal = formData.incidentalCharges.reduce((sum, val) => {
@@ -437,7 +470,7 @@ export function QuotationCreation() {
     const totalAmount = subtotal + gstAmount;
     
     setCalculations({
-      baseRate: selectedEquipmentBaseRate,
+      baseRate: effectiveBaseRate,
       totalHours: isMonthly ? 0 : workingHours,
       workingCost,
       mobDemobCost,
@@ -451,7 +484,8 @@ export function QuotationCreation() {
   };
 
   const calculateWorkingHours = (days: number): number => {
-    const baseHours = formData.shift === 'single' ? 8 : Number(formData.workingHours);
+    // Use 8 as default only when workingHours is 0 or undefined
+    const baseHours = formData.workingHours === 0 ? 8 : Number(formData.workingHours) || 8;
     const shiftMultiplier = formData.shift === 'double' ? 2 : 1;
     return baseHours * days * shiftMultiplier;
   };
@@ -737,11 +771,11 @@ export function QuotationCreation() {
                       <div className="mt-2 space-y-1">
                         {formData.orderType !== 'monthly' ? (
                           <div className="text-sm text-gray-600">
-                            Daily Rate: {formatCurrency(selectedEquipmentBaseRate * (formData.shift === 'single' ? 8 : Number(formData.workingHours)))}/day
+                            Daily Rate: {formatCurrency((formData.baseRate || selectedEquipmentBaseRate) * (formData.workingHours === 0 ? 8 : Number(formData.workingHours) || 8))}/day
                           </div>
                         ) : (
                           <div className="text-sm text-gray-600">
-                            Monthly Rate: {formatCurrency(selectedEquipmentBaseRate)}/month
+                            Monthly Rate: {formatCurrency(formData.baseRate || selectedEquipmentBaseRate)}/month
                           </div>
                         )}
                         <div className="text-sm font-medium text-primary-600">
@@ -834,6 +868,7 @@ export function QuotationCreation() {
                         ]}
                         value={formData.selectedEquipment.id}
                         onChange={(value) => {
+                          // This will set both selectedEquipmentBaseRate and formData.baseRate
                           handleEquipmentSelect(value);
                         }}
                         required
@@ -881,18 +916,25 @@ export function QuotationCreation() {
                       <FormInput
                         type="number"
                         label="Number of Hours"
-                        value={formData.workingHours || ''}
+                        value={formData.workingHours === 0 ? '' : formData.workingHours}
                         onChange={(e) => {
                           const value = e.target.value;
-                          if (value === '' || /^\d*\.?\d*$/.test(value)) {
-                            const numValue = value === '' ? 8 : parseFloat(value);
-                            if (!value || (numValue >= 1 && numValue <= 24)) {
+                          // Allow empty value for user editing
+                          if (value === '') {
+                            setFormData(prev => ({ ...prev, workingHours: 0 }));
+                          } else if (/^\d+$/.test(value)) {
+                            const numValue = parseInt(value, 10);
+                            if (numValue >= 1 && numValue <= 24) {
                               setFormData(prev => ({ ...prev, workingHours: numValue }));
                             }
                           }
                         }}
                         required
-                        placeholder="Enter hours (e.g. 7.5, 8, 8.5)"
+                        min="1"
+                        max="24"
+                        placeholder="Enter hours (default: 8)"
+                        step="1"
+                        autoComplete="off"
                       />
                       <div className="flex items-center mt-1.5 text-sm text-gray-600">
                         <Clock className="w-4 h-4 mr-1.5" />
@@ -1048,6 +1090,30 @@ export function QuotationCreation() {
                       <span>Usage rates: Normal - 5% of base rate | Heavy - 10% of base rate</span>
                     </div>
                     
+                    <FormInput
+                      type="number"
+                      label="Base Rate"
+                      value={formData.baseRate || ''}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value === '' || /^\d+$/.test(value)) {
+                          const numValue = value === '' ? 0 : parseInt(value, 10);
+                          if (numValue >= 0) {
+                            setFormData(prev => ({ ...prev, baseRate: numValue }));
+                            setSelectedEquipmentBaseRate(numValue); // Update the base rate state
+                          }
+                        }
+                      }}
+                      required
+                      min="0"
+                      step="100"
+                      placeholder="Enter custom base rate"
+                    />
+                    <div className="flex items-center mt-1.5 text-sm text-gray-600">
+                      <Info className="w-4 h-4 mr-1.5" />
+                      <span>Override the default base rate for this specific quotation</span>
+                    </div>
+                    
                     <Select
                       label="Deal Type"
                       options={DEAL_TYPES}
@@ -1147,11 +1213,11 @@ export function QuotationCreation() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  {selectedEquipmentBaseRate > 0 && (
+                  {(selectedEquipmentBaseRate > 0 || formData.baseRate > 0) && (
                     <div className="mb-6 p-4 bg-primary-50/50 rounded-xl border border-primary-100">
                       <div className="text-sm font-medium text-primary-900 mb-2">Equipment Details</div>
                       <div className="text-2xl font-bold text-primary-700">
-                        ₹{formatCurrency(selectedEquipmentBaseRate).replace('₹', '')}
+                        ₹{formatCurrency(formData.baseRate || selectedEquipmentBaseRate).replace('₹', '')}
                         <span className="text-base font-medium text-primary-600 ml-1">
                           {formData.orderType === 'monthly' ? '/month' : '/hr'}
                         </span>
@@ -1164,7 +1230,7 @@ export function QuotationCreation() {
                           <div className="flex items-center">
                             <span>Hourly Rate: </span>
                             <span className="font-medium ml-1">
-                              ₹{formatCurrency((selectedEquipmentBaseRate / 26) / (parseFloat(formData.workingHours.toString()) || 8)).replace('₹', '')}/hr
+                              ₹{formatCurrency(((formData.baseRate || selectedEquipmentBaseRate) / 26) / (parseFloat(formData.workingHours.toString()) || 8)).replace('₹', '')}/hr
                             </span>
                           </div>
                         </div>
@@ -1181,7 +1247,7 @@ export function QuotationCreation() {
                             <div className="flex justify-between items-center mb-1">
                               <span>Hours per Day:</span>
                               <span className="font-medium">
-                                {formData.shift === 'single' ? '8' : formData.workingHours}
+                                {formData.workingHours === 0 ? 8 : formData.workingHours || 8}
                               </span>
                             </div>
                           )}
@@ -1210,7 +1276,7 @@ export function QuotationCreation() {
                           <div 
                             className="h-full bg-primary-500 rounded-full transition-all duration-300"
                             style={{ 
-                              width: `${calculations.totalAmount > 0 ? (calculations.workingCost / calculations.totalAmount) * 100 : 0}%` 
+                              width: `${calculations.totalAmount > 0 ? (calculations.workingCost / calculations.totalAmount) * 100 : 0.5}%` 
                             }}
                           />
                         </div>
@@ -1228,7 +1294,7 @@ export function QuotationCreation() {
                           <div 
                             className="h-full bg-success-500 rounded-full transition-all duration-300"
                             style={{ 
-                              width: `${calculations.totalAmount > 0 ? (calculations.foodAccomCost / calculations.totalAmount) * 100 : 0}%` 
+                              width: `${calculations.totalAmount > 0 ? (calculations.foodAccomCost / calculations.totalAmount) * 100 : 0.5}%` 
                             }}
                           />
                         </div>
@@ -1246,7 +1312,7 @@ export function QuotationCreation() {
                           <div 
                             className="h-full bg-warning-500 rounded-full transition-all duration-300"
                             style={{ 
-                              width: `${calculations.totalAmount > 0 ? (calculations.mobDemobCost / calculations.totalAmount) * 100 : 0}%` 
+                              width: `${calculations.totalAmount > 0 ? (calculations.mobDemobCost / calculations.totalAmount) * 100 : 0.5}%` 
                             }}
                           />
                         </div>
@@ -1264,25 +1330,81 @@ export function QuotationCreation() {
                           <div 
                             className="h-full bg-error-500 rounded-full transition-all duration-300"
                             style={{ 
-                              width: `${calculations.totalAmount > 0 ? ((calculations.riskAdjustment + calculations.usageLoadFactor) / calculations.totalAmount) * 100 : 0}%` 
+                              width: `${calculations.totalAmount > 0 ? ((calculations.riskAdjustment + calculations.usageLoadFactor) / calculations.totalAmount) * 100 : 0.5}%` 
                             }}
                           />
                         </div>
                       </div>
 
+                      {/* Extra Commercial Charges */}
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
                           <div className="flex items-center gap-2">
                             <IndianRupee className="w-4 h-4 text-purple-500" />
-                            <span className="text-sm font-medium">Extra Charges</span>
+                            <span className="text-sm font-medium">Extra Commercial Charges</span>
                           </div>
-                          <span className="font-semibold">{formatCurrency(calculations.extraCharges)}</span>
+                          <span className="font-semibold">{formatCurrency(Number(formData.extraCharge))}</span>
                         </div>
                         <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                           <div 
                             className="h-full bg-purple-500 rounded-full transition-all duration-300"
                             style={{ 
-                              width: `${calculations.totalAmount > 0 ? (calculations.extraCharges / calculations.totalAmount) * 100 : 0}%` 
+                              width: `${calculations.totalAmount > 0 ? (Number(formData.extraCharge) / calculations.totalAmount) * 100 : 0.5}%` 
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Incidental Charges */}
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <AlertCircle className="w-4 h-4 text-indigo-500" />
+                            <span className="text-sm font-medium">Incidental Charges</span>
+                          </div>
+                          <span className="font-semibold">
+                            {formatCurrency(formData.incidentalCharges.reduce((sum, val) => {
+                              const found = INCIDENTAL_OPTIONS.find(opt => opt.value === val);
+                              return sum + (found ? found.amount : 0);
+                            }, 0))}
+                          </span>
+                        </div>
+                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-indigo-500 rounded-full transition-all duration-300"
+                            style={{ 
+                              width: `${calculations.totalAmount > 0 ? 
+                                (formData.incidentalCharges.reduce((sum, val) => {
+                                  const found = INCIDENTAL_OPTIONS.find(opt => opt.value === val);
+                                  return sum + (found ? found.amount : 0);
+                                }, 0) / calculations.totalAmount) * 100 : 0.5}%` 
+                            }}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Other Factors Charges */}
+                      <div className="space-y-2">
+                        <div className="flex justify-between items-center">
+                          <div className="flex items-center gap-2">
+                            <Users className="w-4 h-4 text-cyan-500" />
+                            <span className="text-sm font-medium">Other Factors</span>
+                          </div>
+                          <span className="font-semibold">
+                            {formatCurrency(
+                              (formData.otherFactors.includes('rigger') ? RIGGER_AMOUNT : 0) + 
+                              (formData.otherFactors.includes('helper') ? HELPER_AMOUNT : 0)
+                            )}
+                          </span>
+                        </div>
+                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-cyan-500 rounded-full transition-all duration-300"
+                            style={{ 
+                              width: `${calculations.totalAmount > 0 ? 
+                                (((formData.otherFactors.includes('rigger') ? RIGGER_AMOUNT : 0) + 
+                                (formData.otherFactors.includes('helper') ? HELPER_AMOUNT : 0)) / 
+                                calculations.totalAmount) * 100 : 0.5}%` 
                             }}
                           />
                         </div>

@@ -29,6 +29,10 @@ interface HeaderContent {
 interface TextContent {
   text: string;
   align?: 'left' | 'center' | 'right';
+  width?: string;
+  height?: string;
+  x?: number;
+  y?: number;
 }
 
 interface TableContent {
@@ -53,6 +57,9 @@ interface ImageContent {
   url: string;
   alt: string;
   width?: string;
+  height?: string;
+  x?: number;
+  y?: number;
   align?: 'left' | 'center' | 'right';
 }
 
@@ -206,49 +213,86 @@ export function VisualTemplateEditor({ template, onChange }: VisualTemplateEdito
 
   const [selectedElement, setSelectedElement] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [resizeState, setResizeState] = useState<ResizeState | null>(null);
+  const [resizeState, setResizeState] = useState<null | { direction: 'se' | 'sw' | 'ne' | 'nw'; startX: number; startY: number; origWidth: number; origHeight: number; origX: number; origY: number; }>(null);
+  const [dragState, setDragState] = useState<null | { startX: number; startY: number; origX: number; origY: number; }>(null);
   const imageRef = useRef<HTMLImageElement>(null);
+  const [editingTextId, setEditingTextId] = useState<string | null>(null);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      if (!resizeState || !imageRef.current || !selectedElement) return;
-
-      const element = elements.find(el => el.id === selectedElement);
-      if (!element || !isImageContent(element.content)) return;
-
-      const dx = e.clientX - resizeState.startX;
-      const newWidth = Math.max(50, resizeState.startWidth + dx);
-      
-      handleElementChange(selectedElement, {
-        ...element.content,
-        width: `${newWidth}px`
-      });
+      if (resizeState && selectedElement) {
+        const element = elements.find(el => el.id === selectedElement);
+        if (!element || !isImageContent(element.content)) return;
+        let newWidth = resizeState.origWidth;
+        let newHeight = resizeState.origHeight;
+        let newX = resizeState.origX;
+        let newY = resizeState.origY;
+        const dx = e.clientX - resizeState.startX;
+        const dy = e.clientY - resizeState.startY;
+        switch (resizeState.direction) {
+          case 'se':
+            newWidth = Math.max(30, resizeState.origWidth + dx);
+            newHeight = Math.max(30, resizeState.origHeight + dy);
+            break;
+          case 'sw':
+            newWidth = Math.max(30, resizeState.origWidth - dx);
+            newHeight = Math.max(30, resizeState.origHeight + dy);
+            newX = resizeState.origX + dx;
+            break;
+          case 'ne':
+            newWidth = Math.max(30, resizeState.origWidth + dx);
+            newHeight = Math.max(30, resizeState.origHeight - dy);
+            newY = resizeState.origY + dy;
+            break;
+          case 'nw':
+            newWidth = Math.max(30, resizeState.origWidth - dx);
+            newHeight = Math.max(30, resizeState.origHeight - dy);
+            newX = resizeState.origX + dx;
+            newY = resizeState.origY + dy;
+            break;
+        }
+        handleElementChange(selectedElement, {
+          ...element.content,
+          width: `${newWidth}px`,
+          height: `${newHeight}px`,
+          x: newX,
+          y: newY
+        });
+      } else if (dragState && selectedElement) {
+        const element = elements.find(el => el.id === selectedElement);
+        if (!element || !isImageContent(element.content)) return;
+        const dx = e.clientX - dragState.startX;
+        const dy = e.clientY - dragState.startY;
+        handleElementChange(selectedElement, {
+          ...element.content,
+          x: dragState.origX + dx,
+          y: dragState.origY + dy
+        });
+      }
     };
-
     const handleMouseUp = () => {
       setResizeState(null);
+      setDragState(null);
     };
-
-    if (resizeState) {
+    if (resizeState || dragState) {
       document.addEventListener('mousemove', handleMouseMove);
       document.addEventListener('mouseup', handleMouseUp);
     }
-
     return () => {
       document.removeEventListener('mousemove', handleMouseMove);
       document.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [resizeState, selectedElement, elements]);
+  }, [resizeState, dragState, selectedElement, elements]);
 
   useEffect(() => {
-    if (resizeState) {
-      document.body.style.cursor = 'ew-resize';
+    if (resizeState || dragState) {
+      document.body.style.cursor = resizeState ? 'nwse-resize' : 'move';
       document.body.style.userSelect = 'none';
     } else {
       document.body.style.cursor = '';
       document.body.style.userSelect = '';
     }
-  }, [resizeState]);
+  }, [resizeState, dragState]);
 
   const handleAddElement = (type: TemplateElement['type']) => {
     const newElement: TemplateElement = {
@@ -328,101 +372,174 @@ export function VisualTemplateEditor({ template, onChange }: VisualTemplateEdito
   };
 
   const renderElementContent = (element: TemplateElement) => {
-    if (element.type === 'header' && isHeaderContent(element.content)) {
-      return (
-        <div style={{ textAlign: element.content.align }}>
-          {element.content.level === 1 && (
-            <h1 className="text-3xl font-bold">{element.content.text}</h1>
-          )}
-          {element.content.level === 2 && (
-            <h2 className="text-2xl font-semibold">{element.content.text}</h2>
-          )}
-          {element.content.level === 3 && (
-            <h3 className="text-xl font-medium">{element.content.text}</h3>
-          )}
-        </div>
-      );
-    }
-
-    if (element.type === 'table' && isTableContent(element.content)) {
-      return (
-        <table className="w-full border-collapse">
-          <tbody>
-            {element.content.rows.map((row, rowIndex) => (
-              <tr key={rowIndex}>
-                {row.cells.map((cell, cellIndex) => (
-                  <td
-                    key={cellIndex}
-                    className={`border p-2 ${
-                      cell.header ? 'font-semibold bg-gray-50' : ''
-                    }`}
-                  >
-                    {cell.content}
-                  </td>
-                ))}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      );
-    }
-
-    if (element.type === 'image' && isImageContent(element.content)) {
-      return (
-        <div 
-          className={`text-${element.content.align || 'center'} relative group`}
-          style={{ userSelect: resizeState ? 'none' : undefined }}
-        >
-          <div className="relative inline-block">
-            {element.content.url ? (
-              <>
-                <img 
-                  ref={selectedElement === element.id ? imageRef : null}
-                  src={element.content.url} 
-                  alt={element.content.alt}
-                  style={{ 
-                    maxWidth: '100%',
-                    width: element.content.width || 'auto',
-                    display: 'inline-block',
-                    cursor: selectedElement === element.id ? 'move' : 'pointer'
-                  }}
-                />
-                {selectedElement === element.id && (
-                  <>
-                    <div
-                      className="absolute w-4 h-4 bg-blue-500 rounded-full cursor-ew-resize right-0 top-1/2 transform translate-x-1/2 -translate-y-1/2 hover:scale-110 transition-transform"
-                      onMouseDown={(e) => {
-                        e.stopPropagation();
-                        if (!imageRef.current) return;
-                        
-                        const rect = imageRef.current.getBoundingClientRect();
-                        setResizeState({
-                          isResizing: true,
-                          startX: e.clientX,
-                          startY: e.clientY,
-                          startWidth: rect.width,
-                          startHeight: rect.height
-                        });
-                      }}
-                    />
-                    <div className="absolute left-1/2 -bottom-6 transform -translate-x-1/2 bg-gray-800 text-white text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                      {Math.round(imageRef.current?.getBoundingClientRect().width || 0)}px
-                    </div>
-                  </>
-                )}
-              </>
-            ) : (
-              <div className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center">
-                <ImageIcon className="mx-auto h-12 w-12 text-gray-400" />
-                <p className="mt-2 text-sm text-gray-500">Click to upload an image</p>
-              </div>
+    switch (element.type) {
+      case 'header':
+        if (!isHeaderContent(element.content)) return null;
+        return (
+          <div style={{ textAlign: element.content.align }}>
+            {element.content.level === 1 && (
+              <h1 className="text-3xl font-bold">{element.content.text}</h1>
+            )}
+            {element.content.level === 2 && (
+              <h2 className="text-2xl font-semibold">{element.content.text}</h2>
+            )}
+            {element.content.level === 3 && (
+              <h3 className="text-xl font-medium">{element.content.text}</h3>
             )}
           </div>
-        </div>
-      );
-    }
+        );
 
-    return null;
+      case 'table':
+        if (!isTableContent(element.content)) return null;
+        return (
+          <table className="w-full border-collapse">
+            <tbody>
+              {element.content.rows.map((row, rowIndex) => (
+                <tr key={rowIndex}>
+                  {row.cells.map((cell, cellIndex) => (
+                    <td
+                      key={cellIndex}
+                      className={`border p-2 ${
+                        cell.header ? 'font-semibold bg-gray-50' : ''
+                      }`}
+                    >
+                      {cell.content}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        );
+
+      case 'text': {
+        if (!isTextContent(element.content)) return null;
+        const textX = element.content.x ?? 100;
+        const textY = element.content.y ?? 200;
+        const textWidth = element.content.width ? parseInt(element.content.width) : 250;
+        const textHeight = element.content.height ? parseInt(element.content.height) : 40;
+        const isEditing = editingTextId === element.id;
+        return (
+          <div
+            className={`absolute group border-2 ${selectedElement === element.id ? 'border-blue-400' : 'border-transparent'} bg-white`}
+            style={{ left: textX, top: textY, width: textWidth, height: textHeight, zIndex: selectedElement === element.id ? 10 : 1, cursor: dragState ? 'move' : 'pointer', display: 'flex', alignItems: 'center', justifyContent: element.content.align || 'left', pointerEvents: 'auto' }}
+            onMouseDown={e => {
+              if (!isEditing && selectedElement === element.id) {
+                setDragState({ startX: e.clientX, startY: e.clientY, origX: textX, origY: textY });
+              }
+            }}
+            onClick={e => { e.stopPropagation(); setSelectedElement(element.id); }}
+            onDoubleClick={() => setEditingTextId(element.id)}
+          >
+            {isEditing ? (
+              <input
+                autoFocus
+                className="w-full h-full border-none outline-none bg-transparent text-base"
+                value={element.content.text}
+                onChange={e => handleElementChange(element.id, { ...element.content, text: e.target.value })}
+                onBlur={() => setEditingTextId(null)}
+                onKeyDown={e => { if (e.key === 'Enter') setEditingTextId(null); }}
+                style={{ pointerEvents: 'auto' }}
+              />
+            ) : (
+              <span
+                className="w-full h-full px-2 text-base select-none"
+                style={{ textAlign: element.content.align || 'left', whiteSpace: 'pre-wrap', wordBreak: 'break-word', pointerEvents: 'none' }}
+              >
+                {element.content.text || 'Double-click to edit text'}
+              </span>
+            )}
+            {selectedElement === element.id && (
+              <>
+                {/* Corner resize handles */}
+                {['nw', 'ne', 'sw', 'se'].map(dir => (
+                  <div
+                    key={dir}
+                    className={`absolute w-3 h-3 bg-blue-500 rounded-full cursor-nwse-resize ${
+                      dir === 'nw' ? 'left-0 top-0 -translate-x-1/2 -translate-y-1/2' :
+                      dir === 'ne' ? 'right-0 top-0 translate-x-1/2 -translate-y-1/2' :
+                      dir === 'sw' ? 'left-0 bottom-0 -translate-x-1/2 translate-y-1/2' :
+                      'right-0 bottom-0 translate-x-1/2 translate-y-1/2'
+                    }`}
+                    onMouseDown={e => {
+                      e.stopPropagation();
+                      setResizeState({
+                        direction: dir as 'nw' | 'ne' | 'sw' | 'se',
+                        startX: e.clientX,
+                        startY: e.clientY,
+                        origWidth: textWidth,
+                        origHeight: textHeight,
+                        origX: textX,
+                        origY: textY
+                      });
+                    }}
+                  />
+                ))}
+              </>
+            )}
+          </div>
+        );
+      }
+
+      case 'image': {
+        if (!isImageContent(element.content)) return null;
+        const imgX = element.content.x ?? 100;
+        const imgY = element.content.y ?? 100;
+        const imgWidth = element.content.width ? parseInt(element.content.width) : 200;
+        const imgHeight = element.content.height ? parseInt(element.content.height) : 120;
+        return (
+          <div
+            className={`absolute group border-2 ${selectedElement === element.id ? 'border-blue-400' : 'border-transparent'}`}
+            style={{ left: imgX, top: imgY, width: imgWidth, height: imgHeight, zIndex: selectedElement === element.id ? 10 : 1, cursor: dragState ? 'move' : 'pointer' }}
+            onMouseDown={e => {
+              if (selectedElement === element.id && e.target === e.currentTarget) {
+                setDragState({ startX: e.clientX, startY: e.clientY, origX: imgX, origY: imgY });
+              }
+            }}
+            onClick={e => { e.stopPropagation(); setSelectedElement(element.id); }}
+          >
+            <img
+              ref={selectedElement === element.id ? imageRef : null}
+              src={element.content.url}
+              alt={element.content.alt}
+              style={{ width: '100%', height: '100%', objectFit: 'contain', display: 'block', pointerEvents: 'none' }}
+              draggable={false}
+            />
+            {selectedElement === element.id && (
+              <>
+                {/* Corner resize handles */}
+                {['nw', 'ne', 'sw', 'se'].map(dir => (
+                  <div
+                    key={dir}
+                    className={`absolute w-3 h-3 bg-blue-500 rounded-full cursor-nwse-resize ${
+                      dir === 'nw' ? 'left-0 top-0 -translate-x-1/2 -translate-y-1/2' :
+                      dir === 'ne' ? 'right-0 top-0 translate-x-1/2 -translate-y-1/2' :
+                      dir === 'sw' ? 'left-0 bottom-0 -translate-x-1/2 translate-y-1/2' :
+                      'right-0 bottom-0 translate-x-1/2 translate-y-1/2'
+                    }`}
+                    onMouseDown={e => {
+                      e.stopPropagation();
+                      setResizeState({
+                        direction: dir as 'nw' | 'ne' | 'sw' | 'se',
+                        startX: e.clientX,
+                        startY: e.clientY,
+                        origWidth: imgWidth,
+                        origHeight: imgHeight,
+                        origX: imgX,
+                        origY: imgY
+                      });
+                    }}
+                  />
+                ))}
+              </>
+            )}
+          </div>
+        );
+      }
+
+      default:
+        return null;
+    }
   };
 
   const renderElementEditor = (element: TemplateElement) => {
@@ -658,6 +775,16 @@ export function VisualTemplateEditor({ template, onChange }: VisualTemplateEdito
               placeholder="e.g., 100%, 300px"
             />
 
+            <Input
+              label="Height"
+              value={element.content.height || ''}
+              onChange={(e) => handleElementChange(element.id, {
+                ...element.content,
+                height: e.target.value
+              })}
+              placeholder="e.g., 100%, 300px"
+            />
+
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium">Alignment:</span>
               <Button
@@ -809,51 +936,9 @@ export function VisualTemplateEditor({ template, onChange }: VisualTemplateEdito
             <CardTitle>Template Preview</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="min-h-[600px] p-6 border rounded-lg">
+            <div className="min-h-[600px] p-6 border rounded-lg relative" style={{ position: 'relative' }}>
               {elements.map((element, index) => (
-                <div
-                  key={element.id}
-                  className={`relative group p-2 ${
-                    selectedElement === element.id ? 'ring-2 ring-blue-500' : ''
-                  }`}
-                  onClick={() => setSelectedElement(element.id)}
-                >
-                  <div className="absolute right-2 top-2 hidden group-hover:flex items-center gap-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleMoveElement(element.id, 'up');
-                      }}
-                      disabled={index === 0}
-                    >
-                      <MoveUp className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleMoveElement(element.id, 'down');
-                      }}
-                      disabled={index === elements.length - 1}
-                    >
-                      <MoveDown className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteElement(element.id);
-                      }}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  {renderElementContent(element)}
-                </div>
+                renderElementContent(element)
               ))}
             </div>
           </CardContent>
