@@ -123,10 +123,12 @@ export function quotationToTemplateData(quotation: Quotation): TemplateData {
     // Location and logistics
     site_location: quotation.customerContact?.address || 'N/A',
     site_distance: `${quotation.siteDistance} km`,
-    mob_demob_cost: formatCurrency(quotation.mobDemob),
-
-    // Pricing information
-    base_rate: formatCurrency(quotation.baseRate),
+    mob_demob_cost: formatCurrency(quotation.mobDemob),    // Pricing information
+    base_rate: formatCurrency(
+      (quotation.selectedMachines && quotation.selectedMachines.length > 0)
+        ? quotation.selectedMachines.reduce((sum, m) => sum + (m.baseRate || 0) * m.quantity, 0)
+        : quotation.workingCost || 0
+    ),
     total_amount: formatCurrency(quotation.totalRent),
     subtotal: formatCurrency(subtotalAmount),
     gst_amount: formatCurrency(gstAmount),
@@ -149,7 +151,7 @@ export function quotationToTemplateData(quotation: Quotation): TemplateData {
     terms_conditions: 'Standard terms and conditions apply',
     payment_terms: '50% advance, balance against monthly bills',
     validity_period: '30 days from quotation date',
-    notes: quotation.notes || 'Thank you for your business!',
+    notes: 'Thank you for your business!',
 
     // Dates
     current_date: currentDate.toLocaleDateString('en-IN'),
@@ -210,14 +212,19 @@ export function mergeQuotationWithTemplate(quotation: Quotation | undefined, tem
     quotation_number: quotation.id || 'N/A',
     quotation_date: new Date(quotation.createdAt).toLocaleDateString('en-IN'),
     valid_until: new Date(new Date(quotation.createdAt).setDate(new Date(quotation.createdAt).getDate() + 30)).toLocaleDateString('en-IN'),
-    order_type: quotation.orderType === 'monthly' ? 'Monthly' : 'Daily',
-
-    // Equipment details
-    equipment_name: quotation.selectedEquipment?.name || 'N/A',
+    order_type: quotation.orderType === 'monthly' ? 'Monthly' : 'Daily',    // Equipment details
+    equipment_name: (quotation.selectedMachines && quotation.selectedMachines.length > 0) 
+      ? quotation.selectedMachines.map(m => `${m.name} (${m.quantity} unit${m.quantity > 1 ? 's' : ''})`)
+        .join(', ')
+      : quotation.selectedEquipment?.name || 'N/A',
     project_duration: `${quotation.numberOfDays || 0} days`,
     working_hours: `${quotation.workingHours || 0} hours/day`,
     shift_type: quotation.shift === 'double' ? 'Double Shift' : 'Single Shift',
-    base_rate: formatCurrency(quotation.baseRate || 0),
+    base_rate: formatCurrency(
+      (quotation.selectedMachines && quotation.selectedMachines.length > 0)
+        ? quotation.selectedMachines.reduce((sum, m) => sum + (m.baseRate || 0) * m.quantity, 0)
+        : quotation.workingCost || 0
+    ),
 
     // Pricing
     subtotal: formatCurrency(quotation.totalRent ? quotation.totalRent / (quotation.includeGst ? 1.18 : 1) : 0),

@@ -1,5 +1,4 @@
 import { OrderType, BaseRates } from './equipment';
-import { Equipment } from './equipment';
 
 export interface CustomerContact {
   name: string;
@@ -20,6 +19,7 @@ export interface QuotationInputs {
     name: string;
     baseRates: BaseRates;
   };
+  selectedMachines?: SelectedMachine[];
   orderType: OrderType;
   numberOfDays: number;
   workingHours: number;
@@ -29,10 +29,8 @@ export interface QuotationInputs {
   usage: 'normal' | 'heavy';
   riskFactor: 'low' | 'medium' | 'high';
   extraCharge: number;
-  incidentalCharges: string[];
-  otherFactorsCharge: number;
+  incidentalCharges: string[];  otherFactorsCharge: number;
   billing: 'gst' | 'non_gst';
-  baseRate: number;
   includeGst: boolean;
   shift: 'single' | 'double';
   dayNight: 'day' | 'night';
@@ -44,12 +42,24 @@ export interface QuotationInputs {
   otherFactors: string[];
 }
 
+export interface SelectedMachine {
+  id: string;
+  machineType: string;
+  equipmentId: string;
+  name: string;
+  baseRates: BaseRates;
+  baseRate: number;
+  runningCostPerKm: number;
+  quantity: number;
+}
+
 export interface Quotation extends QuotationInputs {
   id: string;
   leadId: string;
   customerId: string;
   customerName: string;
   customerContact: CustomerContact;
+  selectedMachines?: SelectedMachine[];
   totalRent: number;
   workingCost?: number;
   mobDemobCost?: number;

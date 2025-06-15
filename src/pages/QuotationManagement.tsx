@@ -261,11 +261,19 @@ export function QuotationManagement() {
       // Use the template merger utility
       const content = mergeQuotationWithTemplate(quotation, defaultTemplate);
       
-      // Create mailto link with the quotation content
+      // Create mailto link with the quotation content      // Create a more descriptive equipment text based on whether we have multiple machines
+      let equipmentDescription = quotation.selectedEquipment.name;
+      
+      if (quotation.selectedMachines && quotation.selectedMachines.length > 1) {
+        equipmentDescription = `${quotation.selectedMachines.length} machines (${quotation.selectedMachines.map(m => m.name).join(', ')})`;
+      } else if (quotation.selectedMachines && quotation.selectedMachines.length === 1) {
+        equipmentDescription = quotation.selectedMachines[0].name;
+      }
+      
       const subject = `Quotation from ASP Cranes - ${quotation.id.slice(0, 8).toUpperCase()}`;
       const emailBody = `Dear ${quotation.customerContact.name || 'Customer'},
 
-Please find your quotation details for ${quotation.selectedEquipment.name} below:
+Please find your quotation details for ${equipmentDescription} below:
 
 ${content}
 
@@ -411,10 +419,22 @@ ASP Cranes Team`;
                               {quotation.customerContact.company}
                             </div>
                           </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{quotation.selectedEquipment.name}</div>
-                          <div className="text-sm text-gray-500">{quotation.machineType}</div>
+                        </td>                        <td className="px-6 py-4 whitespace-nowrap">
+                          {quotation.selectedMachines && quotation.selectedMachines.length > 0 ? (
+                            <>
+                              <div className="text-sm text-gray-900">
+                                {quotation.selectedMachines.map(machine => machine.name).join(', ')}
+                              </div>
+                              <div className="text-sm text-gray-500">
+                                {quotation.selectedMachines.length} machine{quotation.selectedMachines.length > 1 ? 's' : ''}
+                              </div>
+                            </>
+                          ) : (
+                            <>
+                              <div className="text-sm text-gray-900">{quotation.selectedEquipment.name}</div>
+                              <div className="text-sm text-gray-500">{quotation.machineType}</div>
+                            </>
+                          )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-900">{quotation.numberOfDays} days</div>

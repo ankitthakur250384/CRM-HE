@@ -10,8 +10,7 @@ export const getQuotations = async (): Promise<Quotation[]> => {
   try {
     const snapshot = await getDocs(quotationsCollection);
     return snapshot.docs.map(doc => {
-      const data = doc.data();
-      return {
+      const data = doc.data();      return {
         id: doc.id,
         ...data,
         customerContact: {
@@ -21,11 +20,12 @@ export const getQuotations = async (): Promise<Quotation[]> => {
           company: data.customerContact?.company || '',
           address: data.customerContact?.address || '',
           designation: data.customerContact?.designation || ''
-        },
-        selectedEquipment: {
+        },        selectedEquipment: {
           id: data.selectedEquipment?.id || '',
           equipmentId: data.selectedEquipment?.equipmentId || '',
-          name: data.selectedEquipment?.name || 'Unknown Equipment',
+          name: (data.selectedMachines?.length > 0) 
+            ? `${data.selectedMachines.length} machines selected`
+            : (data.selectedEquipment?.name || 'Unknown Equipment'),
           baseRates: data.selectedEquipment?.baseRates || {
             micro: 0,
             small: 0,
@@ -33,6 +33,7 @@ export const getQuotations = async (): Promise<Quotation[]> => {
             yearly: 0
           }
         },
+        selectedMachines: data.selectedMachines || [],
         createdAt: data.createdAt || new Date().toISOString(),
         updatedAt: data.updatedAt || new Date().toISOString(),
         status: data.status || 'draft',
@@ -50,10 +51,13 @@ export const getQuotations = async (): Promise<Quotation[]> => {
 const calculateTotalRent = (quotationData: QuotationInputs): number => {
   try {
     // Early return if required fields are missing
-    if (!quotationData.numberOfDays || !quotationData.baseRate) {
+    if (!quotationData.numberOfDays) {
       return 0;
     }
-
+    
+    // Check if we have multiple machines
+    const hasMachines = quotationData.selectedMachines && quotationData.selectedMachines.length > 0;
+    
     const days = Number(quotationData.numberOfDays);
     const isMonthly = days > 25;
     const effectiveDays = isMonthly ? 26 : days;
@@ -61,17 +65,50 @@ const calculateTotalRent = (quotationData: QuotationInputs): number => {
     const shiftMultiplier = quotationData.shift === 'double' ? 2 : 1;
     
     // Calculate working cost
-    let workingCost;
-    if (isMonthly) {
-      const hourlyRate = (quotationData.baseRate / 26) / workingHours;
-      workingCost = hourlyRate * workingHours * effectiveDays * shiftMultiplier;
-    } else {
-      workingCost = quotationData.baseRate * workingHours * effectiveDays * shiftMultiplier;
+    let workingCost = 0;
+    
+    if (hasMachines) {
+      // Calculate working cost for all machines
+      quotationData.selectedMachines!.forEach(machine => {
+        const machineBaseRate = machine.baseRate;
+        const machineQuantity = machine.quantity;
+        let machineCost = 0;
+        
+        if (isMonthly) {
+          const hourlyRate = (machineBaseRate / 26) / workingHours;
+          machineCost = hourlyRate * workingHours * effectiveDays * shiftMultiplier * machineQuantity;
+        } else {
+          machineCost = machineBaseRate * workingHours * effectiveDays * shiftMultiplier * machineQuantity;
+        }
+        
+        workingCost += machineCost;
+      });
+    } else if (quotationData.selectedEquipment?.baseRates) {
+      // Fallback to using selectedEquipment for backwards compatibility
+      const machineBaseRate = quotationData.selectedEquipment.baseRates[quotationData.orderType];
+      
+      if (isMonthly) {
+        const hourlyRate = (machineBaseRate / 26) / workingHours;
+        workingCost = hourlyRate * workingHours * effectiveDays * shiftMultiplier;
+      } else {
+        workingCost = machineBaseRate * workingHours * effectiveDays * shiftMultiplier;
+      }
     }
 
     // Calculate usage load factor
     const usagePercentage = quotationData.usage === 'heavy' ? 0.10 : 0.05;
-    const usageLoadFactor = quotationData.baseRate * usagePercentage;
+    let usageLoadFactor = 0;
+    
+    if (hasMachines) {
+      // Calculate usage for each machine
+      quotationData.selectedMachines!.forEach(machine => {
+        usageLoadFactor += machine.baseRate * machine.quantity * usagePercentage;
+      });
+    } else if (quotationData.selectedEquipment?.baseRates) {
+      // Fallback to single machine
+      const baseRate = quotationData.selectedEquipment.baseRates[quotationData.orderType];
+      usageLoadFactor = baseRate * usagePercentage;
+    }
 
     // Calculate food and accommodation cost
     const foodDailyRate = 2500 / 26; // ₹2500 per month
@@ -84,17 +121,40 @@ const calculateTotalRent = (quotationData: QuotationInputs): number => {
     const distance = Number(quotationData.siteDistance || 0);
     const trailerCost = Number(quotationData.mobDemob || 0);
     const mobRelaxationPercent = Number(quotationData.mobRelaxation || 0);
-    const runningCostPerKm = quotationData.runningCostPerKm || 0;
-    const distanceCost = distance * runningCostPerKm * 2; // Round trip
-    const relaxationAmount = (distanceCost * mobRelaxationPercent) / 100;
-    const mobDemobCost = distanceCost + trailerCost - relaxationAmount;
+    
+    let mobDemobCost = 0;
+    
+    if (hasMachines) {
+      // Calculate mob-demob for each machine
+      quotationData.selectedMachines!.forEach(machine => {
+        const runningCostPerKm = machine.runningCostPerKm || 0;
+        const distToSiteCost = distance * runningCostPerKm * 2 * machine.quantity;
+        const mobRelaxationAmount = (distToSiteCost * mobRelaxationPercent) / 100;
+        const machineMobDemobCost = (distToSiteCost - mobRelaxationAmount) + (trailerCost * machine.quantity);
+        
+        mobDemobCost += machineMobDemobCost;
+      });
+    } else {
+      const runningCostPerKm = quotationData.runningCostPerKm || 0;
+      const distanceCost = distance * runningCostPerKm * 2; // Round trip
+      const relaxationAmount = (distanceCost * mobRelaxationPercent) / 100;
+      mobDemobCost = distanceCost + trailerCost - relaxationAmount;
+    }
 
     // Calculate risk adjustment
     let riskAdjustment = 0;
-    switch (quotationData.riskFactor) {
-      case 'high': riskAdjustment = quotationData.baseRate * 0.15; break;
-      case 'medium': riskAdjustment = quotationData.baseRate * 0.10; break;
-      case 'low': riskAdjustment = quotationData.baseRate * 0.05; break;
+    const riskPercentage = quotationData.riskFactor === 'high' ? 0.15 : 
+                         quotationData.riskFactor === 'medium' ? 0.10 : 0.05;
+    
+    if (hasMachines) {
+      // Calculate risk for each machine
+      quotationData.selectedMachines!.forEach(machine => {
+        riskAdjustment += machine.baseRate * machine.quantity * riskPercentage;
+      });
+    } else if (quotationData.selectedEquipment?.baseRates) {
+      // Fallback to single machine
+      const baseRate = quotationData.selectedEquipment.baseRates[quotationData.orderType];
+      riskAdjustment = baseRate * riskPercentage;
     }
 
     // Calculate extra charges
@@ -186,6 +246,18 @@ export const getQuotationById = async (id: string): Promise<Quotation | null> =>
     if (!docSnap.exists()) return null;
 
     const data = docSnap.data();
+    
+    // Ensure selectedMachines is properly initialized if it doesn't exist
+    const selectedMachines = data.selectedMachines || [];
+    
+    // Generate proper name for display when we have multiple machines
+    let equipmentName = data.selectedEquipment?.name || 'Unknown Equipment';
+    if (selectedMachines.length > 1) {
+      equipmentName = `${selectedMachines.length} machines selected`;
+    } else if (selectedMachines.length === 1) {
+      equipmentName = selectedMachines[0].name;
+    }
+    
     return {
       id: docSnap.id,
       ...data,
@@ -200,7 +272,7 @@ export const getQuotationById = async (id: string): Promise<Quotation | null> =>
       selectedEquipment: {
         id: data.selectedEquipment?.id || '',
         equipmentId: data.selectedEquipment?.equipmentId || '',
-        name: data.selectedEquipment?.name || 'Unknown Equipment',
+        name: equipmentName,
         baseRates: data.selectedEquipment?.baseRates || {
           micro: 0,
           small: 0,
@@ -208,6 +280,7 @@ export const getQuotationById = async (id: string): Promise<Quotation | null> =>
           yearly: 0
         }
       },
+      selectedMachines: selectedMachines,
       machineType: data.machineType || '',
       orderType: data.orderType || 'micro',
       numberOfDays: data.numberOfDays || 0,
