@@ -18,14 +18,17 @@ export interface Operator {
 
 export interface Job {
   id: string;
+  leadId: string;
+  customerName: string;
   equipmentId: string;
   operatorId: string;
-  customerId: string;
+  customerId?: string;
   status: JobStatus;
   startDate: string;
   endDate: string;
   location: string;
   notes?: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
+  dealId?: string; // Reference to the deal that generated this job
 }

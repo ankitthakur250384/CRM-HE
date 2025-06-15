@@ -23,11 +23,9 @@ import { useAuthStore } from '../store/authStore';
 import { getJobs, getAllEquipment, getAllOperators, createJob, updateJobStatus } from '../services/jobService';
 import { getLeads } from '../services/leadService';
 import { getDealById, getDeals } from '../services/dealService';
-import { getQuotationsForLead } from '../services/quotationService';
 import { Job, Equipment, Operator } from '../types/job';
 import { Lead } from '../types/lead';
 import { Deal } from '../types/deal';
-import { Quotation } from '../types/quotation';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 const TIME_SLOTS = Array.from({ length: 15 }, (_, i) => addHours(new Date().setHours(6, 0, 0, 0), i));
@@ -38,14 +36,14 @@ export function JobScheduling() {
   const [currentDate, setCurrentDate] = useState(new Date());
   const [jobs, setJobs] = useState<Job[]>([]);
   const [equipment, setEquipment] = useState<Equipment[]>([]);
-  const [operators, setOperators] = useState<Operator[]>([]);  const [leads, setLeads] = useState<Lead[]>([]);
+  const [operators, setOperators] = useState<Operator[]>([]);
+  const [leads, setLeads] = useState<Lead[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [selectedTimeSlot, setSelectedTimeSlot] = useState<Date | null>(null);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [wonDealId, setWonDealId] = useState<string | null>(null);
   const [wonDealCustomerName, setWonDealCustomerName] = useState<string | null>(null);
-  const [dealEquipment, setDealEquipment] = useState<Equipment[]>([]);
-  const [isLoadingEquipment, setIsLoadingEquipment] = useState(false);
   const location = useLocation();
   const navigate = useNavigate();
   const [toast, setToast] = useState<{
@@ -155,6 +153,7 @@ export function JobScheduling() {
       setIsLoading(false);
     }
   };
+
   const handleOpenFromDeal = async (dealId: string) => {
     try {
       const deal = await getDealById(dealId);
@@ -168,98 +167,22 @@ export function JobScheduling() {
         const formattedStartDate = today.toISOString().slice(0, 16);
         const formattedEndDate = nextWeek.toISOString().slice(0, 16);
 
+        setFormData({
+          leadId: deal.leadId,
+          equipmentId: '',
+          operatorId: '',
+          startDate: formattedStartDate,
+          endDate: formattedEndDate,
+          location: deal.customer?.address || '',
+          notes: deal.description || '',
+        });
+
         // Set the won deal ID to associate it with the job
         setWonDealId(dealId);
         
         // Set the customer name from the deal
         if (deal.customer?.name) {
           setWonDealCustomerName(deal.customer.name);
-        }
-          // Fetch quotations associated with this deal's lead ID
-        setIsLoadingEquipment(true);
-        try {
-          const quotations = await getQuotationsForLead(deal.leadId);
-          
-          if (quotations && quotations.length > 0) {
-            // Extract equipment from quotations
-            const dealSpecificEquipment: Equipment[] = [];
-            
-            // Process all quotations to get their equipment
-            quotations.forEach(quotation => {
-              // Handle single equipment
-              if (quotation.selectedEquipment && quotation.selectedEquipment.equipmentId) {
-                // Find the equipment in the global equipment list
-                const existingEquipment = equipment.find(e => e.id === quotation.selectedEquipment.equipmentId);
-                
-                if (existingEquipment && !dealSpecificEquipment.some(e => e.id === existingEquipment.id)) {
-                  dealSpecificEquipment.push(existingEquipment);
-                }
-              }
-              
-              // Handle multiple machines if available
-              if (quotation.selectedMachines && quotation.selectedMachines.length > 0) {
-                quotation.selectedMachines.forEach(machine => {
-                  if (machine.equipmentId) {
-                    const existingEquipment = equipment.find(e => e.id === machine.equipmentId);
-                    
-                    if (existingEquipment && !dealSpecificEquipment.some(e => e.id === existingEquipment.id)) {
-                      dealSpecificEquipment.push(existingEquipment);
-                    }
-                  }
-                });
-              }
-            });
-            
-            // Update the deal equipment state
-            setDealEquipment(dealSpecificEquipment);
-            
-            // Auto-select the first equipment if available
-            if (dealSpecificEquipment.length > 0) {
-              setFormData({
-                leadId: deal.leadId,
-                equipmentId: dealSpecificEquipment[0].id, // Pre-select the first equipment
-                operatorId: '',
-                startDate: formattedStartDate,
-                endDate: formattedEndDate,
-                location: deal.customer?.address || '',
-                notes: deal.description || '',
-              });
-            } else {
-              setFormData({
-                leadId: deal.leadId,
-                equipmentId: '',
-                operatorId: '',
-                startDate: formattedStartDate,
-                endDate: formattedEndDate,
-                location: deal.customer?.address || '',
-                notes: deal.description || '',
-              });
-            }
-          } else {
-            // No quotations found, proceed without equipment pre-selection
-            setFormData({
-              leadId: deal.leadId,
-              equipmentId: '',
-              operatorId: '',
-              startDate: formattedStartDate,
-              endDate: formattedEndDate,
-              location: deal.customer?.address || '',
-              notes: deal.description || '',
-            });
-          }        } catch (quotationError) {
-          console.error('Error fetching quotations:', quotationError);
-            // Continue without equipment pre-selection
-          setFormData({
-            leadId: deal.leadId,
-            equipmentId: '',
-            operatorId: '',
-            startDate: formattedStartDate,
-            endDate: formattedEndDate,
-            location: deal.customer?.address || '',
-            notes: deal.description || '',
-          });
-        } finally {
-          setIsLoadingEquipment(false);
         }
         
         setIsCreateModalOpen(true);
@@ -334,6 +257,7 @@ export function JobScheduling() {
       showToast('Error updating job status', 'error');
     }
   };
+
   const resetForm = () => {
     setFormData({
       leadId: '',
@@ -344,8 +268,7 @@ export function JobScheduling() {
       location: '',
       notes: '',
     });
-    // Reset deal equipment as well
-    setDealEquipment([]);
+    setSelectedTimeSlot(null);
   };
 
   const showToast = (title: string, variant: 'success' | 'error' | 'warning' = 'success') => {
@@ -428,7 +351,9 @@ export function JobScheduling() {
                         key={`${timeIndex}-${dayIndex}`}
                         className={`h-20 border-b border-r border-gray-100 relative ${
                           timeIndex === 0 ? 'border-t' : ''
-                        } ${dayIndex === 0 ? 'border-l' : ''}`}                        onClick={() => {
+                        } ${dayIndex === 0 ? 'border-l' : ''}`}
+                        onClick={() => {
+                          setSelectedTimeSlot(currentSlotStart);
                           setIsCreateModalOpen(true);
                           setFormData(prev => ({
                             ...prev,
@@ -589,110 +514,21 @@ export function JobScheduling() {
               }))
             ]}
             value={formData.leadId}
-            onChange={(value: string) => {
-              setFormData(prev => ({ ...prev, leadId: value }));
-                // When lead selection changes, try to load associated equipment
-              if (value) {
-                const loadEquipmentFromLead = async () => {
-                  setIsLoadingEquipment(true);
-                  try {
-                    const quotations = await getQuotationsForLead(value);
-                    if (quotations && quotations.length > 0) {
-                      const leadSpecificEquipment: Equipment[] = [];
-                      
-                      quotations.forEach(quotation => {
-                        // Handle single equipment
-                        if (quotation.selectedEquipment && quotation.selectedEquipment.equipmentId) {
-                          const existingEquipment = equipment.find(e => e.id === quotation.selectedEquipment.equipmentId);
-                          
-                          if (existingEquipment && !leadSpecificEquipment.some(e => e.id === existingEquipment.id)) {
-                            leadSpecificEquipment.push(existingEquipment);
-                          }
-                        }
-                        
-                        // Handle multiple machines
-                        if (quotation.selectedMachines && quotation.selectedMachines.length > 0) {
-                          quotation.selectedMachines.forEach(machine => {
-                            if (machine.equipmentId) {
-                              const existingEquipment = equipment.find(e => e.id === machine.equipmentId);
-                              
-                              if (existingEquipment && !leadSpecificEquipment.some(e => e.id === existingEquipment.id)) {
-                                leadSpecificEquipment.push(existingEquipment);
-                              }
-                            }
-                          });
-                        }
-                      });
-                      
-                      setDealEquipment(leadSpecificEquipment);
-                      
-                      // Auto-select the first equipment if available
-                      if (leadSpecificEquipment.length > 0) {
-                        setFormData(prev => ({
-                          ...prev,
-                          equipmentId: leadSpecificEquipment[0].id
-                        }));
-                      }
-                    }                  } catch (error) {
-                    console.error('Error loading equipment for lead:', error);
-                  } finally {
-                    setIsLoadingEquipment(false);
-                  }
-                };
-                
-                loadEquipmentFromLead();
-              } else {
-                // Reset equipment selection if no lead is selected
-                setDealEquipment([]);
-                setFormData(prev => ({
-                  ...prev,
-                  equipmentId: ''
-                }));
-              }
-            }}
+            onChange={(value: string) => setFormData(prev => ({ ...prev, leadId: value }))}
             required
           />
 
           <div className="grid grid-cols-2 gap-4">
-            <div>
-              <Select
+            <Select
               label="Equipment"
-              options={
-                // If we have deal-specific equipment and a wonDealId, use that equipment list
-                (dealEquipment.length > 0 && wonDealId) 
-                ? [
-                    { value: '', label: '-- Select deal-specific equipment --' },
-                    ...dealEquipment.map(item => ({
-                      value: item.id,
-                      label: `${item.name} (From Deal)`,
-                    }))
-                  ] 
-                : [
-                    { value: '', label: '-- Select equipment --' },
-                    ...equipment.map(item => ({
-                      value: item.id,
-                      label: item.name,
-                    }))
-                  ]
-              }
+              options={equipment.map(item => ({
+                value: item.id,
+                label: item.name,
+              }))}
               value={formData.equipmentId}
-              onChange={(value: string) => setFormData(prev => ({ ...prev, equipmentId: value }))}              required
+              onChange={(value: string) => setFormData(prev => ({ ...prev, equipmentId: value }))}
+              required
             />
-                {/* Information about equipment selection */}
-              {isLoadingEquipment ? (
-                <p className="mt-1 text-xs text-blue-600">
-                  Loading equipment from quotations...
-                </p>
-              ) : dealEquipment.length > 0 ? (
-                <p className="mt-1 text-xs text-green-600">
-                  {dealEquipment.length} equipment item{dealEquipment.length !== 1 ? 's' : ''} from deal quotation{dealEquipment.length !== 1 ? 's' : ''}
-                </p>
-              ) : formData.leadId ? (
-                <p className="mt-1 text-xs text-gray-500">
-                  No specific equipment found in deal quotations
-                </p>
-              ) : null}
-            </div>
 
             <Select
               label="Operator"

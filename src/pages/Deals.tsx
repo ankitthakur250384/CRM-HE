@@ -85,11 +85,29 @@ export function Deals() {
           'success', 
           `"${dealTitle}" has been successfully moved to the ${stageName} stage.`
         );
+        
+        // Check if deal was moved to "won" stage and prompt for job scheduling
+        if (newStage === 'won') {
+          handleDealWon(updatedDeal);
+        }
       }
     } catch (error) {
       console.error('Error updating deal stage:', error);
       showToast('Error updating deal stage', 'error');
     }
+  };
+  // Function to handle when a deal is won
+  const handleDealWon = (deal: Deal) => {
+    showToast(
+      'Schedule a job for this deal', 
+      'success', 
+      `You've won the deal with ${deal.customer.name}! You'll be redirected to schedule a job.`
+    );
+    
+    // Short delay before navigation to ensure the toast is seen
+    setTimeout(() => {
+      navigate(`/jobs?dealId=${deal.id}&action=schedule&customerName=${encodeURIComponent(deal.customer.name)}`);
+    }, 1500);
   };
 
   const filteredDeals = deals.filter(deal =>

@@ -131,12 +131,18 @@ export const createJob = async (jobData: Omit<Job, 'id' | 'createdAt' | 'updated
     customerName = lead?.customerName || 'Unknown Customer';
   }
   
+  // If this job is associated with a deal, log it
+  if (jobData.dealId) {
+    console.log(`Creating job from deal: ${jobData.dealId}`);
+  }
+  
   const newJob: Job = {
     ...jobData,
     customerName,
     id: Math.random().toString(36).substring(2, 9),
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+    dealId: jobData.dealId // Make sure dealId is passed through
   };
   
   MOCK_JOBS.push(newJob);
@@ -174,7 +180,7 @@ export const getEquipmentById = async (id: string): Promise<Equipment | null> =>
 };
 
 // Get operator by ID
-const getOperatorById = async (id: string): Promise<Operator | null> => {
+export const getOperatorById = async (id: string): Promise<Operator | null> => {
   // Simulate API delay
   await new Promise(resolve => setTimeout(resolve, 200));
   const operator = MOCK_OPERATORS.find(o => o.id === id);

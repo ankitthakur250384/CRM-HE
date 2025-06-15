@@ -1,5 +1,4 @@
-import React from 'react';
-import { Card, CardContent } from '../common/Card';
+
 import { Button } from '../common/Button';
 import { Template } from '../../types/template';
 import { Edit2, Eye, Copy, Trash2, FileText } from 'lucide-react';
@@ -20,70 +19,73 @@ export function TemplateCard({
   onSetDefault
 }: TemplateCardProps) {
   return (
-    <Card className="h-full">
-      <CardContent className="p-4 sm:p-6 flex flex-col h-full">
-        <div className="flex items-start justify-between mb-auto">
-          <div>
-            <h3 className="text-base sm:text-lg font-semibold text-gray-900 flex items-center gap-2">
-              <FileText className="h-4 sm:h-5 w-4 sm:w-5 flex-shrink-0" />
-              <span className="break-words">{template.name}</span>
-            </h3>
-            {template.description && (
-              <p className="mt-1 text-xs sm:text-sm text-gray-500 line-clamp-2">
-                {template.description}
-              </p>
-            )}
-            {template.isDefault && (
-              <span className="mt-2 inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded">
-                Default Template
-              </span>
-            )}
-          </div>
-        </div>
-
-        <div className="mt-4 flex flex-wrap items-center gap-2">
-          <Button
-            variant="outline"
-            size="xs"
-            className="flex-1 sm:flex-none"
-            onClick={onEdit}
-          >
-            <Edit2 className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
-            <span className="hidden sm:inline">Edit</span>
-          </Button>
-          <Button
-            variant="outline"
-            size="xs"
-            className="flex-1 sm:flex-none"
-            onClick={onPreview}
-          >
-            <Eye className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
-            <span className="hidden sm:inline">Preview</span>
-          </Button>
-          {!template.isDefault && (
-            <>
-              <Button
-                variant="outline"
-                size="xs"
-                className="flex-1 sm:flex-none"
-                onClick={onSetDefault}
-              >
-                <Copy className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Set Default</span>
-              </Button>
-              <Button
-                variant="outline"
-                size="xs"
-                className="flex-1 sm:flex-none"
-                onClick={onDelete}
-              >
-                <Trash2 className="h-3 w-3 sm:h-4 sm:w-4 sm:mr-2" />
-                <span className="hidden sm:inline">Delete</span>
-              </Button>
-            </>
-          )}
-        </div>
-      </CardContent>
-    </Card>
+    <div className="bg-white rounded-lg border border-gray-200 shadow-sm overflow-hidden h-full flex flex-col">
+      {/* Template Header */}
+      <div className="p-4 border-b border-gray-200 bg-gray-50 flex items-center">
+        <FileText className="h-5 w-5 text-gray-700 mr-3" />
+        <h3 className="text-lg font-medium text-gray-900 flex-1">{template.name}</h3>
+      </div>
+      
+      {/* Template Description */}
+      <div className="p-4 flex-1">
+        {template.description && (
+          <p className="text-sm text-gray-600 line-clamp-3 mb-3">
+            {template.description}
+          </p>
+        )}
+        {template.isDefault && (
+          <span className="inline-block bg-blue-50 text-blue-700 text-xs font-medium px-2.5 py-0.5 rounded-md">
+            Default Template
+          </span>
+        )}
+      </div>
+      
+      {/* Template Actions */}
+      <div className="p-4 bg-gray-50 border-t border-gray-200 flex flex-wrap gap-2">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={onEdit}
+          className="flex items-center"
+        >
+          <Edit2 className="h-4 w-4 mr-1.5" />
+          Edit
+        </Button>
+        
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={onPreview}
+          className="flex items-center"
+        >
+          <Eye className="h-4 w-4 mr-1.5" />
+          Preview
+        </Button>
+        
+        {!template.isDefault && (
+          <>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={onSetDefault}
+              className="flex items-center"
+            >
+              <Copy className="h-4 w-4 mr-1.5" />
+              Set Default
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={onDelete}
+              className="flex items-center text-red-500 hover:text-red-700 hover:border-red-300"
+            >
+              <Trash2 className="h-4 w-4 mr-1.5" />
+              Delete
+            </Button>
+          </>
+        )}
+      </div>
+    </div>
   );
 }

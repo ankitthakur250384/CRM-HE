@@ -134,10 +134,11 @@ export function QuotationTemplates() {
   const navigate = useNavigate();
   const { showToast } = useToast();
   const [templates, setTemplates] = useState<Template[]>([]);
-  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
+  // Removed unused state: const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  const [editMode, setEditMode] = useState<'new' | 'edit'>('new');
+  // We still need setEditMode but not the value directly
+  const [_, setEditMode] = useState<'new' | 'edit'>('new');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<{
@@ -205,34 +206,7 @@ export function QuotationTemplates() {
     setIsPreviewOpen(true);
   };
 
-  const handleDuplicateTemplate = async (template: Template) => {
-    try {
-      const now = new Date().toISOString();
-    const duplicatedTemplate: Template = {
-      ...template,
-        id: '',
-      name: `${template.name} (Copy)`,
-        createdAt: now,
-        updatedAt: now,
-        createdBy: user?.email || 'unknown',
-        isDefault: false
-      };
-      await createTemplate(duplicatedTemplate);
-      setToast({
-        show: true,
-        title: 'Template duplicated successfully',
-        variant: 'success'
-      });
-      loadTemplates();
-    } catch (error) {
-      console.error('Error duplicating template:', error);
-      setToast({
-        show: true,
-        title: 'Failed to duplicate template',
-        variant: 'error'
-      });
-    }
-  };
+  // Removed unused handleDuplicateTemplate function
 
   const handleDeleteTemplate = async (id: string) => {
     try {
@@ -452,7 +426,7 @@ export function QuotationTemplates() {
           </CardContent>
         </Card>
       ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
           {templates.map((template) => (
             <TemplateCard
               key={template.id}

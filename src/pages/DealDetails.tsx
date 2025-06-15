@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Building2, Mail, Phone, MapPin, User, RefreshCw } from 'lucide-react';
+import { ArrowLeft, Building2, Mail, Phone, MapPin, User, RefreshCw, Package } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { Select } from '../components/common/Select';
 import { Toast } from '../components/common/Toast';
 import { getDealById, updateDealStage } from '../services/dealService';
+import { getQuotationsForLead } from '../services/quotationService';
 import { Deal } from '../types/deal';
+import { SelectedMachine, Quotation } from '../types/quotation';
 import { useAuthStore } from '../store/authStore';
 import { formatCurrency } from '../utils/formatters';
 
@@ -24,18 +26,26 @@ export function DealDetails() {
   const { user } = useAuthStore();
   const [deal, setDeal] = useState<Deal | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  // State to store quotations data with _ prefix since we only need it for processing
+  const [_, setQuotations] = useState<Quotation[]>([]);
+  const [equipmentList, setEquipmentList] = useState<SelectedMachine[]>([]);
+  const [loadingEquipment, setLoadingEquipment] = useState(false);
   const [toast, setToast] = useState<{
     show: boolean;
     title: string;
     variant?: 'success' | 'error' | 'warning';
   }>({ show: false, title: '' });
-
   useEffect(() => {
     if (id) {
       fetchDeal();
     }
   }, [id]);
-
+  
+  useEffect(() => {
+    if (deal?.leadId) {
+      fetchDealEquipment(deal.leadId);
+    }
+  }, [deal]);
   const fetchDeal = async () => {
     try {
       setIsLoading(true);
@@ -51,6 +61,50 @@ export function DealDetails() {
       showToast('Error fetching deal details', 'error');
     } finally {
       setIsLoading(false);
+    }
+  };
+  
+  const fetchDealEquipment = async (leadId: string) => {
+    try {
+      setLoadingEquipment(true);
+      const quotationList = await getQuotationsForLead(leadId);
+      setQuotations(quotationList);
+      
+      // Extract and flatten all equipment from quotations
+      const allEquipment: SelectedMachine[] = [];
+      quotationList.forEach(quotation => {
+        if (quotation.selectedMachines && quotation.selectedMachines.length > 0) {
+          quotation.selectedMachines.forEach(machine => {
+            // Avoid duplicates
+            if (!allEquipment.some(equip => equip.id === machine.id)) {
+              allEquipment.push(machine);
+            }
+          });
+        } else if (quotation.selectedEquipment && quotation.selectedEquipment.id) {
+          // Convert legacy selectedEquipment to SelectedMachine format
+          const legacyEquipment: SelectedMachine = {
+            id: quotation.selectedEquipment.id,
+            machineType: quotation.machineType,
+            equipmentId: quotation.selectedEquipment.equipmentId,
+            name: quotation.selectedEquipment.name,
+            baseRates: quotation.selectedEquipment.baseRates,
+            baseRate: quotation.selectedEquipment.baseRates[quotation.orderType],
+            runningCostPerKm: quotation.runningCostPerKm,
+            quantity: 1
+          };
+          
+          // Avoid duplicates
+          if (!allEquipment.some(equip => equip.id === legacyEquipment.id)) {
+            allEquipment.push(legacyEquipment);
+          }
+        }
+      });
+      
+      setEquipmentList(allEquipment);
+    } catch (error) {
+      console.error('Error fetching deal equipment:', error);
+    } finally {
+      setLoadingEquipment(false);
     }
   };
 
@@ -250,8 +304,45 @@ export function DealDetails() {
                 <div className="text-sm text-gray-600">{deal.customer.address}</div>
               </div>
             </CardContent>
+          </Card>          {/* Equipment Information Card */}
+          <Card className="mb-4">
+            <CardHeader className="p-4 sm:p-6">
+              <CardTitle className="flex items-center">
+                <Package className="h-5 w-5 mr-2 text-primary-600" /> 
+                Equipment Information
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="px-4 pb-4 sm:px-6 sm:pb-6">
+              {loadingEquipment ? (
+                <div className="flex justify-center items-center py-4">
+                  <RefreshCw className="h-5 w-5 animate-spin text-primary-600" />
+                </div>
+              ) : equipmentList.length > 0 ? (
+                <div className="space-y-2">
+                  {equipmentList.map((equipment) => (
+                    <div key={equipment.id} className="p-3 border rounded-md bg-gray-50">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h4 className="font-medium text-sm">{equipment.name}</h4>
+                          <p className="text-xs text-gray-500">{equipment.machineType}</p>
+                        </div>
+                        <div className="text-sm text-right">
+                          <span className="font-medium">Qty: {equipment.quantity}</span>
+                        </div>
+                      </div>
+                      <div className="mt-2 text-xs text-gray-600 flex justify-between">
+                        <div>Base Rate: {formatCurrency(equipment.baseRate)}</div>
+                        <div>Cost/Km: {formatCurrency(equipment.runningCostPerKm)}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500">No equipment information available for this deal.</p>
+              )}
+            </CardContent>
           </Card>
-
+          
           {/* Actions Card - Hidden on mobile (shown at top instead) */}
           <Card className="hidden sm:block">
             <CardHeader className="p-4 sm:p-6">
