@@ -103,13 +103,17 @@ export function quotationToTemplateData(quotation: Quotation): TemplateData {
     quotation_date: createdDate.toLocaleDateString('en-IN'),
     quotation_number: `QT-${quotation.id.slice(0, 8).toUpperCase()}`,
     valid_until: validUntilDate.toLocaleDateString('en-IN'),
-    created_date: createdDate.toLocaleDateString('en-IN'),
-
-    // Equipment information
-    equipment_name: quotation.selectedEquipment?.name || 'N/A',
-    equipment_id: quotation.selectedEquipment?.equipmentId || 'N/A',
-    equipment_capacity: `${quotation.selectedEquipment?.name || 'N/A'}`,
-    equipment_type: quotation.selectedEquipment?.name?.split(' ')[0] || 'N/A',
+    created_date: createdDate.toLocaleDateString('en-IN'),    // Equipment information
+    equipment_name: (quotation.selectedMachines && quotation.selectedMachines.length > 0)
+      ? quotation.selectedMachines.map(m => `${m.name} (${m.quantity} unit${m.quantity > 1 ? 's' : ''})`).join(', ')
+      : quotation.selectedEquipment?.name || 'N/A',
+    equipment_id: (quotation.selectedMachines && quotation.selectedMachines.length > 0)
+      ? quotation.selectedMachines.map(m => m.equipmentId).join(', ')
+      : quotation.selectedEquipment?.equipmentId || 'N/A',
+    equipment_capacity: (quotation.selectedMachines && quotation.selectedMachines.length > 0)
+      ? quotation.selectedMachines.map(m => m.name).join(', ')
+      : quotation.selectedEquipment?.name || 'N/A',
+    equipment_type: quotation.machineType || 'N/A',
 
     // Project details
     project_duration: `${quotation.numberOfDays} days`,

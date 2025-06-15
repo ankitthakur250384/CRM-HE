@@ -1,12 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardHeader, CardTitle, CardContent } from '../common/Card';
 import { Button } from '../common/Button';
-import { Select } from '../common/Select';
 import { Toast } from '../common/Toast';
 import { Template } from '../../types/template';
 import { Quotation } from '../../types/quotation';
 import { mergeQuotationWithTemplate, getAvailablePlaceholders } from '../../utils/templateMerger';
-import { Eye, Download, Send, FileText, Info } from 'lucide-react';
+import { FileText, Info, Download, Send, RefreshCw } from 'lucide-react';
 
 // Sample quotation data for preview when no quotation is provided
 const SAMPLE_QUOTATION: Quotation = {
@@ -24,8 +23,7 @@ const SAMPLE_QUOTATION: Quotation = {
   },
   orderType: 'monthly',
   numberOfDays: 30,
-  workingHours: 8,
-  selectedEquipment: {
+  workingHours: 8,  selectedEquipment: {
     id: 'sample-equipment',
     equipmentId: 'crane-001',
     name: '50T Mobile Crane',
@@ -36,6 +34,37 @@ const SAMPLE_QUOTATION: Quotation = {
       yearly: 3500
     }
   },
+  selectedMachines: [
+    {
+      id: 'sample-equipment',
+      machineType: 'mobile_crane',
+      equipmentId: 'crane-001',
+      name: '50T Mobile Crane',      baseRates: {
+        micro: 5000,
+        small: 4500,
+        monthly: 4000,
+        yearly: 3500
+      },
+      baseRate: 4000,
+      runningCostPerKm: 100,
+      quantity: 1
+    },
+    {
+      id: 'sample-equipment-2',
+      machineType: 'mobile_crane',
+      equipmentId: 'crane-002',
+      name: '100T Mobile Crane',
+      baseRates: {
+        micro: 8000,
+        small: 7500,
+        monthly: 7000,
+        yearly: 6500
+      },
+      baseRate: 7000,
+      runningCostPerKm: 150,
+      quantity: 2
+    }
+  ],
   foodResources: 2,
   accomResources: 2,
   siteDistance: 50,
@@ -43,9 +72,8 @@ const SAMPLE_QUOTATION: Quotation = {
   riskFactor: 'low',
   extraCharge: 5000,
   incidentalCharges: ['incident1', 'incident2'],
-  otherFactorsCharge: 2000,
-  billing: 'gst',
-  baseRate: 4000,
+  otherFactorsCharge: 2000,  billing: 'gst',
+  workingCost: 4000,
   includeGst: true,
   shift: 'single',
   dayNight: 'day',
@@ -56,10 +84,11 @@ const SAMPLE_QUOTATION: Quotation = {
   version: 1,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
-  createdBy: 'system',
-  status: 'draft',
-  machineType: 'crane',
-  otherFactors: ['rigger', 'area', 'customerReputation']
+  createdBy: 'system',  status: 'draft',
+  machineType: 'mobile_crane',
+  otherFactors: ['rigger', 'area', 'customer_reputation'],
+  dealType: 'credit',
+  sundayWorking: 'no'
 };
 
 interface TemplatePreviewProps {
@@ -84,7 +113,6 @@ export function TemplatePreview({
     title: string;
     variant?: 'success' | 'error' | 'warning';
   }>({ show: false, title: '' });
-
   // Validate template
   useEffect(() => {
     if (!template) {
@@ -96,7 +124,10 @@ export function TemplatePreview({
       return;
     }
     setError(null);
-  }, [template]);
+    
+    console.log("Template preview received template:", template);
+    console.log("Template preview received quotation:", quotation);
+  }, [template, quotation]);
 
   const previewQuotation = quotation || SAMPLE_QUOTATION;
 
@@ -108,10 +139,17 @@ export function TemplatePreview({
   // Merge template with quotation data
   let mergedContent = '';
   try {
-    mergedContent = mergeQuotationWithTemplate(previewQuotation, template);
+    if (template && template.content) {
+      mergedContent = mergeQuotationWithTemplate(previewQuotation, template);
+      console.log("Generated merged content:", mergedContent ? mergedContent.substring(0, 100) + '...' : 'empty');
+    } else {
+      console.warn("Cannot merge template - missing template or content");
+      mergedContent = '<div style="padding: 20px;">Template content could not be loaded</div>';
+    }
   } catch (err) {
     console.error('Error merging template:', err);
     setError('Failed to merge template with quotation data');
+    mergedContent = '<div style="padding: 20px; color: red;">Error generating preview</div>';
   }
 
   // Get available placeholders grouped by category
@@ -255,16 +293,30 @@ export function TemplatePreview({
               )}
             </div>
           </div>
-        </CardHeader>
-        <CardContent>
+        </CardHeader>        <CardContent>
+          {error ? (
+            <div className="bg-red-50 border border-red-100 rounded-md p-4 text-red-800 text-sm mb-4">
+              <p className="font-medium">Error: {error}</p>
+              <p className="mt-1">Please try refreshing the page or select a different template.</p>
+            </div>
+          ) : null}
+          
           {mergedContent ? (
             <div 
-              className="prose max-w-none"
+              className="prose max-w-none border rounded-md p-4"
               dangerouslySetInnerHTML={{ __html: mergedContent }} 
             />
           ) : (
-            <div className="text-center text-gray-500 py-8">
-              No preview available
+            <div className="flex flex-col items-center justify-center text-gray-500 py-16 border border-dashed rounded-md">
+              <RefreshCw className="w-8 h-8 animate-spin mb-4" />
+              <p>Preparing preview...</p>
+            </div>
+          )}
+          
+          {template && !template.content && (
+            <div className="mt-4 bg-yellow-50 border border-yellow-100 rounded-md p-4 text-yellow-800 text-sm">
+              <p className="font-medium">Warning: Template has no content</p>
+              <p className="mt-1">This template appears to be empty. Please edit the template to add content.</p>
             </div>
           )}
         </CardContent>

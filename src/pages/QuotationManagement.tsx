@@ -109,16 +109,76 @@ export function QuotationManagement() {
       setIsLoading(false);
     }
   };
-
   const loadDefaultTemplate = async () => {
     try {
       const config = await getDefaultTemplateConfig();
+      
+      // First try to get the default template from config
       if (config.defaultTemplateId) {
         const template = await getTemplateById(config.defaultTemplateId);
-        setDefaultTemplate(template);
+        if (template) {
+          console.log("Loaded template from config:", template);
+          setDefaultTemplate(template);
+          return;
+        }
       }
+      
+      // If no template found, use the default template from templateService
+      try {
+        // Try to get all templates
+        const templateService = await import('../services/firestore/templateService');
+        const templates = await templateService.getTemplates();
+        
+        if (templates && templates.length > 0) {
+          // Use the first template or the one marked as default
+          const defaultTemplate = templates.find(t => t.isDefault) || templates[0];
+          console.log("Loaded template from templateService:", defaultTemplate);
+          setDefaultTemplate(defaultTemplate);
+          return;
+        }
+      } catch (e) {
+        console.error("Error loading templates from service:", e);
+      }
+      
+      // If still no template, create a fallback template
+      const fallbackTemplate = {
+        id: 'fallback-template',
+        name: 'Default Template',
+        description: 'Standard quotation template',
+        content: `<div style="font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 15px;">
+          <div style="text-align: center; margin-bottom: 15px;">
+            <h1 style="color: #0052CC; margin: 0; font-size: 22px; font-weight: 600;">ASP CRANES</h1>
+            <h2 style="color: #42526E; margin: 2px 0; font-size: 16px; font-weight: 500;">QUOTATION</h2>
+            <hr style="border: none; height: 1px; background: #0052CC; margin: 8px 0 0 0;">
+          </div>
+          <div style="margin-bottom: 15px;">
+            <p><strong>Equipment:</strong> {{equipment_name}}</p>
+            <p><strong>Duration:</strong> {{project_duration}}</p>
+            <p><strong>Total Amount:</strong> {{total_amount}}</p>
+          </div>
+        </div>`,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        isDefault: true
+      };
+      
+      console.log("Using fallback template");
+      setDefaultTemplate(fallbackTemplate);
     } catch (error) {
       console.error('Error loading default template:', error);
+      
+      // Final fallback - always set some template
+      const emergencyTemplate = {
+        id: 'emergency-template',
+        name: 'Basic Template',
+        description: 'Basic quotation template',
+        content: '<div style="padding: 20px; font-family: Arial;">Basic quotation for {{equipment_name}}</div>',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        isDefault: true
+      };
+      
+      setDefaultTemplate(emergencyTemplate);
     }
   };
 
