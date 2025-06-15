@@ -1,20 +1,13 @@
 import React, { useState, useEffect } from 'react';
+import { signUp } from '../services/firestore/authService';
 import { 
-  Plus, 
   Search, 
   Edit2, 
   Trash2, 
   CheckCircle2,
   XCircle,
   AlertCircle,
-  UserPlus,
-  Mail,
-  User,
-  Shield,
-  Phone,
-  MapPin,
-  Building2,
-  Users
+  UserPlus
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/common/Card';
 import { Button } from '../components/common/Button';
@@ -99,11 +92,11 @@ export function UserManagement() {
     description?: string;
     variant?: 'success' | 'error' | 'warning';
   }>({ show: false, title: '' });
-
   // Form state
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    password: '',
     role: 'operator' as UserRole,
     status: 'active' as 'active' | 'inactive',
   });
@@ -140,7 +133,6 @@ export function UserManagement() {
     setFilteredUsers(filtered);
     setCurrentPage(1);
   };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -149,32 +141,53 @@ export function UserManagement() {
       return;
     }
 
-    try {
-      const newUser: ExtendedUser = {
-        id: selectedUser?.id || Math.random().toString(36).substring(2, 9),
-        name: formData.name,
-        email: formData.email,
-        role: formData.role,
-        status: formData.status,
-        avatar: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1',
-      };
+    // Check for password when adding a new user
+    if (!selectedUser && !formData.password) {
+      showToast('Password is required for new users', 'error');
+      return;
+    }
 
+    try {
       if (selectedUser) {
+        // For existing users, just update the UI since we don't have password update functionality in this demo
+        const updatedUser: ExtendedUser = {
+          ...selectedUser,
+          name: formData.name,
+          email: formData.email,
+          role: formData.role,
+          status: formData.status,
+        };
+        
         setUsers(prev => 
           prev.map(user => 
-            user.id === selectedUser.id ? newUser : user
+            user.id === selectedUser.id ? updatedUser : user
           )
         );
         showToast('User updated successfully', 'success');
       } else {
-        setUsers(prev => [...prev, newUser]);
-        showToast('User added successfully', 'success');
+        // For new users, use Firebase Auth to create the account
+        try {
+          const newUser = await signUp(formData.email, formData.password, formData.name, formData.role);
+          
+          // Add the new user to our local state with the status
+          const extendedUser: ExtendedUser = {
+            ...newUser,
+            status: formData.status,
+            avatar: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1',
+          };
+          
+          setUsers(prev => [...prev, extendedUser]);
+          showToast('User added successfully', 'success');
+        } catch (authError: any) {
+          showToast(`Error creating user account: ${authError.message || 'Unknown error'}`, 'error');
+          return;
+        }
       }
 
       setIsModalOpen(false);
       resetForm();
-    } catch (error) {
-      showToast('Error saving user', 'error');
+    } catch (error: any) {
+      showToast(`Error saving user: ${error.message || 'Unknown error'}`, 'error');
     }
   };
 
@@ -204,11 +217,11 @@ export function UserManagement() {
       'success'
     );
   };
-
   const resetForm = () => {
     setFormData({
       name: '',
       email: '',
+      password: '',
       role: 'operator',
       status: 'active',
     });
@@ -366,10 +379,10 @@ export function UserManagement() {
                               variant="ghost"
                               size="sm"
                               onClick={() => {
-                                setSelectedUser(user);
-                                setFormData({
+                                setSelectedUser(user);                                setFormData({
                                   name: user.name,
                                   email: user.email,
+                                  password: '',  // Empty for editing existing user
                                   role: user.role,
                                   status: user.status,
                                 });
@@ -444,14 +457,21 @@ export function UserManagement() {
             value={formData.name}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, name: e.target.value }))}
             required
-          />
-
-          <FormInput
+          />          <FormInput
             label="Email Address"
             type="email"
             value={formData.email}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, email: e.target.value }))}
             required
+          />
+
+          <FormInput
+            label="Password"
+            type="password"
+            value={formData.password || ''}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, password: e.target.value }))}
+            required={!selectedUser}
+            placeholder={selectedUser ? "Leave blank to keep current password" : ""}
           />
 
           <Select

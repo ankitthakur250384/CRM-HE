@@ -11,7 +11,7 @@ import { auth, db } from '../../lib/firebase';
 import { User, UserRole } from '../../types/auth';
 import { usersCollection } from './collections';
 
-const signUp = async (
+export const signUp = async (
   email: string,
   password: string,
   name: string,
