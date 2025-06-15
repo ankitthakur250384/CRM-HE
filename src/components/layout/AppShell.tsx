@@ -14,6 +14,7 @@ export function AppShell({ requiredRole, children }: AppShellProps) {
   const { isAuthenticated, user, checkAuth } = useAuthStore();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   
   // Check if token is valid
   useEffect(() => {
@@ -33,6 +34,18 @@ export function AppShell({ requiredRole, children }: AppShellProps) {
     };
     validateAuth();
   }, [checkAuth, navigate]);
+
+  // Close sidebar when navigating on mobile
+  useEffect(() => {
+    const handleResize = () => {
+      if (window.innerWidth >= 1024) { // lg breakpoint
+        setIsMobileSidebarOpen(false);
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, []);
   
   if (isLoading) {
     return (
@@ -51,13 +64,20 @@ export function AppShell({ requiredRole, children }: AppShellProps) {
   if (requiredRole && user?.role !== requiredRole) {
     return <Navigate to="/dashboard" />;
   }
+
+  const toggleMobileSidebar = () => {
+    setIsMobileSidebarOpen(!isMobileSidebarOpen);
+  };
   
   return (
     <div className="flex h-screen bg-gray-100">
-      <Sidebar />
+      <Sidebar 
+        isMobileOpen={isMobileSidebarOpen} 
+        onMobileClose={() => setIsMobileSidebarOpen(false)} 
+      />
       <div className="flex flex-col flex-1 overflow-hidden">
-        <Header />
-        <main className="flex-1 overflow-x-hidden overflow-y-auto p-4 md:p-6">
+        <Header onMobileMenuClick={toggleMobileSidebar} />
+        <main className="flex-1 overflow-x-hidden overflow-y-auto p-3 sm:p-4 md:p-6">
           {children || <Outlet />}
         </main>
       </div>

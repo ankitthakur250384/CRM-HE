@@ -913,7 +913,7 @@ export function QuotationCreation() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       <style>
         {`
           /* Remove number input spinners */
@@ -929,65 +929,67 @@ export function QuotationCreation() {
       </style>
 
       {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div className="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4">
           <Button
             variant="ghost"
+            size="sm"
             onClick={() => navigate('/quotations')}
             leftIcon={<ArrowLeft size={16} />}
+            className="self-start"
           >
-            Back to Quotations
+            Back
           </Button>
           <div>
-            <h1 className="text-2xl font-semibold text-gray-900">
+            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">
               {quotationId ? 'Edit Quotation' : 'Create Quotation'}
             </h1>
-            <p className="text-gray-600">For {deal.customer.name} - {deal.title}</p>
+            <p className="text-sm sm:text-base text-gray-600">For {deal.customer.name} - {deal.title}</p>
           </div>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto">
+      <div className="max-w-full md:max-w-7xl mx-auto px-2 sm:px-4">
         {/* Customer Information Card */}
-        <Card className="mb-6 shadow-sm hover:shadow-md transition-shadow duration-200">
+        <Card className="mb-4 sm:mb-6 shadow-sm hover:shadow-md transition-shadow duration-200">
           <CardHeader>
             <div className="flex items-center space-x-2">
-              <Users className="w-5 h-5 text-gray-500" />
-              <CardTitle className="text-lg font-medium">Customer Information</CardTitle>
+              <Users className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500" />
+              <CardTitle className="text-base sm:text-lg font-medium">Customer Information</CardTitle>
             </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              <div className="space-y-2">
-                <div className="text-sm text-gray-500">Customer Name</div>
-                <div className="font-medium">{deal.customer.name}</div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
+              <div className="space-y-1 sm:space-y-2">
+                <div className="text-xs sm:text-sm text-gray-500">Customer Name</div>
+                <div className="text-sm sm:text-base font-medium">{deal.customer.name}</div>
               </div>
-              <div className="space-y-2">
-                <div className="text-sm text-gray-500">Company</div>
-                <div className="font-medium">{deal.customer.company}</div>
+              <div className="space-y-1 sm:space-y-2">
+                <div className="text-xs sm:text-sm text-gray-500">Company</div>
+                <div className="text-sm sm:text-base font-medium">{deal.customer.company}</div>
               </div>
-              <div className="space-y-2">
-                <div className="text-sm text-gray-500">Designation</div>
-                <div className="font-medium">{deal.customer.designation || 'N/A'}</div>
+              <div className="space-y-1 sm:space-y-2">
+                <div className="text-xs sm:text-sm text-gray-500">Designation</div>
+                <div className="text-sm sm:text-base font-medium">{deal.customer.designation || 'N/A'}</div>
               </div>
-              <div className="space-y-2">
-                <div className="text-sm text-gray-500">Email</div>
-                <div className="font-medium">{deal.customer.email}</div>
+              <div className="space-y-1 sm:space-y-2">
+                <div className="text-xs sm:text-sm text-gray-500">Email</div>
+                <div className="text-sm sm:text-base font-medium break-all">{deal.customer.email}</div>
               </div>
-              <div className="space-y-2">
-                <div className="text-sm text-gray-500">Phone</div>
-                <div className="font-medium">{deal.customer.phone}</div>
+              <div className="space-y-1 sm:space-y-2">
+                <div className="text-xs sm:text-sm text-gray-500">Phone</div>
+                <div className="text-sm sm:text-base font-medium">{deal.customer.phone}</div>
               </div>
-              <div className="space-y-2">
-                <div className="text-sm text-gray-500">Address</div>
-                <div className="font-medium">{deal.customer.address}</div>
+              <div className="space-y-1 sm:space-y-2">
+                <div className="text-xs sm:text-sm text-gray-500">Address</div>
+                <div className="text-sm sm:text-base font-medium">{deal.customer.address}</div>
               </div>
             </div>
           </CardContent>
         </Card>
 
         <form onSubmit={handleSubmit}>
-          <div className="grid grid-cols-12 gap-6">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
             <div className="col-span-7 space-y-6">
               {/* Duration Card */}
               <Card className="shadow-sm hover:shadow-md transition-shadow duration-200">
@@ -1864,21 +1866,23 @@ export function QuotationCreation() {
                 </CardContent>
               </Card>
 
-              <div className="flex gap-3">
+              <div className="flex flex-col sm:flex-row gap-3 mt-4 sm:mt-6">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => navigate('/quotations')}
-                  className="flex-1 py-2.5"
+                  className="sm:flex-1 order-2 sm:order-1"
+                  size="md"
                 >
                   Cancel
                 </Button>
-                <div className="flex-1">
+                <div className="sm:flex-1 order-1 sm:order-2">
                   <Button 
                     type="submit"
                     disabled={isSaving || (formData.selectedMachines.length === 0 && !formData.selectedEquipment.id)}
-                    className="w-full py-2.5 bg-primary-600 hover:bg-primary-700"
+                    className="w-full bg-primary-600 hover:bg-primary-700"
                     leftIcon={isSaving ? <Clock className="animate-spin" /> : <Save />}
+                    size="md"
                   >
                     {isSaving ? 'Saving...' : quotationId ? 'Update Quotation' : 'Create Quotation'}
                   </Button>

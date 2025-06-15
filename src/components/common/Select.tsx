@@ -25,10 +25,11 @@ export function Select({
   ...props
 }: SelectProps) {
   return (
-    <div className="w-full">
+    <div className="w-full mb-3 sm:mb-4">
       {label && (
         <label className="block text-sm font-medium text-gray-700 mb-1">
           {label}
+          {props.required && <span className="text-error-500 ml-1">*</span>}
         </label>
       )}
       <div className="relative">
@@ -44,7 +45,7 @@ export function Select({
             block w-full rounded-md border-gray-300 shadow-sm
             focus:border-primary-500 focus:ring-primary-500
             disabled:bg-gray-100 disabled:text-gray-500
-            text-sm
+            text-sm sm:text-base py-2 px-3
             ${error ? 'border-error-300' : 'border-gray-300'}
             ${leftIcon ? 'pl-10' : ''}
             ${className}
@@ -59,7 +60,7 @@ export function Select({
         </select>
       </div>
       {error && (
-        <p className="mt-1 text-sm text-error-600">{error}</p>
+        <p className="mt-1 text-xs sm:text-sm text-error-600">{error}</p>
       )}
     </div>
   );

@@ -2,7 +2,7 @@ import React from 'react';
 
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: 'default' | 'outline' | 'ghost' | 'destructive';
-  size?: 'sm' | 'md' | 'lg';
+  size?: 'xs' | 'sm' | 'md' | 'lg';
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
   isLoading?: boolean;
@@ -19,9 +19,10 @@ const variants = {
 };
 
 const sizes = {
-  sm: 'px-3 py-1.5 text-sm',
-  md: 'px-4 py-2',
-  lg: 'px-6 py-3 text-lg',
+  xs: 'px-2 py-1 text-xs',
+  sm: 'px-2.5 py-1.5 text-sm',
+  md: 'px-3 py-2 sm:px-4 sm:py-2 text-sm sm:text-base',
+  lg: 'px-4 py-2 sm:px-6 sm:py-3 text-base sm:text-lg',
 };
 
 export function Button({
@@ -74,9 +75,9 @@ export function Button({
           />
         </svg>
       )}
-      {leftIcon && !isLoading && <span className="mr-2">{leftIcon}</span>}
-      {children}
-      {rightIcon && <span className="ml-2">{rightIcon}</span>}
+      {leftIcon && !isLoading && <span className="mr-1.5 sm:mr-2 flex-shrink-0">{leftIcon}</span>}
+      <span className="truncate">{children}</span>
+      {rightIcon && <span className="ml-1.5 sm:ml-2 flex-shrink-0">{rightIcon}</span>}
     </button>
   );
 }

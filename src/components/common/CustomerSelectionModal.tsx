@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, Plus, X } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { Modal } from './Modal';
 import { Button } from './Button';
 import { FormInput } from './FormInput';
@@ -99,13 +99,14 @@ export function CustomerSelectionModal({
       title="Select or Create Customer"
       size="md"
     >
-      <div className="space-y-6">
+      <div className="space-y-4">
         {/* Always show the selection buttons */}
-        <div className="flex gap-4">
+        <div className="flex flex-col sm:flex-row gap-3">
           <Button
             variant={mode === 'select' ? "default" : "outline"}
             onClick={() => setMode('select')}
             className="flex-1"
+            size="sm"
           >
             Select Existing
           </Button>
@@ -124,6 +125,7 @@ export function CustomerSelectionModal({
               });
             }}
             className="flex-1"
+            size="sm"
           >
             Create New
           </Button>
@@ -132,37 +134,37 @@ export function CustomerSelectionModal({
         {mode === 'select' ? (
           <>
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4 sm:h-5 sm:w-5" />
               <FormInput
-                placeholder="Search customers by name, email, or ID..."
+                placeholder="Search customers..."
                 value={searchTerm}
                 onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchTerm(e.target.value)}
                 className="pl-10"
               />
             </div>
 
-            <div className="max-h-96 overflow-y-auto border rounded-lg divide-y">
+            <div className="max-h-[60vh] sm:max-h-96 overflow-y-auto border rounded-lg divide-y">
               {isLoading ? (
-                <div className="p-4 text-center text-gray-500">Loading customers...</div>
+                <div className="p-3 sm:p-4 text-center text-gray-500">Loading customers...</div>
               ) : filteredCustomers.length === 0 ? (
-                <div className="p-4 text-center text-gray-500">No customers found</div>
+                <div className="p-3 sm:p-4 text-center text-gray-500">No customers found</div>
               ) : (
                 filteredCustomers.map((customer) => (
                   <div
                     key={customer.id}
-                    className="p-4 hover:bg-gray-50 cursor-pointer"
+                    className="p-3 sm:p-4 hover:bg-gray-50 cursor-pointer"
                     onClick={() => handleSelectCustomer(customer)}
                   >
                     <div>
-                      <div className="font-medium">{customer.name}</div>
+                      <div className="font-medium text-sm sm:text-base">{customer.name}</div>
                       {customer.companyName && (
-                        <div className="text-sm text-gray-600">{customer.companyName}</div>
+                        <div className="text-xs sm:text-sm text-gray-600">{customer.companyName}</div>
                       )}
                       {customer.designation && (
-                        <div className="text-sm text-gray-600">{customer.designation}</div>
+                        <div className="text-xs sm:text-sm text-gray-600">{customer.designation}</div>
                       )}
-                      <div className="text-sm text-gray-500">{customer.email}</div>
-                      <div className="text-sm text-gray-500">{customer.customerId}</div>
+                      <div className="text-xs sm:text-sm text-gray-500">{customer.email}</div>
+                      <div className="text-xs sm:text-sm text-gray-500">{customer.customerId}</div>
                     </div>
                   </div>
                 ))
@@ -171,53 +173,60 @@ export function CustomerSelectionModal({
           </>
         ) : (
           <div className="space-y-4">
-            <FormInput
-              label="Customer Name"
-              value={formData.name}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-              placeholder="Enter customer name"
-              required
-            />
-            <FormInput
-              label="Company Name"
-              value={formData.companyName}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, companyName: e.target.value }))}
-              placeholder="Enter company name"
-              required
-            />
-            <FormInput
-              label="Designation"
-              value={formData.designation}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, designation: e.target.value }))}
-              placeholder="Enter designation"
-              required
-            />
-            <FormInput
-              label="Email"
-              type="email"
-              value={formData.email}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-              placeholder="Enter email address"
-              required
-            />
-            <FormInput
-              label="Phone"
-              value={formData.phone}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-              placeholder="Enter phone number"
-              required
-            />
-            <FormInput
-              label="Address"
-              value={formData.address}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, address: e.target.value }))}
-              placeholder="Enter address"
-              required
-            />
-            <div className="flex justify-end gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <FormInput
+                label="Customer Name"
+                value={formData.name}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                placeholder="Enter customer name"
+                required
+              />
+              <FormInput
+                label="Company Name"
+                value={formData.companyName}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, companyName: e.target.value }))}
+                placeholder="Enter company name"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <FormInput
+                label="Designation"
+                value={formData.designation}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, designation: e.target.value }))}
+                placeholder="Enter designation"
+                required
+              />
+              <FormInput
+                label="Email"
+                type="email"
+                value={formData.email}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                placeholder="Enter email address"
+                required
+              />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4">
+              <FormInput
+                label="Phone"
+                value={formData.phone}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                placeholder="Enter phone number"
+                required
+              />
+              <FormInput
+                label="Address"
+                value={formData.address}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, address: e.target.value }))}
+                placeholder="Enter address"
+                required
+              />
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
               <Button 
                 onClick={handleCreateCustomer}
                 className="bg-blue-500 hover:bg-blue-600 text-white"
+                size="sm"
               >
                 Add Customer
               </Button>
@@ -227,4 +236,4 @@ export function CustomerSelectionModal({
       </div>
     </Modal>
   );
-} 
+}

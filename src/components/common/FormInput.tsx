@@ -1,4 +1,4 @@
-import React, { InputHTMLAttributes } from 'react';
+import { InputHTMLAttributes } from 'react';
 import { Input } from './Input';
 
 interface FormInputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -23,11 +23,11 @@ export function FormInput({
   const inputId = id || name || label?.toLowerCase().replace(/\s+/g, '_') || 'form_input';
   
   return (
-    <div className={`${fullWidth ? 'w-full' : ''} space-y-1`}>
+    <div className={`${fullWidth ? 'w-full' : ''} space-y-1 mb-3 sm:mb-4`}>
       {label && (
         <label 
           htmlFor={inputId}
-          className="block text-sm font-medium text-gray-700"
+          className="block text-sm font-medium text-gray-700 mb-1"
         >
           {label}
           {props.required && <span className="text-error-500 ml-1">*</span>}
@@ -37,7 +37,7 @@ export function FormInput({
         id={inputId}
         name={name || inputId}
         type={type}
-        className={`${fullWidth ? 'w-full' : ''} ${error ? 'border-error-500' : ''} ${className}`}
+        className={`${fullWidth ? 'w-full' : ''} ${error ? 'border-error-500' : ''} text-sm sm:text-base ${className}`}
         {...props}
         // Remove spinners from number inputs
         onWheel={type === 'number' ? (e) => e.currentTarget.blur() : undefined}
@@ -52,11 +52,11 @@ export function FormInput({
         }
       />
       {helperText && !error && (
-        <p className="text-sm text-gray-500">{helperText}</p>
+        <p className="text-xs sm:text-sm text-gray-500">{helperText}</p>
       )}
       {error && (
-        <p className="text-sm text-error-500">{error}</p>
+        <p className="text-xs sm:text-sm text-error-500">{error}</p>
       )}
     </div>
   );
-} 
+}

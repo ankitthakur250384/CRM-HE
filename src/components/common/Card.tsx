@@ -2,19 +2,19 @@ import React from 'react';
 import { cva, type VariantProps } from 'class-variance-authority';
 
 const cardVariants = cva(
-  'rounded-lg bg-white',
+  'rounded-lg bg-white w-full transition-shadow',
   {
     variants: {
       variant: {
-        default: 'shadow-card',
+        default: 'shadow-sm hover:shadow-md',
         bordered: 'border border-gray-200',
         flat: '',
       },
       padding: {
         none: '',
-        sm: 'p-3',
-        md: 'p-4',
-        lg: 'p-6',
+        sm: 'p-2 sm:p-3 md:p-4',
+        md: 'p-3 sm:p-4 md:p-5',
+        lg: 'p-4 sm:p-5 md:p-6',
       },
     },
     defaultVariants: {
@@ -55,7 +55,7 @@ interface CardHeaderProps extends React.HTMLAttributes<HTMLDivElement> {
 
 export function CardHeader({ children, className = '', ...props }: CardHeaderProps) {
   return (
-    <div className={`p-6 border-b border-gray-200 ${className}`} {...props}>
+    <div className={`p-3 sm:p-4 md:p-6 border-b border-gray-200 ${className}`} {...props}>
       {children}
     </div>
   );
@@ -68,7 +68,7 @@ interface CardTitleProps {
 
 export function CardTitle({ children, className = '' }: CardTitleProps) {
   return (
-    <h3 className={`text-lg font-semibold text-gray-900 ${className}`}>
+    <h3 className={`text-base sm:text-lg font-semibold text-gray-900 ${className}`}>
       {children}
     </h3>
   );
@@ -81,7 +81,7 @@ interface CardContentProps {
 
 export function CardContent({ children, className = '' }: CardContentProps) {
   return (
-    <div className={`p-6 ${className}`}>
+    <div className={`p-3 sm:p-4 md:p-6 ${className}`}>
       {children}
     </div>
   );
@@ -93,7 +93,7 @@ const CardFooter = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <div 
     ref={ref} 
-    className={`flex items-center p-4 pt-0 ${className}`}
+    className={`flex flex-col sm:flex-row items-center gap-3 p-3 sm:p-4 md:p-6 pt-0 ${className}`}
     {...props} 
   />
 ));
