@@ -48,11 +48,10 @@ export function StatusBadge({ status, className }: StatusBadgeProps) {
         return 'bg-gray-100 text-gray-800';
     }
   };
-
   return (
     <span
       className={cn(
-        'inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium',
+        'inline-flex items-center px-2 sm:px-2.5 py-0.5 rounded-full text-[10px] sm:text-xs font-medium whitespace-nowrap',
         getStatusColor(status),
         className
       )}

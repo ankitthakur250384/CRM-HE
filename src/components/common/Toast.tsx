@@ -77,7 +77,6 @@ function Toast({
         return null;
     }
   };
-
   return (
     <AnimatePresence>
       {isOpen && (
@@ -86,25 +85,24 @@ function Toast({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -20 }}
           transition={{ duration: 0.2 }}
-          className="fixed bottom-4 right-4 z-50 flex items-end justify-center sm:items-start"
+          className="fixed bottom-4 inset-x-4 mx-auto sm:mx-0 sm:right-4 sm:left-auto z-50 flex items-end justify-center sm:items-start"
         >
           <div className={toastVariants({ variant, className })} {...props}>
             <div className="flex items-start">
               {variant && <div className="flex-shrink-0">{getIcon()}</div>}
-              <div className={`${variant ? 'ml-3' : ''} w-0 flex-1 pt-0.5`}>
+              <div className={`${variant ? 'ml-2 sm:ml-3' : ''} w-0 flex-1 pt-0.5`}>
                 <p className="text-sm font-medium">{title}</p>
                 {description && (
-                  <p className="mt-1 text-sm text-gray-500">{description}</p>
+                  <p className="mt-0.5 text-xs sm:text-sm text-gray-500 line-clamp-2 sm:line-clamp-none">{description}</p>
                 )}
               </div>
-              <div className="ml-4 flex flex-shrink-0">
-                <button
+              <div className="ml-2 sm:ml-4 flex flex-shrink-0">                <button
                   type="button"
-                  className="inline-flex rounded-md bg-transparent text-gray-400 hover:text-gray-500 focus:outline-none"
+                  className="inline-flex rounded-md bg-transparent text-gray-400 hover:text-gray-500 focus:outline-none p-0.5"
                   onClick={handleClose}
                 >
                   <span className="sr-only">Close</span>
-                  <X className="h-5 w-5" />
+                  <X className="h-4 w-4 sm:h-5 sm:w-5" />
                 </button>
               </div>
             </div>

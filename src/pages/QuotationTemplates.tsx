@@ -3,14 +3,13 @@ import { Button } from '../components/common/Button';
 import { Card, CardContent } from '../components/common/Card';
 import { Modal } from '../components/common/Modal';
 import { Template } from '../types/template';
-import { Plus, FileText, Edit2, Trash2, Copy, Eye, RefreshCw } from 'lucide-react';
-import { StructuredTemplateEditor } from '../components/quotations/StructuredTemplateEditor';
-import { TemplatePreview } from '../components/quotations/TemplatePreview';
+import { Plus, FileText, RefreshCw } from 'lucide-react';
+
 import { Toast } from '../components/common/Toast';
-import { validateTemplate } from '../utils/templateMerger';
+
 import { getTemplates, createTemplate, updateTemplate, deleteTemplate } from '../services/firestore/templateService';
 import { useAuthStore } from '../store/authStore';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { VisualTemplateEditor } from '../components/quotations/VisualTemplateEditor';
 import { Input } from '../components/common/Input';
 import { TextArea } from '../components/common/TextArea';
@@ -304,7 +303,17 @@ export function QuotationTemplates() {
   const handleCloseModal = () => {
     setIsCreateModalOpen(false);
     setIsEditOpen(false);
-    setPreviewTemplate(null);
+    setTemplateForm({
+      id: '',
+      name: '',
+      description: '',
+      content: '',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      createdBy: user?.email || 'unknown',
+      isDefault: false
+    });
+    setIsVisualMode(false);
   };
 
   const handleSetDefault = async (id: string) => {
@@ -372,36 +381,90 @@ export function QuotationTemplates() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="container px-4 sm:px-6 py-6 sm:py-8 max-w-7xl mx-auto">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
         <div>
-          <h1 className="text-2xl font-semibold text-gray-900">Quotation Templates</h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Create and manage templates for generating quotations.
+          <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Quotation Templates</h1>
+          <p className="text-sm sm:text-base text-gray-600">
+            Create and manage quotation templates for your business
           </p>
         </div>
         <Button 
-          onClick={() => setIsCreateModalOpen(true)}
-          leftIcon={<Plus className="h-4 w-4" />}
+          onClick={() => {
+            setIsCreateModalOpen(true);
+            setEditMode('new');
+            setTemplateForm({
+              id: '',
+              name: '',
+              description: '',
+              content: defaultTemplate.content,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+              createdBy: user?.email || 'unknown',
+              isDefault: false
+            });
+          }}
+          className="w-full sm:w-auto flex items-center gap-2"
         >
+          <Plus className="w-4 h-4" />
           Create Template
         </Button>
       </div>
 
-      {/* Template List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {templates.map((template) => (
-          <TemplateCard
-            key={template.id}
-            template={template}
-            onEdit={() => handleEditTemplate(template)}
-            onDelete={() => handleDeleteTemplate(template.id)}
-            onPreview={() => handlePreviewTemplate(template)}
-            onSetDefault={() => handleSetDefault(template.id)}
-          />
-        ))}
-      </div>
+      {isLoading ? (
+        <div className="flex justify-center items-center h-64">
+          <RefreshCw className="w-10 h-10 text-primary-500 animate-spin" />
+        </div>
+      ) : error ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <FileText className="w-12 h-12 text-red-500 mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">Failed to load templates</h3>
+            <p className="text-gray-500 mb-4 text-center">There was an error loading your templates.</p>
+            <Button onClick={loadTemplates}>Try Again</Button>
+          </CardContent>
+        </Card>
+      ) : templates.length === 0 ? (
+        <Card>
+          <CardContent className="flex flex-col items-center justify-center py-12">
+            <FileText className="w-12 h-12 text-gray-400 mb-4" />
+            <h3 className="text-lg font-medium text-gray-900 mb-2">No templates yet</h3>
+            <p className="text-gray-500 mb-4 text-center">Create your first quotation template to get started.</p>
+            <Button
+              onClick={() => {
+                setIsCreateModalOpen(true);
+                setEditMode('new');
+                setTemplateForm({
+                  id: '',
+                  name: '',
+                  description: '',
+                  content: defaultTemplate.content,
+                  createdAt: new Date().toISOString(),
+                  updatedAt: new Date().toISOString(),
+                  createdBy: user?.email || 'unknown',
+                  isDefault: false
+                });
+              }}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Create Template
+            </Button>
+          </CardContent>
+        </Card>
+      ) : (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+          {templates.map((template) => (
+            <TemplateCard
+              key={template.id}
+              template={template}
+              onEdit={() => handleEditTemplate(template)}
+              onDelete={() => handleDeleteTemplate(template.id)}
+              onPreview={() => handlePreviewTemplate(template)}
+              onSetDefault={() => handleSetDefault(template.id)}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Create/Edit Modal */}
       <Modal
@@ -418,20 +481,24 @@ export function QuotationTemplates() {
               setTemplateForm({ ...templateForm, name: e.target.value })}
           />
           
-          <div className="flex gap-4 mb-4">
+          <div className="flex gap-2 sm:gap-4 mb-4">
             <Button
               variant={isVisualMode ? 'default' : 'outline'}
               onClick={() => setIsVisualMode(true)}
+              size="sm"
+              className="flex-1 sm:flex-none"
             >
               Visual Editor
             </Button>
             <Button
               variant={!isVisualMode ? 'default' : 'outline'}
               onClick={() => setIsVisualMode(false)}
+              size="sm"
+              className="flex-1 sm:flex-none"
             >
               HTML Editor
             </Button>
-            </div>
+          </div>
             
           {isVisualMode ? (
             <VisualTemplateEditor
@@ -447,22 +514,29 @@ export function QuotationTemplates() {
                   setTemplateForm({ ...templateForm, content: e.target.value })}
                 rows={20}
               />
-              <div className="text-sm text-gray-500">
+              <div className="text-xs sm:text-sm text-gray-500">
                 Use double curly braces for placeholders, e.g. {"{{customer_name}}"}
               </div>
             </div>
           )}
 
-          <div className="flex justify-end gap-4 mt-6">
-            <Button variant="outline" onClick={handleCloseModal}>Cancel</Button>
-              <Button
+          <div className="flex flex-col sm:flex-row justify-end gap-2 sm:gap-4 mt-6">
+            <Button 
+              variant="outline" 
+              onClick={handleCloseModal}
+              className="w-full sm:w-auto"
+            >
+              Cancel
+            </Button>
+            <Button
               onClick={handleSaveTemplate}
               disabled={isLoading}
+              className="w-full sm:w-auto"
             >
               {isLoading ? 'Saving...' : 'Save Template'}
-              </Button>
-            </div>
+            </Button>
           </div>
+        </div>
       </Modal>
 
       {/* Preview Modal */}
@@ -477,6 +551,7 @@ export function QuotationTemplates() {
         <Toast
           title={toast.title}
           variant={toast.variant}
+          isVisible={toast.show}
           onClose={() => setToast({ show: false, title: '' })}
         />
       )}

@@ -68,17 +68,18 @@ export function AppShell({ requiredRole, children }: AppShellProps) {
   const toggleMobileSidebar = () => {
     setIsMobileSidebarOpen(!isMobileSidebarOpen);
   };
-  
-  return (
-    <div className="flex h-screen bg-gray-100">
+    return (
+    <div className="flex h-screen bg-gray-50">
       <Sidebar 
         isMobileOpen={isMobileSidebarOpen} 
         onMobileClose={() => setIsMobileSidebarOpen(false)} 
       />
       <div className="flex flex-col flex-1 overflow-hidden">
         <Header onMobileMenuClick={toggleMobileSidebar} />
-        <main className="flex-1 overflow-x-hidden overflow-y-auto p-3 sm:p-4 md:p-6">
-          {children || <Outlet />}
+        <main className="flex-1 overflow-x-hidden overflow-y-auto p-2 sm:p-3 md:p-4 lg:p-6">
+          <div className="max-w-[1600px] mx-auto">
+            {children || <Outlet />}
+          </div>
         </main>
       </div>
     </div>

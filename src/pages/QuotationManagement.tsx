@@ -205,16 +205,17 @@ export function QuotationManagement() {
     variant: 'success' | 'error' | 'warning' = 'success',
     description?: string
   ) => {
-    setToast({ show: true, title, variant, description });
-    setTimeout(() => setToast({ show: false, title: '' }), 3000);
-  };
+    setToast({
+      show: true,
+      title,
+      description,
+      variant
+    });
 
-  const handleCreateQuotation = () => {
-    if (deals.length === 0) {
-      showToast('No qualified deals available', 'warning', 'Create and qualify deals first to generate quotations.');
-      return;
-    }
-    setIsCreateModalOpen(true);
+    // Auto hide after 5 seconds
+    setTimeout(() => {
+      setToast({ show: false, title: '' });
+    }, 5000);
   };
 
   const handleProceedWithDeal = () => {
@@ -354,13 +355,12 @@ ASP Cranes Team`;
 
   // Transform deals into select options
   const dealOptions = useMemo(() => {
-    return [
-      { value: '', label: 'Select a qualified deal...' },
-      ...deals.map(deal => ({
-        value: deal.id,
-        label: `${deal.customer.name} - ${deal.customer.company} (${formatCurrency(deal.value)})`
-      }))
-    ];
+    if (deals.length === 0) return [{ value: '', label: 'No deals available' }];
+    
+    return deals.map(deal => ({
+      value: deal.id,
+      label: `${deal.customer?.name || 'Unnamed'} - ${deal.customer?.company || 'No Company'} (${formatCurrency(deal.value)})`
+    }));
   }, [deals]);
 
   if (!user || (user.role !== 'sales_agent' && user.role !== 'admin')) {
@@ -372,38 +372,35 @@ ASP Cranes Team`;
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
-      <div className="space-y-6">
-        <div className="flex justify-between items-center">
-          <h1 className="text-2xl font-semibold text-gray-900">Quotation Management</h1>
+    <div className="flex flex-col min-h-screen">
+      <div className="container mx-auto px-4 sm:px-6 py-6 sm:py-8 max-w-7xl">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4">
+          <div>
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">Quotation Management</h1>
+            <p className="text-sm sm:text-base text-gray-600">
+              Create, manage, and send quotations to customers
+            </p>
+          </div>
           <Button 
-            onClick={handleCreateQuotation}
-            disabled={isLoading}
-            className="flex items-center gap-2"
+            onClick={() => setIsCreateModalOpen(true)}
+            className="w-full sm:w-auto flex items-center gap-2"
           >
-            {isLoading ? (
-              <RefreshCw className="w-4 h-4 animate-spin" />
-            ) : (
-              <Plus className="w-4 h-4" />
-            )}
-            New Quotation
+            <Plus className="w-4 h-4" />
+            Create New Quotation
           </Button>
         </div>
 
-        <div className="flex items-center gap-4 mb-6">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-4 mb-6">
           <div className="flex-1">
             <Input
-              type="text"
-              name="quotation_search"
-              id="quotation_search"
-              placeholder="Search quotations..."
+              placeholder="Search by customer, company or equipment..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               leftIcon={<Search className="w-4 h-4" />}
               disabled={isLoading}
             />
           </div>
-          <div className="w-48">
+          <div className="w-full sm:w-48">
             <Select
               options={STATUS_OPTIONS}
               value={statusFilter}
@@ -418,7 +415,7 @@ ASP Cranes Team`;
           <CardHeader>
             <CardTitle>Quotation History</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-0 sm:px-6">
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
                 <RefreshCw className="w-8 h-8 animate-spin text-primary-600" />
@@ -447,83 +444,94 @@ ASP Cranes Team`;
                 <table className="min-w-full divide-y divide-gray-200">
                   <thead className="bg-gray-50">
                     <tr>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Customer
                       </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">
                         Equipment
                       </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden md:table-cell">
                         Duration
                       </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider hidden sm:table-cell">
                         Total Rent
                       </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Status
                       </th>
-                      <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      <th scope="col" className="px-2 sm:px-6 py-2 sm:py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                         Actions
                       </th>
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {filteredQuotations.map((quotation) => (
-                      <tr key={quotation.id}>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                      <tr key={quotation.id} className="hover:bg-gray-50">
+                        <td className="px-2 sm:px-6 py-3 sm:py-4">
                           <div className="flex items-start flex-col">
-                            <div className="text-sm font-medium text-gray-900">
+                            <div className="text-xs sm:text-sm font-medium text-gray-900">
                               {quotation.customerContact.name}
                             </div>
-                            <div className="text-sm text-gray-500">
+                            <div className="text-xs sm:text-sm text-gray-500">
                               {quotation.customerContact.company}
                             </div>
+                            {/* Mobile-only equipment info */}
+                            <div className="text-xs text-gray-500 sm:hidden mt-1">
+                              {quotation.selectedEquipment?.name || 
+                               (quotation.selectedMachines && quotation.selectedMachines.length > 0 ? 
+                                `${quotation.selectedMachines.length} machine(s)` : 'No equipment')}
+                            </div>
+                            {/* Mobile-only total info */}
+                            <div className="text-xs font-medium text-gray-800 sm:hidden mt-1">
+                              {formatCurrency(quotation.totalRent)}
+                            </div>
                           </div>
-                        </td>                        <td className="px-6 py-4 whitespace-nowrap">
+                        </td>
+                        <td className="px-2 sm:px-6 py-3 sm:py-4 hidden sm:table-cell">
                           {quotation.selectedMachines && quotation.selectedMachines.length > 0 ? (
                             <>
-                              <div className="text-sm text-gray-900">
+                              <div className="text-xs sm:text-sm text-gray-900">
                                 {quotation.selectedMachines.map(machine => machine.name).join(', ')}
                               </div>
-                              <div className="text-sm text-gray-500">
+                              <div className="text-xs sm:text-sm text-gray-500">
                                 {quotation.selectedMachines.length} machine{quotation.selectedMachines.length > 1 ? 's' : ''}
                               </div>
                             </>
                           ) : (
                             <>
-                              <div className="text-sm text-gray-900">{quotation.selectedEquipment.name}</div>
-                              <div className="text-sm text-gray-500">{quotation.machineType}</div>
+                              <div className="text-xs sm:text-sm text-gray-900">{quotation.selectedEquipment?.name || 'N/A'}</div>
+                              <div className="text-xs sm:text-sm text-gray-500">{quotation.machineType || 'N/A'}</div>
                             </>
                           )}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-900">{quotation.numberOfDays} days</div>
-                          <div className="text-sm text-gray-500">{quotation.workingHours} hrs/day</div>
+                        <td className="px-2 sm:px-6 py-3 sm:py-4 hidden md:table-cell">
+                          <div className="text-xs sm:text-sm text-gray-900">{quotation.numberOfDays} days</div>
+                          <div className="text-xs sm:text-sm text-gray-500">{quotation.workingHours} hrs/day</div>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                        <td className="px-2 sm:px-6 py-3 sm:py-4 hidden sm:table-cell text-xs sm:text-sm text-gray-900">
                           {formatCurrency(quotation.totalRent)}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
+                        <td className="px-2 sm:px-6 py-3 sm:py-4">
                           <StatusBadge status={quotation.status} />
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          <div className="flex items-center gap-2">
+                        <td className="px-2 sm:px-6 py-3 sm:py-4 text-sm text-gray-500">
+                          <div className="flex items-center gap-1 sm:gap-2">
                             <Button
                               variant="ghost"
-                              size="sm"
+                              size="xs"
                               onClick={() => handleEditQuotation(quotation)}
                               title="Edit Quotation"
                               disabled={isLoading || isEditingQuotation === quotation.id}
                             >
                               {isEditingQuotation === quotation.id ? (
-                                <RefreshCw size={16} className="animate-spin" />
+                                <RefreshCw size={14} className="animate-spin" />
                               ) : (
-                                <Edit2 size={16} />
+                                <Edit2 size={14} />
                               )}
                             </Button>
                             <Button
                               variant="ghost"
-                              size="sm"
+                              size="xs"
                               onClick={() => {
                                 setSelectedQuotation(quotation);
                                 setIsPreviewOpen(true);
@@ -531,32 +539,32 @@ ASP Cranes Team`;
                               title="Preview Quotation"
                               disabled={!defaultTemplate || isLoading}
                             >
-                              <Eye size={16} />
+                              <Eye size={14} />
                             </Button>
                             <Button
                               variant="ghost"
-                              size="sm"
+                              size="xs"
                               onClick={() => handleDownloadPDF(quotation)}
                               disabled={isGeneratingPDF || !defaultTemplate || isLoading}
                               title="Download PDF"
                             >
                               {isGeneratingPDF ? (
-                                <RefreshCw size={16} className="animate-spin" />
+                                <RefreshCw size={14} className="animate-spin" />
                               ) : (
-                                <Download size={16} />
+                                <Download size={14} />
                               )}
                             </Button>
                             <Button
                               variant="ghost"
-                              size="sm"
+                              size="xs"
                               onClick={() => handleSendToCustomer(quotation)}
                               disabled={isSendingEmail || !defaultTemplate || isLoading}
                               title="Send to Customer"
                             >
                               {isSendingEmail ? (
-                                <RefreshCw size={16} className="animate-spin" />
+                                <RefreshCw size={14} className="animate-spin" />
                               ) : (
-                                <Send size={16} />
+                                <Send size={14} />
                               )}
                             </Button>
                           </div>
@@ -580,12 +588,12 @@ ASP Cranes Team`;
           title="Create New Quotation"
           size="lg"
         >
-          <div className="space-y-6">
+          <div className="space-y-4 sm:space-y-6">
             <div>
-              <h3 className="text-lg font-medium text-gray-900 mb-4">
+              <h3 className="text-base sm:text-lg font-medium text-gray-900 mb-2 sm:mb-4">
                 Select a Qualified Deal
               </h3>
-              <p className="text-sm text-gray-600 mb-4">
+              <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">
                 Choose from qualified deals to create a quotation. Only deals in qualification or proposal stage are shown.
               </p>
             
@@ -599,15 +607,15 @@ ASP Cranes Team`;
               />
               
               {selectedDealId && (
-                <div className="mt-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                <div className="mt-3 sm:mt-4 p-3 sm:p-4 bg-blue-50 border border-blue-200 rounded-lg">
                   {(() => {
                     const selectedDeal = deals.find(d => d.id === selectedDealId);
                     if (!selectedDeal) return null;
                     
                     return (
                       <div className="space-y-2">
-                        <h4 className="font-medium text-blue-900">Selected Deal Details</h4>
-                        <div className="grid grid-cols-2 gap-4 text-sm">
+                        <h4 className="text-sm sm:text-base font-medium text-blue-900">Selected Deal Details</h4>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 text-xs sm:text-sm">
                           <div>
                             <span className="text-blue-700 font-medium">Customer:</span>
                             <p className="text-blue-800">{selectedDeal.customer.name}</p>
@@ -632,7 +640,7 @@ ASP Cranes Team`;
               )}
             </div>
             
-            <div className="flex justify-end gap-3 pt-4 border-t">
+            <div className="flex flex-col sm:flex-row sm:justify-end gap-2 sm:gap-3 pt-4 border-t">
               <Button
                 variant="outline"
                 onClick={() => {
@@ -640,13 +648,14 @@ ASP Cranes Team`;
                   setSelectedDealId('');
                 }}
                 disabled={isLoading}
+                className="w-full sm:w-auto"
               >
                 Cancel
               </Button>
               <Button
                 onClick={handleProceedWithDeal}
                 disabled={!selectedDealId || isLoading}
-                className="flex items-center gap-2"
+                className="w-full sm:w-auto flex items-center justify-center gap-2"
               >
                 {isLoading ? (
                   <RefreshCw className="w-4 h-4 animate-spin" />
