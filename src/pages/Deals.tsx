@@ -1,31 +1,21 @@
-import React, { useState, useEffect, ReactNode } from 'react';
+import { useState, useEffect, ReactNode } from 'react';
 import type {
-  DragDropContext as DragDropContextType,
-  Droppable as DroppableType,
-  Draggable as DraggableType,
   DropResult,
   DroppableProvided,
-  DraggableProvided,
-  DroppableStateSnapshot,
-  DraggableStateSnapshot
+  DraggableProvided
 } from '@hello-pangea/dnd';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { 
-  DollarSign, 
   Users, 
   Calendar, 
-  ArrowRight,
   Search,
-  Plus,
   Building2,
-  IndianRupee,
-  MoreVertical
+  MoreVertical,
+  RefreshCw
 } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from '../components/common/Card';
 import { Badge } from '../components/common/Badge';
 import { Button } from '../components/common/Button';
 import { Input } from '../components/common/Input';
-import { Select } from '../components/common/Select';
 import { Toast } from '../components/common/Toast';
 import { useAuthStore } from '../store/authStore';
 import { Deal, DealStage } from '../types/deal';
@@ -33,13 +23,7 @@ import { getDeals, updateDealStage } from '../services/dealService';
 import { formatCurrency } from '../utils/formatters';
 import { useNavigate } from 'react-router-dom';
 
-const STAGE_COLORS = {
-  qualification: 'bg-blue-100 text-blue-800',
-  proposal: 'bg-yellow-100 text-yellow-800',
-  negotiation: 'bg-purple-100 text-purple-800',
-  won: 'bg-green-100 text-green-800',
-  lost: 'bg-red-100 text-red-800'
-};
+
 
 const STAGE_CONFIGS = [
   { id: 'qualification', label: 'Qualification', color: 'bg-blue-50' },
@@ -53,8 +37,12 @@ export function Deals() {
   const { user } = useAuthStore();
   const [deals, setDeals] = useState<Deal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [toast, setToast] = useState<{ show: boolean; title: string; variant?: 'success' | 'error' | 'warning' }>({
+  const [searchTerm, setSearchTerm] = useState('');  const [toast, setToast] = useState<{ 
+    show: boolean; 
+    title: string; 
+    variant?: 'success' | 'error' | 'warning';
+    description?: string;
+  }>({
     show: false,
     title: '',
   });
@@ -75,10 +63,9 @@ export function Deals() {
       setIsLoading(false);
     }
   };
-
-  const showToast = (title: string, variant: 'success' | 'error' = 'success') => {
-    setToast({ show: true, title, variant });
-    setTimeout(() => setToast({ show: false, title: '' }), 3000);
+  const showToast = (title: string, variant: 'success' | 'error' = 'success', description?: string) => {
+    setToast({ show: true, title, variant, description });
+    setTimeout(() => setToast({ show: false, title: '' }), 4000); // Increased duration slightly
   };
 
   const handleDragEnd = async (result: DropResult) => {
@@ -89,13 +76,15 @@ export function Deals() {
 
     try {
       const updatedDeal = await updateDealStage(draggableId, newStage);
-      if (updatedDeal) {
-        setDeals(prev => 
-          prev.map(deal => 
-            deal.id === draggableId ? updatedDeal : deal
-          )
+      if (updatedDeal) {        setDeals(prev => prev.map(deal => deal.id === draggableId ? updatedDeal : deal));
+        
+        const stageName = STAGE_CONFIGS.find(s => s.id === newStage)?.label || newStage;
+        const dealTitle = updatedDeal.title || 'Deal';
+        showToast(
+          `Deal moved to ${stageName}`, 
+          'success', 
+          `"${dealTitle}" has been successfully moved to the ${stageName} stage.`
         );
-        showToast(`Deal moved to ${newStage}`, 'success');
       }
     } catch (error) {
       console.error('Error updating deal stage:', error);
@@ -121,29 +110,32 @@ export function Deals() {
       </div>
     );
   }
-
   return (
-    <div className="space-y-6">
-      {toast.show && (
+    <div className="container mx-auto px-4 py-6 max-w-full">
+      {/* Toast notification is positioned fixed via its own component */}      {toast.show && (
         <Toast
           title={toast.title}
+          description={toast.description}
           variant={toast.variant}
           isVisible={toast.show}
+          duration={4000}
           onClose={() => setToast({ show: false, title: '' })}
         />
       )}
       
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-semibold text-gray-900">Deals Pipeline</h1>
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center space-x-2">
-            <Search className="w-4 h-4 text-gray-500" />
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-6">
+        <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">Deals Pipeline</h1>
+        <div className="flex items-center w-full sm:w-auto">
+          <div className="relative flex-grow">
+            <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+              <Search className="w-4 h-4 text-gray-500" />
+            </div>
             <Input
               type="text"
               placeholder="Search deals..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-[200px]"
+              className="pl-10 w-full"
             />
           </div>
         </div>
@@ -151,91 +143,103 @@ export function Deals() {
 
       {isLoading ? (
         <div className="flex justify-center items-center h-64">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+          <RefreshCw className="h-8 w-8 animate-spin text-primary-600" />
         </div>
       ) : (
         <DragDropContext onDragEnd={handleDragEnd}>
-          <div className="grid grid-cols-5 gap-4">
-            {STAGE_CONFIGS.map((stage) => (
-              <div key={stage.id} className={`rounded-lg ${stage.color} p-4`}>
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-medium text-gray-900">{stage.label}</h3>
-                  <Badge variant="outline">
-                    {formatCurrency(calculateStageTotal(stage.id as DealStage))}
-                  </Badge>
+          <div className="overflow-x-auto pb-6">
+            <div className="flex space-x-4 min-w-[800px] lg:min-w-full">
+              {STAGE_CONFIGS.map((stage) => (
+                <div key={stage.id} className={`rounded-lg ${stage.color} p-3 sm:p-4 flex-1 min-w-[240px]`}>
+                  <div className="flex items-center justify-between mb-3 sm:mb-4">
+                    <h3 className="font-medium text-sm sm:text-base text-gray-900">{stage.label}</h3>
+                    <Badge variant="outline" className="text-xs">
+                      {formatCurrency(calculateStageTotal(stage.id as DealStage))}
+                    </Badge>
+                  </div>
+                    <Droppable droppableId={stage.id}>
+                    {(
+                      provided: DroppableProvided
+                    ): ReactNode => (
+                      <div
+                        ref={provided.innerRef}
+                        {...provided.droppableProps}
+                        className="space-y-2 sm:space-y-3 min-h-[300px] sm:min-h-[500px]"
+                      >                        {getDealsByStage(stage.id as DealStage).map((deal, index) => (
+                          <Draggable key={deal.id} draggableId={deal.id} index={index}>
+                            {(
+                              provided: DraggableProvided
+                            ): ReactNode => (
+                              <div
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
+                                className="bg-white rounded-lg shadow p-3 sm:p-4 hover:shadow-md transition-shadow touch-manipulation"
+                              >
+                                <div className="flex items-start justify-between">
+                                  <div className="space-y-1 sm:space-y-2 flex-1 pr-2">
+                                    <h4 className="font-medium text-xs sm:text-sm text-gray-900 line-clamp-2">
+                                      {deal.title}
+                                    </h4>
+                                    <div className="flex items-center text-xs text-gray-500">
+                                      <Building2 className="h-3 w-3 sm:h-4 sm:w-4 mr-1" />
+                                      <span className="truncate">
+                                        {deal.customer.company || 'No company'}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <Button
+                                    variant="ghost"
+                                    size="xs"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      navigate(`/deals/${deal.id}`);
+                                    }}
+                                    className="p-1"
+                                  >
+                                    <MoreVertical className="h-3 w-3 sm:h-4 sm:w-4" />
+                                  </Button>
+                                </div>
+                                
+                                <div className="mt-2 sm:mt-3 pt-2 sm:pt-3 border-t border-gray-100">
+                                  <div className="flex items-center justify-between text-xs">
+                                    <div className="flex items-center text-gray-500 truncate max-w-[60%]">
+                                      <Users className="h-3 w-3 sm:h-4 sm:w-4 mr-1 flex-shrink-0" />
+                                      <span className="truncate">{deal.customer.name}</span>
+                                    </div>
+                                    <div className="font-medium text-gray-900">
+                                      {formatCurrency(deal.value)}
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center justify-between mt-1 sm:mt-2 text-xs">
+                                    <div className="flex items-center text-gray-500">
+                                      <Calendar className="h-3 w-3 sm:h-4 sm:w-4 mr-1 flex-shrink-0" />
+                                      <span className="hidden sm:inline">
+                                        {new Date(deal.expectedCloseDate).toLocaleDateString()}
+                                      </span>
+                                      <span className="sm:hidden">
+                                        {new Date(deal.expectedCloseDate).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                                      </span>
+                                    </div>
+                                    <Badge className="text-xs">
+                                      {Math.round(deal.probability)}%
+                                    </Badge>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                      </div>
+                    )}
+                  </Droppable>
                 </div>
-                
-                <Droppable droppableId={stage.id}>
-                  {(
-                    provided: DroppableProvided,
-                    snapshot: DroppableStateSnapshot
-                  ): ReactNode => (
-                    <div
-                      ref={provided.innerRef}
-                      {...provided.droppableProps}
-                      className="space-y-3 min-h-[500px]"
-                    >
-                      {getDealsByStage(stage.id as DealStage).map((deal, index) => (
-                        <Draggable key={deal.id} draggableId={deal.id} index={index}>
-                          {(
-                            provided: DraggableProvided,
-                            snapshot: DraggableStateSnapshot
-                          ): ReactNode => (
-                            <div
-                              ref={provided.innerRef}
-                              {...provided.draggableProps}
-                              {...provided.dragHandleProps}
-                              className="bg-white rounded-lg shadow p-4 hover:shadow-md transition-shadow"
-                            >
-                              <div className="flex items-start justify-between">
-                                <div className="space-y-2">
-                                  <h4 className="font-medium text-gray-900 line-clamp-2">
-                                    {deal.title}
-                                  </h4>
-                                  <div className="flex items-center text-sm text-gray-500">
-                                    <Building2 className="h-4 w-4 mr-1" />
-                                    {deal.customer.company || 'No company'}
-                                  </div>
-                                </div>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  onClick={() => navigate(`/deals/${deal.id}`)}
-                                >
-                                  <MoreVertical className="h-4 w-4" />
-                                </Button>
-                              </div>
-                              
-                              <div className="mt-3 pt-3 border-t border-gray-100">
-                                <div className="flex items-center justify-between text-sm">
-                                  <div className="flex items-center text-gray-500">
-                                    <Users className="h-4 w-4 mr-1" />
-                                    {deal.customer.name}
-                                  </div>
-                                  <div className="font-medium text-gray-900">
-                                    {formatCurrency(deal.value)}
-                                  </div>
-                                </div>
-                                <div className="flex items-center justify-between mt-2 text-sm">
-                                  <div className="flex items-center text-gray-500">
-                                    <Calendar className="h-4 w-4 mr-1" />
-                                    {new Date(deal.expectedCloseDate).toLocaleDateString()}
-                                  </div>
-                                  <Badge>
-                                    {Math.round(deal.probability)}%
-                                  </Badge>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </Draggable>
-                      ))}
-                      {provided.placeholder}
-                    </div>
-                  )}
-                </Droppable>
-              </div>
-            ))}
+              ))}
+            </div>
+          </div>
+          <div className="mt-4 text-xs text-center text-gray-500 sm:hidden">
+            <p>Scroll horizontally to see all pipeline stages</p>
           </div>
         </DragDropContext>
       )}

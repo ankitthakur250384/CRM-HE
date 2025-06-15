@@ -2,15 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
   Search, 
-  Filter,
-  FileText,
-  MapPin,
-  Phone,
-  Mail,
-  Upload,
-  Trash2,
-  Building2,
-  Users,
   ArrowRight
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/common/Card';
@@ -20,7 +11,7 @@ import { Button } from '../components/common/Button';
 import { Select } from '../components/common/Select';
 import { TextArea } from '../components/common/TextArea';
 import { Modal } from '../components/common/Modal';
-import { StatusBadge } from '../components/common/StatusBadge';
+
 import { Toast } from '../components/common/Toast';
 import { CustomerSelectionModal } from '../components/common/CustomerSelectionModal';
 import { useAuthStore } from '../store/authStore';
@@ -398,12 +389,11 @@ export function LeadManagement() {
                 ...LEAD_STATUS_OPTIONS
               ]}
               className="w-[150px]"
-            />
-            <Button
+            />            <Button
               onClick={() => setIsCreateModalOpen(true)}
-              className="inline-flex items-center whitespace-nowrap"
+              className="whitespace-nowrap"
+              leftIcon={<Plus className="h-4 w-4" />}
             >
-              <Plus className="mr-2 h-4 w-4" />
               Add Lead
             </Button>
           </div>
@@ -640,8 +630,7 @@ export function LeadManagement() {
               }}
             >
               Cancel
-            </Button>
-            <Button type="submit">
+            </Button>            <Button type="submit">
               Create Lead
             </Button>
           </div>

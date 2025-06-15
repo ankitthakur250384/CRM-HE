@@ -4,15 +4,15 @@ import { AlertCircle, CheckCircle2, Info, X, XCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const toastVariants = cva(
-  'pointer-events-auto relative w-full max-w-md overflow-hidden rounded-lg p-4 shadow-lg',
+  'pointer-events-auto relative w-full max-w-md overflow-hidden rounded-lg p-3 sm:p-4 shadow-xl border backdrop-blur-sm shadow-lg',
   {
     variants: {
       variant: {
-        default: 'bg-white text-gray-900',
-        success: 'bg-success-50 text-success-900',
-        error: 'bg-error-50 text-error-900',
-        warning: 'bg-warning-50 text-warning-900',
-        info: 'bg-primary-50 text-primary-900',
+        default: 'bg-white/95 text-gray-900 border-gray-200',
+        success: 'bg-success-50/95 text-success-900 border-success-300',
+        error: 'bg-error-50/95 text-error-900 border-error-300',
+        warning: 'bg-warning-50/95 text-warning-900 border-warning-300',
+        info: 'bg-primary-50/95 text-primary-900 border-primary-300',
       },
     },
     defaultVariants: {
@@ -76,27 +76,24 @@ function Toast({
       default:
         return null;
     }
-  };
-  return (
+  };  return (
     <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ opacity: 0, y: 50 }}
+      {isOpen && (        <motion.div          initial={{ opacity: 0, y: 50 }}
           animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -20 }}
-          transition={{ duration: 0.2 }}
-          className="fixed bottom-4 inset-x-4 mx-auto sm:mx-0 sm:right-4 sm:left-auto z-50 flex items-end justify-center sm:items-start"
+          exit={{ opacity: 0, y: 50 }}transition={{ duration: 0.3, type: "spring", stiffness: 300, damping: 25 }}
+          className="fixed bottom-6 sm:bottom-10 left-4 right-4 sm:left-auto sm:right-8 z-[9999] flex items-center justify-center pointer-events-none"
         >
-          <div className={toastVariants({ variant, className })} {...props}>
+          <div className={`pointer-events-auto ${toastVariants({ variant, className })}`} {...props}>
             <div className="flex items-start">
               {variant && <div className="flex-shrink-0">{getIcon()}</div>}
-              <div className={`${variant ? 'ml-2 sm:ml-3' : ''} w-0 flex-1 pt-0.5`}>
+              <div className={`${variant ? 'ml-2 sm:ml-3' : ''} flex-1 pt-0.5`}>
                 <p className="text-sm font-medium">{title}</p>
                 {description && (
-                  <p className="mt-0.5 text-xs sm:text-sm text-gray-500 line-clamp-2 sm:line-clamp-none">{description}</p>
+                  <p className="mt-0.5 text-xs sm:text-sm text-gray-600 line-clamp-3">{description}</p>
                 )}
               </div>
-              <div className="ml-2 sm:ml-4 flex flex-shrink-0">                <button
+              <div className="ml-2 sm:ml-4 flex flex-shrink-0">
+                <button
                   type="button"
                   className="inline-flex rounded-md bg-transparent text-gray-400 hover:text-gray-500 focus:outline-none p-0.5"
                   onClick={handleClose}

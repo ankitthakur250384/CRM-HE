@@ -380,12 +380,11 @@ ASP Cranes Team`;
             <p className="text-sm sm:text-base text-gray-600">
               Create, manage, and send quotations to customers
             </p>
-          </div>
-          <Button 
+          </div>          <Button
             onClick={() => setIsCreateModalOpen(true)}
-            className="w-full sm:w-auto flex items-center gap-2"
+            className="w-full sm:w-auto"
+            leftIcon={<Plus className="w-4 h-4" />}
           >
-            <Plus className="w-4 h-4" />
             Create New Quotation
           </Button>
         </div>
