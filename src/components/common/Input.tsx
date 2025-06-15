@@ -16,9 +16,10 @@ export function Input({ label, error, className = '', leftIcon, rightIcon, name,
 
   return (
     <div className="space-y-1.5">
-      {label && (
-        <label className="block text-xs sm:text-sm font-medium text-gray-700">
+      {label && (        <label className={`block text-xs sm:text-sm font-medium ${props.required ? 'text-blue-700' : 'text-green-700'}`}>
           {label}
+          {props.required ? <span className="text-error-500 ml-1 font-bold">*</span> : 
+           !props.disabled && <span className="text-green-500 ml-1 text-xs">(Optional)</span>}
         </label>
       )}
       <div className="relative">
@@ -29,19 +30,19 @@ export function Input({ label, error, className = '', leftIcon, rightIcon, name,
         )}
         <input
           name={inputName}
-          id={id || inputName}
-          className={`
+          id={id || inputName}          className={`
             block w-full rounded-md
-            border-gray-300 shadow-sm
-            focus:border-primary-500 focus:ring-primary-500
+            shadow-sm
+            focus:border-primary-500 focus:ring-primary-500 
             disabled:bg-gray-100 disabled:text-gray-500
             text-sm sm:text-base
-            py-1.5 sm:py-2
-            ${error ? 'border-error-300' : 'border-gray-300'}
+            py-1.5 sm:py-2            ${error ? 'border-error-300 bg-error-50' : 'border-gray-300'}
+            ${props.required ? 'bg-blue-50 border-blue-200 focus:bg-white' : 
+              !props.disabled ? 'bg-green-50 border-green-200 focus:bg-white' : ''}
             ${leftIcon ? 'pl-8 sm:pl-10' : ''}
             ${rightIcon ? 'pr-8 sm:pr-10' : ''}
             ${className}
-          `}
+          `}          placeholder={props.placeholder ? `${props.placeholder}${props.required ? ' *' : ''}` : ''}
           {...inputProps}
         />
         {rightIcon && (

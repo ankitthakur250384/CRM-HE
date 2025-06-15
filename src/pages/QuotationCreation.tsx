@@ -25,6 +25,7 @@ import { Input } from '../components/common/Input';
 import { FormInput } from '../components/common/FormInput';
 import { Select } from '../components/common/Select';
 import { Toast } from '../components/common/Toast';
+import { RequiredFieldsInfo } from '../components/common/RequiredFieldsInfo';
 import { useAuthStore } from '../store/authStore';
 import { Deal } from '../types/deal';
 import { Equipment, OrderType, CraneCategory, BaseRates } from '../types/equipment';
@@ -989,6 +990,7 @@ export function QuotationCreation() {
         </Card>
 
         <form onSubmit={handleSubmit}>
+          <RequiredFieldsInfo />
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
             <div className="col-span-7 space-y-6">
               {/* Duration Card */}

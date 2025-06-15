@@ -594,15 +594,16 @@ ASP Cranes Team`;
               </h3>
               <p className="text-xs sm:text-sm text-gray-600 mb-3 sm:mb-4">
                 Choose from qualified deals to create a quotation. Only deals in qualification or proposal stage are shown.
-              </p>
-            
-              <Select
-                options={isLoading ? [{ value: '', label: 'Loading deals...' }] : dealOptions}
+              </p>              <Select
+                options={isLoading ? [{ value: '', label: 'Loading deals...' }] : [
+                  { value: '', label: 'Select a Deal' },
+                  ...dealOptions.filter(option => option.value !== '')
+                ]}
                 value={selectedDealId}
                 onChange={setSelectedDealId}
-                className="w-full"
                 label="Available Deals"
                 disabled={isLoading}
+                required
               />
               
               {selectedDealId && (

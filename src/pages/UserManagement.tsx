@@ -15,6 +15,7 @@ import { FormInput } from '../components/common/FormInput';
 import { Select } from '../components/common/Select';
 import { Modal } from '../components/common/Modal';
 import { Toast } from '../components/common/Toast';
+import { RequiredFieldsInfo } from '../components/common/RequiredFieldsInfo';
 import { useAuthStore } from '../store/authStore';
 import { User as UserType, UserRole } from '../types/auth';
 
@@ -441,8 +442,7 @@ export function UserManagement() {
         </CardContent>
       </Card>
 
-      {/* Add/Edit User Modal */}
-      <Modal
+      {/* Add/Edit User Modal */}      <Modal
         isOpen={isModalOpen}
         onClose={() => {
           setIsModalOpen(false);
@@ -452,6 +452,7 @@ export function UserManagement() {
         size="lg"
       >
         <form onSubmit={handleSubmit} className="space-y-6">
+          <RequiredFieldsInfo />
           <FormInput
             label="Full Name"
             value={formData.name}

@@ -14,6 +14,7 @@ import { Modal } from '../components/common/Modal';
 
 import { Toast } from '../components/common/Toast';
 import { CustomerSelectionModal } from '../components/common/CustomerSelectionModal';
+import { RequiredFieldsInfo } from '../components/common/RequiredFieldsInfo';
 import { useAuthStore } from '../store/authStore';
 import { Lead, LeadStatus, Customer } from '../types/lead';
 import { getLeads, createLead, updateLeadStatus, updateLeadAssignment } from '../services/firestore/leadService';
@@ -509,6 +510,7 @@ export function LeadManagement() {
         size="lg"
       >
         <form onSubmit={handleCreateLead} className="space-y-6">
+          <RequiredFieldsInfo />
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <FormInput
               label="Full Name"

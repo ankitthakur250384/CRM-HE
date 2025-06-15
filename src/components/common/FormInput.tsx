@@ -24,13 +24,13 @@ export function FormInput({
   
   return (
     <div className={`${fullWidth ? 'w-full' : ''} space-y-1 mb-3 sm:mb-4`}>
-      {label && (
-        <label 
+      {label && (        <label 
           htmlFor={inputId}
-          className="block text-sm font-medium text-gray-700 mb-1"
+          className={`block text-sm font-medium mb-1 ${props.required ? 'text-blue-700' : 'text-green-700'}`}
         >
           {label}
-          {props.required && <span className="text-error-500 ml-1">*</span>}
+          {props.required ? <span className="text-error-500 ml-1 font-bold">*</span> : 
+           !props.disabled && <span className="text-green-500 ml-1 text-xs">(Optional)</span>}
         </label>
       )}
       <Input
