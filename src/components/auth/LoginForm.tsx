@@ -1,31 +1,39 @@
 import React, { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { Input } from '../common/Input';
 import { Button } from '../common/Button';
 import { AlertCircle } from 'lucide-react';
 import logo from '../../assets/asp-logo.jpg';
 
+interface LocationState {
+  from?: {
+    pathname: string;
+  };
+}
+
 export function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState('');
+  const { login, error } = useAuthStore();
   
-  const { login } = useAuthStore();
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  // Get the redirect path if available
+  const from = (location.state as LocationState)?.from?.pathname || '/dashboard';
   
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError('');
     setIsLoading(true);
     
     try {
       await login(email, password);
-      navigate('/dashboard');
+      // Redirect to dashboard or intended location
+      navigate(from, { replace: true });
     } catch (err) {
-      setError((err as Error).message);
-      // Clear password field on error for security
+      // Auth store already tracks the error, but we might want to clear password
       setPassword('');
     } finally {
       setIsLoading(false);

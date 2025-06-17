@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import { Navigate, Outlet, useNavigate } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { RefreshCw } from 'lucide-react';
+import { monitorOperation } from '../../utils/debugHelper';
 
 interface AppShellProps {
   requiredRole?: 'sales_agent' | 'operations_manager' | 'operator';
@@ -13,27 +14,41 @@ interface AppShellProps {
 export function AppShell({ requiredRole, children }: AppShellProps) {
   const { isAuthenticated, user, checkAuth } = useAuthStore();
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const authChecked = useRef(false);
   
-  // Check if token is valid
+  // Check auth only once on initial mount instead of every render
   useEffect(() => {
+    // Skip repeated auth checks if already done
+    if (authChecked.current) return;
+    
     const validateAuth = async () => {
       try {
         setIsLoading(true);
-        const isValid = await checkAuth();
-        if (!isValid) {
-          navigate('/login');
+        
+        // Only check auth if we're not already authenticated
+        if (!isAuthenticated || !user) {
+          const isValid = await checkAuth();
+          if (!isValid) {
+            navigate('/login', { replace: true });
+          }
         }
+        
+        authChecked.current = true;
       } catch (error) {
-        console.error('Error validating auth:', error);
-        navigate('/login');
+        console.error('Auth validation error:', error);
       } finally {
         setIsLoading(false);
       }
     };
-    validateAuth();
-  }, [checkAuth, navigate]);
+    
+    // Monitor this operation to detect potential freezes
+    const endMonitoring = monitorOperation('AppShell Auth Validation');
+    validateAuth().finally(() => {
+      endMonitoring();
+    });
+  }, [checkAuth, navigate, isAuthenticated, user]);
 
   // Close sidebar when navigating on mobile
   useEffect(() => {
@@ -68,7 +83,8 @@ export function AppShell({ requiredRole, children }: AppShellProps) {
   const toggleMobileSidebar = () => {
     setIsMobileSidebarOpen(!isMobileSidebarOpen);
   };
-    return (
+  
+  return (
     <div className="flex h-screen bg-gray-50">
       <Sidebar 
         isMobileOpen={isMobileSidebarOpen} 
