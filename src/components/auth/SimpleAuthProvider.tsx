@@ -17,18 +17,49 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const { checkAuth } = useAuthStore();
   const location = useLocation();
   const navigate = useNavigate();
-    // Add a guard against multiple auth checks to prevent reload loops
+  // Add a guard against multiple auth checks to prevent reload loops
   const [authCheckComplete, setAuthCheckComplete] = useState(false);
   const [loopCount, setLoopCount] = useState(0);
+  
+  // Force ready state if we've been waiting too long
+  useEffect(() => {
+    // Ensure we don't hang on the loading screen for more than 5 seconds
+    const forceReadyTimeout = setTimeout(() => {
+      if (!isReady) {
+        console.warn('⚠️ Force ready state after timeout to prevent hanging');
+        setIsReady(true);
+      }
+    }, 5000);
+    
+    // When the component mounts, check for loop detection and reset if needed
+    const isLoopDetected = localStorage.getItem('reload-loop-detected') === 'true' || 
+                           localStorage.getItem('auth-loop-broken') === 'true';
+                           
+    if (isLoopDetected) {
+      // Stop infinite reloads by clearing all state
+      console.error('🚨 Loop detected on AuthProvider mount - emergency reset');
+      localStorage.removeItem('reload-loop-detected');
+      localStorage.removeItem('auth-loop-broken');
+      sessionStorage.clear();
+      
+      // Force ready state
+      setIsReady(true);
+      setAuthCheckComplete(true);
+    }
+    
+    return () => clearTimeout(forceReadyTimeout);
+  }, [isReady]);
   
   // Memoize the checkAuthentication function to avoid recreating it on each render
   const checkAuthentication = useCallback(async () => {
     try {
       // CRITICAL: Check for reload loop detection flag
-      if (localStorage.getItem('reload-loop-detected') === 'true') {
+      if (localStorage.getItem('reload-loop-detected') === 'true' || 
+          localStorage.getItem('auth-loop-broken') === 'true') {
         console.error('🚨 Loop detected by reload detector - emergency state');
-        // Clear the loop flag
+        // Clear the loop flags
         localStorage.removeItem('reload-loop-detected');
+        localStorage.removeItem('auth-loop-broken');
         sessionStorage.clear();
         
         // Force to login page if needed
@@ -41,7 +72,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         setIsReady(true);
         setAuthCheckComplete(true);
         return;
-      }      // Track authentication attempts to detect loops
+      }// Track authentication attempts to detect loops
       const authAttempts = parseInt(sessionStorage.getItem('auth-attempt-count') || '0', 10);
       const currentTime = Date.now();
       const lastAttemptTime = parseInt(sessionStorage.getItem('auth-last-attempt-time') || '0', 10);

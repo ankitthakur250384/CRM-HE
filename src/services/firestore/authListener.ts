@@ -18,14 +18,57 @@ let consecutiveNullUsers = 0;
  * Initialize the auth state listener
  */
 export const initAuthStateListener = () => {
+  // CRITICAL: Check if reload loop has already been detected
+  if (localStorage.getItem('reload-loop-detected') === 'true' || 
+      localStorage.getItem('auth-loop-broken') === 'true') {
+    console.error('🚨 Auth loop detected! Not initializing auth listener to break the cycle');
+    return;
+  }
+
   if (isInitialized) {
     console.log('🛑 Auth state listener already initialized - preventing duplicate listeners');
     return;
   }
   
   console.log('🔄 Initializing Firebase Auth state listener');
+  
+  // CRITICAL: Set up a watchdog that will disable the auth listener if it gets triggered too frequently
+  let activeListenerCount = 0;
+  const startTime = Date.now();
+  
+  // Create a watchdog interval that checks for excessive listener activity
+  const watchdogInterval = setInterval(() => {
+    const runTime = Date.now() - startTime;
+    const callsPerSecond = activeListenerCount / (runTime / 1000);
+    
+    // If the listener is being called extremely frequently, we're likely in a loop
+    if (activeListenerCount > 10 && callsPerSecond > 0.5) { // More than once every 2 seconds avg
+      console.error(`🚨 Auth listener triggered ${activeListenerCount} times in ${runTime}ms - disabling to break loop`);
+      localStorage.setItem('auth-loop-broken', 'true');
+      localStorage.setItem('reload-loop-detected', 'true');
+      clearInterval(watchdogInterval);
+      
+      // Force redirect to login page after short delay
+      if (!window.location.pathname.includes('/login')) {
+        setTimeout(() => {
+          window.location.href = '/login';
+        }, 500);
+      }
+    }
+  }, 5000); // Check every 5 seconds
+  
   // Listen for auth state changes
   onAuthStateChanged(auth, async (firebaseUser) => {
+    // Increment the counter every time the listener is called
+    activeListenerCount++;
+    
+    // Check if reload loop detection has triggered while we were running
+    if (localStorage.getItem('reload-loop-detected') === 'true' || 
+        localStorage.getItem('auth-loop-broken') === 'true') {
+      console.error('🚨 Auth loop detected during listener execution! Exiting callback');
+      return;
+    }
+  
     // Track auth state change frequency to prevent loops
     const now = Date.now();
     const timeSinceLastUpdate = now - lastStateUpdateTime;
@@ -39,9 +82,12 @@ export const initAuthStateListener = () => {
       sessionStorage.setItem('auth-loop-count', (loopCount + 1).toString());
       
       // Break out of potential loops if they occur too many times
-      if (loopCount > 5) {
+      if (loopCount > 3) { // Lower threshold (was 5)
         console.error('🛑 Auth state change loop detected - breaking out');
-        return; // Exit the listener callback without making changes
+        localStorage.setItem('auth-loop-broken', 'true');
+        
+        // Stop processing this callback to break the loop
+        return;
       }
     } else {
       // Reset loop counter when updates are properly spaced

@@ -104,13 +104,14 @@ const initApp = async () => {
     if (isAtLogin) {
       localStorage.removeItem('app-starting');
       localStorage.removeItem('auth-checking');
-    } else {
-      // For non-login pages: Try to restore auth from persistent storage
+    } else {      // For non-login pages: Try to restore auth from persistent storage
       try {
         const { hasPersistentAuth, restorePersistentAuth } = await import('./services/firestore/persistentAuth');
         if (hasPersistentAuth()) {
           console.log('🔍 Found persistent auth data during app init - attempting to restore');
-          await restorePersistentAuth();
+          // Only auto-login if they've authenticated in this session before
+          // This prevents auto-login on fresh site visits
+          await restorePersistentAuth(true); // true = require prior session auth
         }
       } catch (e) {
         console.error('Error checking persistent auth during initialization:', e);

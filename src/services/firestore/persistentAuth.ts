@@ -65,9 +65,15 @@ export async function savePersistentAuth(user: User): Promise<void> {
  * Restore authentication from persistent storage
  * Returns true if authentication was successfully restored
  */
-export async function restorePersistentAuth(): Promise<boolean> {
+export async function restorePersistentAuth(requirePriorSession = true): Promise<boolean> {
   try {
     console.log('🔄 Attempting to restore auth from persistent storage');
+    
+    // SECURITY CHECK: For fresh site visits, don't auto-login unless they've already logged in this session
+    if (requirePriorSession && sessionStorage.getItem('user-authenticated-this-session') !== 'true') {
+      console.log('🔒 No prior authentication in this session - security check prevents auto-login');
+      return false;
+    }
 
     // First, check if Firebase already has a current user
     if (auth.currentUser) {
