@@ -46,24 +46,57 @@ interface AuthCacheData {
  */
 export const getAuthFromStorage = (): AuthCacheData | null => {
   try {
-    // CRITICAL: Check if user has authenticated this session before restoring any auth data
-    // This ensures users must login at least once per browser session
-    const hasAuthenticated = hasUserAuthenticatedThisSession();
-    if (!hasAuthenticated) {
-      console.log('No authentication recorded for this session, forcing login');
-      clearAuthFromStorage(); // Clear any lingering auth data
+    // Skip additional checks if we're on the login page
+    const isLoginPage = window.location.pathname === '/login';
+    if (isLoginPage) {
+      // No need to force login if we're already there
       return null;
     }
     
+    // Check for Zustand persisted auth data first (it's more reliable)
+    const persistedAuth = localStorage.getItem('auth-storage');
+    if (persistedAuth) {
+      try {
+        // If we have persisted auth data and we're being asked to get auth data,
+        // we should mark the session as authenticated
+        sessionStorage.setItem('user-authenticated-this-session', 'true');
+        
+        // Continue to check our backup storage mechanism
+      } catch (e) {
+        console.error('Error parsing persisted auth:', e);
+      }
+    }
+    
+    // Get our backup auth data
     const token = localStorage.getItem('auth-token');
     const userStr = localStorage.getItem('auth-user');
     const timestamp = localStorage.getItem('auth-timestamp');
     const expiry = localStorage.getItem('auth-expiry');
     const authSaved = localStorage.getItem('auth-saved');
-    const appStarting = localStorage.getItem('app-starting');
     
     // Basic validation - need both token and user and must be a complete saved record
     if (!token || !userStr || authSaved !== 'complete') {
+      // Before returning null, check if we have zustand auth data that can be used
+      if (persistedAuth) {
+        // We have zustand auth but our backup is missing, try to recreate it
+        try {
+          const parsedAuth = JSON.parse(persistedAuth);
+          if (parsedAuth.state?.user && parsedAuth.state?.token) {
+            // Recreate our backup from zustand state
+            console.log('Recreating backup auth from zustand state');
+            saveAuthToStorage(parsedAuth.state.user, parsedAuth.state.token);
+            
+            // Return the recreated auth data
+            return {
+              user: parsedAuth.state.user,
+              token: parsedAuth.state.token,
+              isStale: false
+            };
+          }
+        } catch (e) {
+          console.error('Failed to parse zustand auth data:', e);
+        }
+      }
       return null;
     }
     
@@ -75,19 +108,14 @@ export const getAuthFromStorage = (): AuthCacheData | null => {
     
     // Check if token is completely expired (hard cutoff)
     const isExpired = expiryValue > 0 && now > expiryValue;
-    if (isExpired && !appStarting) {
+    if (isExpired) {
       console.log('Auth token expired, forcing re-login');
       clearAuthFromStorage(); // Clean up expired token
       return null;
     }
     
-    // If data is older than threshold, consider it stale but still return
-    // App startup gets extra grace period to prevent login flashing
-    const stalePeriod = appStarting === 'true' 
-      ? TOKEN_VALIDITY_PERIOD_MS * 2  // Double the period during app startup
-      : TOKEN_VALIDITY_PERIOD_MS;
-    
-    const isStale = now - timestampValue > stalePeriod;
+    // Calculate if the token is stale (but still valid)
+    const isStale = now - timestampValue > TOKEN_VALIDITY_PERIOD_MS;
     
     // Return auth data with stale flag
     return {

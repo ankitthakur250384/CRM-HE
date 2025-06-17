@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { Input } from '../common/Input';
@@ -16,7 +16,7 @@ export function LoginForm() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login, error } = useAuthStore();
+  const { login, error, isAuthenticated } = useAuthStore();
   
   const navigate = useNavigate();
   const location = useLocation();
@@ -24,14 +24,30 @@ export function LoginForm() {
   // Get the redirect path if available
   const from = (location.state as LocationState)?.from?.pathname || '/dashboard';
   
+  // If already authenticated, redirect to dashboard
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate(from, { replace: true });
+    }
+  }, [isAuthenticated, navigate, from]);
+  
+  // Stabilize the login form by marking it as mounted
+  useEffect(() => {
+    // Mark that we've reached the login form properly
+    sessionStorage.setItem('login-form-loaded', 'true');
+    
+    // Clear any pending auth checks or redirects
+    localStorage.removeItem('auth-checking');
+    localStorage.removeItem('app-starting');
+  }, []);
+  
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     
     try {
       await login(email, password);
-      // Redirect to dashboard or intended location
-      navigate(from, { replace: true });
+      // Login will update isAuthenticated, triggering the redirect effect
     } catch (err) {
       // Auth store already tracks the error, but we might want to clear password
       setPassword('');

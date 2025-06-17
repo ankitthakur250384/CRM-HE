@@ -17,8 +17,7 @@ export function AppShell({ requiredRole, children }: AppShellProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const authChecked = useRef(false);
-  
-  // Check auth only once on initial mount instead of every render
+    // Check auth only once on initial mount instead of every render
   useEffect(() => {
     // Skip repeated auth checks if already done
     if (authChecked.current) return;
@@ -27,17 +26,37 @@ export function AppShell({ requiredRole, children }: AppShellProps) {
       try {
         setIsLoading(true);
         
-        // Only check auth if we're not already authenticated
-        if (!isAuthenticated || !user) {
-          const isValid = await checkAuth();
-          if (!isValid) {
-            navigate('/login', { replace: true });
-          }
+        // Run auth check regardless of current state
+        // This ensures we're always working with fresh auth data
+        const isValid = await checkAuth();
+        
+        // If auth is invalid, redirect
+        if (!isValid) {
+          console.log('❌ AppShell auth check failed - redirecting to login');
+          navigate('/login', { replace: true });
+          return;
         }
         
+        // Double check we actually have a user now
+        const { user, isAuthenticated } = useAuthStore.getState();
+        if (!user || !isAuthenticated) {
+          console.log('❌ AppShell found inconsistent auth state - redirecting to login');
+          navigate('/login', { replace: true });
+          return;
+        }
+        
+        // Role validation if requiredRole is specified
+        if (requiredRole && user.role !== requiredRole && user.role !== 'admin') {
+          console.log(`❌ User does not have required role: ${requiredRole}`);
+          navigate('/dashboard', { replace: true });
+          return;
+        }
+        
+        console.log('✅ AppShell auth validation complete');
         authChecked.current = true;
       } catch (error) {
         console.error('Auth validation error:', error);
+        navigate('/login', { replace: true });
       } finally {
         setIsLoading(false);
       }

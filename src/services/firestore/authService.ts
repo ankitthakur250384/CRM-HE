@@ -47,9 +47,18 @@ export const signUp = async (
 
 export const signIn = async (email: string, password: string): Promise<User> => {
   try {
+    console.log('🔑 Starting sign in process for:', email);
+    
+    // Sign in with Firebase Authentication
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const { user: firebaseUser } = userCredential;
-
+    
+    console.log('✅ Firebase authentication successful');
+    
+    // Force refresh token to ensure it's current
+    await firebaseUser.getIdToken(true);
+    
+    // Get user data from Firestore
     const userDoc = await getDoc(doc(db, 'users', firebaseUser.uid));
     const userData = userDoc.data();
 
@@ -57,12 +66,25 @@ export const signIn = async (email: string, password: string): Promise<User> => 
       throw new Error('User data not found');
     }
 
-    return {
+    // Create user object with role info
+    const user = {
       id: firebaseUser.uid,
       name: userData.name,
       email: userData.email,
       role: userData.role,
     };
+
+    // Mark session as authenticated in sessionStorage
+    sessionStorage.setItem('user-authenticated-this-session', 'true');
+    
+    // Import and use our persistent auth module
+    // We need to use dynamic import to avoid circular dependencies
+    const { savePersistentAuth } = await import('./persistentAuth');
+    await savePersistentAuth(user);
+    
+    console.log('✅ Authentication complete with persistence');
+
+    return user;
   } catch (error) {
     const authError = error as AuthError;
     console.error('Error signing in:', authError);
@@ -87,7 +109,19 @@ export const signIn = async (email: string, password: string): Promise<User> => 
 
 export const signOutUser = async (): Promise<void> => {
   try {
+    console.log('🔒 Signing out user...');
+    
+    // Clear our persistent auth
+    const { clearPersistentAuth } = await import('./persistentAuth');
+    clearPersistentAuth();
+    
+    // Clear session authentication marker
+    sessionStorage.removeItem('user-authenticated-this-session');
+    
+    // Sign out from Firebase
     await signOut(auth);
+    
+    console.log('✅ User signed out successfully');
   } catch (error) {
     console.error('Error signing out:', error);
     throw error;

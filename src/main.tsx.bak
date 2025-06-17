@@ -29,9 +29,15 @@ if (preloadEl) {
   `;
 }
 
+// Flag to track whether we might be in a reload situation where auth is happening
+localStorage.setItem('app-starting', 'true');
+
 /**
  * Emergency redirect function that bypasses React and directly navigates
  * This is a safety mechanism for users stuck on loading screens
+ * 
+ * @param {boolean} force - Whether to force redirect even if already on login page
+ * @returns {boolean} Whether a redirect was performed
  */
 function forceRedirectToLogin(force = false) {
   try {
@@ -39,7 +45,7 @@ function forceRedirectToLogin(force = false) {
     if (force || !window.location.pathname.includes('/login')) {
       // Clear all auth state to start fresh
       localStorage.clear();
-      sessionStorage.clear();
+      sessionStorage.removeItem('user-authenticated-this-session');
 
       // Redirect to login page
       window.location.href = '/login';
@@ -51,9 +57,6 @@ function forceRedirectToLogin(force = false) {
     return false;
   }
 }
-
-// Maximum time to wait for app initialization before forcing login
-const EMERGENCY_TIMEOUT = 8000; // 8 seconds
 
 /**
  * Initialize app with optimizations for authentication persistence
@@ -67,7 +70,8 @@ const initApp = async () => {
     // Clear all auth state to break the loop
     localStorage.removeItem('reload-loop-detected');
     sessionStorage.clear();
-    localStorage.clear();
+    localStorage.removeItem('app-starting');
+    localStorage.removeItem('auth-checking');
     
     // Force to login page (if not already there)
     if (window.location.pathname !== '/login') {
@@ -81,39 +85,54 @@ const initApp = async () => {
   // Initialize reload detector first to catch any issues
   initReloadDetector();
   
-  // Initialize the Firebase Auth listener with debouncing
+  // Initialize the Firebase Auth listener
   initAuthStateListener();
-  
-  // Check if we're on the login page
-  const isAtLogin = window.location.pathname === '/login';
   
   // IMPORTANT: Check if the app is already initialized to prevent reload loops
   const isAlreadyInitialized = sessionStorage.getItem('app-initialized') === 'true';
+  // Additional check to prevent initialization within the same page load cycle
   const lastInitTime = parseInt(sessionStorage.getItem('app-last-init-time') || '0', 10);
   const now = Date.now();
   
-  // Only run full initialization if not done recently (within 5 seconds)
-  if (isAlreadyInitialized && (now - lastInitTime < 5000)) {
+  if (isAlreadyInitialized && (now - lastInitTime < 10000)) {
     console.log('🛑 App already initialized recently - preventing potential reload loop');
-  } else {
-    // Mark the app as initialized for this session with timestamp
+    // Just continue with normal rendering
+  } else {    // Mark the app as initialized for this session with timestamp
     sessionStorage.setItem('app-initialized', 'true');
     sessionStorage.setItem('app-last-init-time', now.toString());
+  }
+  
+  // Clear the app-starting flag if we're on the login page already
+  const isAtLogin = window.location.pathname === '/login';
     
-    // Login page optimization - clear flags that might trigger redirects
     if (isAtLogin) {
+      // On login page, clear flags that might trigger redirects/rechecks
       localStorage.removeItem('app-starting');
       localStorage.removeItem('auth-checking');
     } else {
-      // For non-login pages: Try to restore auth from persistent storage
+      // Try to restore auth from persistent storage before emergency checks
       try {
         const { hasPersistentAuth, restorePersistentAuth } = await import('./services/firestore/persistentAuth');
         if (hasPersistentAuth()) {
           console.log('🔍 Found persistent auth data during app init - attempting to restore');
-          await restorePersistentAuth();
+          const restored = await restorePersistentAuth();
+          if (restored) {
+            console.log('✅ Successfully restored auth from persistent storage during initialization');
+            // Continue with normal initialization
+          }
+        } else {
+          console.log('No persistent auth data found during initialization');
         }
       } catch (e) {
         console.error('Error checking persistent auth during initialization:', e);
+      }
+        // Only do emergency redirect if we detect an actual auth problem
+      const currentUser = auth.currentUser;
+      if (!currentUser && !isAlreadyInitialized && sessionStorage.getItem('user-authenticated-this-session') !== 'true') {
+        console.log('No Firebase user and not authenticated this session - redirecting to login');
+        if (forceRedirectToLogin()) {
+          return; // We redirected, so stop initialization
+        }
       }
     }
   }
@@ -121,38 +140,33 @@ const initApp = async () => {
   // STEP 2: Hydrate auth store (safe to do on any page)
   hydrateAuthStore();
   
-  // STEP 3: Set up emergency timeout for non-login pages
-  let emergencyTimeoutId: number | undefined;
-  
+  // STEP 3: Set a short emergency timeout (only for non-login pages)
   if (!isAtLogin) {
-    emergencyTimeoutId = window.setTimeout(() => {
+    setTimeout(() => {
       // If we still see a loading screen, it's an emergency
       const loadingElements = document.querySelectorAll('.loading-screen');
       if (loadingElements.length > 0) {
-        console.warn('⚠️ Emergency timeout reached - redirecting to login');
+        console.warn('Emergency timeout reached - redirecting');
         window.location.href = '/login';
       }
-    }, EMERGENCY_TIMEOUT);
+    }, 5000); // Increased to 5 seconds to give more time for Firebase to initialize
   }
+    // Get the root element for React rendering
+  const rootElement = document.getElementById('root')!;
   
-  // STEP 4: Render the React app
-  const rootElement = document.getElementById('root');
-  if (!rootElement) {
-    console.error('Root element not found');
-    return;
-  }
-
-  // Small delay for React rendering to ensure auth is checked first
+  // For initial hydration and to prevent auth flicker, we'll delay the first render slightly
   setTimeout(() => {
     // Enable debug logging
     initAuthDebug();
+    
+    // Log initial auth state before render
     logAuthState();
     
     const root = createRoot(rootElement);
     root.render(
       <StrictMode>
         <Suspense fallback={
-          <div className="fixed inset-0 flex items-center justify-center bg-white loading-screen">
+          <div className="fixed inset-0 flex items-center justify-center bg-white">
             <div className="flex flex-col items-center">
               <div className="h-16 w-16 animate-spin rounded-full border-4 border-blue-600 border-t-transparent mb-4"></div>
               <p className="text-lg text-gray-700 font-medium">Loading your dashboard...</p>
@@ -165,22 +179,14 @@ const initApp = async () => {
     );
     
     // Signal that we've started the app
-    localStorage.removeItem('app-starting');
-  }, 100);
-
-  // Clean up emergency timeout on successful initialization
-  return () => {
-    if (emergencyTimeoutId) {
-      clearTimeout(emergencyTimeoutId);
-    }
-  };
+    localStorage.removeItem('app-starting');  }, 100); // Small delay to ensure hydration gets priority
 };
 
-// Call the initApp function once to start the application
+// Call the initApp function to start the application ONCE - don't call it twice!
 initApp().catch(err => {
   console.error('Error during app initialization:', err);
   
-  // Show fallback UI if initialization fails
+  // If initialization fails, show a fallback UI and provide a way to login
   const rootElement = document.getElementById('root');
   if (rootElement) {
     rootElement.innerHTML = `
@@ -201,6 +207,9 @@ initApp().catch(err => {
   }
 });
 
+// Log auth state for debugging
+logAuthState();
+
 // Performance monitoring
 let renderComplete = false;
 setTimeout(() => {
@@ -209,17 +218,19 @@ setTimeout(() => {
   }
 }, 3000);
 
-// On successful page load
+// On successful first page load
 window.addEventListener('load', () => {
   renderComplete = true;
   localStorage.removeItem('auth-checking');
   
-  // Final emergency redirect check
+  // Emergency redirect check - if we're not at login and we're shown a loading screen
+  // for more than 5 seconds, force redirect
   setTimeout(() => {
+    // Find all elements with loading-screen class
     const loadingScreens = document.querySelectorAll('.loading-screen');
     if (loadingScreens.length > 0 && !window.location.pathname.includes('/login')) {
       console.warn('Still on loading screen after timeout - emergency redirect');
-      forceRedirectToLogin();
+      window.location.href = '/login';
     }
-  }, EMERGENCY_TIMEOUT);
+  }, 5000);
 });
