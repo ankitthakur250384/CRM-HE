@@ -77,5 +77,27 @@ enableIndexedDbPersistence(db)
     }
   });
 
-// Set up initial users
-setupInitialUsers().catch(console.error);
+// Only set up initial users if explicitly requested with a flag
+// This prevents hitting Firebase rate limits with too many account creation attempts
+const shouldSetupUsers = localStorage.getItem('setup-initial-users') === 'true';
+if (shouldSetupUsers) {
+  console.log('Setting up initial users as requested...');
+  setupInitialUsers()
+    .then(() => {
+      // Clear the flag after successful setup
+      localStorage.removeItem('setup-initial-users');
+    })
+    .catch((error) => {
+      console.error('Failed to set up initial users:', error);
+      // If we hit rate limits, prevent additional attempts for 1 hour
+      if (error?.code === 'auth/too-many-requests') {
+        localStorage.setItem('user-setup-cooldown', (Date.now() + 3600000).toString());
+      }
+    });
+} else {
+  // Check if we're in a cooldown period from rate limiting
+  const cooldownUntil = parseInt(localStorage.getItem('user-setup-cooldown') || '0', 10);
+  if (cooldownUntil > Date.now()) {
+    console.log(`User setup on cooldown until ${new Date(cooldownUntil).toLocaleTimeString()}`);
+  }
+}

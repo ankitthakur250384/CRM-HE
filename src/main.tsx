@@ -104,14 +104,34 @@ const initApp = async () => {
     if (isAtLogin) {
       localStorage.removeItem('app-starting');
       localStorage.removeItem('auth-checking');
-    } else {      // For non-login pages: Try to restore auth from persistent storage
+      console.log('🔒 On login page - not attempting to restore auth');
+    } else {
+      // For non-login pages: Try to restore auth from persistent storage ONLY if already authenticated in this session
       try {
-        const { hasPersistentAuth, restorePersistentAuth } = await import('./services/firestore/persistentAuth');
-        if (hasPersistentAuth()) {
-          console.log('🔍 Found persistent auth data during app init - attempting to restore');
-          // Only auto-login if they've authenticated in this session before
-          // This prevents auto-login on fresh site visits
-          await restorePersistentAuth(true); // true = require prior session auth
+        // First mark that page has been visited this session
+        sessionStorage.setItem('page-visited', 'true');
+        
+        // Check for Firebase authentication first as the source of truth
+        if (auth.currentUser) {
+          console.log('🔑 Firebase user already exists during initialization - using existing auth');
+          // We already have Firebase auth - no need to restore
+        } else {
+          // Only attempt to restore if user has authenticated this session
+          const hasAuthenticatedThisSession = sessionStorage.getItem('user-authenticated-this-session') === 'true';
+          
+          if (!hasAuthenticatedThisSession) {
+            console.log('🔒 SECURITY: No prior authentication in this session - redirecting to login');
+            setTimeout(() => window.location.href = '/login', 100);
+            return; // Stop initialization - we're redirecting
+          }
+          
+          // Try to restore only if user has authenticated this session
+          const { hasPersistentAuth, restorePersistentAuth } = await import('./services/firestore/persistentAuth');
+          if (hasPersistentAuth() && hasAuthenticatedThisSession) {
+            console.log('🔍 Found persistent auth data during app init - attempting to restore');
+            // Strict security check for prior session auth
+            await restorePersistentAuth(true);
+          }
         }
       } catch (e) {
         console.error('Error checking persistent auth during initialization:', e);
@@ -149,6 +169,35 @@ const initApp = async () => {
     initAuthDebug();
     logAuthState();
     
+    // CRITICAL: Throttle renders for frequent page refreshes to break loading cycles
+    const lastRenderTime = parseInt(localStorage.getItem('last-render-time') || '0', 10);
+    const now = Date.now();
+    const timeSinceLastRender = now - lastRenderTime;
+    
+    // If the app is being rendered too frequently (< 2 seconds between renders)
+    // this could indicate a periodic loading issue
+    if (lastRenderTime && timeSinceLastRender < 2000) {
+      console.warn(`⚠️ App rendering happening too frequently (${timeSinceLastRender}ms) - possible periodic loading issue`);
+      
+      // Track render cycle to detect patterns
+      const renderCycleCount = parseInt(localStorage.getItem('render-cycle-count') || '0', 10);
+      localStorage.setItem('render-cycle-count', (renderCycleCount + 1).toString());
+      
+      // If we detect a pattern of rapid renders, take action to break the cycle
+      if (renderCycleCount >= 2) {
+        console.error('🚨 PERIODIC LOADING DETECTED - Setting long cooldown period');
+        localStorage.setItem('auth-long-cooling-period', 'true');
+        localStorage.setItem('last-loading-recovery-time', now.toString());
+        localStorage.setItem('render-cycle-count', '0');
+      }
+    } else {
+      // Reset render cycle count if renders are spaced out normally
+      localStorage.setItem('render-cycle-count', '0');
+    }
+    
+    // Record the current render time for future cycle detection
+    localStorage.setItem('last-render-time', now.toString());
+    
     const root = createRoot(rootElement);
     root.render(
       <StrictMode>
@@ -157,6 +206,13 @@ const initApp = async () => {
             <div className="flex flex-col items-center">
               <div className="h-16 w-16 animate-spin rounded-full border-4 border-blue-600 border-t-transparent mb-4"></div>
               <p className="text-lg text-gray-700 font-medium">Loading your dashboard...</p>
+              <p className="text-sm text-gray-500 mt-2">This may take a moment...</p>
+              <button 
+                onClick={() => window.location.href = '/login'}
+                className="mt-6 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
+              >
+                Go to Login
+              </button>
             </div>
           </div>
         }>
@@ -167,7 +223,11 @@ const initApp = async () => {
     
     // Signal that we've started the app
     localStorage.removeItem('app-starting');
-  }, 100);
+    
+    // Clear any reload loop flags to give this render a clean start
+    localStorage.removeItem('reload-loop-detected');
+    localStorage.removeItem('auth-loop-broken');
+  }, 200); // Increased from 100ms to 200ms to ensure persistence checks complete first
 
   // Clean up emergency timeout on successful initialization
   return () => {

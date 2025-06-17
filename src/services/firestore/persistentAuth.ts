@@ -13,7 +13,6 @@ import { User } from '../../types/auth';
 const AUTH_TOKEN_KEY = 'persistent-auth-token';
 const AUTH_USER_KEY = 'persistent-auth-user';
 const AUTH_EXPIRY_KEY = 'persistent-auth-expiry';
-const EXPIRY_DURATION = 24 * 60 * 60 * 1000; // 24 hours
 
 /**
  * Save authentication state for maximum persistence
@@ -70,8 +69,19 @@ export async function restorePersistentAuth(requirePriorSession = true): Promise
     console.log('🔄 Attempting to restore auth from persistent storage');
     
     // SECURITY CHECK: For fresh site visits, don't auto-login unless they've already logged in this session
+    // This is the critical check to prevent auto-login on first visit to hosted app
     if (requirePriorSession && sessionStorage.getItem('user-authenticated-this-session') !== 'true') {
-      console.log('🔒 No prior authentication in this session - security check prevents auto-login');
+      console.log('🔒 SECURITY BLOCK: No prior authentication in this session - preventing auto-login');
+      // Clear persistent auth to prevent future auto-login attempts
+      clearPersistentAuth();
+      return false;
+    }
+    
+    // Additional check: If this is a first page visit in a new tab/window, prevent auto-login
+    const isFirstPageVisit = !sessionStorage.getItem('page-visited');
+    if (isFirstPageVisit) {
+      console.log('🔒 First page visit detected - preventing auto-login for security');
+      sessionStorage.setItem('page-visited', 'true');
       return false;
     }
 

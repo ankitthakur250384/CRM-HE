@@ -79,16 +79,29 @@ const createInitialUser = async (
 
 export const setupInitialUsers = async () => {
   console.info('Starting initial users setup...');
-  try {
+  try {    // Add delay between user creation to avoid rate limits
     for (const user of INITIAL_USERS) {
       try {
+        // First check if the error was due to rate limiting
+        if (localStorage.getItem('user-setup-rate-limited') === 'true') {
+          console.warn('Rate limit detected - stopping user creation to avoid Firebase lockout');
+          break;
+        }
+        
         const result = await createInitialUser(user.email, user.password, user.name, user.role);
         if (result) {
           console.info(`✓ Created user: ${user.email}`);
         }
+        
+        // Add a delay between user creations to avoid rate limiting
+        await new Promise(resolve => setTimeout(resolve, 1500));
       } catch (error: any) {
         // Only throw if it's not the expected "already exists" case
-        if (error.code !== 'auth/email-already-in-use') {
+        if (error.code === 'auth/too-many-requests') {
+          console.warn('Firebase rate limit reached. Pausing user creation.');
+          localStorage.setItem('user-setup-rate-limited', 'true');
+          break; // Stop trying to create more users
+        } else if (error.code !== 'auth/email-already-in-use') {
           throw error;
         }
       }

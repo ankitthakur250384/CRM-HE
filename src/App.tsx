@@ -50,8 +50,8 @@ function DashboardRouter() {
   }
 }
 
-// Error fallback component
-function ErrorFallback() {
+// Error fallback component for error boundaries (used in error cases)
+export function ErrorFallback() {
   return (
     <div className="fixed inset-0 bg-white flex flex-col items-center justify-center">
       <h2 className="text-2xl font-bold mb-4">Something went wrong</h2>

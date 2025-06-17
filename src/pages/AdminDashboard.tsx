@@ -346,9 +346,9 @@ export function AdminDashboard() {
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {jobs.slice(0, 5).map((job) => (
-                      <tr key={job.id} className="hover:bg-gray-50">                        <td className="px-6 py-4 whitespace-nowrap">
+                  <tbody className="bg-white divide-y divide-gray-200">                    {jobs.slice(0, 5).map((job) => (
+                      <tr key={job.id} className="hover:bg-gray-50">
+                        <td className="px-6 py-4 whitespace-nowrap">
                           <div className="font-medium text-gray-900">{job.customerId || "N/A"}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">

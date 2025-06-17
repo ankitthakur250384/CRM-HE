@@ -56,9 +56,14 @@ export const initAuthStateListener = () => {
       }
     }
   }, 5000); // Check every 5 seconds
-  
-  // Listen for auth state changes
+    // Listen for auth state changes
   onAuthStateChanged(auth, async (firebaseUser) => {
+    // IMPORTANT: Skip all auth processing if we're currently reloading the page
+    if (document.readyState !== 'complete') {
+      console.log('🔄 Page is still loading - deferring auth state processing');
+      return;
+    }
+    
     // Increment the counter every time the listener is called
     activeListenerCount++;
     
@@ -73,8 +78,8 @@ export const initAuthStateListener = () => {
     const now = Date.now();
     const timeSinceLastUpdate = now - lastStateUpdateTime;
     
-    // If updates are happening too frequently (less than 1 second apart), might be a loop
-    if (timeSinceLastUpdate < 1000) {
+    // If updates are happening too frequently (less than 2 seconds apart), might be a loop
+    if (timeSinceLastUpdate < 2000) {
       console.warn(`⚠️ Rapid auth state changes detected (${timeSinceLastUpdate}ms) - possible loop!`);
       
       // Store loop detection data
@@ -82,7 +87,7 @@ export const initAuthStateListener = () => {
       sessionStorage.setItem('auth-loop-count', (loopCount + 1).toString());
       
       // Break out of potential loops if they occur too many times
-      if (loopCount > 3) { // Lower threshold (was 5)
+      if (loopCount > 2) { // Even lower threshold to catch loops faster
         console.error('🛑 Auth state change loop detected - breaking out');
         localStorage.setItem('auth-loop-broken', 'true');
         
@@ -96,6 +101,21 @@ export const initAuthStateListener = () => {
     
     // Update the last state change timestamp
     lastStateUpdateTime = now;
+    
+    // CRITICAL: Check for periodic loading pattern
+    // If this function is being called repeatedly, it could be causing periodic loading
+    const authListenerCalls = parseInt(sessionStorage.getItem('auth-listener-calls') || '0', 10);
+    sessionStorage.setItem('auth-listener-calls', (authListenerCalls + 1).toString());
+    
+    // If we've had many listener calls in a short time, throttle aggressively
+    if (authListenerCalls > 5 && performance.now() < 30000) { // In first 30 seconds of page load
+      console.warn(`⚠️ High frequency auth listener calls (${authListenerCalls}) - throttling`);
+      // Skip this update to prevent periodic loading
+      if (authListenerCalls % 2 === 0) { // Process only every other call
+        console.log('🛑 Throttling auth listener to prevent periodic loading');
+        return;
+      }
+    }
     
     // Flag to determine if this is right after a page load
     const isPageLoad = performance.now() < 3000; // Within 3 seconds of page load
@@ -164,32 +184,40 @@ export const initAuthStateListener = () => {
         }
       } catch (error) {
         console.error('Error handling auth state change:', error);
-      }
-    } else {
+      }    } else {
       // Count consecutive null users to detect initialization issues
       consecutiveNullUsers++;
       
-      // IMPORTANT: For page loads, we need to be very careful with null users
-      // Firebase often returns null initially during page load before it initializes
-      if (isPageLoad || consecutiveNullUsers <= 2) {
-        console.log(`⚠️ Null user ${consecutiveNullUsers > 1 ? `(${consecutiveNullUsers} consecutive)` : ''} - likely just initialization, not logging out`);
-        // Don't clear auth state during initial load - it might just be Firebase initializing
+      // IMPORTANT: We need to be much more careful with null Firebase users
+      // Firebase often returns null during initialization, page loads, and service worker updates
+      
+      // First, check if this is during page load or initialization (first 10 seconds)
+      if (isPageLoad || performance.now() < 10000 || consecutiveNullUsers <= 3) {
+        console.log(`⚠️ Null user during initialization ${consecutiveNullUsers > 1 ? `(${consecutiveNullUsers} consecutive)` : ''} - ignoring`);
+        // Don't clear auth state during initial phase - it's just Firebase initializing
         return;
       }
       
-      // Don't immediately clear auth state on null user - this often happens during page reloads
-      // before Firebase has fully initialized. Instead, check current app state.
-      const { isAuthenticated } = useAuthStore.getState();
+      // Don't immediately clear auth state on null user - check current app state first
+      const { isAuthenticated, user } = useAuthStore.getState();
       const isLoginPage = window.location.pathname === '/login';
       const isLoggingOut = localStorage.getItem('logging-out') === 'true';
       const isManualReload = sessionStorage.getItem('manual-reload') === 'true';
+      const userAuthenticatedThisSession = sessionStorage.getItem('user-authenticated-this-session') === 'true';
+      
+      // If we have a valid user in our store but Firebase returns null, this is likely
+      // a transient Firebase initialization issue - don't clear auth state
+      if (isAuthenticated && user && !isLoggingOut && userAuthenticatedThisSession) {
+        console.log('⚠️ Firebase returned null user but we have authenticated state - preserving auth');
+        return;
+      }
       
       // During manual reload, don't clear auth
       if (isManualReload) {
         console.log('🔄 Manual reload detected - preserving auth state');
         sessionStorage.removeItem('manual-reload');
         return;
-      }      // Check if we should throttle logout events
+      }// Check if we should throttle logout events
       const lastLogoutTime = parseInt(sessionStorage.getItem('last-logout-time') || '0', 10);
       const timeSinceLastLogout = now - lastLogoutTime;
       

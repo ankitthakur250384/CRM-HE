@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { AuthState, User } from '../types/auth';
+import { AuthState } from '../types/auth';
 import { signIn, signOutUser, getCurrentUser } from '../services/firestore/authService';
 import { auth } from '../lib/firebase';
 import { 
