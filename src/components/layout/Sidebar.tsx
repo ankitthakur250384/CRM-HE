@@ -19,7 +19,11 @@ import {
 import { useAuthStore } from '../../store/authStore';
 import { motion, AnimatePresence } from 'framer-motion';
 
-import logo from '../../assets/asp-logo.jpg';
+// Import logo with error handling
+import aspLogo from '../../assets/asp-logo.jpg';
+
+// Fallback logo path in case the import fails
+const logoFallback = '/crane-icon.svg';
 
 interface SidebarProps {
   isMobileOpen?: boolean;
@@ -200,10 +204,18 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
       <div className="flex flex-col h-full">
         <div className="flex items-center justify-between p-3 sm:p-4 border-b">
           <Link to="/dashboard" className="flex items-center">
-            <img 
-              src={logo} 
+            <img              src={aspLogo} 
               alt="ASP Cranes" 
               className={`h-10 sm:h-12 w-auto object-contain ${collapsed ? 'mx-auto' : ''}`}
+              onError={(e) => {
+                console.log('Logo load error, using fallback');
+                e.currentTarget.src = '/asp-logo.jpg';
+                // If that fails too, try the crane icon
+                e.currentTarget.onerror = () => {
+                  e.currentTarget.src = logoFallback;
+                  e.currentTarget.onerror = null; // Prevent further error handling
+                };
+              }}
             />
           </Link>
           {!collapsed && onMobileClose && (

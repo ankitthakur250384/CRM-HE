@@ -29,9 +29,16 @@ export function Header({ onMobileMenuClick }: HeaderProps) {
     }
   };
   
-  const handleLogout = () => {
-    logout();
-    navigate('/login');
+  const handleLogout = async () => {
+    try {
+      await logout();
+      console.log("✅ Logout successful");
+      navigate('/login');
+    } catch (error) {
+      console.error("❌ Logout error:", error);
+      // Force navigation to login page even if logout fails
+      navigate('/login');
+    }
   };
   
   const handleNotificationClick = async (notification: Notification) => {

@@ -12,11 +12,30 @@ interface AppShellProps {
 }
 
 export function AppShell({ requiredRole, children }: AppShellProps) {
-  const { isAuthenticated, user } = useAuthStore();
+  const { isAuthenticated, user, logout } = useAuthStore();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const authChecked = useRef(false);
+  
+  // Add sidebar logout event listener
+  useEffect(() => {
+    const handleSidebarLogout = () => {
+      logout().then(() => {
+        navigate('/login');
+      }).catch(error => {
+        console.error("Logout error:", error);
+        navigate('/login'); // Navigate even if there's an error
+      });
+    };
+    
+    document.addEventListener('sidebar-logout', handleSidebarLogout);
+    
+    return () => {
+      document.removeEventListener('sidebar-logout', handleSidebarLogout);
+    };
+  }, [logout, navigate]);
+  
   // Simplified auth check - only relying on isAuthenticated and user state
   useEffect(() => {
     // Skip if we've already checked
