@@ -1,12 +1,6 @@
 import { initializeApp, getApps } from 'firebase/app';
 import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
-import { 
-  getAuth, 
-  setPersistence, 
-  browserLocalPersistence, 
-  onAuthStateChanged,
-  signInWithCustomToken
-} from 'firebase/auth';
+import { getAuth } from 'firebase/auth';
 import { setupInitialUsers } from '../services/firestore/setupUsers';
 
 // Configure with directly exported config for better reliability
@@ -28,41 +22,40 @@ export const db = getFirestore(app);
 // Configure auth with persistence
 export const auth = getAuth(app);
 
-// Force MAXIMUM persistence - use both Firebase and our own mechanisms
-// CRITICAL: This must happen BEFORE any auth operations
+// DISABLED Firebase persistence - require explicit login
+// Clear any existing authentication state to prevent auto-login
 try {
-  // Check if we've already set persistence in this page load
-  const persistenceSet = localStorage.getItem('firebase-persistence-set-time');
-  const now = Date.now();
-  
-  // Only set persistence if it hasn't been set in the last minute
-  // This prevents multiple setPersistence calls which can cause issues
-  if (!persistenceSet || (now - parseInt(persistenceSet, 10)) > 60000) {
-    console.log('🔐 Setting Firebase auth persistence...');
+  // Force sign out any existing user to prevent auto-logins
+  if (!window.location.pathname.includes('/login')) {
+    console.log('🔒 DISABLING Firebase auth persistence - auth state will NOT persist across page reloads');
     
-    // Set persistence and update timestamp
-    setPersistence(auth, browserLocalPersistence)
-      .then(() => {
-        console.log('✅ Firebase auth persistence ENABLED - auth state will persist across page reloads');
+    // Clear persistent auth flags
+    localStorage.removeItem('firebase-persistence-enabled');
+    localStorage.removeItem('firebase-persistence-set-time');
+    
+    // Force clear auth state if not on login page and no explicit login
+    const hasExplicitLogin = localStorage.getItem('explicit-login-performed') === 'true';
+    if (!hasExplicitLogin) {
+      console.log('� No explicit login detected - clearing any Firebase auth state');
+      
+      // Sign out current user
+      auth.signOut().then(() => {
+        console.log('✅ Cleared Firebase auth state');
         
-        // Set flags indicating persistence is enabled with timestamp
-        localStorage.setItem('firebase-persistence-enabled', 'true');
-        localStorage.setItem('firebase-persistence-set-time', Date.now().toString());
-        
-        // Verify current auth state
-        const currentUser = auth.currentUser;
-        if (currentUser) {
-          console.log('🔑 Active Firebase user detected on initialization:', currentUser.uid);
-        } else {
-          console.log('🔒 No active Firebase user on initialization');
+        // Redirect to login page
+        if (window.location.pathname !== '/login') {
+          console.log('🔄 Redirecting to login page');
+          window.location.href = '/login';
         }
-      })
-      .catch(error => console.error('❌ Error setting auth persistence:', error));
+      });
+    } else {
+      console.log('� Explicit login detected - allowing session to continue');
+    }
   } else {
-    console.log('🔒 Firebase persistence already set recently - skipping');
+    console.log('🔒 On login page - no action needed');
   }
 } catch (error) {
-  console.error('❌ Error in Firebase persistence setup:', error);
+  console.error('❌ Error in Firebase auth state cleanup:', error);
 }
 
 // Enable offline persistence

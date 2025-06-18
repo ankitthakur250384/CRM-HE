@@ -71,18 +71,9 @@ export function ErrorFallback() {
   );
 }
 
-// Main application content with safety timeouts
+// Main application content (safety timeout removed to prevent auto-redirects)
 function AppContent() {
-  // Add a safety timeout for the entire app
-  useEffect(() => {
-    // Global safety timeout - if app is stuck for 15 seconds, force login
-    const globalTimeout = setTimeout(() => {
-      console.warn('Global app timeout reached - emergency navigation');
-      window.location.href = '/login';
-    }, 15000);
-    
-    return () => clearTimeout(globalTimeout);
-  }, []);
+  // No global timeout - auto-redirects were causing issues
   
   return (
     <Suspense fallback={

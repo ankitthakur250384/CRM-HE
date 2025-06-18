@@ -12,35 +12,29 @@ interface AppShellProps {
 }
 
 export function AppShell({ requiredRole, children }: AppShellProps) {
-  const { isAuthenticated, user, checkAuth } = useAuthStore();
+  const { isAuthenticated, user } = useAuthStore();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const authChecked = useRef(false);
-    // Check auth only once on initial mount instead of every render
+  // Simplified auth check - only relying on isAuthenticated and user state
   useEffect(() => {
-    // Skip repeated auth checks if already done
+    // Skip if we've already checked
     if (authChecked.current) return;
     
     const validateAuth = async () => {
       try {
         setIsLoading(true);
         
-        // Run auth check regardless of current state
-        // This ensures we're always working with fresh auth data
-        const isValid = await checkAuth();
-        
-        // If auth is invalid, redirect
-        if (!isValid) {
-          console.log('❌ AppShell auth check failed - redirecting to login');
-          navigate('/login', { replace: true });
-          return;
-        }
-        
-        // Double check we actually have a user now
+        // Check if we have valid authentication state now
         const { user, isAuthenticated } = useAuthStore.getState();
-        if (!user || !isAuthenticated) {
-          console.log('❌ AppShell found inconsistent auth state - redirecting to login');
+        
+        // Check for explicit login flag
+        const hasExplicitLogin = localStorage.getItem('explicit-login-performed') === 'true';
+        
+        // If auth is invalid or no explicit login, redirect
+        if (!isAuthenticated || !user || !hasExplicitLogin) {
+          console.log('❌ AppShell auth check failed - redirecting to login');
           navigate('/login', { replace: true });
           return;
         }
@@ -67,7 +61,7 @@ export function AppShell({ requiredRole, children }: AppShellProps) {
     validateAuth().finally(() => {
       endMonitoring();
     });
-  }, [checkAuth, navigate, isAuthenticated, user]);
+  }, [navigate, isAuthenticated, user, requiredRole]);
 
   // Close sidebar when navigating on mobile
   useEffect(() => {

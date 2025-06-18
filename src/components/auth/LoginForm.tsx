@@ -40,10 +40,14 @@ export function LoginForm() {
     localStorage.removeItem('auth-checking');
     localStorage.removeItem('app-starting');
   }, []);
-  
-  const handleSubmit = async (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
+    
+    // Set flag that user is explicitly logging in
+    localStorage.setItem('explicit-login-performed', 'true');
+    // Set flag for auth listener to know this is an explicit auth action
+    sessionStorage.setItem('explicit-auth-action', 'true');
     
     try {
       await login(email, password);

@@ -3,13 +3,11 @@ import {
   signInWithEmailAndPassword,
   signOut,
   updateProfile,
-  User as FirebaseUser,
   AuthError
 } from 'firebase/auth';
 import { doc, setDoc, getDoc, serverTimestamp } from 'firebase/firestore';
 import { auth, db } from '../../lib/firebase';
 import { User, UserRole } from '../../types/auth';
-import { usersCollection } from './collections';
 
 export const signUp = async (
   email: string,
@@ -48,6 +46,10 @@ export const signUp = async (
 export const signIn = async (email: string, password: string): Promise<User> => {
   try {
     console.log('🔑 Starting sign in process for:', email);
+    
+    // Set flag for explicit auth action to prevent auto-reload issues
+    // This tells our auth listener this is an intentional auth change
+    sessionStorage.setItem('explicit-auth-action', 'true');
     
     // Sign in with Firebase Authentication
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
@@ -111,6 +113,10 @@ export const signOutUser = async (): Promise<void> => {
   try {
     console.log('🔒 Signing out user...');
     
+    // Set flag for explicit auth action to prevent auto-reload issues
+    // This tells our auth listener this is an intentional auth change
+    sessionStorage.setItem('explicit-auth-action', 'true');
+    
     // Clear our persistent auth
     const { clearPersistentAuth } = await import('./persistentAuth');
     clearPersistentAuth();
@@ -118,7 +124,7 @@ export const signOutUser = async (): Promise<void> => {
     // Clear session authentication marker
     sessionStorage.removeItem('user-authenticated-this-session');
     
-    // Sign out from Firebase
+    // Sign out from Firebase 
     await signOut(auth);
     
     console.log('✅ User signed out successfully');
@@ -150,7 +156,8 @@ export const getCurrentUser = async (): Promise<User | null> => {
   }
 };
 
-const updateUserProfile = async (
+// Export for potential future use
+export const updateUserProfile = async (
   userId: string,
   updates: Partial<User>
 ): Promise<User> => {
