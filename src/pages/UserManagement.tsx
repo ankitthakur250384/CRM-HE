@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { signUp } from '../services/firestore/authService';
+import { fetchUsers, updateUser, deleteUser, toggleUserStatus } from '../services/firestore/userService';
 import { 
   Search, 
   Edit2, 
@@ -75,6 +76,26 @@ const INITIAL_USERS: ExtendedUser[] = [
 
 const ITEMS_PER_PAGE = 10;
 
+// Helper function to generate avatar URLs using UI Avatars
+const generateAvatarUrl = (name: string): string => {
+  // Generate color based on name hash
+  const hash = name.split('').reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const colors = [
+    '2563EB', // Blue
+    '10B981', // Green
+    'F59E0B', // Amber
+    '8B5CF6', // Purple
+    'EC4899', // Pink
+    '6B7280', // Gray
+  ];
+  const colorIndex = hash % colors.length;
+  const color = colors[colorIndex];
+  
+  // Encode name for URL
+  const encodedName = encodeURIComponent(name);
+  return `https://ui-avatars.com/api/?name=${encodedName}&background=${color}&color=fff&size=128`;
+};
+
 export function UserManagement() {
   const { user } = useAuthStore();
   const [users, setUsers] = useState<ExtendedUser[]>(INITIAL_USERS);
@@ -101,12 +122,22 @@ export function UserManagement() {
     role: 'operator' as UserRole,
     status: 'active' as 'active' | 'inactive',
   });
-
   useEffect(() => {
-    // Simulate API call
-    setTimeout(() => {
-      setIsLoading(false);
-    }, 1000);
+    // Fetch real users from Firestore
+    const loadUsers = async () => {
+      try {
+        setIsLoading(true);
+        const usersList = await fetchUsers();
+        setUsers(usersList);
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error loading users:', error);
+        setIsLoading(false);
+        showToast('Error loading users', 'error');
+      }
+    };
+    
+    loadUsers();
   }, []);
 
   useEffect(() => {
@@ -148,9 +179,8 @@ export function UserManagement() {
       return;
     }
 
-    try {
-      if (selectedUser) {
-        // For existing users, just update the UI since we don't have password update functionality in this demo
+    try {      if (selectedUser) {
+        // Update user in Firestore
         const updatedUser: ExtendedUser = {
           ...selectedUser,
           name: formData.name,
@@ -159,6 +189,15 @@ export function UserManagement() {
           status: formData.status,
         };
         
+        // Update in Firestore
+        await updateUser(selectedUser.id, {
+          name: formData.name,
+          email: formData.email,
+          role: formData.role,
+          status: formData.status,
+        });
+        
+        // Update local state
         setUsers(prev => 
           prev.map(user => 
             user.id === selectedUser.id ? updatedUser : user
@@ -169,12 +208,11 @@ export function UserManagement() {
         // For new users, use Firebase Auth to create the account
         try {
           const newUser = await signUp(formData.email, formData.password, formData.name, formData.role);
-          
-          // Add the new user to our local state with the status
+            // Add the new user to our local state with the status and generated avatar
           const extendedUser: ExtendedUser = {
             ...newUser,
             status: formData.status,
-            avatar: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1',
+            avatar: generateAvatarUrl(formData.name),
           };
           
           setUsers(prev => [...prev, extendedUser]);
@@ -191,32 +229,45 @@ export function UserManagement() {
       showToast(`Error saving user: ${error.message || 'Unknown error'}`, 'error');
     }
   };
-
   const handleDelete = async () => {
     if (!selectedUser) return;
 
     try {
+      // Delete from Firestore first
+      await deleteUser(selectedUser.id);
+      
+      // Update local state
       setUsers(prev => prev.filter(user => user.id !== selectedUser.id));
       setIsDeleteModalOpen(false);
       setSelectedUser(null);
       showToast('User deleted successfully', 'success');
     } catch (error) {
+      console.error('Error deleting user:', error);
       showToast('Error deleting user', 'error');
     }
   };
-
-  const handleStatusToggle = (user: ExtendedUser) => {
-    setUsers(prev =>
-      prev.map(u =>
-        u.id === user.id
-          ? { ...u, status: u.status === 'active' ? 'inactive' : 'active' }
-          : u
-      )
-    );
-    showToast(
-      `User ${user.status === 'active' ? 'deactivated' : 'activated'}`,
-      'success'
-    );
+  const handleStatusToggle = async (user: ExtendedUser) => {
+    const newStatus = user.status === 'active' ? 'inactive' : 'active';
+    
+    try {
+      // Update in Firestore
+      await toggleUserStatus(user.id, newStatus);
+      
+      // Update local state
+      setUsers(prev =>
+        prev.map(u =>
+          u.id === user.id ? { ...u, status: newStatus } : u
+        )
+      );
+      
+      showToast(
+        `User ${user.status === 'active' ? 'deactivated' : 'activated'}`,
+        'success'
+      );
+    } catch (error) {
+      console.error('Error toggling user status:', error);
+      showToast('Error updating user status', 'error');
+    }
   };
   const resetForm = () => {
     setFormData({
@@ -334,12 +385,17 @@ export function UserManagement() {
                   <tbody className="bg-white divide-y divide-gray-200">
                     {paginatedUsers.map((user) => (
                       <tr key={user.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="flex items-center">
+                        <td className="px-6 py-4 whitespace-nowrap">                          <div className="flex items-center">
                             <img
-                              src={user.avatar}
+                              src={user.avatar || generateAvatarUrl(user.name)}
                               alt={user.name}
                               className="h-10 w-10 rounded-full object-cover"
+                              onError={(e) => {
+                                // If image fails to load, use UI Avatars API instead
+                                const target = e.target as HTMLImageElement;
+                                target.onerror = null; // Prevent infinite loop
+                                target.src = generateAvatarUrl(user.name);
+                              }}
                             />
                             <div className="ml-4">
                               <div className="font-medium text-gray-900">{user.name}</div>
