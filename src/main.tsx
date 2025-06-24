@@ -1,5 +1,5 @@
 /**
- * main.tsx - Completely rewritten to prevent auto-login and auto-reload
+ * main.tsx - Updated to use PostgreSQL authentication
  * This version NEVER auto-logs in or auto-restores sessions
  */
 import { StrictMode, Suspense } from 'react';
@@ -7,11 +7,12 @@ import { createRoot } from 'react-dom/client';
 import App from './App.tsx';
 import './index.css';
 import { hydrateAuthStore } from './store/authStore';
-import { initAuthDebug, logAuthState } from './utils/authDebug';
-import { initAuthStateListener } from './services/firestore/authListener';
-import { initReloadDetector } from './utils/reloadDetector';
+import { initAuthDebug } from './utils/authDebug';
 import { initIntervalCleaner, clearAllTimers } from './utils/intervalCleaner';
-import { auth } from './lib/firebase';
+import { initReloadDetector } from './utils/reloadDetector';
+import './utils/devCleanup';
+import './lib/apiService'; // Initialize centralized API service with token handling
+import { initializeTokenRefreshService } from './lib/tokenRefreshService'; // Token refresh for extended sessions
 
 // Create a pre-loading state for the app
 const preloadEl = document.getElementById('root');
@@ -34,10 +35,8 @@ if (preloadEl) {
   `;
 }
 
-// REMOVED emergency redirect function and timeout to prevent unwanted redirects
-
 /**
- * Initialize app with NO automatic login
+ * Initialize app with PostgreSQL authentication
  */
 const initApp = async (): Promise<void> => {
   // CRITICAL: Check for reload loops before doing anything else
@@ -57,16 +56,13 @@ const initApp = async (): Promise<void> => {
     }
   }
   
-  console.log('🚀 Initializing application...');
+  console.log('🚀 Initializing application with PostgreSQL authentication...');
   
   // Initialize reload detector first to catch any issues
   initReloadDetector();
   
   // Initialize the interval cleaner utility
   initIntervalCleaner();
-  
-  // Initialize the Firebase Auth listener (only responds to explicit actions)
-  initAuthStateListener();
   
   // CRITICAL: Clear any potential intervals that might be causing auto-reloads
   clearAllTimers();
@@ -86,114 +82,65 @@ const initApp = async (): Promise<void> => {
   } else {
     // For non-login pages: ONLY proceed if explicit login was performed
     const hasExplicitLogin = localStorage.getItem('explicit-login-performed') === 'true';
+    const hasJwtToken = localStorage.getItem('jwt-token') !== null;
     
-    if (!hasExplicitLogin && !auth.currentUser) {
+    if (!hasExplicitLogin && !hasJwtToken) {
       console.log('🔒 No explicit login detected - redirecting to login');
       window.location.href = '/login';
       return; // Stop initialization - we're redirecting
-    } else if (auth.currentUser) {
-      console.log('🔑 User already logged in from explicit action');
+    } else {
+      console.log('🔑 User has valid authentication - proceeding');
     }
   }
+    // STEP 2: Hydrate auth store (safe to do on any page)
+  await hydrateAuthStore();
   
-  // STEP 2: Hydrate auth store (safe to do on any page)
-  hydrateAuthStore();
-    // STEP 3: REMOVED emergency timeout to prevent unwanted redirects
-  // No automatic redirects to login after timeouts
-  console.log('🛑 Emergency timeout redirects disabled to prevent auto-reloads');
+  // Initialize authentication debugging
+  initAuthDebug();
   
-  // STEP 4: Render the React app
-  const rootElement = document.getElementById('root');
-  if (!rootElement) {
-    console.error('Root element not found');
-    return;
-  }
-  
-  // Render React application
-  setTimeout(() => {
-    // Enable debug logging
-    initAuthDebug();
-    logAuthState();
-    
-    // Clear any reload detection flags
-    localStorage.removeItem('auth-long-cooling-period');
-    localStorage.removeItem('render-cycle-count');
-    localStorage.removeItem('last-loading-recovery-time');
-    localStorage.removeItem('last-render-time');
-    
-    // Log the render
-    console.log('🚀 Rendering React application');
-    
-    const root = createRoot(rootElement);
-    root.render(
-      <StrictMode>
-        <Suspense fallback={
-          <div className="fixed inset-0 flex items-center justify-center bg-white loading-screen">
-            <div className="flex flex-col items-center">
-              <div className="h-16 w-16 animate-spin rounded-full border-4 border-blue-600 border-t-transparent mb-4"></div>
-              <p className="text-lg text-gray-700 font-medium">Loading your dashboard...</p>
-              <p className="text-sm text-gray-500 mt-2">Please wait...</p>
-              <button 
-                onClick={() => window.location.href = '/login'}
-                className="mt-6 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-              >
-                Go to Login
-              </button>
-            </div>
-          </div>
-        }>
-          <App />
-        </Suspense>
-      </StrictMode>
-    );
-    
-    // Signal that we've started the app
-    localStorage.removeItem('app-starting');
-    
-    // Clear any reload loop flags to give this render a clean start
-    localStorage.removeItem('reload-loop-detected');
-    localStorage.removeItem('auth-loop-broken');
-  }, 200); // Slight delay to ensure initialization completes first
-}
+  // Initialize token refresh service to keep JWT tokens valid during sessions
+  initializeTokenRefreshService();
 
-// Call the initApp function once to start the application
-initApp().catch(err => {
-  console.error('Error during app initialization:', err);
+  // Create the root and render the app
+  const rootElement = document.getElementById('root');
+  if (!rootElement) throw new Error('Failed to find the root element');
   
-  // Show fallback UI if initialization fails
+  const root = createRoot(rootElement);
+  
+  root.render(
+    <StrictMode>
+      <Suspense fallback={
+        <div className="flex items-center justify-center h-screen">
+          <div className="h-16 w-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+        </div>
+      }>
+        <App />
+      </Suspense>
+    </StrictMode>
+  );
+  
+  console.log('🎉 Application initialized successfully');
+};
+
+// Initialize the app
+initApp().catch(error => {
+  console.error('❌ Failed to initialize the application:', error);
+  
+  // Display error on page
   const rootElement = document.getElementById('root');
   if (rootElement) {
     rootElement.innerHTML = `
-      <div style="position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background-color:white;">
-        <div style="display:flex; flex-direction:column; align-items:center; max-width:400px; text-align:center;">
-          <div style="color:red; font-size:24px; margin-bottom:12px;">⚠️ Error</div>
-          <p style="margin-top:16px; font-size:18px; color:#4b5563;">There was a problem loading the application</p>
-          <p style="margin-top:8px; font-size:14px; color:#6b7280; margin-bottom:20px;">Please try again or go to login</p>
-          <button 
-            onclick="window.location.href='/login'" 
-            style="padding:8px 16px; background-color:#2563eb; color:white; border:none; border-radius:4px; cursor:pointer;"
-          >
-            Go to Login
-          </button>
-        </div>
+      <div style="padding:20px; max-width:800px; margin:0 auto; text-align:center;">
+        <h1 style="color:#e11d48; font-size:24px; margin-bottom:16px;">Application Error</h1>
+        <p style="margin-bottom:16px;">The application failed to initialize. Please try refreshing the page or contact support.</p>
+        <pre style="background:#f1f5f9; padding:16px; border-radius:4px; text-align:left; overflow:auto;">${error?.toString() || 'Unknown error'}</pre>
+        <button 
+          onclick="window.location.href='/login'" 
+          style="margin-top:16px; padding:8px 16px; background-color:#2563eb; color:white; border:none; border-radius:4px; cursor:pointer;"
+        >
+          Go to Login
+        </button>
       </div>
     `;
   }
-});
-
-// Performance monitoring
-let renderComplete = false;
-setTimeout(() => {
-  if (!renderComplete) {
-    console.warn('App mount taking longer than expected - possible performance issue');
-  }
-}, 3000);
-
-// On successful page load
-window.addEventListener('load', () => {
-  renderComplete = true;
-  localStorage.removeItem('auth-checking');
-  
-  // REMOVED emergency redirect check to prevent unwanted redirects
-  console.log('🛑 Page load complete - no automatic redirects will occur');
 });

@@ -4,7 +4,7 @@ import { Modal } from './Modal';
 import { Button } from './Button';
 import { FormInput } from './FormInput';
 import { Customer } from '../../types/lead';
-import { getCustomers, createCustomer } from '../../services/firestore/customerService';
+import { getCustomers, createCustomer } from '../../services/customerService';
 
 type ModalMode = 'select' | 'create';
 

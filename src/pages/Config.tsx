@@ -1,10 +1,11 @@
 import React from 'react';
-import { Settings, FileText, Users, Wrench, Calendar } from 'lucide-react';
+import { Settings, FileText, Users, Wrench, Calendar, Database } from 'lucide-react';
 import { CollapsibleCard } from '../components/common/CollapsibleCard';
 import { QuotationConfig } from '../components/config/QuotationConfig';
 import { ResourceRatesConfig } from '../components/config/ResourceRatesConfig';
 import { AdditionalParamsConfig } from '../components/config/AdditionalParamsConfig';
 import { DefaultTemplateConfig } from '../components/config/DefaultTemplateConfig';
+import { DatabaseConfig } from '../components/config/DatabaseConfig';
 import { useAuthStore } from '../store/authStore';
 
 export function Config() {
@@ -66,6 +67,14 @@ export function Config() {
           defaultExpanded={false}
         >
           <AdditionalParamsConfig />
+        </CollapsibleCard>
+
+        <CollapsibleCard
+          icon={<Database className="h-5 w-5" />}
+          title="Database Connection"
+          defaultExpanded={false}
+        >
+          <DatabaseConfig />
         </CollapsibleCard>
       </div>
     </div>

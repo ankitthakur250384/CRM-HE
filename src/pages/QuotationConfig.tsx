@@ -7,7 +7,7 @@ import { Toast } from '../components/common/Toast';
 import { updateQuotationConfig, getDefaultTemplateConfig, updateDefaultTemplateConfig } from '../services/configService';
 import { useQuotationConfigStore } from '../store/quotationConfigStore';
 import { Select } from '../components/common/Select';
-import { getTemplates } from '../services/firestore/templateService';
+import { getTemplates } from '../services/templateService';
 import { Template } from '../types/template';
 
 const DefaultTemplateConfig = () => {

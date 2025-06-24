@@ -1,4 +1,5 @@
 export type LeadStatus = 'new' | 'in_process' | 'qualified' | 'unqualified' | 'lost' | 'converted';
+export type LeadSource = 'website' | 'referral' | 'direct' | 'social' | 'email' | 'phone' | 'other';
 
 type DealStatus = 'qualification' | 'proposal' | 'negotiation' | 'won' | 'lost';
 
@@ -48,9 +49,10 @@ export interface Lead {
   siteLocation: string;
   startDate: string;
   rentalDays: number;
-  shiftTiming: string;
+  shiftTiming?: string;
   status: LeadStatus;
-  assignedTo: string;  // ID of the sales agent
+  source?: LeadSource;
+  assignedTo?: string;  // ID of the sales agent
   assignedToName?: string;  // Name of the sales agent
   designation?: string;  // Customer's designation
   createdAt: string;

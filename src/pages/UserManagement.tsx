@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { signUp } from '../services/firestore/authService';
-import { fetchUsers, updateUser, deleteUser, toggleUserStatus } from '../services/firestore/userService';
+import { signUp, fetchUsers, updateUser, deleteUser, toggleUserStatus } from '../services/userService';
 import { 
   Search, 
   Edit2, 
@@ -20,7 +19,22 @@ import { RequiredFieldsInfo } from '../components/common/RequiredFieldsInfo';
 import { useAuthStore } from '../store/authStore';
 import { User as UserType, UserRole } from '../types/auth';
 
-interface ExtendedUser extends Omit<UserType, 'avatar'> {
+// Extended PostgreSQL user type to match what we get from the database
+interface PostgreSQLUser {
+  uid: string;
+  email: string;
+  displayName: string;
+  role: UserRole;
+  active: boolean;
+  createdAt: string;
+}
+
+// Extended user interface for the UI
+interface ExtendedUser {
+  id: string;
+  name: string;
+  email: string;
+  role: UserRole;
   status: 'active' | 'inactive';
   avatar?: string;
 }
@@ -36,42 +50,6 @@ const ROLE_OPTIONS = [
 const STATUS_OPTIONS = [
   { value: 'active', label: 'Active' },
   { value: 'inactive', label: 'Inactive' },
-];
-
-// Mock initial users
-const INITIAL_USERS: ExtendedUser[] = [
-  {
-    id: '1',
-    name: 'Admin User',
-    email: 'admin@aspcranes.com',
-    role: 'admin',
-    status: 'active',
-    avatar: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1',
-  },
-  {
-    id: '2',
-    name: 'John Sales',
-    email: 'john@aspcranes.com',
-    role: 'sales_agent',
-    status: 'active',
-    avatar: 'https://images.pexels.com/photos/2379004/pexels-photo-2379004.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1',
-  },
-  {
-    id: '3',
-    name: 'Sara Manager',
-    email: 'sara@aspcranes.com',
-    role: 'operations_manager',
-    status: 'active',
-    avatar: 'https://images.pexels.com/photos/774909/pexels-photo-774909.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1',
-  },
-  {
-    id: '4',
-    name: 'Mike Operator',
-    email: 'mike@aspcranes.com',
-    role: 'operator',
-    status: 'inactive',
-    avatar: 'https://images.pexels.com/photos/614810/pexels-photo-614810.jpeg?auto=compress&cs=tinysrgb&w=1260&h=750&dpr=1',
-  },
 ];
 
 const ITEMS_PER_PAGE = 10;
@@ -98,8 +76,8 @@ const generateAvatarUrl = (name: string): string => {
 
 export function UserManagement() {
   const { user } = useAuthStore();
-  const [users, setUsers] = useState<ExtendedUser[]>(INITIAL_USERS);
-  const [filteredUsers, setFilteredUsers] = useState<ExtendedUser[]>(INITIAL_USERS);
+  const [users, setUsers] = useState<ExtendedUser[]>([]);
+  const [filteredUsers, setFilteredUsers] = useState<ExtendedUser[]>([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [searchTerm, setSearchTerm] = useState('');
   const [roleFilter, setRoleFilter] = useState<UserRole | 'all'>('all');
@@ -114,6 +92,7 @@ export function UserManagement() {
     description?: string;
     variant?: 'success' | 'error' | 'warning';
   }>({ show: false, title: '' });
+  
   // Form state
   const [formData, setFormData] = useState({
     name: '',
@@ -122,49 +101,146 @@ export function UserManagement() {
     role: 'operator' as UserRole,
     status: 'active' as 'active' | 'inactive',
   });
+  
   useEffect(() => {
-    // Fetch real users from Firestore
+    // Fetch real users from PostgreSQL
     const loadUsers = async () => {
       try {
         setIsLoading(true);
-        const usersList = await fetchUsers();
-        setUsers(usersList);
+        const usersList = await fetchUsers() as PostgreSQLUser[];
+        
+        // Convert PostgreSQL users to ExtendedUser format
+        const extendedUsers: ExtendedUser[] = usersList.map(user => ({
+          id: user.uid,
+          name: user.displayName,
+          email: user.email,
+          role: user.role,
+          status: user.active ? 'active' : 'inactive'
+        }));
+        
+        setUsers(extendedUsers);
+        setFilteredUsers(extendedUsers);
         setIsLoading(false);
       } catch (error) {
-        console.error('Error loading users:', error);
+        console.error('Error fetching users:', error);
+        showToast('Error loading users', 'Please try again later', 'error');
         setIsLoading(false);
-        showToast('Error loading users', 'error');
       }
     };
     
     loadUsers();
   }, []);
-
+  
   useEffect(() => {
     filterUsers();
   }, [users, searchTerm, roleFilter, statusFilter]);
-
+  
   const filterUsers = () => {
     let filtered = [...users];
-
+    
     if (searchTerm) {
-      filtered = filtered.filter(user => 
-        user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        user.email.toLowerCase().includes(searchTerm.toLowerCase())
+      const lowerSearch = searchTerm.toLowerCase();
+      filtered = filtered.filter(
+        user =>
+          user.name.toLowerCase().includes(lowerSearch) ||
+          user.email.toLowerCase().includes(lowerSearch)
       );
     }
-
+    
     if (roleFilter !== 'all') {
       filtered = filtered.filter(user => user.role === roleFilter);
     }
-
+    
     if (statusFilter !== 'all') {
       filtered = filtered.filter(user => user.status === statusFilter);
     }
-
+    
     setFilteredUsers(filtered);
-    setCurrentPage(1);
+    setCurrentPage(1); // Reset to first page when filtering
   };
+  
+  const showToast = (
+    title: string,
+    description?: string,
+    variant: 'success' | 'error' | 'warning' = 'success'
+  ) => {
+    setToast({ show: true, title, description, variant });
+    setTimeout(() => setToast({ show: false, title: '' }), 3000);
+  };
+
+  const handleAddUser = async () => {
+    try {
+      // Basic validation
+      if (!formData.name || !formData.email || !formData.password) {
+        showToast('Missing fields', 'Please fill in all required fields', 'warning');
+        return;
+      }
+      
+      // Call signUp from userService
+      const newUser = await signUp(
+        formData.email,
+        formData.password,
+        formData.name,
+        formData.role
+      );
+      
+      if (newUser) {
+        // Convert to ExtendedUser format
+        const extendedUser: ExtendedUser = {
+          id: newUser.id,
+          name: newUser.name,
+          email: newUser.email,
+          role: newUser.role,
+          status: 'active',
+          avatar: generateAvatarUrl(newUser.name)
+        };
+        
+        // Update state
+        setUsers(prev => [...prev, extendedUser]);
+        setIsModalOpen(false);
+        
+        // Reset form
+        setFormData({
+          name: '',
+          email: '',
+          password: '',
+          role: 'operator',
+          status: 'active',
+        });
+        
+        showToast('User created successfully', undefined, 'success');
+      }
+    } catch (error) {
+      console.error('Error creating user:', error);
+      showToast('Error creating user', 'Please try again later', 'error');
+    }
+  };
+  
+  const handleToggleStatus = async (user: ExtendedUser) => {
+    try {
+      const newStatus = user.status === 'active' ? false : true;
+      await toggleUserStatus(user.id, newStatus);
+      
+      // Update local state
+      setUsers(prev =>
+        prev.map(u =>
+          u.id === user.id
+            ? { ...u, status: newStatus ? 'active' : 'inactive' }
+            : u
+        )
+      );
+      
+      showToast(
+        `User ${newStatus ? 'activated' : 'deactivated'} successfully`,
+        undefined,
+        'success'
+      );
+    } catch (error) {
+      console.error('Error toggling user status:', error);
+      showToast('Error updating user status', 'Please try again later', 'error');
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -278,14 +354,6 @@ export function UserManagement() {
       status: 'active',
     });
     setSelectedUser(null);
-  };
-
-  const showToast = (
-    title: string,
-    variant: 'success' | 'error' | 'warning' = 'success'
-  ) => {
-    setToast({ show: true, title, variant });
-    setTimeout(() => setToast({ show: false, title: '' }), 3000);
   };
 
   // Pagination

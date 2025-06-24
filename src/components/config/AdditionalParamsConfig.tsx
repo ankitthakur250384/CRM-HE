@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Save, RefreshCw, Percent, AlertTriangle, Wrench, IndianRupee } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Save, RefreshCw, Percent, AlertTriangle, Clock, Moon, Wrench } from 'lucide-react';
 import { Input } from '../common/Input';
 import { Button } from '../common/Button';
 import { Toast } from '../common/Toast';
@@ -8,28 +8,24 @@ import { Card, CardHeader, CardTitle, CardContent } from '../common/Card';
 
 export function AdditionalParamsConfig() {
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [params, setParams] = useState({
-    usageRates: {
-      light: 5,
-      heavy: 10
+  const [isSaving, setIsSaving] = useState(false);  const [params, setParams] = useState({
+    usageFactors: {
+      normal: 1.0,
+      medium: 1.2,
+      heavy: 1.5
     },
     riskFactors: {
-      low: 5,
-      medium: 10,
-      high: 15
+      low: 0,
+      medium: 8000,
+      high: 15000
     },
-    incidentalCharges: {
-      incident1: 5000,
-      incident2: 10000,
-      incident3: 15000
+    shiftFactors: {
+      single: 1.0,
+      double: 1.8
     },
-    otherFactors: {
-      rigger: 40000,
-      helper: 12000,
-      area: 5000,
-      condition: 7000,
-      customerReputation: 8000
+    dayNightFactors: {
+      day: 1.0,
+      night: 1.3
     }
   });
 
@@ -127,23 +123,31 @@ export function AdditionalParamsConfig() {
               <Wrench className="h-5 w-5 text-primary-500" />
               <CardTitle>Usage Rates</CardTitle>
             </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
+          </CardHeader>          <CardContent className="space-y-4">
             <RateInput
-              label="Light Usage Rate"
-              value={params.usageRates.light}
+              label="Normal Usage Factor"
+              value={params.usageFactors.normal}
               onChange={(value) => setParams(prev => ({
                 ...prev,
-                usageRates: { ...prev.usageRates, light: value }
+                usageFactors: { ...prev.usageFactors, normal: value }
               }))}
               isPercentage
             />
             <RateInput
-              label="Heavy Usage Rate"
-              value={params.usageRates.heavy}
+              label="Medium Usage Factor"
+              value={params.usageFactors.medium}
               onChange={(value) => setParams(prev => ({
                 ...prev,
-                usageRates: { ...prev.usageRates, heavy: value }
+                usageFactors: { ...prev.usageFactors, medium: value }
+              }))}
+              isPercentage
+            />
+            <RateInput
+              label="Heavy Usage Factor"
+              value={params.usageFactors.heavy}
+              onChange={(value) => setParams(prev => ({
+                ...prev,
+                usageFactors: { ...prev.usageFactors, heavy: value }
               }))}
               isPercentage
             />
@@ -187,92 +191,61 @@ export function AdditionalParamsConfig() {
               isPercentage
             />
           </CardContent>
-        </Card>
-
-        {/* Incidental Charges */}
+        </Card>        {/* Shift Factors */}
         <Card>
           <CardHeader>
             <div className="flex items-center gap-2">
-              <IndianRupee className="h-5 w-5 text-primary-500" />
-              <CardTitle>Incidental Charges</CardTitle>
+              <Clock className="h-5 w-5 text-primary-500" />
+              <CardTitle>Shift Factors</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <RateInput
-              label="Incident 1"
-              value={params.incidentalCharges.incident1}
+              label="Single Shift"
+              value={params.shiftFactors.single}
               onChange={(value) => setParams(prev => ({
                 ...prev,
-                incidentalCharges: { ...prev.incidentalCharges, incident1: value }
+                shiftFactors: { ...prev.shiftFactors, single: value }
               }))}
+              isPercentage
             />
             <RateInput
-              label="Incident 2"
-              value={params.incidentalCharges.incident2}
+              label="Double Shift"
+              value={params.shiftFactors.double}
               onChange={(value) => setParams(prev => ({
                 ...prev,
-                incidentalCharges: { ...prev.incidentalCharges, incident2: value }
+                shiftFactors: { ...prev.shiftFactors, double: value }
               }))}
-            />
-            <RateInput
-              label="Incident 3"
-              value={params.incidentalCharges.incident3}
-              onChange={(value) => setParams(prev => ({
-                ...prev,
-                incidentalCharges: { ...prev.incidentalCharges, incident3: value }
-              }))}
+              isPercentage
             />
           </CardContent>
         </Card>
 
-        {/* Other Factors */}
-        <Card>
+        {/* Other Factors */}        <Card>
           <CardHeader>
             <div className="flex items-center gap-2">
-              <Wrench className="h-5 w-5 text-primary-500" />
-              <CardTitle>Other Factors</CardTitle>
+              <Moon className="h-5 w-5 text-primary-500" />
+              <CardTitle>Day/Night Factors</CardTitle>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
             <RateInput
-              label="Rigger"
-              value={params.otherFactors.rigger}
+              label="Day Factor"
+              value={params.dayNightFactors.day}
               onChange={(value) => setParams(prev => ({
                 ...prev,
-                otherFactors: { ...prev.otherFactors, rigger: value }
+                dayNightFactors: { ...prev.dayNightFactors, day: value }
               }))}
+              isPercentage
             />
             <RateInput
-              label="Helper"
-              value={params.otherFactors.helper}
+              label="Night Factor"
+              value={params.dayNightFactors.night}
               onChange={(value) => setParams(prev => ({
                 ...prev,
-                otherFactors: { ...prev.otherFactors, helper: value }
+                dayNightFactors: { ...prev.dayNightFactors, night: value }
               }))}
-            />
-            <RateInput
-              label="Area"
-              value={params.otherFactors.area}
-              onChange={(value) => setParams(prev => ({
-                ...prev,
-                otherFactors: { ...prev.otherFactors, area: value }
-              }))}
-            />
-            <RateInput
-              label="Condition"
-              value={params.otherFactors.condition}
-              onChange={(value) => setParams(prev => ({
-                ...prev,
-                otherFactors: { ...prev.otherFactors, condition: value }
-              }))}
-            />
-            <RateInput
-              label="Customer Reputation"
-              value={params.otherFactors.customerReputation}
-              onChange={(value) => setParams(prev => ({
-                ...prev,
-                otherFactors: { ...prev.otherFactors, customerReputation: value }
-              }))}
+              isPercentage
             />
           </CardContent>
         </Card>

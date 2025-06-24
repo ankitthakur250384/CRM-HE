@@ -1,0 +1,30 @@
+/**
+ * Deal Service
+ * 
+ * This file serves as a wrapper around the PostgreSQL deal repository.
+ * It replaces the Firestore implementation and provides the same interface.
+ */
+
+import * as dealRepository from './postgres/dealRepository';
+import { Deal, DealStage } from '../types/deal';
+
+/**
+ * Get all deals
+ */
+export const getDeals = async (): Promise<Deal[]> => {
+  return dealRepository.getDeals();
+};
+
+/**
+ * Create a new deal
+ */
+export const createDeal = async (dealData: Omit<Deal, 'id' | 'createdAt' | 'updatedAt'>): Promise<Deal> => {
+  return dealRepository.createDeal(dealData);
+};
+
+/**
+ * Update a deal's stage
+ */
+export const updateDealStage = async (id: string, stage: DealStage): Promise<Deal | null> => {
+  return dealRepository.updateDealStage(id, stage);
+};

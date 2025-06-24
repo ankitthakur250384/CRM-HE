@@ -79,19 +79,101 @@ export function QuotationManagement() {
 
   useEffect(() => {
     filterQuotations();
-  }, [quotations, searchTerm, statusFilter]);
-
-  const fetchData = async () => {
+  }, [quotations, searchTerm, statusFilter]);  const fetchData = async () => {
     try {
       setIsLoading(true);
       setError(null);
       
-      const [quotationsData, dealsData] = await Promise.all([
-        getQuotations(),
-        getDeals()
-      ]);
+      console.log('QuotationManagement: Starting to fetch data...');
       
-      setQuotations(quotationsData);
+      // Import customer service
+      const { getCustomers } = await import('../services/customerService');
+      
+      const [quotationsData, dealsData, customersData] = await Promise.all([
+        getQuotations(),
+        getDeals(),
+        getCustomers()
+      ]);
+      console.log('QuotationManagement: Fetched quotations:', quotationsData?.length || 0);
+      console.log('QuotationManagement: Fetched deals:', dealsData?.length || 0);
+      console.log('QuotationManagement: Fetched customers:', customersData?.length || 0);
+      
+      // Build a map of customers by ID for efficient lookup
+      const customerMap = new Map();
+      customersData.forEach(customer => {
+        customerMap.set(customer.id, customer);
+      });
+      
+      // Debug: log a sample quotation and customer to check IDs
+      if (quotationsData.length > 0) {
+        console.log('Sample quotation data:', {
+          id: quotationsData[0].id,
+          customerId: quotationsData[0].customerId,
+          customerName: quotationsData[0].customerName,
+          customerContact: quotationsData[0].customerContact,
+          selectedEquipment: quotationsData[0].selectedEquipment
+        });
+      }
+      
+      if (customersData.length > 0) {
+        console.log('Sample customer data:', {
+          id: customersData[0].id,
+          name: customersData[0].name,
+          contactName: customersData[0].contactName
+        });
+      }
+      
+      // Enhance quotations with customer data
+      const enhancedQuotations = quotationsData.map(quotation => {
+        // Start with the data we have
+        const enhanced = { ...quotation };
+        
+        // Try to get customer data from the ID
+        const customer = customerMap.get(quotation.customerId);
+        
+        // Fill in customer data from map if available
+        if (customer) {
+          console.log(`Found matching customer for quotation ${quotation.id}: ${customer.name}`);
+          
+          enhanced.customerName = enhanced.customerName || customer.name;
+          
+          // Create or enhance customerContact
+          enhanced.customerContact = enhanced.customerContact || {};
+          
+          // Only override fields if they don't exist or are empty
+          if (!enhanced.customerContact.name) {
+            enhanced.customerContact.name = customer.contactName;
+          }
+          
+          if (!enhanced.customerContact.company) {
+            enhanced.customerContact.company = customer.name;
+          }
+          
+          if (!enhanced.customerContact.email) {
+            enhanced.customerContact.email = customer.email;
+          }
+          
+          if (!enhanced.customerContact.phone) {
+            enhanced.customerContact.phone = customer.phone;
+          }
+          
+          if (!enhanced.customerContact.address) {
+            enhanced.customerContact.address = customer.address;
+          }
+        } else {
+          console.log(`No matching customer found for quotation ${quotation.id} with customerId ${quotation.customerId}`);
+        }
+        
+        // Ensure we always have at least placeholders for customer info
+        enhanced.customerName = enhanced.customerName || 'Unknown Customer';
+        enhanced.customerContact = enhanced.customerContact || {};
+        enhanced.customerContact.name = enhanced.customerContact.name || 'Contact Not Available';
+        enhanced.customerContact.company = enhanced.customerContact.company || 'No Company';
+        
+        return enhanced;
+      });
+      
+      setQuotations(enhancedQuotations);
       
       // Filter deals to only show qualified ones
       const qualifiedDeals = dealsData.filter(deal => 
@@ -126,7 +208,7 @@ export function QuotationManagement() {
       // If no template found, use the default template from templateService
       try {
         // Try to get all templates
-        const templateService = await import('../services/firestore/templateService');
+        const templateService = await import('../services/templateService');
         const templates = await templateService.getTemplates();
         
         if (templates && templates.length > 0) {
@@ -139,9 +221,8 @@ export function QuotationManagement() {
       } catch (e) {
         console.error("Error loading templates from service:", e);
       }
-      
-      // If still no template, create a fallback template
-      const fallbackTemplate = {
+        // If still no template, create a fallback template
+      const fallbackTemplate: Template = {
         id: 'fallback-template',
         name: 'Default Template',
         description: 'Standard quotation template',
@@ -166,9 +247,8 @@ export function QuotationManagement() {
       setDefaultTemplate(fallbackTemplate);
     } catch (error) {
       console.error('Error loading default template:', error);
-      
-      // Final fallback - always set some template
-      const emergencyTemplate = {
+        // Final fallback - always set some template
+      const emergencyTemplate: Template = {
         id: 'emergency-template',
         name: 'Basic Template',
         description: 'Basic quotation template',
@@ -182,14 +262,16 @@ export function QuotationManagement() {
     }
   };
 
-  const filterQuotations = () => {
-    let filtered = [...quotations];
+  const filterQuotations = () => {    let filtered = [...quotations];
 
     if (searchTerm) {
       filtered = filtered.filter(quotation =>
-        (quotation.customerContact?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (quotation.customerContact?.name || quotation.customerName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (quotation.customerContact?.company || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (quotation.selectedEquipment?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
+        (quotation.selectedEquipment?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (quotation.selectedMachines && quotation.selectedMachines.some(m => 
+          (m.name || '').toLowerCase().includes(searchTerm.toLowerCase())
+        ))
       );
     }
 
@@ -322,8 +404,8 @@ export function QuotationManagement() {
       // Use the template merger utility
       const content = mergeQuotationWithTemplate(quotation, defaultTemplate);
       
-      // Create mailto link with the quotation content      // Create a more descriptive equipment text based on whether we have multiple machines
-      let equipmentDescription = quotation.selectedEquipment.name;
+      // Create mailto link with the quotation content      // Create a more descriptive equipment text based on whether we have multiple machines      // Safely get equipment description
+      let equipmentDescription = quotation.selectedEquipment?.name || 'Selected Equipment';
       
       if (quotation.selectedMachines && quotation.selectedMachines.length > 1) {
         equipmentDescription = `${quotation.selectedMachines.length} machines (${quotation.selectedMachines.map(m => m.name).join(', ')})`;
@@ -332,7 +414,10 @@ export function QuotationManagement() {
       }
       
       const subject = `Quotation from ASP Cranes - ${quotation.id.slice(0, 8).toUpperCase()}`;
-      const emailBody = `Dear ${quotation.customerContact.name || 'Customer'},
+      const customerName = quotation.customerContact?.name || quotation.customerName || 'Customer';
+      const customerEmail = quotation.customerContact?.email || '';
+      
+      const emailBody = `Dear ${customerName},
 
 Please find your quotation details for ${equipmentDescription} below:
 
@@ -341,7 +426,7 @@ ${content}
 Best regards,
 ASP Cranes Team`;
       
-      const mailtoLink = `mailto:${quotation.customerContact.email || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
+      const mailtoLink = `mailto:${customerEmail}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(emailBody)}`;
       window.open(mailtoLink);
       
       showToast('Email prepared successfully', 'success', 'Your email client should open with the quotation details.');
@@ -465,14 +550,16 @@ ASP Cranes Team`;
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {filteredQuotations.map((quotation) => (
-                      <tr key={quotation.id} className="hover:bg-gray-50">
-                        <td className="px-2 sm:px-6 py-3 sm:py-4">
+                      <tr key={quotation.id} className="hover:bg-gray-50">                        <td className="px-2 sm:px-6 py-3 sm:py-4">
                           <div className="flex items-start flex-col">
                             <div className="text-xs sm:text-sm font-medium text-gray-900">
-                              {quotation.customerContact.name}
+                              {quotation.customerContact?.name || quotation.customerName || 'Customer'}
                             </div>
                             <div className="text-xs sm:text-sm text-gray-500">
-                              {quotation.customerContact.company}
+                              {quotation.customerContact?.company || quotation.customerName || 'No Company'} 
+                            </div>
+                            <div className="text-xs text-gray-400">
+                              ID: {quotation.customerId ? quotation.customerId.substring(0, 8) : 'None'}
                             </div>
                             {/* Mobile-only equipment info */}
                             <div className="text-xs text-gray-500 sm:hidden mt-1">
@@ -496,10 +583,15 @@ ASP Cranes Team`;
                                 {quotation.selectedMachines.length} machine{quotation.selectedMachines.length > 1 ? 's' : ''}
                               </div>
                             </>
+                          ) : quotation.selectedEquipment && quotation.selectedEquipment.name ? (
+                            <>
+                              <div className="text-xs sm:text-sm text-gray-900">{quotation.selectedEquipment.name}</div>
+                              <div className="text-xs sm:text-sm text-gray-500">{quotation.machineType || 'Standard'}</div>
+                            </>
                           ) : (
                             <>
-                              <div className="text-xs sm:text-sm text-gray-900">{quotation.selectedEquipment?.name || 'N/A'}</div>
-                              <div className="text-xs sm:text-sm text-gray-500">{quotation.machineType || 'N/A'}</div>
+                              <div className="text-xs sm:text-sm text-gray-500">No equipment data</div>
+                              <div className="text-xs sm:text-sm text-gray-400">{quotation.machineType || 'Type not specified'}</div>
                             </>
                           )}
                         </td>

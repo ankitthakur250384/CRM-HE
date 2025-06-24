@@ -5,7 +5,7 @@ import { Button } from '../components/common/Button';
 import { Input } from '../components/common/Input';
 import { VisualTemplateEditor } from '../components/quotations/VisualTemplateEditor';
 import { Template } from '../types/template';
-import { getTemplate, updateTemplate, createTemplate } from '../services/firestore/templateService';
+import { getTemplate, updateTemplate, createTemplate } from '../services/templateService';
 import { useToast } from '../hooks/useToast';
 import { ArrowLeft, Save } from 'lucide-react';
 

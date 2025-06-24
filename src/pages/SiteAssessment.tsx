@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   Camera, 
   Check,
@@ -19,6 +19,7 @@ import { TextArea } from '../components/common/TextArea';
 import { Toast } from '../components/common/Toast';
 import { useAuthStore } from '../store/authStore';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getSiteAssessments, createSiteAssessment, updateSiteAssessment, SiteAssessment as SiteAssessmentType } from '../services/siteAssessmentService';
 
 interface SiteConstraint {
   id: string;
@@ -72,11 +73,17 @@ interface SelectedConstraint extends SiteConstraint {
 
 export function SiteAssessment() {
   const { user } = useAuthStore();
+  const [title, setTitle] = useState('');
+  const [description, setDescription] = useState('');
+  const [location, setLocation] = useState('');
+  const [customerId, setCustomerId] = useState('');
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [selectedConstraints, setSelectedConstraints] = useState<SelectedConstraint[]>([]);
   const [phoneNumber, setPhoneNumber] = useState('');
   const [isAnnotating, setIsAnnotating] = useState(false);
   const [selectedImage, setSelectedImage] = useState<UploadedFile | null>(null);
+  const [existingAssessments, setExistingAssessments] = useState<SiteAssessmentType[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [toast, setToast] = useState<{
     show: boolean;
     title: string;
@@ -85,6 +92,23 @@ export function SiteAssessment() {
   }>({ show: false, title: '' });
   
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  useEffect(() => {
+    // Fetch existing site assessments when component mounts
+    const fetchAssessments = async () => {
+      try {
+        const assessments = await getSiteAssessments();
+        setExistingAssessments(assessments);
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error fetching site assessments:', error);
+        showToast('Error loading site assessments', 'error');
+        setIsLoading(false);
+      }
+    };
+    
+    fetchAssessments();
+  }, []);
   
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
@@ -200,13 +224,87 @@ export function SiteAssessment() {
     }
   };
   
+  // Show toast helper function
   const showToast = (
     title: string,
     description?: string,
     variant: 'success' | 'error' | 'warning' = 'success'
   ) => {
     setToast({ show: true, title, description, variant });
-    setTimeout(() => setToast({ show: false, title: '' }), 5000);
+    setTimeout(() => setToast({ show: false, title: '' }), 3000);
+  };
+  
+  // Add the handleSubmit function for saving site assessment
+  const handleSubmit = async () => {
+    if (!user) {
+      showToast('Error', 'You need to be logged in to submit a site assessment', 'error');
+      return;
+    }
+    
+    if (!title) {
+      showToast('Missing title', 'Please provide a title for the site assessment', 'warning');
+      return;
+    }
+
+    if (!location) {
+      showToast('Missing location', 'Please provide the site location', 'warning');
+      return;
+    }
+    
+    if (files.length === 0) {
+      showToast('Missing files', 'Please upload at least one site photo or video', 'warning');
+      return;
+    }
+    
+    try {
+      // Extract image and video files
+      const imageFiles = files.filter(f => f.file.type.startsWith('image/'))
+        .map(f => `mock-url-${f.id}`);
+      
+      const videoFiles = files.filter(f => f.file.type.startsWith('video/'))
+        .map(f => `mock-url-${f.id}`);
+      
+      // Extract constraint IDs
+      const constraintIds = selectedConstraints.map(c => c.id);
+      
+      // Notes from constraints
+      const notes = selectedConstraints
+        .filter(c => c.notes)
+        .map(c => `${c.label}: ${c.notes}`)
+        .join('\n');
+      
+      const assessmentData: Omit<SiteAssessmentType, 'id' | 'createdAt' | 'updatedAt'> = {
+        title,
+        description,
+        customerId: customerId || 'unknown',
+        location,
+        constraints: constraintIds,
+        notes,
+        images: imageFiles,
+        videos: videoFiles,
+        createdBy: user.id
+      };
+      
+      // Save the assessment to PostgreSQL
+      const savedAssessment = await createSiteAssessment(assessmentData);
+      
+      // Update the local state with the new assessment
+      setExistingAssessments(prev => [...prev, savedAssessment]);
+      
+      // Clear the form
+      setTitle('');
+      setDescription('');
+      setCustomerId('');
+      setLocation('');
+      setFiles([]);
+      setSelectedConstraints([]);
+      setPhoneNumber('');
+      
+      showToast('Site assessment submitted successfully', undefined, 'success');
+    } catch (error) {
+      console.error('Error submitting site assessment:', error);
+      showToast('Error submitting assessment', 'Please try again later', 'error');
+    }
   };
   
   // Clean up preview URLs when component unmounts
@@ -412,6 +510,73 @@ export function SiteAssessment() {
         </CardContent>
       </Card>
       
+      {/* Site Details Section */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Site Details</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Title *
+                </label>
+                <Input
+                  value={title}
+                  onChange={(e) => setTitle(e.target.value)}
+                  placeholder="Site assessment title"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Customer ID
+                </label>
+                <Input
+                  value={customerId}
+                  onChange={(e) => setCustomerId(e.target.value)}
+                  placeholder="Enter customer ID if available"
+                />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Location *
+              </label>
+              <Input
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                placeholder="Enter site address/location"
+                required
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Description
+              </label>
+              <TextArea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Additional details about the site"
+                rows={3}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Submit Section */}
+      <div className="flex justify-end mt-6">
+        <Button
+          onClick={handleSubmit}
+          className="flex items-center gap-2"
+        >
+          <Send size={16} />
+          Submit Assessment
+        </Button>
+      </div>
+      
       {/* Summary Section */}
       <Card>
         <CardHeader>
@@ -491,12 +656,11 @@ export function SiteAssessment() {
               animate={{ scale: 1 }}
               exit={{ scale: 0.95 }}
               className="bg-white rounded-lg shadow-modal max-w-4xl w-full max-h-[90vh] overflow-hidden"
-            >
-              <div className="flex justify-between items-center p-4 border-b">
+            >              <div className="flex justify-between items-center p-4 border-b">
                 <h3 className="text-lg font-semibold">Image Annotation</h3>
                 <Button
                   variant="ghost"
-                  size="icon"
+                  size="sm"
                   onClick={() => {
                     setIsAnnotating(false);
                     setSelectedImage(null);

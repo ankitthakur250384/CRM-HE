@@ -32,7 +32,7 @@ import { Equipment, OrderType, CraneCategory, BaseRates } from '../types/equipme
 import { Quotation, QuotationInputs } from '../types/quotation';
 import type { SundayWorking } from '../types/quotation';
 import { getDealById } from '../services/dealService';
-import { getEquipment, getEquipmentByCategory } from '../services/firestore/equipmentService';
+import { getEquipment, getEquipmentByCategory } from '../services/equipmentService';
 import { createQuotation, updateQuotation, getQuotationById } from '../services/quotationService';
 import { getResourceRatesConfig, getAdditionalParamsConfig, getQuotationConfig } from '../services/configService';
 import { formatCurrency } from '../utils/formatters';

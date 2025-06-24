@@ -1,12 +1,11 @@
 /**
  * authStore.ts - Safe version
- * Removes all auto-login functionality
+ * Uses PostgreSQL authentication instead of Firebase
  */
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { AuthState } from '../types/auth';
-import { signIn, signOutUser } from '../services/firestore/authService';
-import { auth } from '../lib/firebase';
+import { signIn, signOutUser, getCurrentUser } from '../services/postgresAuthService';
 import { 
   saveAuthToStorage, 
   clearAuthFromStorage
@@ -35,16 +34,10 @@ export const useAuthStore = create<AuthStore>()(
         try {
           set({ error: null });
           
-          // First sign in with Firebase
+          // Sign in with PostgreSQL authentication service
           const user = await signIn(email, password);
-          
-          // Ensure we have a current user and get their token
-          if (!auth.currentUser) {
-            throw new Error('Authentication failed: No current user');
-          }
-          
-          // Get token with force refresh to ensure it's current
-          const token = await auth.currentUser.getIdToken(true);
+            // Get token from local storage (it's set by the signIn function)
+          const token = localStorage.getItem('jwt-token') || '';
           
           // Update state after successful authentication
           set({ 
@@ -73,11 +66,7 @@ export const useAuthStore = create<AuthStore>()(
           // Mark that we're actively logging out
           localStorage.setItem('logging-out', 'true');
           
-          // Clear persistent auth first
-          const { clearPersistentAuth } = await import('../services/firestore/persistentAuth');
-          clearPersistentAuth();
-          
-          // Sign out from Firebase
+          // Sign out using PostgreSQL auth service
           await signOutUser();
           
           // Clear all auth-related state and storage
@@ -86,6 +75,8 @@ export const useAuthStore = create<AuthStore>()(
           
           // Remove the explicit login flag
           localStorage.removeItem('explicit-login-performed');
+          // Remove JWT token
+          localStorage.removeItem('jwt-token');
         } catch (error) {
           set({ error: (error as Error).message });
           throw error;
@@ -123,7 +114,7 @@ export const useAuthStore = create<AuthStore>()(
  * Hydrate the auth store - ONLY uses explicit login state
  * This version never auto-logs in
  */
-export const hydrateAuthStore = () => {
+export const hydrateAuthStore = async () => {
   // Only rehydrate once to prevent infinite loops
   if (!hasHydrated) {
     try {
@@ -147,6 +138,26 @@ export const hydrateAuthStore = () => {
       }
       
       console.log('📌 User has explicitly logged in - hydrating auth store');
+      
+      // Check for JWT token and try to get current user
+      const token = localStorage.getItem('jwt-token');
+      if (token) {
+        try {
+          const user = await getCurrentUser();
+          if (user) {
+            useAuthStore.getState().setUser(user);
+            useAuthStore.setState({ token, isAuthenticated: true });
+          } else {
+            // Token is invalid or expired
+            useAuthStore.getState().clearUser();
+            localStorage.removeItem('jwt-token');
+            localStorage.removeItem('explicit-login-performed');
+          }
+        } catch (error) {
+          console.error('Error getting current user:', error);
+          useAuthStore.getState().clearUser();
+        }
+      }
       
       // Force immediate rehydration of the store for explicit logins only
       useAuthStore.persist.rehydrate();

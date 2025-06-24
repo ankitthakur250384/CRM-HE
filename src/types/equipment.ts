@@ -25,4 +25,8 @@ export interface Equipment {
   createdAt: string;
   updatedAt: string;
   runningCost: number;
+  
+  // Development fields for tracking data source
+  _source?: 'api' | 'schema' | 'client';
+  _mockFlag?: boolean;
 }

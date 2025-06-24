@@ -1,0 +1,45 @@
+/**
+ * Quotation Service
+ * 
+ * This file serves as a wrapper around the PostgreSQL quotation repository.
+ * It replaces the Firestore implementation and provides the same interface.
+ */
+
+import * as quotationRepository from './postgres/quotationRepository';
+import { Quotation, QuotationInputs } from '../types/quotation';
+import { getLeadById } from './leadService';
+import { getDealById } from './dealService';
+
+// Extending the QuotationStatus type to match the Quotation status field
+export type QuotationStatus = 'draft' | 'sent' | 'accepted' | 'rejected';
+
+/**
+ * Get all quotations
+ */
+export const getQuotations = async (): Promise<Quotation[]> => {
+  return quotationRepository.getQuotations();
+};
+
+/**
+ * Create a new quotation
+ */
+export const createQuotation = async (quotationInputs: QuotationInputs): Promise<Quotation> => {
+  return quotationRepository.createQuotation(quotationInputs);
+};
+
+/**
+ * Get a quotation by ID
+ */
+export const getQuotationById = async (id: string): Promise<Quotation | null> => {
+  return quotationRepository.getQuotationById(id);
+};
+
+/**
+ * Update a quotation's status
+ */
+export const updateQuotationStatus = async (
+  id: string, 
+  status: QuotationStatus
+): Promise<Quotation | null> => {
+  return quotationRepository.updateQuotationStatus(id, status);
+};

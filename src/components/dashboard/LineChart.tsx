@@ -1,4 +1,4 @@
-import React from 'react';
+
 import {
   Chart as ChartJS,
   CategoryScale,
@@ -9,7 +9,8 @@ import {
   Tooltip,
   Legend,
   ChartData,
-  ChartOptions
+  ChartOptions,
+  Filler
 } from 'chart.js';
 import { Line } from 'react-chartjs-2';
 
@@ -21,7 +22,8 @@ ChartJS.register(
   LineElement,
   Title,
   Tooltip,
-  Legend
+  Legend,
+  Filler
 );
 
 interface LineChartProps {

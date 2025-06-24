@@ -1,4 +1,5 @@
 export type JobStatus = 'pending' | 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+export type OperatorAvailability = 'available' | 'assigned' | 'on_leave' | 'inactive';
 
 export interface Equipment {
   id: string;
@@ -14,21 +15,38 @@ export interface Operator {
   email: string;
   phone: string;
   specialization: string;
+  certifications?: string[];
+  availability?: OperatorAvailability;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface JobLocation {
+  address: string;
+  coordinates?: {
+    latitude: number;
+    longitude: number;
+  }
 }
 
 export interface Job {
   id: string;
+  title: string;
   leadId: string;
+  customerId: string;
   customerName: string;
-  equipmentId: string;
-  operatorId: string;
-  customerId?: string;
+  equipmentIds: string[];
+  operatorIds: string[];
+  dealId?: string;
   status: JobStatus;
-  startDate: string;
-  endDate: string;
+  scheduledStartDate: string;
+  scheduledEndDate: string;
+  actualStartDate?: string | null;
+  actualEndDate?: string | null;
   location: string;
   notes?: string;
-  createdAt?: string;
-  updatedAt?: string;
-  dealId?: string; // Reference to the deal that generated this job
+  createdBy: string;
+  createdAt: string;
+  updatedAt: string;
+  assignedTo?: string;
 }

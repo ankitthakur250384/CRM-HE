@@ -1,6 +1,7 @@
-import { ReactNode } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
+import { getCurrentUser } from '../../services/postgresAuthService';
 import { UserRole } from '../../types/auth';
 
 interface ProtectedRouteProps {
@@ -10,14 +11,52 @@ interface ProtectedRouteProps {
 }
 
 /**
- * A simplified ProtectedRoute component with extensive debugging
+ * A simplified ProtectedRoute component with PostgreSQL authentication
  */
 export function ProtectedRoute({
   children,
   redirectTo = '/login',
   allowedRoles
 }: ProtectedRouteProps) {
-  const { user, isAuthenticated } = useAuthStore();
+  const { user, isAuthenticated, setUser } = useAuthStore();
+  const [isChecking, setIsChecking] = useState(true);
+  
+  // Verify JWT token on protected route access
+  useEffect(() => {
+    const verifyToken = async () => {
+      const jwtToken = localStorage.getItem('jwt-token');
+      
+      if (jwtToken) {
+        try {
+          const currentUser = await getCurrentUser();
+          if (currentUser) {
+            // Update user in store if needed
+            if (!user || user.id !== currentUser.id) {
+              setUser(currentUser);
+            }
+          }
+        } catch (error) {
+          console.error('Error verifying token:', error);
+          // Token is invalid - clear authentication
+          localStorage.removeItem('jwt-token');
+          localStorage.removeItem('explicit-login-performed');
+        }
+      }
+      
+      setIsChecking(false);
+    };
+    
+    verifyToken();
+  }, [user, setUser]);
+  
+  // Show loading while checking token
+  if (isChecking) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <div className="h-12 w-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+      </div>
+    );
+  }
   
   // Debug log authentication state when rendering a protected route
   console.log(`🔒 Protected Route Check - Authenticated: ${isAuthenticated}, User: ${user?.id || 'none'}`);

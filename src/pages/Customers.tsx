@@ -18,7 +18,8 @@ import { Modal } from '../components/common/Modal';
 import { Toast } from '../components/common/Toast';
 import { Badge } from '../components/common/Badge';
 import { useAuthStore } from '../store/authStore';
-import { Customer, Contact } from '../types/lead';
+import { Customer } from '../types/customer';
+import { Contact } from '../types/lead';
 import { 
   getCustomers,
   createCustomer,
@@ -28,7 +29,7 @@ import {
   createContact,
   updateContact,
   deleteContact
-} from '../services/firestore/customerService';
+} from '../services/customerService';
 
 export function Customers() {
   const { user } = useAuthStore();
@@ -44,37 +45,45 @@ export function Customers() {
     title: string;
     description?: string;
     variant?: 'success' | 'error' | 'warning';
-  }>({ show: false, title: '' });
-
-  const [formData, setFormData] = useState({
+  }>({ show: false, title: '' });  const [formData, setFormData] = useState<Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>>({
     name: '',
+    contactName: '',
     email: '',
     phone: '',
     address: '',
-    companyName: '',
-    designation: '',
+    type: 'other',
   });
 
   useEffect(() => {
     fetchCustomers();
   }, []);
-
   const fetchCustomers = async () => {
     try {
+      console.log('Fetching customers from service...');
       const data = await getCustomers();
-      setCustomers(data);
       
-      // Fetch contacts for each customer
-      const contactsData: Record<string, Contact[]> = {};
-      for (const customer of data) {
-        const customerContacts = await getContactsByCustomer(customer.id);
-        contactsData[customer.id] = customerContacts;
+      if (data && Array.isArray(data)) {
+        console.log(`Received ${data.length} customers from service`);
+        setCustomers(data);
+        
+        // Fetch contacts for each customer
+        const contactsData: Record<string, Contact[]> = {};
+        for (const customer of data) {
+          console.log(`Fetching contacts for customer: ${customer.id} - ${customer.name}`);
+          const customerContacts = await getContactsByCustomer(customer.id);
+          contactsData[customer.id] = customerContacts;
+        }
+        setContacts(contactsData);
+        setIsLoading(false);
+      } else {
+        console.error('Invalid customer data format:', data);
+        showToast('Error fetching customers: Invalid data format', 'error');
+        setIsLoading(false);
       }
-      setContacts(contactsData);
-      setIsLoading(false);
     } catch (error) {
       console.error('Error fetching customers:', error);
       showToast('Error fetching customers', 'error');
+      setIsLoading(false);
     }
   };
 
@@ -87,13 +96,14 @@ export function Customers() {
     }
 
     try {
-      if (selectedCustomer) {
-        const updatedCustomer = await updateCustomer(selectedCustomer.id, formData);
-        setCustomers(prev =>
-          prev.map(customer =>
-            customer.id === selectedCustomer.id ? updatedCustomer : customer
-          )
-        );
+      if (selectedCustomer) {        const updatedCustomer = await updateCustomer(selectedCustomer.id, formData);
+        if (updatedCustomer) {
+          setCustomers(prev =>
+            prev.map(customer =>
+              customer.id === selectedCustomer.id ? updatedCustomer : customer
+            )
+          );
+        }
         showToast('Customer updated successfully', 'success');
       } else {
         const newCustomer = await createCustomer(formData);
@@ -129,14 +139,13 @@ export function Customers() {
     }
   };
 
-  const resetForm = () => {
-    setFormData({
+  const resetForm = () => {    setFormData({
       name: '',
+      contactName: '',
       email: '',
       phone: '',
       address: '',
-      companyName: '',
-      designation: '',
+      type: 'other' as const,
     });
     setSelectedCustomer(null);
   };
@@ -223,10 +232,10 @@ export function Customers() {
                         <div className="flex items-center gap-2">
                           <div>
                             <div className="text-sm font-medium text-gray-900">{customer.name}</div>
-                            <div className="text-sm text-gray-500">{customer.designation || 'N/A'}</div>
+                            <div className="text-sm text-gray-500">{customer.contactName || 'N/A'}</div>
                           </div>
                           <Badge variant="outline" className="text-xs">
-                            {customer.customerId}
+                            {customer.id}
                           </Badge>
                         </div>
                       </td>
@@ -245,7 +254,7 @@ export function Customers() {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center text-sm text-gray-900">
                           <Building2 className="h-4 w-4 mr-2 flex-shrink-0" />
-                          {customer.companyName || 'N/A'}
+                          {customer.name || 'N/A'}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
@@ -265,9 +274,8 @@ export function Customers() {
                                 name: customer.name,
                                 email: customer.email,
                                 phone: customer.phone,
-                                address: customer.address,
-                                companyName: customer.companyName || '',
-                                designation: customer.designation || '',
+                                address: customer.address,                                contactName: customer.contactName || '',
+                                type: customer.type,
                               });
                               setIsModalOpen(true);
                             }}
@@ -314,19 +322,17 @@ export function Customers() {
             value={formData.name}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, name: e.target.value }))}
             required
-          />
-
-          <FormInput
-            label="Company Name"
-            value={formData.companyName}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, companyName: e.target.value }))}
+          />          <FormInput
+            label="Contact Name"
+            value={formData.contactName}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, contactName: e.target.value }))}
             required
           />
 
           <FormInput
-            label="Designation"
-            value={formData.designation}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, designation: e.target.value }))}
+            label="Customer Type"
+            value={formData.type}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, type: e.target.value as any }))}
             required
           />
 

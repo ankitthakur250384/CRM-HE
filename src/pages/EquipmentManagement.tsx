@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit2, Trash2, Settings, Calendar, Weight, Plane as Crane, IndianRupee, Truck } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, Settings, Calendar, Weight, Plane as Crane, IndianRupee, Truck, AlertTriangle } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { FormInput } from '../components/common/FormInput';
@@ -9,9 +9,60 @@ import { Modal } from '../components/common/Modal';
 import { Toast } from '../components/common/Toast';
 import { Badge } from '../components/common/Badge';
 import { useAuthStore } from '../store/authStore';
-import { Equipment, CraneCategory, OrderType, BaseRates } from '../types/equipment';
-import { getEquipment, createEquipment, updateEquipment, deleteEquipment } from '../services/firestore/equipmentService';
+import { Equipment, CraneCategory, BaseRates } from '../types/equipment';
+import { getEquipment, createEquipment, updateEquipment, deleteEquipment } from '../services/equipmentService';
 import { formatCurrency } from '../utils/formatters';
+
+// Helper function to normalize equipment data
+const normalizeEquipment = (equipment: Equipment): Equipment => {
+  return {
+    ...equipment,
+    name: equipment.name || '',
+    category: equipment.category || 'mobile_crane',
+    manufacturingDate: equipment.manufacturingDate || '',
+    registrationDate: equipment.registrationDate || '',
+    maxLiftingCapacity: equipment.maxLiftingCapacity || 0,
+    unladenWeight: equipment.unladenWeight || 0,
+    baseRates: {
+      micro: equipment.baseRates?.micro || 0,
+      small: equipment.baseRates?.small || 0,
+      monthly: equipment.baseRates?.monthly || 0,
+      yearly: equipment.baseRates?.yearly || 0,
+    },
+    runningCostPerKm: equipment.runningCostPerKm || 0,
+    description: equipment.description || '',
+    status: equipment.status || 'available',
+    createdAt: equipment.createdAt || new Date().toISOString(),
+    updatedAt: equipment.updatedAt || new Date().toISOString(),
+    runningCost: equipment.runningCost || 0,
+    _source: equipment._source,
+    _mockFlag: equipment._mockFlag,
+  };
+};
+
+// Mock data warning component
+const MockDataWarning = ({ show }: { show: boolean }) => {
+  if (!show) return null;
+  
+  return (
+    <div className="mb-4 p-3 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-700 flex items-center">
+      <AlertTriangle className="mr-2 h-5 w-5" />
+      <div>
+        <p className="font-bold">Mock Data In Use</p>
+        <p className="text-sm">The PostgreSQL API server is unavailable. Using local mock data instead.</p>
+        <p className="text-sm mt-1">
+          <strong>Troubleshooting:</strong> 
+          <ul className="list-disc ml-5 mt-1">
+            <li>Verify the PostgreSQL server is running</li>
+            <li>Check that the API server is started</li>
+            <li>Ensure the database connection parameters are correct</li>
+            <li>See API_CONNECTION_GUIDE.md for more details</li>
+          </ul>
+        </p>
+      </div>
+    </div>
+  );
+};
 
 const STATUS_OPTIONS = [
   { value: 'available', label: 'Available' },
@@ -33,12 +84,7 @@ const ORDER_TYPES = [
   { value: 'yearly', label: 'Yearly' },
 ] as const;
 
-const RATE_LABELS = {
-  micro: 'per hour',
-  small: 'per hour',
-  monthly: 'per month',
-  yearly: 'per month'
-} as const;
+
 
 export function EquipmentManagement() {
   const { user } = useAuthStore();
@@ -75,6 +121,8 @@ export function EquipmentManagement() {
     description: '',
     status: 'available' as Equipment['status'],
   });
+  // State to track if we're using mock data
+  const [usingMockData, setUsingMockData] = useState(false);
 
   useEffect(() => {
     fetchEquipment();
@@ -82,16 +130,32 @@ export function EquipmentManagement() {
 
   useEffect(() => {
     filterEquipment();
-  }, [equipment, searchTerm, statusFilter, categoryFilter]);
-
-  const fetchEquipment = async () => {
+  }, [equipment, searchTerm, statusFilter, categoryFilter]);  const fetchEquipment = async () => {
     try {
-      const data = await getEquipment();
+      let data = await getEquipment();
+      
+      // Normalize each equipment to ensure all required fields exist
+      data = data.map(normalizeEquipment);
+      
       setEquipment(data);
+      
+      // Check if we're using mock data
+      const hasMockData = data.some(item => item._mockFlag === true || item._source === 'schema' || item._source === 'client');
+      setUsingMockData(hasMockData);
+      
+      if (hasMockData) {
+        console.warn('Using mock equipment data. API connection might be unavailable.');
+        showToast('Using mock equipment data. Check API connection.', 'warning');
+      } else {
+        console.log('Successfully connected to equipment API');
+      }
+      
       setIsLoading(false);
     } catch (error) {
       console.error('Error fetching equipment:', error);
       showToast('Error fetching equipment', 'error');
+      setUsingMockData(true); // Assume mock data if error
+      setIsLoading(false);
     }
   };
 
@@ -142,7 +206,6 @@ export function EquipmentManagement() {
 
     return true;
   };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -151,8 +214,11 @@ export function EquipmentManagement() {
     }
 
     try {
+      // Convert all form string values to appropriate types
       const equipmentData = {
         ...formData,
+        // Generate an equipment ID if creating new equipment
+        equipmentId: selectedEquipment?.equipmentId || `EQ${String(Math.floor(1000 + Math.random() * 9000)).padStart(4, '0')}`,
         maxLiftingCapacity: Number(formData.maxLiftingCapacity),
         unladenWeight: Number(formData.unladenWeight),
         baseRates: {
@@ -164,24 +230,65 @@ export function EquipmentManagement() {
         runningCost: Number(formData.runningCostPerKm),
         runningCostPerKm: Number(formData.runningCostPerKm),
       };
-
+      
+      console.log('Form submission data:', equipmentData);
+      
       if (selectedEquipment) {
-        const updatedEquipment = await updateEquipment(selectedEquipment.id, equipmentData);
-        setEquipment(prev => 
-          prev.map(item => 
-            item.id === selectedEquipment.id ? { ...item, ...updatedEquipment } : item
-          )
-        );
-        showToast('Equipment updated successfully', 'success');
+        console.log(`Updating equipment ${selectedEquipment.id}`, equipmentData);
+        
+        let updatedEquipment = await updateEquipment(selectedEquipment.id, equipmentData);
+        
+        if (updatedEquipment) {
+          console.log('Update successful:', updatedEquipment);
+          
+          // Normalize data to ensure all required fields exist
+          updatedEquipment = normalizeEquipment(updatedEquipment);
+            // Update the equipment state with the returned data from API
+          // TypeScript non-null assertion since we already checked updatedEquipment exists
+          setEquipment(prev => 
+            prev.map(item => 
+              item.id === selectedEquipment.id ? updatedEquipment! : item
+            )
+          );
+          
+          // Check if we got mock data or real API data
+          if (updatedEquipment._mockFlag) {
+            showToast('Equipment updated in local state only (API unavailable)', 'warning');
+          } else {
+            showToast('Equipment updated successfully', 'success');
+          }
+        } else {
+          showToast('Failed to update equipment', 'error');
+        }
       } else {
-        const newEquipment = await createEquipment(equipmentData);
+        console.log('Creating new equipment', equipmentData);
+        
+        let newEquipment = await createEquipment(equipmentData);
+        
+        // Normalize data to ensure all required fields exist
+        newEquipment = normalizeEquipment(newEquipment);
+        console.log('Creation successful:', newEquipment);
+        
         setEquipment(prev => [...prev, newEquipment]);
-        showToast('Equipment added successfully', 'success');
+        
+        // Check if we got mock data or real API data
+        if (newEquipment._mockFlag) {
+          showToast('Equipment created in local state only (API unavailable)', 'warning');
+        } else {
+          showToast('Equipment added successfully', 'success');
+        }
       }
+
+      // Refresh equipment from API to ensure we have latest data
+      // This ensures we see the persisted data after refresh
+      setTimeout(() => {
+        fetchEquipment();
+      }, 500);
 
       setIsModalOpen(false);
       resetForm();
     } catch (error) {
+      console.error('Error saving equipment:', error);
       showToast('Error saving equipment', 'error');
     }
   };
@@ -236,9 +343,11 @@ export function EquipmentManagement() {
       </div>
     );
   }
-
   return (
     <div className="p-6 space-y-6">
+      {/* Display mock data warning */}
+      <MockDataWarning show={usingMockData} />
+      
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex flex-col sm:flex-row gap-4 flex-1">
           <div className="relative flex-1">
@@ -363,8 +472,7 @@ export function EquipmentManagement() {
                         </div>
                       </td>
                       <td className="px-6 py-4 min-w-[300px]">
-                        <div className="text-sm">
-                          <div className="bg-gray-50 rounded-lg p-4">
+                        <div className="text-sm">                          <div className="bg-gray-50 rounded-lg p-4">
                             <div className="font-medium text-gray-900 mb-3">Base Rates</div>
                             <div className="space-y-2.5">
                               {ORDER_TYPES.map(type => (
@@ -373,7 +481,9 @@ export function EquipmentManagement() {
                                   <div className="flex items-baseline gap-1.5">
                                     <span className="text-gray-400 text-sm">₹</span>
                                     <span className="text-gray-900 font-medium">
-                                      {formatCurrency(item.baseRates[type.value])}
+                                      {item.baseRates && item.baseRates[type.value] !== undefined
+                                        ? formatCurrency(item.baseRates[type.value])
+                                        : "N/A"}
                                     </span>
                                     <span className="text-gray-500 text-sm">
                                       {type.value === 'monthly' || type.value === 'yearly' ? (
@@ -386,13 +496,16 @@ export function EquipmentManagement() {
                                 </div>
                               ))}
                             </div>
-                          </div>
-                          <div className="mt-3 flex items-center gap-2 text-gray-600">
+                          </div>                            <div className="mt-3 flex items-center gap-2 text-gray-600">
                             <Truck className="h-4 w-4" />
                             <span>Running:</span>
                             <div className="flex items-baseline gap-1">
                               <span className="text-gray-400">₹</span>
-                              <span className="text-gray-900">{formatCurrency(item.runningCostPerKm)}</span>
+                              <span className="text-gray-900">
+                                {item.runningCostPerKm !== undefined 
+                                  ? formatCurrency(item.runningCostPerKm)
+                                  : "N/A"}
+                              </span>
                               <span className="text-gray-500">/km</span>
                             </div>
                           </div>
@@ -404,23 +517,22 @@ export function EquipmentManagement() {
                             variant="ghost"
                             size="sm"
                             onClick={() => {
-                              setSelectedEquipment(item);
-                              setFormData({
-                                name: item.name,
-                                category: item.category,
-                                manufacturingDate: item.manufacturingDate,
-                                registrationDate: item.registrationDate,
-                                maxLiftingCapacity: String(item.maxLiftingCapacity),
-                                unladenWeight: String(item.unladenWeight),
+                              setSelectedEquipment(item);                              setFormData({
+                                name: item.name || '',
+                                category: item.category || 'mobile_crane',
+                                manufacturingDate: item.manufacturingDate || '',
+                                registrationDate: item.registrationDate || '',
+                                maxLiftingCapacity: item.maxLiftingCapacity !== undefined ? String(item.maxLiftingCapacity) : '',
+                                unladenWeight: item.unladenWeight !== undefined ? String(item.unladenWeight) : '',
                                 baseRates: {
-                                  micro: String(item.baseRates.micro),
-                                  small: String(item.baseRates.small),
-                                  monthly: String(item.baseRates.monthly),
-                                  yearly: String(item.baseRates.yearly),
+                                  micro: item.baseRates && item.baseRates.micro !== undefined ? String(item.baseRates.micro) : '',
+                                  small: item.baseRates && item.baseRates.small !== undefined ? String(item.baseRates.small) : '',
+                                  monthly: item.baseRates && item.baseRates.monthly !== undefined ? String(item.baseRates.monthly) : '',
+                                  yearly: item.baseRates && item.baseRates.yearly !== undefined ? String(item.baseRates.yearly) : '',
                                 },
-                                runningCostPerKm: String(item.runningCostPerKm),
+                                runningCostPerKm: item.runningCostPerKm !== undefined ? String(item.runningCostPerKm) : '',
                                 description: item.description || '',
-                                status: item.status,
+                                status: item.status || 'available',
                               });
                               setIsModalOpen(true);
                             }}

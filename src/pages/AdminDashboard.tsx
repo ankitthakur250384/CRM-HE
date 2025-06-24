@@ -18,7 +18,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../components/common/C
 import { StatusBadge } from '../components/common/StatusBadge';
 import { getLeads } from '../services/leadService';
 import { getJobs, getAllOperators } from '../services/jobService';
-import { getEquipment as getAllEquipment } from '../services/firestore/equipmentService';
+import { getEquipment as getAllEquipment } from '../services/equipmentService';
 import { getDeals } from '../services/dealService';
 import { Lead } from '../types/lead';
 import { Job } from '../types/job';
@@ -346,20 +346,26 @@ export function AdminDashboard() {
                       </th>
                     </tr>
                   </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">                    {jobs.slice(0, 5).map((job) => (
+                  <tbody className="bg-white divide-y divide-gray-200">
+                    {jobs.slice(0, 5).map((job) => (
                       <tr key={job.id} className="hover:bg-gray-50">
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="font-medium text-gray-900">{job.customerId || "N/A"}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-500">{job.equipmentId}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-500">{job.location}</div>
+                          <div className="text-sm text-gray-500">{job.equipmentIds ? job.equipmentIds[0] : 'None'}</div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm text-gray-500">
-                            {new Date(job.startDate).toLocaleDateString()}
+                            {typeof job.location === 'object' && job.location !== null 
+                              ? (job.location as unknown as { address: string }).address || 'Unknown location'
+                              : job.location || 'Unknown location'
+                            }
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 whitespace-nowrap">
+                          <div className="text-sm text-gray-500">
+                            {new Date(job.scheduledStartDate).toLocaleDateString()}
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">

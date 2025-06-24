@@ -75,47 +75,45 @@ const navItems: NavItem[] = [
     icon: <Calendar size={20} />,
     href: '/jobs',
     roles: ['admin', 'operations_manager', 'operator'],
-  },
-  {
+  },  {
     label: 'Site Assessment',
     icon: <Image size={20} />,
-    href: '/site-assessment',
-    roles: ['admin', 'operations_manager'],
+    href: '/site-assessments',
+    roles: ['admin', 'operations_manager', 'operator'],
   },
   {
     label: 'Configuration',
     icon: <Cog size={20} />,
-    href: '/config',
+    href: '/admin/config',
     roles: ['admin', 'operations_manager'],
   },
   {
     label: 'User Management',
     icon: <Users size={20} />,
-    href: '/config/users',
+    href: '/admin/users',
     roles: ['admin'],
   },
   {
     label: 'Equipment',
     icon: <Settings size={20} />,
-    href: '/config/equipment',
+    href: '/admin/equipment',
     roles: ['admin', 'operations_manager'],
   },
   {
     label: 'Services',
     icon: <FileText size={20} />,
-    href: '/config/services',
+    href: '/admin/services',
     roles: ['admin', 'operations_manager'],
-  },
-  {
+  },  {
     label: 'Feedback',
     icon: <MessageSquare size={20} />,
-    href: '/feedback',
-    roles: ['admin', 'operations_manager'],
+    href: '/job-summary',
+    roles: ['admin', 'operations_manager', 'operator'],
   },
   {
     label: 'Templates',
     icon: <FileText size={20} />,
-    href: '/templates',
+    href: '/admin/quotation-templates',
     roles: ['admin', 'sales_agent'],
   },
 ];
@@ -145,10 +143,13 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
   if (!user) return null;
   
   const filteredNavItems = navItems.filter(item => item.roles.includes(user.role));
-  
-  const isActive = (href: string, end?: boolean) => {
+    const isActive = (href: string, end?: boolean) => {
     if (end) {
       return location.pathname === href;
+    }
+    // Special case for root dashboard
+    if (href === '/dashboard' && location.pathname === '/') {
+      return true;
     }
     return location.pathname.startsWith(href);
   };

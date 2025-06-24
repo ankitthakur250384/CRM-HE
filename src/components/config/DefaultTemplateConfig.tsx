@@ -7,7 +7,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../common/Card';
 import { Template } from '../../types/template';
 import { Quotation } from '../../types/quotation';
 import { mergeQuotationWithTemplate } from '../../utils/templateMerger';
-import { getTemplates, updateTemplate } from '../../services/firestore/templateService';
+import { getTemplates, updateTemplate } from '../../services/templateService';
 
 interface DefaultTemplateConfigProps {
   onSave?: () => void;

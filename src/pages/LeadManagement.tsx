@@ -15,13 +15,12 @@ import { Modal } from '../components/common/Modal';
 import { Toast } from '../components/common/Toast';
 import { CustomerSelectionModal } from '../components/common/CustomerSelectionModal';
 import { RequiredFieldsInfo } from '../components/common/RequiredFieldsInfo';
+import MockDataWarning from '../components/common/MockDataWarning';
 import { useAuthStore } from '../store/authStore';
 import { Lead, LeadStatus, Customer } from '../types/lead';
-import { getLeads, createLead, updateLeadStatus, updateLeadAssignment } from '../services/firestore/leadService';
+import { getLeads, createLead, updateLeadStatus, updateLeadAssignment } from '../services/leadService';
 import { createDeal } from '../services/dealService';
 import { useNavigate } from 'react-router-dom';
-import { collection, query, where, getDocs } from 'firebase/firestore';
-import { db } from '../lib/firebase';
 
 const LEAD_STATUS_OPTIONS = [
   { value: 'new', label: 'New' },
@@ -87,60 +86,70 @@ export function LeadManagement() {
     fetchLeads();
     fetchSalesAgents();
   }, []);
-
   useEffect(() => {
+    console.log('Filtering leads. Current leads array:', leads);
     filterLeads();
   }, [leads, searchTerm, statusFilter]);
-
   const fetchLeads = async () => {
     try {
+      console.log('Fetching leads from API...');
       const data = await getLeads();
-      setLeads(data);
+      console.log('Leads data received:', data);
+      setLeads(data || []); // Ensure we always have an array
       setIsLoading(false);
     } catch (error) {
       console.error('Error fetching leads:', error);
       showToast('Error fetching leads', 'error');
+      // Set empty array to prevent undefined errors
+      setLeads([]);
       setIsLoading(false);
     }
   };
-
   const fetchSalesAgents = async () => {
     try {
-      const usersRef = collection(db, 'users');
-      const q = query(usersRef, where('role', '==', 'sales_agent'));
-      const snapshot = await getDocs(q);
-      const agents = snapshot.docs.map(doc => ({
-        id: doc.id,
-        name: doc.data().name,
-      }));
-      setSalesAgents(agents);
+      // Mock data for sales agents since we're migrating from Firebase to PostgreSQL
+      // In production, you would replace this with an API call to fetch sales agents
+      const mockAgents = [
+        { id: 'sales-uid-456', name: 'Sales Agent' },
+        { id: 'sales-uid-789', name: 'John Seller' },
+        { id: 'sales-uid-101', name: 'Jane Dealmaker' },
+      ];
+      setSalesAgents(mockAgents);
     } catch (error) {
       console.error('Error fetching sales agents:', error);
       showToast('Error fetching sales agents', 'error');
     }
   };
-
   const filterLeads = () => {
+    // Check if leads is valid to prevent errors
+    if (!Array.isArray(leads)) {
+      console.warn('Leads is not an array:', leads);
+      setFilteredLeads([]);
+      return;
+    }
+
+    console.log(`Starting filtering with ${leads.length} leads`);
     let filtered = [...leads];
 
     // Filter by search term
     if (searchTerm) {
       filtered = filtered.filter(lead =>
-        lead.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        lead.companyName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        lead.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        lead.phone.includes(searchTerm)
+        (lead?.customerName?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
+        (lead?.companyName?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
+        (lead?.email?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
+        (lead?.phone?.includes(searchTerm) || false)
       );
     }
 
     // Filter by status
     if (statusFilter !== 'all') {
-      filtered = filtered.filter(lead => lead.status === statusFilter);
+      filtered = filtered.filter(lead => lead?.status === statusFilter);
     } else {
       // By default, exclude converted leads from the pipeline
-      filtered = filtered.filter(lead => lead.status !== 'converted');
+      filtered = filtered.filter(lead => lead?.status !== 'converted');
     }
 
+    console.log(`After filtering: ${filtered.length} leads match criteria`);
     setFilteredLeads(filtered);
   };
 
@@ -309,9 +318,24 @@ export function LeadManagement() {
     setSelectedLead(lead);
     setIsCustomerSelectionModalOpen(true);
   };
-
   const handleAssignmentChange = async (leadId: string, salesAgentId: string) => {
     try {
+      // Handle unassignment case (empty string)
+      if (salesAgentId === '') {
+        console.log('Unassigning lead', leadId);
+        const updatedLead = await updateLeadAssignment(leadId, '', 'Unassigned');
+        if (updatedLead) {
+          setLeads(prev => 
+            prev.map(lead => 
+              lead.id === leadId ? updatedLead : lead
+            )
+          );
+          showToast('Lead unassigned successfully', 'success');
+        }
+        return;
+      }
+      
+      // Handle assignment to a sales agent
       const selectedAgent = salesAgents.find(agent => agent.id === salesAgentId);
       if (!selectedAgent) {
         showToast('Selected sales agent not found', 'error');
@@ -365,9 +389,11 @@ export function LeadManagement() {
       </div>
     );
   }
-
   return (
     <div className="space-y-6">
+      {/* Display warning if mock data is being used */}
+      <MockDataWarning data={leads} dataType="leads" />
+      
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Leads Pipeline</CardTitle>
@@ -433,20 +459,28 @@ export function LeadManagement() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredLeads.map((lead) => (
-                    <tr key={lead.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
+                    <tr key={lead.id} className="hover:bg-gray-50">                      <td className="px-6 py-4 whitespace-nowrap">
                         <div>
-                          <div className="font-medium text-gray-900">{lead.customerName}</div>
+                          <div className="font-medium text-gray-900">
+                            {lead.customerName || 'Unknown Customer'}
+                          </div>
                           {lead.companyName && (
                             <div className="text-sm text-gray-500">{lead.companyName}</div>
+                          )}
+                          {!lead.customerName && !lead.companyName && lead.id && (
+                            <div className="text-xs text-gray-400">ID: {lead.id.substring(0, 8)}...</div>
                           )}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{lead.serviceNeeded}</div>
+                        <div className="text-sm text-gray-900">
+                          {lead.serviceNeeded || 'Not specified'}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">{lead.siteLocation}</div>
+                        <div className="text-sm text-gray-900">
+                          {lead.siteLocation || 'Not specified'}
+                        </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <Select
@@ -456,8 +490,7 @@ export function LeadManagement() {
                           className="min-w-[130px]"
                         />
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        {user?.role === 'admin' ? (
+                      <td className="px-6 py-4 whitespace-nowrap">                        {user?.role === 'admin' ? (
                           <Select
                             value={lead.assignedTo || ''}
                             onChange={(value) => handleAssignmentChange(lead.id, value)}
@@ -472,7 +505,7 @@ export function LeadManagement() {
                           />
                         ) : (
                           <div className="text-sm text-gray-900">
-                            {lead.assignedToName || 'Unassigned'}
+                            {!lead.assignedTo || lead.assignedTo === '' ? 'Unassigned' : (lead.assignedToName || 'Unassigned')}
                           </div>
                         )}
                       </td>

@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { getQuotationConfig } from '../services/configService';
+import { getQuotationConfig, updateQuotationConfig } from '../services/postgresService';
 
 interface OrderTypeConfig {
   minDays: number;
@@ -18,7 +18,7 @@ interface QuotationConfigState {
   isLoading: boolean;
   error: string | null;
   fetchConfig: () => Promise<void>;
-  updateConfig: (config: OrderTypeLimits) => void;
+  updateConfig: (config: OrderTypeLimits) => Promise<void>;
 }
 
 const defaultLimits: OrderTypeLimits = {
@@ -36,16 +36,40 @@ export const useQuotationConfigStore = create<QuotationConfigState>((set) => ({
     try {
       set({ isLoading: true, error: null });
       const config = await getQuotationConfig();
-      if (config?.orderTypeLimits) {
+      
+      if (config && config.orderTypeLimits) {
         set({ orderTypeLimits: config.orderTypeLimits });
+      } else {
+        console.log('Using default quotation config limits');
+        // If no config exists, use defaults
+        set({ orderTypeLimits: defaultLimits });
       }
     } catch (error) {
+      console.error('Error fetching quotation config:', error);
       set({ error: 'Failed to fetch quotation configuration' });
     } finally {
       set({ isLoading: false });
     }
   },
-  updateConfig: (config: OrderTypeLimits) => {
-    set({ orderTypeLimits: config });
+  updateConfig: async (config: OrderTypeLimits) => {
+    try {
+      set({ isLoading: true, error: null });
+      // Update the store immediately for better UX
+      set({ orderTypeLimits: config });
+      
+      // Update in database
+      await updateQuotationConfig({ orderTypeLimits: config });
+    } catch (error) {
+      console.error('Error updating quotation config:', error);
+      set({ error: 'Failed to update quotation configuration' });
+      
+      // Revert to original config on error
+      const currentConfig = await getQuotationConfig();
+      if (currentConfig?.orderTypeLimits) {
+        set({ orderTypeLimits: currentConfig.orderTypeLimits });
+      }
+    } finally {
+      set({ isLoading: false });
+    }
   }
 })); 

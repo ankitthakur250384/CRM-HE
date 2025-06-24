@@ -1,5 +1,11 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Suspense, useEffect } from 'react';
+import { 
+  BrowserRouter as Router, 
+  Routes, 
+  Route, 
+  Navigate
+} from 'react-router-dom';
+import { Suspense } from 'react';
+import { AuthErrorBoundary } from './components/auth/AuthErrorBoundary';
 import { LoginPage } from './pages/LoginPage';
 import { AppShell } from './components/layout/AppShell';
 import { AdminDashboard } from './pages/AdminDashboard';
@@ -50,7 +56,7 @@ function DashboardRouter() {
   }
 }
 
-// Error fallback component for error boundaries (used in error cases)
+// Error fallback component for error boundaries
 export function ErrorFallback() {
   return (
     <div className="fixed inset-0 bg-white flex flex-col items-center justify-center">
@@ -71,10 +77,7 @@ export function ErrorFallback() {
   );
 }
 
-// Main application content (safety timeout removed to prevent auto-redirects)
 function AppContent() {
-  // No global timeout - auto-redirects were causing issues
-  
   return (
     <Suspense fallback={
       <div className="fixed inset-0 bg-white flex min-h-screen items-center justify-center z-50 loading-screen">
@@ -100,54 +103,114 @@ function AppContent() {
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardRouter />} />
             
-            <Route path="leads" element={<LeadManagement />} />
-            <Route path="deals" element={<Deals />} />
-            <Route path="deals/:id" element={<DealDetails />} />
-            <Route path="quotations" element={<QuotationManagement />} />
-            <Route path="quotations/create" element={<QuotationCreation />} />
-            <Route path="customers" element={<Customers />} />
+            {/* Admin Only Routes */}
+            <Route path="admin/users" element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <UserManagement />
+              </ProtectedRoute>
+            } />
             
-            <Route path="jobs" element={<JobScheduling />} />
-            <Route path="site-assessment" element={<SiteAssessment />} />
-            <Route path="job-summary/:id" element={<JobSummaryFeedback />} />
+            <Route path="admin/config" element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <Config />
+              </ProtectedRoute>
+            } />
             
-            {/* Admin-only routes */}
-            <Route element={<ProtectedRoute allowedRoles={['admin']} />}>
-              <Route path="config" element={<Config />} />
-              <Route path="config/users" element={<UserManagement />} />
-              <Route path="config/equipment" element={<EquipmentManagement />} />
-              <Route path="config/services" element={<ServicesManagement />} />
-            </Route>
+            <Route path="admin/equipment" element={
+              <ProtectedRoute allowedRoles={['admin', 'operations_manager']}>
+                <EquipmentManagement />
+              </ProtectedRoute>
+            } />
             
-            <Route path="feedback" element={<JobSummaryFeedback />} />
+            <Route path="admin/services" element={
+              <ProtectedRoute allowedRoles={['admin', 'operations_manager']}>
+                <ServicesManagement />
+              </ProtectedRoute>
+            } />
             
-            {/* Templates routes with role protection */}
-            <Route element={<ProtectedRoute allowedRoles={['admin', 'sales_agent']} />}>
-              <Route path="templates" element={<QuotationTemplates />} />
-              <Route path="templates/new" element={<QuotationTemplateEditor />} />
-              <Route path="templates/edit/:id" element={<QuotationTemplateEditor />} />
-            </Route>
+            <Route path="admin/quotation-templates" element={
+              <ProtectedRoute allowedRoles={['admin', 'sales_agent']}>
+                <QuotationTemplates />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="admin/quotation-templates/edit/:id" element={
+              <ProtectedRoute allowedRoles={['admin', 'sales_agent']}>
+                <QuotationTemplateEditor />
+              </ProtectedRoute>
+            } />
+            
+            {/* Shared Routes for Multiple Roles */}
+            <Route path="leads" element={
+              <ProtectedRoute allowedRoles={['admin', 'sales_agent', 'operations_manager']}>
+                <LeadManagement />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="customers" element={
+              <ProtectedRoute allowedRoles={['admin', 'sales_agent', 'operations_manager']}>
+                <Customers />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="deals" element={
+              <ProtectedRoute allowedRoles={['admin', 'sales_agent', 'operations_manager']}>
+                <Deals />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="deals/:id" element={
+              <ProtectedRoute allowedRoles={['admin', 'sales_agent', 'operations_manager']}>
+                <DealDetails />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="quotations" element={
+              <ProtectedRoute allowedRoles={['admin', 'sales_agent', 'operations_manager']}>
+                <QuotationManagement />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="quotations/create" element={
+              <ProtectedRoute allowedRoles={['admin', 'sales_agent']}>
+                <QuotationCreation />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="jobs" element={
+              <ProtectedRoute allowedRoles={['admin', 'operations_manager', 'operator']}>
+                <JobScheduling />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="site-assessments" element={
+              <ProtectedRoute allowedRoles={['admin', 'operations_manager', 'operator']}>
+                <SiteAssessment />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="job-summary" element={
+              <ProtectedRoute allowedRoles={['admin', 'operations_manager', 'operator']}>
+                <JobSummaryFeedback />
+              </ProtectedRoute>
+            } />
+            
+            {/* Catch All - Redirect to Dashboard */}
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Route>
         </Route>
-        
-        {/* Fallback route */}
-        <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>
     </Suspense>
   );
 }
 
-// Main App component
 function App() {
-  useEffect(() => {
-    // Auth listener is now initialized in main.tsx to prevent duplicate initialization
-    console.log('App component mounted - auth listener already initialized in main.tsx');
-  }, []);
-  
   return (
-    <Router>
+    <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AuthProvider>
-        <AppContent />
+        <AuthErrorBoundary>
+          <AppContent />
+        </AuthErrorBoundary>
       </AuthProvider>
     </Router>
   );

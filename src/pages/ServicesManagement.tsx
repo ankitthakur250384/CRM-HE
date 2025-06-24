@@ -19,16 +19,7 @@ import { Modal } from '../components/common/Modal';
 import { Toast } from '../components/common/Toast';
 import { useAuthStore } from '../store/authStore';
 import { formatCurrency } from '../utils/formatters';
-
-interface Service {
-  id: string;
-  name: string;
-  type: string;
-  baseRate: number;
-  unit: 'hour' | 'day' | 'shift';
-  description: string;
-  isActive: boolean;
-}
+import { getServices, createService, updateService, deleteService, toggleServiceStatus, Service } from '../services/serviceManagementService';
 
 const SERVICE_TYPES = [
   { value: 'lifting', label: 'Lifting Service' },
@@ -44,53 +35,32 @@ const UNIT_OPTIONS = [
   { value: 'shift', label: 'Per Shift' },
 ];
 
-// Mock initial services
-const INITIAL_SERVICES: Service[] = [
-  {
-    id: '1',
-    name: 'Standard Lifting Service',
-    type: 'lifting',
-    baseRate: 250,
-    unit: 'hour',
-    description: 'Basic crane lifting service with standard safety protocols',
-    isActive: true,
-  },
-  {
-    id: '2',
-    name: 'Heavy Transport Package',
-    type: 'transport',
-    baseRate: 1500,
-    unit: 'day',
-    description: 'Complete transport solution for heavy machinery',
-    isActive: true,
-  },
-  {
-    id: '3',
-    name: 'Specialized Rigging Attachment',
-    type: 'attachment',
-    baseRate: 350,
-    unit: 'day',
-    description: 'Custom rigging equipment for specialized lifts',
-    isActive: false,
-  },
-];
-
 export function ServicesManagement() {
   const { user } = useAuthStore();
-  const [services, setServices] = useState<Service[]>(INITIAL_SERVICES);
-  const [filteredServices, setFilteredServices] = useState<Service[]>(INITIAL_SERVICES);
+  const [services, setServices] = useState<Service[]>([]);
+  const [filteredServices, setFilteredServices] = useState<Service[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [typeFilter, setTypeFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'inactive'>('all');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedService, setSelectedService] = useState<Service | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [toast, setToast] = useState<{
     show: boolean;
     title: string;
     description?: string;
     variant?: 'success' | 'error' | 'warning';
   }>({ show: false, title: '' });
+  
+  const showToast = (
+    title: string,
+    variant: 'success' | 'error' | 'warning' = 'success',
+    description?: string
+  ) => {
+    setToast({ show: true, title, variant, description });
+    setTimeout(() => setToast({ show: false, title: '' }), 3000);
+  };
 
   // Form state
   const [formData, setFormData] = useState({
@@ -101,6 +71,22 @@ export function ServicesManagement() {
     description: '',
     isActive: true,
   });
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        setIsLoading(true);
+        const data = await getServices();
+        setServices(data);
+        setIsLoading(false);
+      } catch (error) {
+        console.error('Error fetching services:', error);
+        showToast('Error fetching services', 'error');
+        setIsLoading(false);
+      }
+    };
+    
+    fetchServices();
+  }, []);
 
   useEffect(() => {
     filterServices();
@@ -128,7 +114,6 @@ export function ServicesManagement() {
 
     setFilteredServices(filtered);
   };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -138,24 +123,25 @@ export function ServicesManagement() {
     }
 
     try {
-      const newService: Service = {
-        id: selectedService?.id || Math.random().toString(36).substring(2, 9),
+      const serviceData = {
         name: formData.name,
         type: formData.type,
         baseRate: parseFloat(formData.baseRate),
-        unit: formData.unit,
+        unit: formData.unit as 'hour' | 'day' | 'shift',
         description: formData.description,
         isActive: formData.isActive,
       };
 
       if (selectedService) {
+        const updatedService = await updateService(selectedService.id, serviceData);
         setServices(prev => 
           prev.map(service => 
-            service.id === selectedService.id ? newService : service
+            service.id === selectedService.id ? updatedService : service
           )
         );
         showToast('Service updated successfully', 'success');
       } else {
+        const newService = await createService(serviceData);
         setServices(prev => [...prev, newService]);
         showToast('Service added successfully', 'success');
       }
@@ -166,34 +152,20 @@ export function ServicesManagement() {
       showToast('Error saving service', 'error');
     }
   };
-
   const handleDelete = async () => {
     if (!selectedService) return;
 
     try {
-      setServices(prev => prev.filter(service => service.id !== selectedService.id));
-      setIsDeleteModalOpen(false);
+      await deleteService(selectedService.id);
+      setServices(prev => prev.filter(service => service.id !== selectedService.id));      setIsDeleteModalOpen(false);
       setSelectedService(null);
       showToast('Service deleted successfully', 'success');
     } catch (error) {
+      console.error('Error deleting service:', error);
       showToast('Error deleting service', 'error');
     }
   };
-
-  const handleStatusToggle = (service: Service) => {
-    setServices(prev =>
-      prev.map(s =>
-        s.id === service.id
-          ? { ...s, isActive: !s.isActive }
-          : s
-      )
-    );
-    showToast(
-      `Service ${!service.isActive ? 'activated' : 'deactivated'}`,
-      'success'
-    );
-  };
-
+  
   const resetForm = () => {
     setFormData({
       name: '',
@@ -205,14 +177,27 @@ export function ServicesManagement() {
     });
     setSelectedService(null);
   };
-
-  const showToast = (
-    title: string,
-    variant: 'success' | 'error' | 'warning' = 'success'
-  ) => {
-    setToast({ show: true, title, variant });
-    setTimeout(() => setToast({ show: false, title: '' }), 3000);
+  
+  const handleStatusToggle = async (service: Service) => {
+    try {
+      const updatedService = await toggleServiceStatus(service.id);
+      setServices(prev =>
+        prev.map(s =>
+          s.id === service.id
+            ? updatedService
+            : s
+        )
+      );
+      showToast(
+        `Service ${!service.isActive ? 'activated' : 'deactivated'}`,
+        'success'
+      );
+    } catch (error) {
+      console.error('Error toggling service status:', error);
+      showToast('Error updating service status', 'error');
+    }
   };
+  // Function declarations moved to avoid duplications
 
   if (!user || (user.role !== 'operations_manager' && user.role !== 'admin')) {
     return (
@@ -274,9 +259,10 @@ export function ServicesManagement() {
       <Card>
         <CardHeader>
           <CardTitle>Services Catalog</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {filteredServices.length === 0 ? (
+        </CardHeader>        <CardContent>
+          {isLoading ? (
+            <div className="text-center py-4">Loading services...</div>
+          ) : filteredServices.length === 0 ? (
             <div className="text-center py-4 text-gray-500">
               No services found. Add new services to get started.
             </div>

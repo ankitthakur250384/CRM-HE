@@ -7,7 +7,7 @@ import { Plus, FileText, RefreshCw } from 'lucide-react';
 
 import { Toast } from '../components/common/Toast';
 
-import { getTemplates, createTemplate, updateTemplate, deleteTemplate } from '../services/firestore/templateService';
+import { getTemplates, createTemplate, updateTemplate, deleteTemplate } from '../services/templateService';
 import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import { VisualTemplateEditor } from '../components/quotations/VisualTemplateEditor';

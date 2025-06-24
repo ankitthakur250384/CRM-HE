@@ -1,98 +1,48 @@
-import { 
-  collection,
-  query,
-  where,
-  getDocs,
-  addDoc,
-  updateDoc,
-  doc,
-  getDoc,
-  serverTimestamp,
-  Timestamp
-} from 'firebase/firestore';
-import { db } from '../lib/firebase';
+/**
+ * Lead Service
+ * 
+ * This file serves as a wrapper around the PostgreSQL lead repository.
+ * It replaces the Firestore implementation and provides the same interface.
+ */
+
+import * as leadRepository from './postgres/leadRepository';
 import { Lead, LeadStatus } from '../types/lead';
-import { leadsCollection } from './firestore/collections';
 
+/**
+ * Get all leads
+ */
 export const getLeads = async (): Promise<Lead[]> => {
-  try {
-    const snapshot = await getDocs(leadsCollection);
-    return snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: (doc.data().createdAt as Timestamp).toDate().toISOString(),
-      updatedAt: (doc.data().updatedAt as Timestamp).toDate().toISOString(),
-    } as Lead));
-  } catch (error) {
-    console.error('Error fetching leads:', error);
-    throw error;
-  }
+  return leadRepository.getLeads();
 };
 
+/**
+ * Get a lead by ID
+ */
 export const getLeadById = async (id: string): Promise<Lead | null> => {
-  try {
-    const leadRef = doc(db, 'leads', id);
-    const docSnap = await getDoc(leadRef);
-    
-    if (!docSnap.exists()) {
-      return null;
-    }
-
-    const data = docSnap.data();
-    return {
-      id: docSnap.id,
-      ...(data as Omit<Lead, 'id' | 'createdAt' | 'updatedAt'>),
-      createdAt: (data.createdAt as Timestamp).toDate().toISOString(),
-      updatedAt: (data.updatedAt as Timestamp).toDate().toISOString(),
-    } as Lead;
-  } catch (error) {
-    console.error('Error fetching lead:', error);
-    throw error;
-  }
+  return leadRepository.getLeadById(id);
 };
 
-const createLead = async (lead: Omit<Lead, 'id' | 'createdAt' | 'updatedAt'>): Promise<Lead> => {
-  try {
-    const docRef = await addDoc(leadsCollection, {
-      ...lead,
-      createdAt: serverTimestamp(),
-      updatedAt: serverTimestamp(),
-    });
-
-    return {
-      ...lead,
-      id: docRef.id,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-  } catch (error) {
-    console.error('Error creating lead:', error);
-    throw error;
-  }
+/**
+ * Create a new lead
+ */
+export const createLead = async (lead: Omit<Lead, 'id' | 'createdAt' | 'updatedAt'>): Promise<Lead> => {
+  return leadRepository.createLead(lead);
 };
 
-const updateLeadStatus = async (id: string, status: LeadStatus): Promise<Lead | null> => {
-  try {
-    const leadRef = doc(db, 'leads', id);
-    await updateDoc(leadRef, {
-      status,
-      updatedAt: serverTimestamp(),
-    });
+/**
+ * Update a lead's status
+ */
+export const updateLeadStatus = async (id: string, status: LeadStatus): Promise<Lead | null> => {
+  return leadRepository.updateLeadStatus(id, status);
+};
 
-    const docSnap = await getDoc(leadRef);
-    if (!docSnap.exists()) {
-      return null;
-    }
-
-    const data = docSnap.data();
-    return {
-      id: docSnap.id,
-      ...(data as Omit<Lead, 'id' | 'createdAt' | 'updatedAt'>),
-      createdAt: (data.createdAt as Timestamp).toDate().toISOString(),
-      updatedAt: (data.updatedAt as Timestamp).toDate().toISOString(),
-    } as Lead;
-  } catch (error) {
-    console.error('Error updating lead status:', error);
-    throw error;
-  }
+/**
+ * Update a lead's assignment
+ */
+export const updateLeadAssignment = async (
+  leadId: string, 
+  salesAgentId: string, 
+  salesAgentName: string
+): Promise<Lead | null> => {
+  return leadRepository.updateLeadAssignment(leadId, salesAgentId, salesAgentName);
 };

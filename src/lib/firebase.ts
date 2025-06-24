@@ -1,96 +1,74 @@
-import { initializeApp, getApps } from 'firebase/app';
-import { getFirestore, enableIndexedDbPersistence } from 'firebase/firestore';
-import { getAuth } from 'firebase/auth';
-import { setupInitialUsers } from '../services/firestore/setupUsers';
+/**
+ * DEPRECATED: Firebase has been completely removed from the application
+ * This is a stub file to prevent any legacy import errors
+ * The application now uses PostgreSQL instead of Firebase
+ */
 
-// Configure with directly exported config for better reliability
-export const firebaseConfig = {
-  apiKey: "AIzaSyABVXrylOIescVfarC8WhtDcDvJa8bxDKU",
-  authDomain: "ai-crm-database.firebaseapp.com",
-  projectId: "ai-crm-database",
-  storageBucket: "ai-crm-database.firebasestorage.app",
-  messagingSenderId: "201042126488",
-  appId: "1:201042126488:web:9c85da043d8db0686452ed",
-  // Explicitly enable persistence
-  persistence: true
+// Mock Firebase auth
+export const auth = {
+  onAuthStateChanged: (_callback: any) => {
+    return () => {}; // Return noop unsubscribe function
+  },
+  signInWithEmailAndPassword: async () => {
+    console.warn('Firebase auth is deprecated. Use the PostgreSQL auth service instead.');
+    return Promise.reject(new Error('Firebase auth is disabled'));
+  },
+  signOut: async () => {
+    console.warn('Firebase auth is deprecated. Use the PostgreSQL auth service instead.');
+    return Promise.resolve();
+  },
+  currentUser: null
 };
 
-// Initialize Firebase only if it hasn't been initialized yet
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApps()[0];
-export const db = getFirestore(app);
+// Create mock Firestore database object
+export const db = {
+  collection: (_path: string) => ({
+    doc: (_id: string) => ({
+      get: async () => ({
+        exists: false,
+        data: () => null,
+        id: _id,
+      }),
+      set: async () => Promise.resolve(),
+      update: async () => Promise.resolve(),
+      delete: async () => Promise.resolve(),
+    }),
+    add: async () => ({ id: 'mock-id' }),
+    where: () => ({
+      get: async () => ({
+        empty: true,
+        docs: [],
+        forEach: () => {},
+      }),
+    }),
+  }),
+};
 
-// Configure auth with persistence
-export const auth = getAuth(app);
+// Export mock firestore object
+export const firestore = {
+  collection: (_collection: string) => ({
+    doc: (_id: string) => ({
+      get: async () => Promise.resolve({
+        exists: false,
+        data: () => null,
+      }),
+      set: async (_data: any) => Promise.resolve(),
+      update: async (_data: any) => Promise.resolve(),
+      delete: async () => Promise.resolve(),
+    }),
+    where: (_field: string, _operator: string, _value: any) => ({
+      get: async () => Promise.resolve({
+        empty: true,
+        docs: [],
+      }),
+    }),
+  }),
+};
 
-// DISABLED Firebase persistence - require explicit login
-// Clear any existing authentication state to prevent auto-login
-try {
-  // Force sign out any existing user to prevent auto-logins
-  if (!window.location.pathname.includes('/login')) {
-    console.log('🔒 DISABLING Firebase auth persistence - auth state will NOT persist across page reloads');
-    
-    // Clear persistent auth flags
-    localStorage.removeItem('firebase-persistence-enabled');
-    localStorage.removeItem('firebase-persistence-set-time');
-    
-    // Force clear auth state if not on login page and no explicit login
-    const hasExplicitLogin = localStorage.getItem('explicit-login-performed') === 'true';
-    if (!hasExplicitLogin) {
-      console.log('� No explicit login detected - clearing any Firebase auth state');
-      
-      // Sign out current user
-      auth.signOut().then(() => {
-        console.log('✅ Cleared Firebase auth state');
-        
-        // Redirect to login page
-        if (window.location.pathname !== '/login') {
-          console.log('🔄 Redirecting to login page');
-          window.location.href = '/login';
-        }
-      });
-    } else {
-      console.log('� Explicit login detected - allowing session to continue');
-    }
-  } else {
-    console.log('🔒 On login page - no action needed');
-  }
-} catch (error) {
-  console.error('❌ Error in Firebase auth state cleanup:', error);
+// Export a function that logs a warning when any Firebase function is called
+export function initFirebase() {
+  console.warn('Firebase is no longer used. The application now uses PostgreSQL.');
+  return { auth, firestore, db };
 }
 
-// Enable offline persistence
-enableIndexedDbPersistence(db)
-  .catch((err) => {
-    if (err.code === 'failed-precondition') {
-      console.error('Multiple tabs open, persistence can only be enabled in one tab at a time.');
-    } else if (err.code === 'unimplemented') {
-      console.error('The current browser does not support persistence.');
-    } else {
-      console.error('Error enabling persistence:', err);
-    }
-  });
-
-// Only set up initial users if explicitly requested with a flag
-// This prevents hitting Firebase rate limits with too many account creation attempts
-const shouldSetupUsers = localStorage.getItem('setup-initial-users') === 'true';
-if (shouldSetupUsers) {
-  console.log('Setting up initial users as requested...');
-  setupInitialUsers()
-    .then(() => {
-      // Clear the flag after successful setup
-      localStorage.removeItem('setup-initial-users');
-    })
-    .catch((error) => {
-      console.error('Failed to set up initial users:', error);
-      // If we hit rate limits, prevent additional attempts for 1 hour
-      if (error?.code === 'auth/too-many-requests') {
-        localStorage.setItem('user-setup-cooldown', (Date.now() + 3600000).toString());
-      }
-    });
-} else {
-  // Check if we're in a cooldown period from rate limiting
-  const cooldownUntil = parseInt(localStorage.getItem('user-setup-cooldown') || '0', 10);
-  if (cooldownUntil > Date.now()) {
-    console.log(`User setup on cooldown until ${new Date(cooldownUntil).toLocaleTimeString()}`);
-  }
-}
+export default { auth, firestore, db };
