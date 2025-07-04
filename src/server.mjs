@@ -30,22 +30,26 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 const isProduction = process.env.NODE_ENV === 'production';
 
+console.log(`Environment check: NODE_ENV=${process.env.NODE_ENV || 'undefined'}, isProduction=${isProduction}`);
+
 // Security middleware
 if (isProduction) {
   app.use(helmet());
   app.use(compression());
 }
 
-// CORS configuration
+// CORS configuration - Allow all origins in development for easier testing
 const corsOptions = {
   origin: isProduction 
-    ? process.env.ALLOWED_ORIGINS?.split(',') || 'https://asp-cranes-crm.example.com'
-    : ['http://localhost:5173', 'http://localhost:5174', 'http://127.0.0.1:5173', 'http://127.0.0.1:5174', '*'],
+    ? (process.env.ALLOWED_ORIGINS?.split(',') || ['https://asp-cranes-crm.example.com'])
+    : true, // Allow all origins in development
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
+  optionsSuccessStatus: 200 // Some legacy browsers choke on 204
 };
 
+console.log('CORS configuration:', corsOptions);
 app.use(cors(corsOptions));
 
 // Logging
@@ -72,6 +76,27 @@ if (isProduction) {
 // Request body parsing
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// General API info endpoint
+app.get('/api', (req, res) => {
+  res.json({
+    message: 'ASP Cranes CRM API',
+    version: '1.0.0',
+    environment: process.env.NODE_ENV || 'development',
+    timestamp: new Date().toISOString(),
+    availableEndpoints: {
+      health: '/api/health',
+      status: '/api/check',
+      auth: '/api/auth',
+      deals: '/api/deals',
+      leads: '/api/leads',
+      quotations: '/api/quotations',
+      customers: '/api/customers',
+      equipment: '/api/equipment',
+      config: '/api/config'
+    }
+  });
+});
 
 // API health check endpoint
 app.get('/api/health', (req, res) => {
