@@ -3,7 +3,8 @@
  * This is used by server-side code and API routes
  */
 
-import pgPromise from 'pg-promise';
+// Using proper path for pg-promise import
+import pgPromise from './pg-promise-server.js';
 
 // Initialize pg-promise with options
 const pgp = pgPromise({

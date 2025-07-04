@@ -5,7 +5,7 @@
  * to ensure continuous authentication during user sessions.
  */
 
-import { getCurrentUser } from '../services/postgresAuthService';
+import { getCurrentUser } from '../services/authService.client';
 
 // Configuration
 const REFRESH_INTERVAL_MINUTES = 10; // Check token every 10 minutes

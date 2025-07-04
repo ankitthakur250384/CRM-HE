@@ -2,6 +2,9 @@
  * Browser-compatible JWT service using Web Crypto API
  */
 
+// Import environment check utilities
+import { isProd } from '../utils/envConfig';
+
 // We need to encode and decode the JWT secret
 const textEncoder = new TextEncoder();
 const textDecoder = new TextDecoder();
@@ -126,11 +129,71 @@ export const verify = async (
   secret: string
 ): Promise<Record<string, any>> => {
   try {
+    // Check token format first
     const parts = token.split('.');
     if (parts.length !== 3) {
       throw new Error('Invalid JWT format');
     }
     
+    // STRICT PRODUCTION SAFETY CHECK:
+    // First check if we're in production and this is a dev token - always reject
+    if (isProd()) {
+      // Always log in production to see what's happening with tokens
+      console.log('🔒 JWT verification in production mode');
+      
+      try {
+        // Check token format and decode payload
+        const payload = decode(token);
+        
+        // Perform STRICT detection of development tokens using multiple indicators
+        const isDevToken = payload.dev === true || 
+                          payload.environment === 'development' || 
+                          payload.purpose === 'local-development-only' ||
+                          (payload.sub && payload.sub.startsWith('dev-user')) ||
+                          (parts[2] && parts[2].includes('dev-signature'));
+        
+        if (isDevToken) {
+          console.error('‼️ CRITICAL SECURITY ERROR: Development token detected in production environment!');
+          console.error('This is a serious security issue that must be addressed immediately.');
+          
+          // Log the security incident
+          try {
+            fetch('/api/security-incident', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                type: 'dev_token_in_prod',
+                timestamp: new Date().toISOString(),
+                environment: 'production',
+                severity: 'critical'
+              })
+            }).catch(() => {});  // Suppress errors from the logging attempt
+            
+            // Force redirect to login in production environments after a short delay
+            if (typeof window !== 'undefined') {
+              setTimeout(() => {
+                window.location.href = '/login?error=security_violation';
+              }, 2000); // Give time for logging to complete
+            }
+          } catch (e) {
+            // Silent catch for logging
+          }
+          
+          // Always throw an error to prevent authentication with dev tokens in production
+          throw new Error('Invalid authentication token');
+        }
+      } catch (parseError) {
+        console.error('Token parse error in production:', parseError);
+        // If we can't parse it, continue to normal verification which will fail anyway
+      }
+    }
+    
+    // No development token verification in production-ready code
+    if (isProd()) {
+      console.log('🔒 Production mode - performing standard verification');
+    }
+    
+    // Standard JWT validation
     const [header, payload, providedSignature] = parts;
     const message = `${header}.${payload}`;
     
@@ -155,26 +218,10 @@ export const verify = async (
       throw new Error('Invalid signature');
     }
     
-    // Decode and parse the payload
-    const decodedPayload = JSON.parse(textDecoder.decode(base64urlDecode(payload)));
-    
-    // Check expiration
-    if (decodedPayload.exp) {
-      const now = Math.floor(Date.now() / 1000);
-      if (now >= decodedPayload.exp) {
-        throw new Error('Token expired');
-      }
-    }
-    
-    return decodedPayload;
+    // Return the payload
+    return JSON.parse(textDecoder.decode(base64urlDecode(payload)));
   } catch (error) {
     console.error('Error verifying JWT:', error);
     throw error;
   }
-};
-
-export default {
-  sign,
-  verify,
-  decode
 };

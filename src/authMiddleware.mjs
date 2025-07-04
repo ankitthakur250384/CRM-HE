@@ -14,6 +14,11 @@ dotenv.config();
 /**
  * Authentication middleware that verifies JWT tokens
  * Attaches the decoded user to the request object if successful
+ * 
+ * FIXED:
+ * - Added development mode bypass for easier testing
+ * - Better error messages
+ * - Fallback JWT secret for development
  */
 export const authenticateToken = (req, res, next) => {
   // Skip authentication check if we're in development mode with bypass header
@@ -25,7 +30,7 @@ export const authenticateToken = (req, res, next) => {
     )
   ) {
     console.log('⚠️ Bypassing authentication in development mode');
-    req.user = { id: 'dev-user', email: 'dev@example.com', role: 'admin' };
+    req.user = { uid: 'dev-user', email: 'dev@example.com', role: 'admin' };
     return next();
   }
 
@@ -34,13 +39,23 @@ export const authenticateToken = (req, res, next) => {
   
   if (!token) {
     console.log('❌ No token provided');
-    return res.status(401).json({ message: 'No authentication token provided' });
+    return res.status(401).json({ 
+      success: false,
+      message: 'Authentication required. No token provided.' 
+    });
   }
   
-  jwt.verify(token, process.env.JWT_SECRET || 'default_jwt_secret_for_development', (err, user) => {
+  // Get JWT_SECRET from environment with fallback for development
+  const jwtSecret = process.env.JWT_SECRET || 'default_jwt_secret_for_development';
+  
+  jwt.verify(token, jwtSecret, (err, user) => {
     if (err) {
       console.log('❌ Invalid token:', err.message);
-      return res.status(403).json({ message: 'Invalid or expired token' });
+      return res.status(403).json({ 
+        success: false,
+        message: 'Invalid or expired token',
+        error: process.env.NODE_ENV === 'development' ? err.message : 'Authorization failed' 
+      });
     }
     
     req.user = user;

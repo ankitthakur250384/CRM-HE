@@ -1,50 +1,59 @@
 /**
- * Debug helper utilities for tracking and preventing page freezes and infinite loops
+ * Debug Helper Utility
+ * 
+ * A simplified version that replaces the removed debug helper file.
+ * This version logs operations in development mode but does nothing in production.
  */
 
-// Default timeout for detecting potential infinite loops (in ms)
-const DEFAULT_TIMEOUT = 3000;
-
-/**
- * Utility to detect potential infinite loops or long-running operations
- * that might cause the UI to become unresponsive
- */
+// Function to safely monitor operations - will only log in development
 export const monitorOperation = (
-  operation: string,
-  timeoutMs = DEFAULT_TIMEOUT
-): () => void => {
-  const startTime = performance.now();
-  const timeoutId = setTimeout(() => {
-    const elapsedTime = performance.now() - startTime;
-    console.warn(`Operation "${operation}" is taking unusually long (${elapsedTime.toFixed(2)}ms)`);
-  }, timeoutMs);
+  operationName: string, 
+  callback: () => Promise<any>,
+  options: { 
+    silent?: boolean,
+    timeoutMs?: number 
+  } = {}
+): Promise<any> => {
+  const isProd = import.meta.env.PROD || process.env.NODE_ENV === 'production';
   
-  // Return a function to call when operation completes
-  return () => {
-    clearTimeout(timeoutId);
-    const elapsedTime = performance.now() - startTime;
-    
-    if (process.env.NODE_ENV !== 'production' && elapsedTime > 500) {
-      console.debug(`Operation "${operation}" completed in ${elapsedTime.toFixed(2)}ms`);
-    }
-  };
+  // In production, just execute the callback without monitoring
+  if (isProd) {
+    return callback();
+  }
+  
+  // In development, add some monitoring
+  console.log(`[DEBUG] Starting operation: ${operationName}`);
+  const startTime = performance.now();
+  
+  return callback()
+    .then(result => {
+      const endTime = performance.now();
+      const duration = endTime - startTime;
+      
+      if (!options.silent) {
+        console.log(`[DEBUG] Completed operation: ${operationName} in ${duration.toFixed(2)}ms`);
+      }
+      
+      return result;
+    })
+    .catch(error => {
+      console.error(`[DEBUG] Error in operation: ${operationName}`, error);
+      throw error;
+    });
 };
 
-/**
- * Detects React render loop issues by tracking component render counts
- * @param componentName - Name of the component for identification
- * @param renderCount - Current render count (from useRef)
- * @param threshold - Max acceptable renders in short succession
- */
-export const detectRenderLoop = (
-  componentName: string, 
-  renderCount: number,
-  threshold = 25
-): void => {
-  if (renderCount > threshold) {
-    console.warn(
-      `Potential render loop detected in ${componentName}: ` +
-      `${renderCount} renders in quick succession`
-    );
+// No-op function for operations that don't need monitoring
+export const noopMonitor = <T>(value: T): T => value;
+
+// Debug logger that only logs in development
+export const debugLog = (...args: any[]): void => {
+  if (!import.meta.env.PROD) {
+    console.log('[DEBUG]', ...args);
   }
+};
+
+export default {
+  monitorOperation,
+  noopMonitor,
+  debugLog
 };

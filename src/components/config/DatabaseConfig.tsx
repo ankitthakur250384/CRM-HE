@@ -3,7 +3,7 @@ import { Database, Server, Save, RefreshCw, CheckCircle } from 'lucide-react';
 import { Input } from '../common/Input';
 import { Button } from '../common/Button';
 import { Toast } from '../common/Toast';
-import { getConfig, updateConfig } from '../../services/configService';
+import { getHeaders } from '../../utils/apiHeaders';
 
 export interface DbConfig {
   host: string;
@@ -47,19 +47,29 @@ export const DatabaseConfig = () => {
   useEffect(() => {
     fetchDbConfig();
   }, []);
-
   const fetchDbConfig = async () => {
     setLoading(true);
     try {
-      const dbConfig = await getConfig('database');
-      if (dbConfig) {
+      // Fetch database configuration from our API endpoint
+      const response = await fetch('/api/dbconfig', {
+        method: 'GET',
+        headers: getHeaders()
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to fetch database configuration');
+      }
+      
+      const data = await response.json();
+      
+      if (data.success && data.data) {
         setConfig({
-          host: dbConfig.host || 'localhost',
-          port: dbConfig.port || 5432,
-          database: dbConfig.database || 'asp_crm',
-          user: dbConfig.user || 'postgres',
-          // Don't set password from API for security reasons
-          ssl: dbConfig.ssl || false
+          host: data.data.host || 'localhost',
+          port: data.data.port || 5432,
+          database: data.data.database || 'asp_crm',
+          user: data.data.user || 'postgres',
+          password: '', // Don't set password from API for security reasons
+          ssl: data.data.ssl || false
         });
       }
     } catch (error) {
@@ -76,52 +86,52 @@ export const DatabaseConfig = () => {
       ...prev,
       [name]: type === 'checkbox' ? checked : (type === 'number' ? parseInt(value) || 0 : value)
     }));
-  };
-  const handleSave = async () => {
+  };  const handleSave = async () => {
     setSaving(true);
     try {
-      // Create a copy to prevent password from being sent if it's empty
-      const configToSave = { ...config };
-      if (!configToSave.password) {
-        delete configToSave.password;
+      // Save directly to our enhanced API endpoint
+      const response = await fetch('/api/dbconfig', {
+        method: 'PUT',
+        headers: getHeaders(),
+        body: JSON.stringify(config)
+      });
+      
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
+        // Show success message with a note about server restart
+        showToast('Database configuration saved successfully. Please restart the server for changes to take effect.', 'success');
+        
+        // Reset connection status since configuration has changed
+        setConnectionStatus('untested');
+      } else {
+        throw new Error(data.message || 'Unknown error');
       }
-      
-      // Save the configuration via the API
-      await updateConfig('database', configToSave);
-      
-      // Show success message with a note about server restart
-      showToast('Database configuration saved successfully. Please restart the server for changes to take effect.', 'success');
-      
-      // Reset connection status
-      setConnectionStatus('untested');
-    } catch (error) {
-      console.error('Failed to save database config:', error);
-      showToast('Failed to save database configuration', 'error');
+    } catch (error) {      console.error('Failed to save database config:', error);
+      showToast(`Failed to save database configuration: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     } finally {
       setSaving(false);
     }
   };
-
   const testConnection = async () => {
     setTesting(true);
     setConnectionStatus('untested');
     
     try {
-      // Use a specific API endpoint to test the connection with current settings
-      const response = await fetch('/api/database/test-connection', {
+      // Use our enhanced API endpoint to test the connection with current settings
+      const response = await fetch('/api/dbconfig/test', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: getHeaders(),
         body: JSON.stringify(config)
       });
       
-      if (response.ok) {
+      const data = await response.json();
+      
+      if (response.ok && data.success) {
         setConnectionStatus('success');
-        showToast('Connection successful!', 'success');
+        showToast(`Connection successful! PostgreSQL ${data.data?.version?.split(' ')[1] || 'server'} is running.`, 'success');
       } else {
         setConnectionStatus('failed');
-        const data = await response.json();
         showToast(`Connection failed: ${data.message || 'Unknown error'}`, 'error');
       }
     } catch (error) {

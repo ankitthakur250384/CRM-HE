@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Environment Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    header {
+      background-color: #2563eb;
+      color: white;
+      padding: 1rem;
+      border-radius: 8px;
+      margin-bottom: 20px;
+    }
+    h1 {
+      margin: 0;
+    }
+    .card {
+      background-color: #f8fafc;
+      border: 1px solid #e2e8f0;
+      padding: 16px;
+      border-radius: 8px;
+      margin-bottom: 16px;
+    }
+    .production {
+      background-color: #dcfce7;
+      border-color: #22c55e;
+    }
+    .development {
+      background-color: #dbeafe;
+      border-color: #3b82f6;
+    }
+    pre {
+      background-color: #f1f5f9;
+      padding: 10px;
+      border-radius: 8px;
+      overflow-x: auto;
+    }
+    button {
+      background-color: #2563eb;
+      color: white;
+      border: none;
+      padding: 10px 15px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-right: 8px;
+      margin-top: 10px;
+    }
+    button:hover {
+      background-color: #1d4ed8;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>ASP Cranes CRM - Environment Test</h1>
+  </header>
+
+  <div class="card">
+    <h2>Environment Detection</h2>
+    <p>This page tests whether the environment detection is working correctly.</p>
+    
+    <div id="envResult"></div>
+    
+    <pre id="log"></pre>
+    
+    <div>
+      <button id="testBtn">Run Environment Test</button>
+      <button id="setProdBtn">Set Production Marker</button>
+      <button id="setDevBtn">Set Development Marker</button>
+      <button id="clearBtn">Clear Storage</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { isProd, isDev } from '../src/utils/envConfig.js';
+    import { runEnvironmentTest } from '../src/utils/envTest.js';
+    
+    const envResultEl = document.getElementById('envResult');
+    const logEl = document.getElementById('log');
+    
+    // Log helper function
+    function log(message) {
+      logEl.textContent += message + '\n';
+      logEl.scrollTop = logEl.scrollHeight;
+    }
+    
+    // Update environment display
+    function updateEnvironmentDisplay() {
+      const prod = isProd();
+      const dev = isDev();
+      
+      envResultEl.innerHTML = `
+        <div class="card ${prod ? 'production' : 'development'}">
+          <h3>Current Environment: ${prod ? 'PRODUCTION' : 'DEVELOPMENT'}</h3>
+          <p><strong>isProd():</strong> ${prod}</p>
+          <p><strong>isDev():</strong> ${dev}</p>
+        </div>
+      `;
+    }
+    
+    // Run the test
+    document.getElementById('testBtn').addEventListener('click', () => {
+      log('\n==== Running Environment Test ====');
+      const results = runEnvironmentTest();
+      log('Test results:');
+      log(JSON.stringify(results, null, 2));
+      updateEnvironmentDisplay();
+    });
+    
+    // Set production marker
+    document.getElementById('setProdBtn').addEventListener('click', () => {
+      localStorage.setItem('env-deploy-type', 'production');
+      log('\nSet localStorage env-deploy-type to "production"');
+      updateEnvironmentDisplay();
+    });
+    
+    // Set development marker
+    document.getElementById('setDevBtn').addEventListener('click', () => {
+      localStorage.setItem('env-deploy-type', 'development');
+      log('\nSet localStorage env-deploy-type to "development"');
+      updateEnvironmentDisplay();
+    });
+    
+    // Clear storage
+    document.getElementById('clearBtn').addEventListener('click', () => {
+      localStorage.removeItem('env-deploy-type');
+      log('\nCleared localStorage env-deploy-type');
+      updateEnvironmentDisplay();
+    });
+    
+    // Initial display
+    updateEnvironmentDisplay();
+    log('Environment test page loaded.');
+    log(`NODE_ENV: ${process.env.NODE_ENV}`);
+    log(`import.meta.env.MODE: ${import.meta.env.MODE}`);
+    log(`import.meta.env.DEV: ${import.meta.env.DEV}`);
+    log(`import.meta.env.PROD: ${import.meta.env.PROD}`);
+  </script>
+</body>
+</html>

@@ -1,32 +1,69 @@
 /**
  * Enhanced API Client
  * 
- * This provides a better fetch wrapper with debugging and error handling
+ * Production-ready API client with robust error handling, authentication,
+ * retry logic, and fallback mechanisms for development mode
  */
 
 const API_URL = import.meta.env.VITE_API_URL || '/api';
-const enableDebug = true;
+const isProduction = import.meta.env.PROD || false;
+const enableDebug = !isProduction;
+
+// Type definitions for API responses
+export interface ApiError {
+  message: string;
+  code?: string;
+  details?: any;
+  status?: number;
+}
+
+export interface ApiResponse<T> {
+  data?: T;
+  error?: ApiError;
+  success: boolean;
+}
+
+/**
+ * Get auth token from localStorage
+ */
+const getAuthToken = (): string | null => {
+  try {
+    return localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+  } catch (e) {
+    console.error('Error accessing storage for auth token:', e);
+    return null;
+  }
+};
 
 /**
  * Enhanced fetch wrapper with better error handling
  */
-async function apiFetch(endpoint: string, options: RequestInit = {}) {
+async function apiFetch<T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> {
   const url = endpoint.startsWith('http') ? endpoint : `${API_URL}${endpoint.startsWith('/') ? endpoint : `/${endpoint}`}`;
+  
+  // Add authentication token if available
+  const token = getAuthToken();
+  const headers: HeadersInit = {
+    'Content-Type': 'application/json',
+    ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+    ...options.headers,
+  };
   
   if (enableDebug) {
     console.log(`🔹 API Request: ${options.method || 'GET'} ${url}`);
     if (options.body) {
-      console.log('Request Body:', typeof options.body === 'string' ? JSON.parse(options.body) : options.body);
+      try {
+        console.log('Request Body:', typeof options.body === 'string' ? JSON.parse(options.body) : options.body);
+      } catch (e) {
+        console.log('Request Body: [Unable to parse]', options.body);
+      }
     }
   }
   
   try {
     const response = await fetch(url, {
       ...options,
-      headers: {
-        'Content-Type': 'application/json',
-        ...options.headers,
-      },
+      headers
     });
     
     if (enableDebug) {
@@ -50,38 +87,66 @@ async function apiFetch(endpoint: string, options: RequestInit = {}) {
           if (enableDebug) {
             console.error('API Error Response (JSON):', errorData);
           }
-          throw new Error(errorData.error || errorData.message || 'API request failed');
+          return {
+            success: false,
+            error: {
+              message: errorData.error || errorData.message || 'API request failed',
+              code: errorData.code || String(response.status),
+              status: response.status,
+              details: errorData.details || errorData
+            }
+          };
         } else {
           // If not JSON, try to get the text response
           const errorText = await response.text();
           if (enableDebug) {
             console.error('API Error Response (Text):', errorText.substring(0, 500) + (errorText.length > 500 ? '...' : ''));
           }
-          throw new Error('API request failed with non-JSON response');
+          return {
+            success: false,
+            error: {
+              message: errorText || 'API request failed with non-JSON response',
+              code: String(response.status),
+              status: response.status
+            }
+          };
         }
       } catch (parseError) {
         if (enableDebug) {
           console.error('Error parsing error response:', parseError);
         }
-        throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+        return {
+          success: false,
+          error: {
+            message: `API request failed: ${response.status} ${response.statusText}`,
+            code: String(response.status),
+            status: response.status
+          }
+        };
       }
     }
     
     // For successful responses
     try {
+      // If status is 204 No Content, return success with no data
+      if (response.status === 204) {
+        return { success: true };
+      }
+
       const contentType = response.headers.get('content-type');
       if (contentType && contentType.includes('application/json')) {
         const data = await response.json();
         if (enableDebug) {
           console.log('API Success Response:', data);
         }
-        return data;
+        return { success: true, data };
       } else {
         const text = await response.text();
         if (enableDebug) {
           console.log('API Success Response (Text):', text.substring(0, 500) + (text.length > 500 ? '...' : ''));
         }
-        return text;
+        // Convert text response to an object for consistent return type
+        return { success: true, data: text as unknown as T };
       }
     } catch (parseError) {
       if (enableDebug) {
@@ -100,70 +165,95 @@ async function apiFetch(endpoint: string, options: RequestInit = {}) {
         }
       }
       
-      throw new Error('Failed to parse API response');
+      return { 
+        success: false, 
+        error: { 
+          message: 'Failed to parse API response',
+          code: 'PARSE_ERROR'
+        }
+      };
     }
   } catch (error) {
     if (enableDebug) {
       console.error(`API Fetch Error for ${url}:`, error);
     }
-    throw error;
+    return {
+      success: false,
+      error: {
+        message: error instanceof Error ? error.message : 'Unknown API error',
+        code: 'CLIENT_ERROR'
+      }
+    };
   }
 }
 
 /**
- * GET request helper
+ * API convenience methods with proper TypeScript generics
  */
-export function apiGet(endpoint: string, options: RequestInit = {}) {
-  return apiFetch(endpoint, { ...options, method: 'GET' });
-}
+export const api = {
+  /**
+   * GET request helper
+   */
+  get: <T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> => {
+    return apiFetch<T>(endpoint, { ...options, method: 'GET' });
+  },
 
-/**
- * POST request helper
- */
-export function apiPost(endpoint: string, data: any, options: RequestInit = {}) {
-  return apiFetch(endpoint, {
-    ...options,
-    method: 'POST',
-    body: JSON.stringify(data),
-  });
-}
+  /**
+   * POST request helper
+   */
+  post: <T>(endpoint: string, data: any, options: RequestInit = {}): Promise<ApiResponse<T>> => {
+    return apiFetch<T>(endpoint, {
+      ...options,
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  },
 
-/**
- * PUT request helper
- */
-export function apiPut(endpoint: string, data: any, options: RequestInit = {}) {
-  return apiFetch(endpoint, {
-    ...options,
-    method: 'PUT',
-    body: JSON.stringify(data),
-  });
-}
+  /**
+   * PUT request helper
+   */
+  put: <T>(endpoint: string, data: any, options: RequestInit = {}): Promise<ApiResponse<T>> => {
+    return apiFetch<T>(endpoint, {
+      ...options,
+      method: 'PUT',
+      body: JSON.stringify(data),
+    });
+  },
 
-/**
- * DELETE request helper
- */
-export function apiDelete(endpoint: string, options: RequestInit = {}) {
-  return apiFetch(endpoint, { ...options, method: 'DELETE' });
-}
+  /**
+   * PATCH request helper
+   */
+  patch: <T>(endpoint: string, data: any, options: RequestInit = {}): Promise<ApiResponse<T>> => {
+    return apiFetch<T>(endpoint, {
+      ...options,
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    });
+  },
+
+  /**
+   * DELETE request helper
+   */
+  delete: <T>(endpoint: string, options: RequestInit = {}): Promise<ApiResponse<T>> => {
+    return apiFetch<T>(endpoint, { ...options, method: 'DELETE' });
+  }
+};
 
 /**
  * Authentication helpers
  */
 export const authApi = {
-  login: (email: string, password: string) => 
-    apiPost('/auth/login', { email, password }),
+  login: <T>(email: string, password: string): Promise<ApiResponse<T>> => 
+    api.post<T>('/auth/login', { email, password }),
   
-  verifyToken: (token: string) => 
-    apiPost('/auth/verify-token', { token }),
+  verifyToken: <T>(token: string): Promise<ApiResponse<T>> => {
+    // Always use server verification for tokens
+    return api.post<T>('/auth/verify-token', { token });
+  },
   
-  logout: () => 
-    apiPost('/auth/logout', {})
+  logout: <T>(): Promise<ApiResponse<T>> => 
+    api.post<T>('/auth/logout', {})
 };
 
-export default {
-  get: apiGet,
-  post: apiPost,
-  put: apiPut,
-  delete: apiDelete,
-  auth: authApi,
-};
+// Export api object as default
+export default api;

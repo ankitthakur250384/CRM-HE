@@ -24,26 +24,32 @@ export function ProtectedRoute({
   // Verify JWT token on protected route access
   useEffect(() => {
     const verifyToken = async () => {
-      const jwtToken = localStorage.getItem('jwt-token');
-      
-      if (jwtToken) {
-        try {
-          const currentUser = await getCurrentUser();
-          if (currentUser) {
-            // Update user in store if needed
-            if (!user || user.id !== currentUser.id) {
-              setUser(currentUser);
-            }
+      try {
+        // Production-ready authentication check with proper PostgreSQL implementation
+        const currentUser = await getCurrentUser();
+        
+        if (currentUser) {
+          // Update user in store if needed
+          if (!user || user.id !== currentUser.id) {
+            setUser(currentUser);
           }
-        } catch (error) {
-          console.error('Error verifying token:', error);
-          // Token is invalid - clear authentication
+        } else {
+          // Token is invalid or expired - clear authentication
           localStorage.removeItem('jwt-token');
+          localStorage.removeItem('user');
           localStorage.removeItem('explicit-login-performed');
         }
+      } catch (error) {
+        console.error('Error verifying token:', error);
+        
+        // Token is invalid - clear authentication
+        localStorage.removeItem('jwt-token');
+        localStorage.removeItem('user');
+        localStorage.removeItem('explicit-login-performed');
+      } finally {
+        // Always mark as done checking
+        setIsChecking(false);
       }
-      
-      setIsChecking(false);
     };
     
     verifyToken();

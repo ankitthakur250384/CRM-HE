@@ -3,6 +3,22 @@
  * Handles database operations for operators using PostgreSQL
  */
 import { Operator } from '../../types/job';
+import { db } from '../../lib/dbClient';
+import { v4 as uuidv4 } from 'uuid';
+
+// Define the database row type
+interface OperatorRow {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  specialization: string;
+  experience: number;
+  certifications: string[];
+  availability: OperatorAvailability;
+  created_at: string;
+  updated_at: string;
+}
 
 /**
  * Get all operators from the database
@@ -11,72 +27,38 @@ export const getOperators = async (): Promise<Operator[]> => {
   try {
     console.log('Getting all operators from PostgreSQL');
     
-    // Mock data for development
-    return [
-      {
-        id: 'op-1',
-        name: 'Mike Operator',
-        email: 'mike@aspcranes.com',
-        phone: '555-123-4567',
-        specialization: 'Tower Crane',
-        experience: 5,
-        certifications: ['NCCCO Tower Crane'],
-        availability: 'available',
-        createdAt: new Date('2025-01-10').toISOString(),
-        updatedAt: new Date('2025-06-01').toISOString()
-      },
-      {
-        id: 'op-2',
-        name: 'Lisa Crane',
-        email: 'lisa@aspcranes.com',
-        phone: '555-987-6543',
-        specialization: 'Mobile Crane',
-        experience: 8,
-        certifications: ['NCCCO Mobile Crane', 'OSHA Safety'],
-        availability: 'assigned',
-        createdAt: new Date('2025-02-15').toISOString(),
-        updatedAt: new Date('2025-05-20').toISOString()
-      },
-      {
-        id: 'op-3',
-        name: 'Tom Heavy',
-        email: 'tom@aspcranes.com',
-        phone: '555-456-7890',
-        specialization: 'Crawler Crane',
-        experience: 10,
-        certifications: ['NCCCO Crawler Crane', 'Heavy Lift Specialist'],
-        availability: 'available',
-        createdAt: new Date('2025-01-05').toISOString(),
-        updatedAt: new Date('2025-04-10').toISOString()
-      },
-      {
-        id: 'op-4',
-        name: 'Sarah Heights',
-        email: 'sarah@aspcranes.com',
-        phone: '555-789-0123',
-        specialization: 'Tower Crane',
-        experience: 6,
-        certifications: ['NCCCO Tower Crane', 'High Rise Specialist'],
-        availability: 'on_leave',
-        createdAt: new Date('2025-03-20').toISOString(),
-        updatedAt: new Date('2025-06-15').toISOString()
-      },
-      {
-        id: 'op-5',
-        name: 'Dave Mobile',
-        email: 'dave@aspcranes.com',
-        phone: '555-234-5678',
-        specialization: 'Mobile Crane',
-        experience: 7,
-        certifications: ['NCCCO Mobile Crane'],
-        availability: 'available',
-        createdAt: new Date('2025-02-01').toISOString(),
-        updatedAt: new Date('2025-05-05').toISOString()
-      }
-    ];
+    const operators = await db.any<OperatorRow>(`
+      SELECT 
+        id, 
+        name, 
+        email, 
+        phone, 
+        specialization, 
+        experience, 
+        certifications, 
+        availability,
+        created_at,
+        updated_at
+      FROM operators
+      ORDER BY name ASC
+    `);
+    
+    // Convert to application model
+    return operators.map(op => ({
+      id: op.id,
+      name: op.name,
+      email: op.email,
+      phone: op.phone,
+      specialization: op.specialization,
+      experience: op.experience,
+      certifications: Array.isArray(op.certifications) ? op.certifications : [],
+      availability: op.availability,
+      createdAt: op.created_at,
+      updatedAt: op.updated_at
+    }));
   } catch (error) {
     console.error('Error fetching operators:', error);
-    throw error;
+    throw new Error(`Database error: ${(error as Error).message}`);
   }
 };
 
@@ -87,13 +69,41 @@ export const getOperatorById = async (id: string): Promise<Operator | null> => {
   try {
     console.log(`Getting operator ${id} from PostgreSQL`);
     
-    const operators = await getOperators();
-    const operator = operators.find(o => o.id === id);
+    const operator = await db.oneOrNone<OperatorRow>(`
+      SELECT 
+        id, 
+        name, 
+        email, 
+        phone, 
+        specialization, 
+        experience, 
+        certifications, 
+        availability,
+        created_at,
+        updated_at
+      FROM operators
+      WHERE id = $1
+    `, [id]);
     
-    return operator || null;
+    if (!operator) {
+      return null;
+    }
+    
+    return {
+      id: operator.id,
+      name: operator.name,
+      email: operator.email,
+      phone: operator.phone,
+      specialization: operator.specialization,
+      experience: operator.experience,
+      certifications: Array.isArray(operator.certifications) ? operator.certifications : [],
+      availability: operator.availability,
+      createdAt: operator.created_at,
+      updatedAt: operator.updated_at
+    };
   } catch (error) {
     console.error(`Error fetching operator ${id}:`, error);
-    throw error;
+    throw new Error(`Database error: ${(error as Error).message}`);
   }
 };
 
@@ -104,11 +114,38 @@ export const getOperatorsBySpecialization = async (specialization: string): Prom
   try {
     console.log(`Getting operators by specialization ${specialization} from PostgreSQL`);
     
-    const operators = await getOperators();
-    return operators.filter(o => o.specialization === specialization);
+    const operators = await db.any<OperatorRow>(`
+      SELECT 
+        id, 
+        name, 
+        email, 
+        phone, 
+        specialization, 
+        experience, 
+        certifications, 
+        availability,
+        created_at,
+        updated_at
+      FROM operators
+      WHERE specialization = $1
+      ORDER BY name ASC
+    `, [specialization]);
+    
+    return operators.map(op => ({
+      id: op.id,
+      name: op.name,
+      email: op.email,
+      phone: op.phone,
+      specialization: op.specialization,
+      experience: op.experience,
+      certifications: Array.isArray(op.certifications) ? op.certifications : [],
+      availability: op.availability,
+      createdAt: op.created_at,
+      updatedAt: op.updated_at
+    }));
   } catch (error) {
     console.error(`Error fetching operators by specialization ${specialization}:`, error);
-    throw error;
+    throw new Error(`Database error: ${(error as Error).message}`);
   }
 };
 
@@ -119,11 +156,38 @@ export const getAvailableOperators = async (): Promise<Operator[]> => {
   try {
     console.log('Getting available operators from PostgreSQL');
     
-    const operators = await getOperators();
-    return operators.filter(o => o.availability === 'available');
+    const operators = await db.any<OperatorRow>(`
+      SELECT 
+        id, 
+        name, 
+        email, 
+        phone, 
+        specialization, 
+        experience, 
+        certifications, 
+        availability,
+        created_at,
+        updated_at
+      FROM operators
+      WHERE availability = 'available'
+      ORDER BY name ASC
+    `);
+    
+    return operators.map(op => ({
+      id: op.id,
+      name: op.name,
+      email: op.email,
+      phone: op.phone,
+      specialization: op.specialization,
+      experience: op.experience,
+      certifications: Array.isArray(op.certifications) ? op.certifications : [],
+      availability: op.availability,
+      createdAt: op.created_at,
+      updatedAt: op.updated_at
+    }));
   } catch (error) {
     console.error('Error fetching available operators:', error);
-    throw error;
+    throw new Error(`Database error: ${(error as Error).message}`);
   }
 };
 
@@ -134,17 +198,51 @@ export const createOperator = async (operatorData: Omit<Operator, 'id' | 'create
   try {
     console.log('Creating operator in PostgreSQL:', operatorData);
     
-    const newOperator: Operator = {
-      ...operatorData,
-      id: `op-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
+    const newId = uuidv4();
+    const timestamp = new Date();
     
-    return newOperator;
+    const result = await db.one<OperatorRow>(`
+      INSERT INTO operators(
+        id,
+        name,
+        email,
+        phone,
+        specialization,
+        experience,
+        certifications,
+        availability,
+        created_at,
+        updated_at
+      ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      RETURNING *
+    `, [
+      newId,
+      operatorData.name,
+      operatorData.email,
+      operatorData.phone,
+      operatorData.specialization,
+      operatorData.experience,
+      operatorData.certifications,
+      operatorData.availability,
+      timestamp,
+      timestamp
+    ]);
+    
+    return {
+      id: result.id,
+      name: result.name,
+      email: result.email,
+      phone: result.phone,
+      specialization: result.specialization,
+      experience: result.experience,
+      certifications: Array.isArray(result.certifications) ? result.certifications : [],
+      availability: result.availability,
+      createdAt: result.created_at,
+      updatedAt: result.updated_at
+    };
   } catch (error) {
     console.error('Error creating operator:', error);
-    throw error;
+    throw new Error(`Database error: ${(error as Error).message}`);
   }
 };
 
@@ -155,22 +253,84 @@ export const updateOperator = async (id: string, operatorData: Partial<Operator>
   try {
     console.log(`Updating operator ${id} in PostgreSQL`);
     
-    const operator = await getOperatorById(id);
-    
-    if (!operator) {
+    // First check if the operator exists
+    const existingOperator = await getOperatorById(id);
+    if (!existingOperator) {
       return null;
     }
     
-    const updatedOperator = {
-      ...operator,
-      ...operatorData,
-      updatedAt: new Date().toISOString()
-    };
+    // Build the update query dynamically
+    const updateFields: string[] = [];
+    const updateValues: any[] = [];
+    let paramCounter = 1;
     
-    return updatedOperator;
+    if (operatorData.name !== undefined) {
+      updateFields.push(`name = $${paramCounter++}`);
+      updateValues.push(operatorData.name);
+    }
+    
+    if (operatorData.email !== undefined) {
+      updateFields.push(`email = $${paramCounter++}`);
+      updateValues.push(operatorData.email);
+    }
+    
+    if (operatorData.phone !== undefined) {
+      updateFields.push(`phone = $${paramCounter++}`);
+      updateValues.push(operatorData.phone);
+    }
+    
+    if (operatorData.specialization !== undefined) {
+      updateFields.push(`specialization = $${paramCounter++}`);
+      updateValues.push(operatorData.specialization);
+    }
+    
+    if (operatorData.experience !== undefined) {
+      updateFields.push(`experience = $${paramCounter++}`);
+      updateValues.push(operatorData.experience);
+    }
+    
+    if (operatorData.certifications !== undefined) {
+      updateFields.push(`certifications = $${paramCounter++}`);
+      updateValues.push(operatorData.certifications);
+    }
+    
+    if (operatorData.availability !== undefined) {
+      updateFields.push(`availability = $${paramCounter++}`);
+      updateValues.push(operatorData.availability);
+    }
+    
+    updateFields.push(`updated_at = $${paramCounter++}`);
+    updateValues.push(new Date());
+    
+    // Add ID as the last parameter
+    updateValues.push(id);
+    
+    const result = await db.oneOrNone<OperatorRow>(`
+      UPDATE operators
+      SET ${updateFields.join(', ')}
+      WHERE id = $${paramCounter}
+      RETURNING *
+    `, updateValues);
+    
+    if (!result) {
+      return null;
+    }
+    
+    return {
+      id: result.id,
+      name: result.name,
+      email: result.email,
+      phone: result.phone,
+      specialization: result.specialization,
+      experience: result.experience,
+      certifications: Array.isArray(result.certifications) ? result.certifications : [],
+      availability: result.availability,
+      createdAt: result.created_at,
+      updatedAt: result.updated_at
+    };
   } catch (error) {
     console.error(`Error updating operator ${id}:`, error);
-    throw error;
+    throw new Error(`Database error: ${(error as Error).message}`);
   }
 };
 
@@ -181,12 +341,14 @@ export const deleteOperator = async (id: string): Promise<boolean> => {
   try {
     console.log(`Deleting operator ${id} from PostgreSQL`);
     
-    // In a real implementation, we would delete from the database
-    // For this mock, we just return true to indicate success
+    const result = await db.result(`
+      DELETE FROM operators
+      WHERE id = $1
+    `, [id]);
     
-    return true;
+    return result.rowCount > 0;
   } catch (error) {
     console.error(`Error deleting operator ${id}:`, error);
-    throw error;
+    throw new Error(`Database error: ${(error as Error).message}`);
   }
 };

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simple Login Test</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f0f2f5;
+      margin: 0;
+      padding: 20px;
+      line-height: 1.6;
+      color: #333;
+    }
+    .container {
+      max-width: 500px;
+      margin: 40px auto;
+      background-color: white;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+      padding: 30px;
+    }
+    h1 {
+      margin-top: 0;
+      color: #2563eb;
+      font-size: 24px;
+      font-weight: 700;
+    }
+    input {
+      display: block;
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 15px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      box-sizing: border-box;
+      font-size: 16px;
+    }
+    button {
+      background-color: #2563eb;
+      color: white;
+      border: none;
+      padding: 12px;
+      width: 100%;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: 600;
+    }
+    button:hover {
+      background-color: #1d4ed8;
+    }
+    .result {
+      margin-top: 20px;
+      padding: 15px;
+      border-radius: 4px;
+    }
+    .success {
+      background-color: #ecfdf5;
+      border-left: 4px solid #10b981;
+      color: #065f46;
+    }
+    .error {
+      background-color: #fef2f2;
+      border-left: 4px solid #ef4444;
+      color: #b91c1c;
+    }
+    pre {
+      background-color: #f1f5f9;
+      padding: 10px;
+      border-radius: 4px;
+      overflow-x: auto;
+      font-size: 14px;
+      white-space: pre-wrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Simple Login Test</h1>
+    <p>Use this page to test direct login to the API without the React app.</p>
+    
+    <form id="loginForm">
+      <input type="email" id="email" placeholder="Email" value="admin@example.com">
+      <input type="password" id="password" placeholder="Password" value="admin123">
+      <button type="submit">Sign In</button>
+    </form>
+    
+    <div id="result" class="result" style="display: none;"></div>
+  </div>
+
+  <script>
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      const resultDiv = document.getElementById('result');
+      
+      if (!email || !password) {
+        showError('Email and password are required');
+        return;
+      }
+      
+      showResult('Attempting login...', 'normal');
+      
+      try {
+        // Get API URL from the window object or use default
+        const apiUrl = window.process?.env?.VITE_API_URL || 'http://localhost:3001/api';
+        
+        const response = await fetch(`${apiUrl}/auth/login`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ email, password }),
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.token) {
+          // Store token and show success
+          localStorage.setItem('jwt-token', data.token);
+          showResult(`Login successful! Token: ${data.token.substring(0, 20)}...`, 'success');
+          
+          // Log user data
+          const userInfo = document.createElement('pre');
+          userInfo.textContent = JSON.stringify(data.user, null, 2);
+          resultDiv.appendChild(userInfo);
+          
+          // Add a redirect button
+          const redirectBtn = document.createElement('button');
+          redirectBtn.textContent = 'Go to Dashboard';
+          redirectBtn.style.marginTop = '15px';
+          redirectBtn.addEventListener('click', () => window.location.href = '/dashboard');
+          resultDiv.appendChild(redirectBtn);
+        } else {
+          showError(`Login failed: ${data.message || response.statusText}`);
+        }
+      } catch (error) {
+        showError(`Request error: ${error.message}. Is the API server running?`);
+      }
+    });
+    
+    function showResult(message, type) {
+      const resultDiv = document.getElementById('result');
+      resultDiv.style.display = 'block';
+      resultDiv.textContent = message;
+      resultDiv.className = 'result';
+      
+      if (type === 'success') {
+        resultDiv.classList.add('success');
+      } else if (type === 'error') {
+        resultDiv.classList.add('error');
+      }
+    }
+    
+    function showError(message) {
+      showResult(message, 'error');
+    }
+  </script>
+</body>
+</html>

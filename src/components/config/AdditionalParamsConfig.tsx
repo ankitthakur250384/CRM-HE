@@ -43,9 +43,22 @@ export function AdditionalParamsConfig() {
     try {
       setIsLoading(true);
       const config = await getAdditionalParamsConfig();
-      setParams(config);
+      
+      // Ensure we have default values for all required fields
+      const safeConfig = {
+        ...params, // Start with current default values
+        ...config, // Override with any values from API
+        // Ensure nested objects have defaults if missing
+        usageFactors: {
+          ...params.usageFactors,
+          ...(config?.usageFactors || {})
+        }
+      };
+      
+      setParams(safeConfig);
     } catch (error) {
-      showToast('Error loading configuration', 'error');
+      // Keep using default values defined in useState
+      showToast('Error loading configuration, using defaults', 'warning');
     } finally {
       setIsLoading(false);
     }

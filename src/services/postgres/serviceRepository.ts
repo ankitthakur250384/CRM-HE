@@ -25,65 +25,7 @@ export class ServiceRepository extends BaseRepository<Service> {
       return services.map(service => this.mapDatabaseRowToModel(service));
     } catch (error) {
       console.error('Error fetching services:', error);
-      
-      // Return mock data for development/demo
-      return [
-        {
-          id: '1',
-          name: 'Crane Operation',
-          type: 'lifting',
-          baseRate: 5000,
-          unit: 'hour',
-          description: 'Professional crane operation services',
-          isActive: true,
-          createdAt: new Date(2025, 5, 15).toISOString(),
-          updatedAt: new Date(2025, 5, 15).toISOString()
-        },
-        {
-          id: '2',
-          name: 'Crane Transport',
-          type: 'transport',
-          baseRate: 15000,
-          unit: 'day',
-          description: 'Transportation of crane equipment to site',
-          isActive: true,
-          createdAt: new Date(2025, 5, 16).toISOString(),
-          updatedAt: new Date(2025, 5, 16).toISOString()
-        },
-        {
-          id: '3',
-          name: 'Jib Attachment',
-          type: 'attachment',
-          baseRate: 3000,
-          unit: 'day',
-          description: 'Rental of jib attachment for extended reach',
-          isActive: true,
-          createdAt: new Date(2025, 5, 17).toISOString(),
-          updatedAt: new Date(2025, 5, 17).toISOString()
-        },
-        {
-          id: '4',
-          name: 'Technical Consultation',
-          type: 'consultation',
-          baseRate: 8000,
-          unit: 'hour',
-          description: 'Expert technical advice for complex lifting solutions',
-          isActive: true,
-          createdAt: new Date(2025, 5, 18).toISOString(),
-          updatedAt: new Date(2025, 5, 18).toISOString()
-        },
-        {
-          id: '5',
-          name: 'Operator Training',
-          type: 'operator',
-          baseRate: 12000,
-          unit: 'shift',
-          description: 'Training sessions for crane operators',
-          isActive: false,
-          createdAt: new Date(2025, 5, 19).toISOString(),
-          updatedAt: new Date(2025, 5, 19).toISOString()
-        }
-      ];
+      throw error;
     }
   }
 
@@ -93,53 +35,35 @@ export class ServiceRepository extends BaseRepository<Service> {
       return service ? this.mapDatabaseRowToModel(service) : null;
     } catch (error) {
       console.error('Error fetching service by ID:', error);
-      
-      // Return mock data for development/demo
-      const mockServices = [
-        {
-          id: '1',
-          name: 'Crane Operation',
-          type: 'lifting',
-          baseRate: 5000,
-          unit: 'hour',
-          description: 'Professional crane operation services',
-          isActive: true,
-          createdAt: new Date(2025, 5, 15).toISOString(),
-          updatedAt: new Date(2025, 5, 15).toISOString()
-        },
-        {
-          id: '2',
-          name: 'Crane Transport',
-          type: 'transport',
-          baseRate: 15000,
-          unit: 'day',
-          description: 'Transportation of crane equipment to site',
-          isActive: true,
-          createdAt: new Date(2025, 5, 16).toISOString(),
-          updatedAt: new Date(2025, 5, 16).toISOString()
-        }
-      ];
-      
-      return mockServices.find(service => service.id === id) || null;
+      throw error;
     }
   }
 
   async createService(service: Omit<Service, 'id' | 'createdAt' | 'updatedAt'>): Promise<Service> {
     try {
       const now = new Date().toISOString();
-      const newService = {
-        id: uuidv4(),
-        ...service,
-        createdAt: now,
-        updatedAt: now
-      };
+      const id = uuidv4();
       
-      // In a real implementation, we would insert into the database
-      // await db.one(
-      //   `INSERT INTO services(...) VALUES(...) RETURNING *`
-      // );
+      const result = await db.one(
+        `INSERT INTO services(
+          id, name, type, base_rate, unit, description, is_active, 
+          created_at, updated_at
+        ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9) 
+        RETURNING *`,
+        [
+          id,
+          service.name,
+          service.type,
+          service.baseRate,
+          service.unit,
+          service.description,
+          service.isActive,
+          now,
+          now
+        ]
+      );
       
-      return newService;
+      return this.mapDatabaseRowToModel(result);
     } catch (error) {
       console.error('Error creating service:', error);
       throw error;
@@ -148,26 +72,58 @@ export class ServiceRepository extends BaseRepository<Service> {
 
   async updateService(id: string, service: Partial<Service>): Promise<Service> {
     try {
+      // Prepare the update parts
+      const updates = [];
+      const values = [];
+      let paramIndex = 1;
+      
+      if (service.name !== undefined) {
+        updates.push(`name = $${paramIndex++}`);
+        values.push(service.name);
+      }
+      
+      if (service.type !== undefined) {
+        updates.push(`type = $${paramIndex++}`);
+        values.push(service.type);
+      }
+      
+      if (service.baseRate !== undefined) {
+        updates.push(`base_rate = $${paramIndex++}`);
+        values.push(service.baseRate);
+      }
+      
+      if (service.unit !== undefined) {
+        updates.push(`unit = $${paramIndex++}`);
+        values.push(service.unit);
+      }
+      
+      if (service.description !== undefined) {
+        updates.push(`description = $${paramIndex++}`);
+        values.push(service.description);
+      }
+      
+      if (service.isActive !== undefined) {
+        updates.push(`is_active = $${paramIndex++}`);
+        values.push(service.isActive);
+      }
+      
+      // Always update the updated_at timestamp
       const now = new Date().toISOString();
+      updates.push(`updated_at = $${paramIndex++}`);
+      values.push(now);
       
-      // In a real implementation, we would update the database
-      // const result = await db.oneOrNone(
-      //   `UPDATE services SET ... WHERE id = $1 RETURNING *`,
-      //   [id]
-      // );
+      // Add the id as the last parameter
+      values.push(id);
       
-      // For mock implementation, just return a service with updated fields
-      return { 
-        id, 
-        name: service.name || 'Updated Service',
-        type: service.type || 'lifting',
-        baseRate: service.baseRate || 5000,
-        unit: service.unit || 'hour',
-        description: service.description || 'Updated description',
-        isActive: service.isActive !== undefined ? service.isActive : true,
-        createdAt: new Date(2025, 5, 15).toISOString(),
-        updatedAt: now 
-      };
+      // Execute the update
+      const result = await db.one(
+        `UPDATE services SET ${updates.join(', ')} 
+         WHERE id = $${paramIndex} 
+         RETURNING *`,
+        values
+      );
+      
+      return this.mapDatabaseRowToModel(result);
     } catch (error) {
       console.error('Error updating service:', error);
       throw error;
@@ -176,8 +132,7 @@ export class ServiceRepository extends BaseRepository<Service> {
 
   async deleteService(id: string): Promise<void> {
     try {
-      // In a real implementation, we would delete from the database
-      // await db.none('DELETE FROM services WHERE id = $1', [id]);
+      await db.none('DELETE FROM services WHERE id = $1', [id]);
     } catch (error) {
       console.error('Error deleting service:', error);
       throw error;
@@ -186,16 +141,21 @@ export class ServiceRepository extends BaseRepository<Service> {
   
   async toggleServiceStatus(id: string): Promise<Service> {
     try {
-      // In a real implementation:
-      // 1. Get the current service
-      // 2. Toggle its active status
-      // 3. Save it back to DB
-      
-      // For mock implementation:
+      // Get the current service
       const service = await this.getServiceById(id);
       if (!service) throw new Error('Service not found');
       
-      return this.updateService(id, { isActive: !service.isActive });
+      // Toggle the status and update
+      const result = await db.one(
+        `UPDATE services SET 
+         is_active = NOT is_active, 
+         updated_at = $1
+         WHERE id = $2 
+         RETURNING *`,
+        [new Date().toISOString(), id]
+      );
+      
+      return this.mapDatabaseRowToModel(result);
     } catch (error) {
       console.error('Error toggling service status:', error);
       throw error;

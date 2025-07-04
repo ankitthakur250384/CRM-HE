@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { getQuotationConfig, updateQuotationConfig } from '../services/postgresService';
+import { getQuotationConfig, updateQuotationConfig } from '../services/configService';
 
 interface OrderTypeConfig {
   minDays: number;

@@ -75,8 +75,6 @@ export const apiCall = async <T = any>(endpoint: string, options: ApiOptions = {
     // Merge headers with Authorization
     const headers = {
       'Content-Type': 'application/json',
-      // Add bypass auth header in development mode for easier debugging
-      ...(import.meta.env.DEV ? { 'X-Bypass-Auth': 'true' } : {}),
       // Only add Authorization if we have a token
       ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       ...(options.headers || {})

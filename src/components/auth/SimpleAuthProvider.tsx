@@ -14,11 +14,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const checkAuthStatus = async () => {
       try {
         if (!isAuthenticated && !user) {
-          // Get current user (if token exists)
+          // Standard PostgreSQL authentication flow
           const currentUser = await getCurrentUser();
           if (currentUser) {
             setUser(currentUser);
-            console.log('✅ Auto-login successful');
           }
         }
       } catch (error) {

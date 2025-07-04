@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Connection Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        h1 {
+            color: #333;
+            border-bottom: 1px solid #ccc;
+            padding-bottom: 10px;
+        }
+        .card {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 20px;
+            background-color: #f9f9f9;
+        }
+        button {
+            padding: 8px 16px;
+            background: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background: #45a049;
+        }
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .error {
+            color: red;
+            font-weight: bold;
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+        input {
+            padding: 8px;
+            margin: 5px 0 15px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        label {
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <h1>ASP Cranes CRM API Connection Test</h1>
+    
+    <div class="card">
+        <h2>API Configuration</h2>
+        <p>Base URL: <span id="apiUrl"></span></p>
+        <p>Environment: <span id="environment"></span></p>
+    </div>
+    
+    <div class="card">
+        <h2>Health Check</h2>
+        <button id="testHealth">Test API Health</button>
+        <button id="testDbHealth">Test Database Connection</button>
+        <div id="healthResult"></div>
+    </div>
+    
+    <div class="card">
+        <h2>Authentication Test</h2>
+        <form id="loginForm">
+            <div>
+                <label for="email">Email:</label>
+                <input type="email" id="email" placeholder="Enter your email" value="admin@example.com">
+            </div>
+            <div>
+                <label for="password">Password:</label>
+                <input type="password" id="password" placeholder="Enter your password" value="admin123">
+            </div>
+            <button type="submit">Test Login</button>
+        </form>
+        <div id="loginResult"></div>
+    </div>
+
+    <div class="card">
+        <h2>Browser Console</h2>
+        <p>Check your browser console (F12) for additional debug information.</p>
+    </div>
+
+    <script>
+        // Get the API URL from environment or use default
+        const API_URL = 'http://localhost:3001/api';
+        document.getElementById('apiUrl').textContent = API_URL;
+        document.getElementById('environment').textContent = 'Development';
+
+        // Test API Health
+        document.getElementById('testHealth').addEventListener('click', async () => {
+            const healthResult = document.getElementById('healthResult');
+            healthResult.innerHTML = 'Testing API health...';
+            
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                const data = await response.text();
+                
+                console.log('Health check response:', response);
+                console.log('Health check data:', data);
+                
+                if (response.ok) {
+                    healthResult.innerHTML = `
+                        <p class="success">API is healthy!</p>
+                        <pre>${data}</pre>
+                    `;
+                } else {
+                    healthResult.innerHTML = `
+                        <p class="error">API returned error: ${response.status} ${response.statusText}</p>
+                        <pre>${data}</pre>
+                    `;
+                }
+            } catch (error) {
+                console.error('Health check failed:', error);
+                healthResult.innerHTML = `
+                    <p class="error">Failed to connect to API: ${error.message}</p>
+                    <p>Make sure the API server is running and accessible.</p>
+                `;
+            }
+        });
+
+        // Test Database Connection
+        document.getElementById('testDbHealth').addEventListener('click', async () => {
+            const healthResult = document.getElementById('healthResult');
+            healthResult.innerHTML = 'Testing database connection...';
+            
+            try {
+                const response = await fetch(`${API_URL}/database/health`);
+                const data = await response.text();
+                
+                console.log('Database check response:', response);
+                console.log('Database check data:', data);
+                
+                if (response.ok) {
+                    healthResult.innerHTML = `
+                        <p class="success">Database connection successful!</p>
+                        <pre>${data}</pre>
+                    `;
+                } else {
+                    healthResult.innerHTML = `
+                        <p class="error">Database check failed: ${response.status} ${response.statusText}</p>
+                        <pre>${data}</pre>
+                    `;
+                }
+            } catch (error) {
+                console.error('Database check failed:', error);
+                healthResult.innerHTML = `
+                    <p class="error">Failed to check database: ${error.message}</p>
+                    <p>Make sure the API server is running and database is configured correctly.</p>
+                `;
+            }
+        });
+
+        // Test Login
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const loginResult = document.getElementById('loginResult');
+            
+            if (!email || !password) {
+                loginResult.innerHTML = '<p class="error">Email and password are required</p>';
+                return;
+            }
+            
+            loginResult.innerHTML = 'Attempting login...';
+            
+            try {
+                const response = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password }),
+                });
+                
+                const data = await response.json().catch(() => ({ error: 'Invalid JSON response' }));
+                
+                console.log('Login response:', response);
+                console.log('Login data:', data);
+                
+                if (response.ok && data.token) {
+                    loginResult.innerHTML = `
+                        <p class="success">Login successful!</p>
+                        <p>Token received and stored in localStorage.</p>
+                        <p>User details:</p>
+                        <pre>${JSON.stringify(data.user, null, 2)}</pre>
+                    `;
+                    localStorage.setItem('jwt-token', data.token);
+                } else {
+                    loginResult.innerHTML = `
+                        <p class="error">Login failed: ${data.message || response.statusText}</p>
+                        <pre>${JSON.stringify(data, null, 2)}</pre>
+                    `;
+                }
+            } catch (error) {
+                console.error('Login failed:', error);
+                loginResult.innerHTML = `
+                    <p class="error">Login request failed: ${error.message}</p>
+                    <p>Make sure the API server is running and accessible.</p>
+                `;
+            }
+        });
+    </script>
+</body>
+</html>

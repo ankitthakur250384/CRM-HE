@@ -78,22 +78,32 @@ export function ErrorFallback() {
 }
 
 function AppContent() {
-  return (
-    <Suspense fallback={
-      <div className="fixed inset-0 bg-white flex min-h-screen items-center justify-center z-50 loading-screen">
-        <div className="flex flex-col items-center">
-          <div className="h-16 w-16 animate-spin rounded-full border-4 border-blue-600 border-t-transparent mb-4"></div>
-          <p className="text-lg text-gray-700 font-medium">Loading application...</p>
-          <button 
-            onClick={() => window.location.href = '/login'}
-            className="mt-6 px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
-          >
-            Click here if loading takes too long
-          </button>
-        </div>
+  // Force render login page if URL is empty or root
+  const isRootUrl = window.location.pathname === '/' || window.location.pathname === '';
+  
+  // If we're at root URL, use React Router's Navigate for better SPA experience
+  if (isRootUrl) {
+    return <Navigate to="/login" replace />;
+  }
+  
+  // Enhanced fallback with better loading experience
+  const fallbackContent = (
+    <div className="fixed inset-0 bg-white flex min-h-screen items-center justify-center z-50 loading-screen">
+      <div className="flex flex-col items-center">
+        <div className="h-16 w-16 animate-spin rounded-full border-4 border-blue-600 border-t-transparent mb-4"></div>
+        <p className="text-lg text-gray-700 font-medium">Loading ASP Cranes CRM...</p>
+        <p className="text-sm text-gray-500 mt-2">Please wait while we prepare your dashboard</p>
       </div>
-    }>
+    </div>
+  );
+
+  return (
+    <Suspense fallback={fallbackContent}>
       <Routes>
+        {/* Direct access to diagnostic pages */}
+        <Route path="/blank-check.html" element={<Navigate to="/blank-check.html" replace />} />
+        <Route path="/api-test.html" element={<Navigate to="/api-test.html" replace />} />
+        
         {/* Public routes */}
         <Route path="/login" element={<LoginPage />} />
         

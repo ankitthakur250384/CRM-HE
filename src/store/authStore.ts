@@ -5,7 +5,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { AuthState } from '../types/auth';
-import { signIn, signOutUser, getCurrentUser } from '../services/postgresAuthService';
+import { signIn, signOutUser, getCurrentUser } from '../services/authService.client';
 import { 
   saveAuthToStorage, 
   clearAuthFromStorage
@@ -111,33 +111,17 @@ export const useAuthStore = create<AuthStore>()(
 );
 
 /**
- * Hydrate the auth store - ONLY uses explicit login state
- * This version never auto-logs in
+ * Hydrate the auth store - Production-ready implementation
  */
 export const hydrateAuthStore = async () => {
   // Only rehydrate once to prevent infinite loops
   if (!hasHydrated) {
     try {
-      console.log('💡 Starting auth store hydration');
-      
-      // For login page, don't force rehydration as we want fresh login
+      // For login page, don't hydrate as we want fresh login
       if (window.location.pathname === '/login') {
-        console.log('📌 On login page - minimal hydration only');
         hasHydrated = true;
         return;
       }
-      
-      // Check for explicit login flag
-      const hasExplicitLogin = localStorage.getItem('explicit-login-performed') === 'true';
-      
-      // Only proceed if user has explicitly logged in
-      if (!hasExplicitLogin) {
-        console.log('📌 No explicit login detected - skipping auth hydration');
-        hasHydrated = true;
-        return;
-      }
-      
-      console.log('📌 User has explicitly logged in - hydrating auth store');
       
       // Check for JWT token and try to get current user
       const token = localStorage.getItem('jwt-token');
@@ -151,20 +135,17 @@ export const hydrateAuthStore = async () => {
             // Token is invalid or expired
             useAuthStore.getState().clearUser();
             localStorage.removeItem('jwt-token');
-            localStorage.removeItem('explicit-login-performed');
           }
         } catch (error) {
-          console.error('Error getting current user:', error);
           useAuthStore.getState().clearUser();
         }
       }
       
-      // Force immediate rehydration of the store for explicit logins only
+      // Force rehydration of the store
       useAuthStore.persist.rehydrate();
       
       hasHydrated = true;
     } catch (error) {
-      console.error('Error during auth store hydration:', error);
       hasHydrated = true; // Mark as hydrated even on error to prevent loops
     }
   }

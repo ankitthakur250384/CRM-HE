@@ -17,7 +17,47 @@ export function LoginForm() {
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [renderError, setRenderError] = useState<string | null>(null);
+  const [apiState, setApiState] = useState<'loading' | 'available' | 'error'>('loading');
   const { login, error, isAuthenticated } = useAuthStore();
+  
+  // Debug logging for LoginForm render
+  console.log("LoginForm rendering");
+  console.log("Auth state:", { error, isAuthenticated });
+  
+  useEffect(() => {
+    console.log("LoginForm mounted");
+    // Check if the API is reachable
+    const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+    
+    fetch(`${apiUrl}/health`, {
+      // Add credentials and mode to support CORS
+      credentials: 'include',
+      mode: 'cors',
+      headers: {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json'
+      }
+    })
+      .then(response => {
+        console.log("API health check response:", response.status);
+        setApiState(response.ok ? 'available' : 'error');
+        return response.text();
+      })
+      .then(data => {
+        console.log("API health check data:", data);
+      })
+      .catch(err => {
+        console.error("API health check failed:", err);
+        setApiState('error');
+        setRenderError(`API connection error: ${err.message}. Make sure the API server is running at ${apiUrl}`);
+      });
+      
+    // Check for critical environment variables
+    console.log("Environment variables check:", {
+      apiUrl: import.meta.env.VITE_API_URL || 'not set',
+      dbHost: import.meta.env.VITE_DB_HOST || 'not set'
+    });
+  }, []);
   
   const navigate = useNavigate();
   const location = useLocation();
@@ -25,69 +65,76 @@ export function LoginForm() {
   // Get the redirect path if available
   const from = (location.state as LocationState)?.from?.pathname || '/dashboard';
   
-  // Debug info
-  useEffect(() => {
-    console.log('🔵 LoginForm mounted', { isAuthenticated, error });
-    
-    // Log store state for debugging
-    try {
-      console.log('🔍 Auth Store State:', useAuthStore.getState());
-    } catch (err) {
-      console.error('Error accessing auth store:', err);
-    }
-  }, [isAuthenticated, error]);
-  
   // If already authenticated, redirect to dashboard
   useEffect(() => {
     if (isAuthenticated) {
-      console.log('👉 User is authenticated, redirecting to:', from);
       navigate(from, { replace: true });
     }
   }, [isAuthenticated, navigate, from]);
   
   // Stabilize the login form by marking it as mounted
   useEffect(() => {
-    // Mark that we've reached the login form properly
-    sessionStorage.setItem('login-form-loaded', 'true');
-    
-    // Clear any pending auth checks or redirects
-    localStorage.removeItem('auth-checking');
-    localStorage.removeItem('app-starting');
-    
     // Clear any previous JWT token if on login page
     // This ensures we get a fresh token on explicit login
     if (location.pathname === '/login') {
       localStorage.removeItem('jwt-token');
     }
-    
-    return () => {
-      console.log('🔴 LoginForm unmounted');
-    };
   }, [location.pathname]);
-      const handleSubmit = async (e: React.FormEvent) => {
+  
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    // Basic validation
+    if (!email || !password) {
+      setRenderError("Email and password are required");
+      return;
+    }
+    
     setIsLoading(true);
-    
-    console.log('🔑 Attempting login with email:', email);
-    
-    // Set flag that user is explicitly logging in
-    localStorage.setItem('explicit-login-performed', 'true');
-    // Set flag for auth listener to know this is an explicit auth action
-    sessionStorage.setItem('explicit-auth-action', 'true');
+    console.log("Login attempt for:", email);
     
     try {
+      // Check if API is reachable before attempting login
+      const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+      
+      try {
+        const healthCheck = await fetch(`${apiUrl}/health`, { 
+          method: 'GET',
+          headers: { 'Content-Type': 'application/json' }
+        });
+        
+        if (!healthCheck.ok) {
+          console.error("API health check failed before login attempt:", await healthCheck.text());
+          setApiState('error');
+          throw new Error(`API server is not responding correctly. Status: ${healthCheck.status}`);
+        }
+        
+        setApiState('available');
+        console.log("API health check passed, proceeding with login");
+      } catch (healthErr) {
+        console.error("Failed to connect to API:", healthErr);
+        setApiState('error');
+        throw new Error("Cannot connect to API. Please ensure the server is running.");
+      }
+      
       // Call login function from auth store (now uses PostgreSQL)
       await login(email, password);
+      console.log("Login attempt successful");
       // Login will update isAuthenticated, triggering the redirect effect
-      console.log('✅ Login successful, redirecting to:', from);
     } catch (err) {
+      console.error("Login error:", err);
+      
       // Auth store already tracks the error, but we might want to clear password
-      console.error('❌ Login error:', err);
-        // Show a specific error message for HTML responses
-      if (err instanceof Error && (err.message.includes('<!DOCTYPE') || err.message.includes('<html>'))) {
-        const apiUrl = import.meta.env.VITE_API_URL || '/api';
-        setRenderError(`API returned HTML instead of JSON. The API server might not be running correctly. 
-          Make sure the API server is running at ${apiUrl}. You can try starting it with 'npm run server'.`);
+      // Show a specific error message for HTML responses
+      if (err instanceof Error) {
+        if (err.message.includes('<!DOCTYPE') || err.message.includes('<html>')) {
+          const apiUrl = import.meta.env.VITE_API_URL || '/api';
+          setRenderError(`API returned HTML instead of JSON. The API server might not be running correctly. 
+            Make sure the API server is running at ${apiUrl}.`);
+        } else if (err.message.includes('NetworkError') || err.message.includes('Failed to fetch')) {
+          setRenderError(`Network error: Cannot connect to API server. 
+            Please check your network connection and make sure the server is running.`);
+        }
       }
       
       setPassword('');
@@ -114,6 +161,37 @@ export function LoginForm() {
     );
   }
   
+  // Show API status
+  if (apiState === 'error') {
+    return (
+      <div className="min-h-screen flex flex-col items-center justify-center bg-red-50">
+        <div className="w-full max-w-md px-6 py-8 bg-white rounded-lg shadow-md">
+          <h2 className="text-2xl font-bold text-red-600 mb-4">API Connection Error</h2>
+          <p className="text-gray-700 mb-4">
+            Unable to connect to the API server. The server might not be running.
+            <br />
+            API URL: {import.meta.env.VITE_API_URL || 'http://localhost:3001/api'}
+          </p>
+          <div className="mb-4 p-4 bg-gray-100 rounded">
+            <h3 className="font-bold mb-2">Troubleshooting steps:</h3>
+            <ol className="list-decimal list-inside space-y-1">
+              <li>Make sure the API server is running</li>
+              <li>Check your .env file configuration</li>
+              <li>Verify database connection settings</li>
+              <li>Check browser console for network errors</li>
+            </ol>
+          </div>
+          <button 
+            onClick={() => window.location.reload()}
+            className="w-full py-2 px-4 bg-blue-600 text-white rounded hover:bg-blue-700"
+          >
+            Reload Page
+          </button>
+        </div>
+      </div>
+    );
+  }
+  
   // Try to render the form with error handling
   try {
     return (
@@ -126,6 +204,10 @@ export function LoginForm() {
                   src={logo} 
                   alt="ASP Cranes" 
                   className="w-full h-full object-contain"
+                  onError={(e) => {
+                    e.currentTarget.src = 'https://placeholder.pics/svg/300x200/DEDEDE/555555/ASP%20Cranes';
+                    console.error('Logo image failed to load');
+                  }}
                 />
               </div>
             </div>
@@ -192,22 +274,6 @@ export function LoginForm() {
           <p>© 2025 ASP Cranes.</p>
           <p className="mt-1">Built by AVARIQ Tech Solutions Pvt. Ltd.</p>
         </div>
-        
-        {/* Debug info visible only in dev mode */}
-        {import.meta.env.DEV && (
-          <div className="fixed bottom-4 left-4 bg-white p-4 rounded shadow-md border max-w-xs text-xs opacity-70 hover:opacity-100">
-            <h4 className="font-bold">Login Debug Info:</h4>
-            <p>Is Authenticated: {isAuthenticated ? 'Yes' : 'No'}</p>
-            <p>Error: {error || 'None'}</p>
-            <p>From Path: {from}</p>
-            <button 
-              onClick={() => console.log(useAuthStore.getState())}
-              className="mt-2 p-1 bg-gray-200 rounded"
-            >
-              Log Store State
-            </button>
-          </div>
-        )}
       </div>
     );
   } catch (err) {

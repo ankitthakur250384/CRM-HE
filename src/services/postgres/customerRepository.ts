@@ -1,215 +1,508 @@
 /**
  * PostgreSQL Customer Repository
- * Handles database operations for customers using the API
+ * Handles database operations for customers using direct PostgreSQL connection
+ * Fully aligned with schema.sql structure
  */
-import { Customer } from '../../types/customer';
+import { Customer, CustomerType } from '../../types/customer';
 import { Contact } from '../../types/lead';
-import { api } from '../../lib/apiService';
-import { db } from '../../lib/dbClient';
+import { query, getClient } from '../../lib/dbConnection';
 
 /**
- * Get all customers from the database via API
+ * Get all customers from the database
+ * Using direct PostgreSQL connection
  */
 export const getCustomers = async (): Promise<Customer[]> => {
   try {
-    console.log('🔍 getCustomers: Requesting customers from database...');
+    console.log('Getting all customers directly from PostgreSQL database');
     
-    // Using the centralized API service
-    const response = await api.get<Customer[]>('/customers');
+    // Query matches schema.sql customers table structure
+    const result = await query(`
+      SELECT * FROM customers 
+      ORDER BY created_at DESC
+    `);
     
-    console.log(`✅ getCustomers: Received ${response?.length || 0} customers`);
+    console.log(`Retrieved ${result.rows.length} customers from database`);
     
-    if (!response) {
-      console.error('⚠️ getCustomers: Response is undefined or null');
-      return [];
-    }
+    // Map database fields to frontend model
+    const customers = result.rows.map(row => {
+      return {
+        id: row.id,
+        customerId: row.id, // Business identifier
+        name: row.name,
+        companyName: row.company_name,
+        contactName: row.contact_name,
+        email: row.email,
+        phone: row.phone,
+        address: row.address,
+        type: row.type as CustomerType,
+        designation: row.designation,
+        notes: row.notes,
+        createdAt: row.created_at,
+        updatedAt: row.updated_at
+      };
+    });
     
-    if (!Array.isArray(response)) {
-      console.error('⚠️ getCustomers: Response is not an array:', typeof response);
-      return [];
-    }
-    
-    if (response.length === 0) {
-      console.log('⚠️ getCustomers: No customers received');
-    }
-    
-    // Log first customer for debugging if available
-    if (response.length > 0) {
-      console.log('👉 First customer from API:', {
-        id: response[0].id || 'unknown',
-        name: response[0].name || 'unnamed',
-        hasContactName: !!response[0].contactName,
-        hasEmail: !!response[0].email
-      });
-    }
-    
-    return response;
+    return customers;
   } catch (error) {
-    console.error('❌ Error fetching customers:', error);
-    // Return empty array instead of throwing to prevent UI crashes
-    return [];
-  }
-};
-
-/**
- * Get a customer by ID from the database via API
- */
-export const getCustomerById = async (id: string): Promise<Customer | null> => {
-  try {
-    console.log(`🔍 Getting customer ${id} from database...`);
-    
-    const customer = await api.get<Customer>(`/customers/${id}`);
-    console.log(`✅ Retrieved customer: ${customer?.name || 'Unknown'}`);
-    return customer;
-  } catch (error) {
-    console.error(`❌ Error fetching customer ${id}:`, error);
-    return null;
-  }
-};
-
-/**
- * Create a new customer via API
- */
-export const createCustomer = async (customerData: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>): Promise<Customer> => {
-  try {
-    console.log('Creating customer via API:', customerData);
-    const newCustomer = await api.post<Customer>('/customers', customerData);
-    return newCustomer;
-  } catch (error) {
-    console.error('Error creating customer:', error);
+    console.error('Error fetching customers:', error);
     throw error;
   }
 };
 
 /**
- * Update a customer via API
+ * Get a customer by ID from the database
+ * Retrieves a single record from the 'customers' table
  */
-export const updateCustomer = async (id: string, customerData: Partial<Customer>): Promise<Customer | null> => {
+export const getCustomerById = async (id: string): Promise<Customer | null> => {
   try {
-    console.log(`Updating customer ${id} via API`);
-    const updatedCustomer = await api.put<Customer>(`/customers/${id}`, customerData);
-    return updatedCustomer;
+    if (!id) {
+      throw new Error('Invalid customer ID provided');
+    }
+    
+    console.log(`Getting customer ${id} from database`);
+    
+    const result = await query('SELECT * FROM customers WHERE id = $1', [id]);
+    
+    if (result.rows.length === 0) {
+      console.log(`Customer ${id} not found in database`);
+      return null;
+    }
+    
+    const row = result.rows[0];
+    
+    // Map database response to frontend model
+    const customer: Customer = {
+      id: row.id,
+      name: row.name,
+      contactName: row.contact_name,
+      email: row.email,
+      phone: row.phone,
+      address: row.address,
+      type: row.type as CustomerType,
+      notes: row.notes,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    };
+    
+    console.log(`Retrieved customer: ${customer.name}`);
+    return customer;
   } catch (error) {
-    console.error(`Error updating customer ${id}:`, error);
-    return null;
+    console.error(`Error fetching customer ${id}:`, error);
+    throw error;
   }
 };
 
 /**
- * Delete a customer via API
+ * Create a new customer in the database
+ * Creates a record in the 'customers' table
+ */
+export const createCustomer = async (customerData: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>): Promise<Customer> => {
+  const client = await getClient();
+  
+  try {
+    await client.query('BEGIN');
+    
+    console.log('Creating customer in database');
+    
+    // Map frontend model to database fields and insert into database
+    const result = await client.query(`
+      INSERT INTO customers (
+        name, contact_name, email, phone, address, type, notes
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7)
+      RETURNING *
+    `, [
+      customerData.name,
+      customerData.contactName,
+      customerData.email,
+      customerData.phone,
+      customerData.address,
+      customerData.type,
+      customerData.notes
+    ]);
+    
+    const newCustomer = result.rows[0];
+    await client.query('COMMIT');
+    
+    // Map database fields to frontend model
+    const customer: Customer = {
+      id: newCustomer.id,
+      name: newCustomer.name,
+      contactName: newCustomer.contact_name,
+      email: newCustomer.email,
+      phone: newCustomer.phone,
+      address: newCustomer.address,
+      type: newCustomer.type as CustomerType,
+      notes: newCustomer.notes,
+      createdAt: newCustomer.created_at,
+      updatedAt: newCustomer.updated_at
+    };
+    
+    console.log('Customer created successfully:', customer.id);
+    return customer;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error creating customer:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+/**
+ * Update a customer in the database
+ * Updates fields in the 'customers' table
+ */
+export const updateCustomer = async (id: string, customerData: Partial<Customer>): Promise<Customer | null> => {
+  const client = await getClient();
+  
+  try {
+    await client.query('BEGIN');
+    
+    if (!id) {
+      throw new Error('Invalid customer ID provided');
+    }
+    
+    console.log(`Updating customer ${id} in database`);
+    
+    // First check if the customer exists
+    const checkResult = await client.query('SELECT * FROM customers WHERE id = $1', [id]);
+    if (checkResult.rowCount === 0) {
+      console.log(`Customer ${id} not found for update`);
+      return null;
+    }
+    
+    // Build the SQL update statement dynamically based on the provided fields
+    const updates: string[] = [];
+    const values: any[] = [];
+    let paramCounter = 1;
+    
+    // Map frontend model fields to database schema
+    if (customerData.name !== undefined) {
+      updates.push(`name = $${paramCounter++}`);
+      values.push(customerData.name);
+    }
+    
+    if (customerData.contactName !== undefined) {
+      updates.push(`contact_name = $${paramCounter++}`);
+      values.push(customerData.contactName);
+    }
+    
+    if (customerData.email !== undefined) {
+      updates.push(`email = $${paramCounter++}`);
+      values.push(customerData.email);
+    }
+    
+    if (customerData.phone !== undefined) {
+      updates.push(`phone = $${paramCounter++}`);
+      values.push(customerData.phone);
+    }
+    
+    if (customerData.address !== undefined) {
+      updates.push(`address = $${paramCounter++}`);
+      values.push(customerData.address);
+    }
+    
+    if (customerData.type !== undefined) {
+      updates.push(`type = $${paramCounter++}`);
+      values.push(customerData.type);
+    }
+    
+    if (customerData.notes !== undefined) {
+      updates.push(`notes = $${paramCounter++}`);
+      values.push(customerData.notes);
+    }
+    
+    // Add the id as the last parameter
+    values.push(id);
+    
+    // If there are no fields to update, return the existing customer
+    if (updates.length === 0) {
+      console.log(`No fields to update for customer ${id}`);
+      await client.query('COMMIT');
+      client.release();
+      return getCustomerById(id);
+    }
+    
+    // Perform the update
+    await client.query(`
+      UPDATE customers
+      SET ${updates.join(', ')}
+      WHERE id = $${paramCounter}
+    `, values);
+    
+    await client.query('COMMIT');
+    
+    console.log(`Customer ${id} updated successfully`);
+    
+    // Fetch the updated customer to return
+    client.release();
+    return getCustomerById(id);
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error(`Error updating customer ${id}:`, error);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+/**
+ * Delete a customer from the database
+ * Deletes a record from the 'customers' table
  */
 export const deleteCustomer = async (id: string): Promise<boolean> => {
   try {
-    console.log(`Deleting customer ${id} via API`);
-    await api.delete(`/customers/${id}`);
-    return true;
+    if (!id) {
+      throw new Error('Invalid customer ID provided');
+    }
+    
+    console.log(`Deleting customer ${id} from database`);
+    
+    const result = await query('DELETE FROM customers WHERE id = $1 RETURNING id', [id]);
+    
+    const deleted = result.rows.length > 0;
+    
+    if (deleted) {
+      console.log(`Customer ${id} deleted successfully`);
+    } else {
+      console.warn(`Customer ${id} not found for deletion`);
+    }
+    
+    return deleted;
   } catch (error) {
     console.error(`Error deleting customer ${id}:`, error);
-    return false;
+    throw error;
   }
 };
 
 /**
- * Get all contacts for a specific customer via API
+ * Get all contacts for a specific customer from the database
+ * Retrieves records from the 'contacts' table
  */
 export const getContactsByCustomer = async (customerId: string): Promise<Contact[]> => {
   try {
-    console.log(`Getting contacts for customer ${customerId} via API`);
-    const contacts = await api.get<Contact[]>(`/customers/${customerId}/contacts`);
+    console.log(`Getting contacts for customer ${customerId} from database`);
+    
+    const result = await query(`
+      SELECT * FROM contacts 
+      WHERE customer_id = $1 
+      ORDER BY created_at DESC
+    `, [customerId]);
+    
+    // Map database fields to frontend model
+    const contacts = result.rows.map(row => ({
+      id: row.id,
+      customerId: row.customer_id,
+      name: row.name,
+      email: row.email,
+      phone: row.phone,
+      role: row.role || ''
+    }));
+    
+    console.log(`Retrieved ${contacts.length} contacts for customer ${customerId}`);
     return contacts;
   } catch (error) {
     console.error(`Error fetching contacts for customer ${customerId}:`, error);
-    // Fall back to mock data if there's an error
-    return [
-      {
-        id: `contact-1-${customerId}`,
-        customerId: customerId,
-        name: 'John Smith',
-        email: 'john@example.com',
-        phone: '555-123-4567',
-        role: 'Project Manager'
-      },
-      {
-        id: `contact-2-${customerId}`,
-        customerId: customerId,
-        name: 'Jane Doe',
-        email: 'jane@example.com',
-        phone: '555-987-6543',
-        role: 'Procurement Officer'
-      }
-    ];
+    throw error;
   }
 };
 
 /**
- * Create a new contact via API
+ * Create a new contact in the database
+ * Creates a record in the 'contacts' table
  */
 export const createContact = async (contactData: Omit<Contact, 'id'>): Promise<Contact> => {
+  const client = await getClient();
+  
   try {
-    console.log('Creating contact via API:', contactData);
-    const newContact = await api.post<Contact>(`/customers/${contactData.customerId}/contacts`, contactData);
-    return newContact;
-  } catch (error) {
-    console.error('Error creating contact:', error);
-    // Fall back to mock implementation
-    const newContact: Contact = {
-      ...contactData,
-      id: `contact-${Date.now()}`
+    await client.query('BEGIN');
+    
+    console.log('Creating contact in database:', contactData);
+    
+    // Verify customer exists first
+    const customerCheck = await client.query('SELECT id FROM customers WHERE id = $1', [contactData.customerId]);
+    
+    if (customerCheck.rows.length === 0) {
+      throw new Error(`Customer ${contactData.customerId} not found when creating contact`);
+    }
+    
+    // Insert the contact into the database
+    const result = await client.query(`
+      INSERT INTO contacts (
+        customer_id, name, email, phone, role
+      )
+      VALUES ($1, $2, $3, $4, $5)
+      RETURNING *
+    `, [
+      contactData.customerId,
+      contactData.name,
+      contactData.email,
+      contactData.phone,
+      contactData.role
+    ]);
+    
+    const newContact = result.rows[0];
+    
+    await client.query('COMMIT');
+    
+    // Map database fields to frontend model
+    const contact: Contact = {
+      id: newContact.id,
+      customerId: newContact.customer_id,
+      name: newContact.name,
+      email: newContact.email,
+      phone: newContact.phone,
+      role: newContact.role || ''
     };
-    return newContact;
+    
+    console.log(`Contact created successfully: ${contact.id} for customer ${contact.customerId}`);
+    
+    return contact;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error creating contact:', error);
+    throw error;
+  } finally {
+    client.release();
   }
 };
 
 /**
- * Update a contact via API
+ * Update a contact in the database
+ * Updates fields in the 'contacts' table
  */
 export const updateContact = async (id: string, contactData: Partial<Contact>): Promise<Contact | null> => {
+  const client = await getClient();
+  
   try {
+    await client.query('BEGIN');
+    
+    if (!id) {
+      throw new Error('Invalid contact ID provided');
+    }
+    
     if (!contactData.customerId) {
       throw new Error('Customer ID is required to update a contact');
     }
     
-    console.log(`Updating contact ${id} via API`);
-    const updatedContact = await api.put<Contact>(
-      `/customers/${contactData.customerId}/contacts/${id}`, 
-      contactData
-    );
+    console.log(`Updating contact ${id} in database`);
     
-    return updatedContact;
-  } catch (error) {
-    console.error(`Error updating contact ${id}:`, error);
-    // Fall back to mock implementation
+    // Check if contact exists
+    const checkResult = await client.query('SELECT * FROM contacts WHERE id = $1', [id]);
+    
+    if (checkResult.rows.length === 0) {
+      console.log(`Contact ${id} not found for update`);
+      return null;
+    }
+    
+    // Build the SQL update statement dynamically based on the provided fields
+    const updates: string[] = [];
+    const values: any[] = [];
+    let paramCounter = 1;
+    
+    // Map frontend model fields to database schema
+    if (contactData.name !== undefined) {
+      updates.push(`name = $${paramCounter++}`);
+      values.push(contactData.name);
+    }
+    
+    if (contactData.email !== undefined) {
+      updates.push(`email = $${paramCounter++}`);
+      values.push(contactData.email);
+    }
+    
+    if (contactData.phone !== undefined) {
+      updates.push(`phone = $${paramCounter++}`);
+      values.push(contactData.phone);
+    }
+    
+    if (contactData.role !== undefined) {
+      updates.push(`role = $${paramCounter++}`);
+      values.push(contactData.role);
+    }
+    
+    // Add the id as the last parameter
+    values.push(id);
+    
+    // If there are no fields to update, return the existing contact
+    if (updates.length === 0) {
+      console.log(`No fields to update for contact ${id}`);
+      await client.query('COMMIT');
+      client.release();
+      
+      // Return the existing contact
+      const contact: Contact = {
+        id: checkResult.rows[0].id,
+        customerId: checkResult.rows[0].customer_id,
+        name: checkResult.rows[0].name,
+        email: checkResult.rows[0].email,
+        phone: checkResult.rows[0].phone,
+        role: checkResult.rows[0].role || ''
+      };
+      
+      return contact;
+    }
+    
+    // Perform the update
+    const result = await client.query(`
+      UPDATE contacts
+      SET ${updates.join(', ')}
+      WHERE id = $${paramCounter}
+      RETURNING *
+    `, values);
+    
+    await client.query('COMMIT');
+    
+    const updatedContact = result.rows[0];
+    
+    // Map database fields to frontend model
     const contact: Contact = {
-      id,
-      customerId: contactData.customerId || 'unknown',
-      name: contactData.name || 'Unknown Name',
-      email: contactData.email || 'unknown@example.com',
-      phone: contactData.phone || '000-000-0000',
-      role: contactData.role || 'Unknown Role'
+      id: updatedContact.id,
+      customerId: updatedContact.customer_id,
+      name: updatedContact.name,
+      email: updatedContact.email,
+      phone: updatedContact.phone,
+      role: updatedContact.role || ''
     };
     
-    const updatedContact = {
-      ...contact,
-      ...contactData
-    };
+    console.log(`Contact ${id} updated successfully`);
     
-    return updatedContact;
+    return contact;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error(`Error updating contact ${id}:`, error);
+    throw error;
+  } finally {
+    client.release();
   }
 };
 
 /**
- * Delete a contact via API
+ * Delete a contact from the database
+ * Deletes a record from the 'contacts' table
  */
 export const deleteContact = async (id: string): Promise<boolean> => {
   try {
-    console.log(`Deleting contact ${id} via API`);
-    // Note: This is a simplified implementation as we don't have the customer ID here
-    // In a real app, we'd need to get the customer ID first or change the API structure
-    await api.delete(`/contacts/${id}`);
-    return true;
+    if (!id) {
+      throw new Error('Invalid contact ID provided');
+    }
+    
+    console.log(`Deleting contact ${id} from database`);
+    
+    const result = await query('DELETE FROM contacts WHERE id = $1 RETURNING id', [id]);
+    
+    const deleted = result.rows.length > 0;
+    
+    if (deleted) {
+      console.log(`Contact ${id} deleted successfully`);
+    } else {
+      console.warn(`Contact ${id} not found for deletion`);
+    }
+    
+    return deleted;
   } catch (error) {
     console.error(`Error deleting contact ${id}:`, error);
-    // Return true for mock implementation
-    return true;
+    throw error;
   }
 };
