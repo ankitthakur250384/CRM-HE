@@ -31,6 +31,7 @@
     "server:dev": "nodemon src/server.mjs",
     "check:server": "node scripts/check-server-status.mjs",
     "test:api": "node test-endpoints.js",
+    "init:users": "node init-users.js",
     "cleanup": "powershell -ExecutionPolicy Bypass -File .\\scripts\\final-cleanup.ps1",
     "migrate:config": "node scripts/migrate-config.cjs"
   },

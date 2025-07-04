@@ -88,16 +88,16 @@ router.post('/register', async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
     
-    // Generate UUID
-    const userId = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    // Generate UID that matches schema format
+    const userUid = 'usr_' + Math.random().toString(36).substring(2, 10);
     
     // Create new user using repository
-    await authRepository.createUser(userId, email, hashedPassword, role, name);
+    await authRepository.createUser(userUid, email, hashedPassword, role, name);
     
     // Generate JWT token
     const token = jwt.sign(
       { 
-        id: userId, 
+        id: userUid, 
         email, 
         role,
         name 
@@ -109,7 +109,7 @@ router.post('/register', async (req, res) => {
     return res.status(201).json({ 
       token, 
       user: {
-        id: userId,
+        id: userUid,
         email,
         role,
         name
@@ -144,6 +144,39 @@ router.get('/validate', async (req, res) => {
     });
   } catch (error) {
     return res.status(403).json({ message: 'Invalid or expired token' });
+  }
+});
+
+// Verify token route (alternative endpoint for frontend compatibility)
+router.post('/verify-token', async (req, res) => {
+  const { token } = req.body;
+  
+  if (!token) {
+    return res.status(401).json({ message: 'Token is required' });
+  }
+  
+  try {
+    const decoded = jwt.verify(token, JWT_SECRET);
+    
+    // Get fresh user data from database
+    const user = await authRepository.findUserById(decoded.id);
+    
+    if (!user) {
+      return res.status(404).json({ message: 'User not found' });
+    }
+    
+    return res.status(200).json({ 
+      valid: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        name: user.name
+      } 
+    });
+  } catch (error) {
+    console.error('Token verification error:', error);
+    return res.status(403).json({ valid: false, message: 'Invalid or expired token' });
   }
 });
 
