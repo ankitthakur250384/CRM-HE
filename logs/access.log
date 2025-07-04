@@ -13,3 +13,5 @@
 ::1 - - [03/Jul/2025:17:48:05 +0000] "GET /api HTTP/1.1" 404 35 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
 ::1 - - [03/Jul/2025:17:48:05 +0000] "GET /favicon.ico HTTP/1.1" 404 43 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
 ::1 - - [03/Jul/2025:17:58:17 +0000] "GET /api HTTP/1.1" 404 35 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
+::1 - - [04/Jul/2025:04:29:13 +0000] "GET / HTTP/1.1" 200 39 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
+::1 - - [04/Jul/2025:04:29:45 +0000] "GET /api HTTP/1.1" 404 35 "-" "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36"
