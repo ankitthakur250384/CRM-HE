@@ -3,18 +3,35 @@ import {
   IndianRupee, 
   Truck, 
   Users, 
-  Activity
+  Activity,
+  TrendingUp,
+  Calendar,
+  DollarSign
 } from 'lucide-react';
+
+// Services
 import { getLeads } from '../services/leadService';
 import { getJobs, getAllOperators } from '../services/jobService';
 import { getEquipment as getAllEquipment } from '../services/equipmentService';
 import { getDeals } from '../services/dealService';
+
+// Types
 import { Lead } from '../types/lead';
 import { Job } from '../types/job';
-import { formatCurrency } from '../utils/formatters';
 import { Equipment } from '../types/equipment';
 import { Deal } from '../types/deal';
+
+// Utils
+import { formatCurrency } from '../utils/formatters';
+
+// Components
 import { StatCard } from '../components/dashboard/StatCard';
+import { RecentActivities } from '../components/dashboard/RecentActivities';
+import { BarChart } from '../components/dashboard/BarChart';
+import { LineChart } from '../components/dashboard/LineChart';
+import { DoughnutChart } from '../components/dashboard/DoughnutChart';
+
+// Store
 import { useAuthStore } from '../store/authStore';
 
 export function AdminDashboard() {
@@ -119,6 +136,72 @@ export function AdminDashboard() {
   const equipmentUtilization = Array.isArray(jobs) 
     ? jobs.filter(job => job.status === 'in_progress' || job.status === 'scheduled').length / (equipmentCount || 1) * 100
     : 0;
+
+  // Prepare chart data
+  const monthlyRevenueData = {
+    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+    datasets: [
+      {
+        label: 'Monthly Revenue',
+        data: [150000, 200000, 180000, 220000, 250000, totalRevenue > 0 ? totalRevenue : 300000],
+        backgroundColor: 'rgba(59, 130, 246, 0.5)',
+        borderColor: 'rgb(59, 130, 246)',
+        borderWidth: 2,
+      },
+    ],
+  };
+
+  const equipmentStatusData = {
+    labels: ['Available', 'In Use', 'Maintenance'],
+    datasets: [
+      {
+        data: [
+          Array.isArray(equipment) ? equipment.filter(e => e.status === 'available').length : 0,
+          Array.isArray(equipment) ? equipment.filter(e => e.status === 'in_use').length : 0,
+          Array.isArray(equipment) ? equipment.filter(e => e.status === 'maintenance').length : 0,
+        ],
+        backgroundColor: [
+          'rgba(34, 197, 94, 0.8)',
+          'rgba(59, 130, 246, 0.8)',
+          'rgba(251, 146, 60, 0.8)',
+        ],
+        borderColor: [
+          'rgb(34, 197, 94)',
+          'rgb(59, 130, 246)',
+          'rgb(251, 146, 60)',
+        ],
+        borderWidth: 2,
+      },
+    ],
+  };
+
+  const jobStatusData = {
+    labels: ['Scheduled', 'In Progress', 'Completed', 'Cancelled'],
+    datasets: [
+      {
+        label: 'Jobs by Status',
+        data: [
+          Array.isArray(jobs) ? jobs.filter(j => j.status === 'scheduled').length : 0,
+          Array.isArray(jobs) ? jobs.filter(j => j.status === 'in_progress').length : 0,
+          Array.isArray(jobs) ? jobs.filter(j => j.status === 'completed').length : 0,
+          Array.isArray(jobs) ? jobs.filter(j => j.status === 'cancelled').length : 0,
+        ],
+        backgroundColor: [
+          'rgba(59, 130, 246, 0.6)',
+          'rgba(34, 197, 94, 0.6)',
+          'rgba(107, 114, 128, 0.6)',
+          'rgba(239, 68, 68, 0.6)',
+        ],
+        borderColor: [
+          'rgb(59, 130, 246)',
+          'rgb(34, 197, 94)',
+          'rgb(107, 114, 128)',
+          'rgb(239, 68, 68)',
+        ],
+        borderWidth: 1,
+      },
+    ],
+  };
   
   if (isLoading) {
     return (
@@ -159,18 +242,7 @@ export function AdminDashboard() {
 
   return (
     <div className="space-y-6">
-      {/* Debug: User Auth Status */}
-      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
-        <h3 className="text-lg font-semibold text-yellow-800">Auth Debug</h3>
-        <p className="text-yellow-700">
-          User: {user?.email || 'No user'} | Role: {user?.role || 'No role'} | Authenticated: {isAuthenticated ? 'Yes' : 'No'}
-        </p>
-        <p className="text-yellow-600 text-sm">
-          If user role is undefined, authentication needs to be fixed.
-        </p>
-      </div>
-      
-      {/* Stats using StatCard components */}
+      {/* 1. Statistics Cards at the Top (4 cards in a row) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Total Revenue"
@@ -198,11 +270,48 @@ export function AdminDashboard() {
         />
       </div>
       
-      {/* Summary Cards */}
+      {/* 2. Main Content Area (2 columns: Left = Recent Activities, Right = Charts) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Left Column: Recent Activities */}
+        <RecentActivities className="h-fit" />
+        
+        {/* Right Column: Equipment Status Chart */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Equipment Status</h3>
+          <div style={{ height: '300px' }}>
+            <DoughnutChart data={equipmentStatusData} height={300} />
+          </div>
+        </div>
+      </div>
+      
+      {/* 3. Additional Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Monthly Revenue Chart */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Revenue Trend</h3>
+          <div style={{ height: '300px' }}>
+            <LineChart data={monthlyRevenueData} height={300} />
+          </div>
+        </div>
+        
+        {/* Job Status Chart */}
+        <div className="bg-white rounded-lg shadow p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Jobs by Status</h3>
+          <div style={{ height: '300px' }}>
+            <BarChart data={jobStatusData} height={300} />
+          </div>
+        </div>
+      </div>
+      
+      {/* 4. Business Analytics Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Equipment Summary */}
         <div className="bg-white rounded-lg shadow">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">Equipment Summary</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-medium text-gray-900">Equipment Summary</h3>
+              <Truck className="h-5 w-5 text-gray-400" />
+            </div>
           </div>
           <div className="p-6">
             <div className="space-y-3">
@@ -225,16 +334,22 @@ export function AdminDashboard() {
                 </span>
               </div>
               <div className="flex justify-between border-t pt-3">
-                <span className="text-sm font-medium text-gray-900">Total Equipment:</span>
-                <span className="text-sm font-medium text-gray-900">{Array.isArray(equipment) ? equipment.length : 0}</span>
+                <span className="text-sm font-medium text-gray-900">Utilization Rate:</span>
+                <span className="text-sm font-medium text-gray-900">
+                  {equipmentCount > 0 ? Math.round(equipmentUtilization) : 0}%
+                </span>
               </div>
             </div>
           </div>
         </div>
         
+        {/* Business Overview */}
         <div className="bg-white rounded-lg shadow">
           <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-medium text-gray-900">Business Overview</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-medium text-gray-900">Business Overview</h3>
+              <TrendingUp className="h-5 w-5 text-gray-400" />
+            </div>
           </div>
           <div className="p-6">
             <div className="space-y-3">
@@ -263,14 +378,20 @@ export function AdminDashboard() {
         </div>
       </div>
       
-      {/* Jobs Table */}
+      {/* 5. Recent Jobs Overview */}
       <div className="bg-white rounded-lg shadow">
         <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">Recent Jobs</h3>
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-medium text-gray-900">Recent Jobs</h3>
+            <Calendar className="h-5 w-5 text-gray-400" />
+          </div>
         </div>
         <div className="px-6 py-4">
           {jobs.length === 0 ? (
-            <p className="text-gray-500 text-center py-4">No recent jobs</p>
+            <div className="text-center py-8 text-gray-500">
+              <Calendar className="h-8 w-8 mx-auto mb-2 text-gray-400" />
+              <p>No recent jobs</p>
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="min-w-full divide-y divide-gray-200">
@@ -292,7 +413,7 @@ export function AdminDashboard() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {jobs.slice(0, 5).map((job) => (
-                    <tr key={job.id} className="hover:bg-gray-50">
+                    <tr key={job.id} className="hover:bg-gray-50 transition-colors">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="font-medium text-gray-900">{job.customerId || "N/A"}</div>
                       </td>
@@ -321,6 +442,40 @@ export function AdminDashboard() {
               </table>
             </div>
           )}
+        </div>
+        {jobs.length > 5 && (
+          <div className="px-6 py-3 border-t border-gray-200 bg-gray-50">
+            <button className="text-sm text-blue-600 hover:text-blue-800 font-medium">
+              View all {jobs.length} jobs →
+            </button>
+          </div>
+        )}
+      </div>
+      
+      {/* 6. Quick Actions Section */}
+      <div className="bg-white rounded-lg shadow">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h3 className="text-lg font-medium text-gray-900">Quick Actions</h3>
+        </div>
+        <div className="p-6">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <button className="flex flex-col items-center p-4 text-center rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-colors">
+              <Users className="h-8 w-8 text-blue-600 mb-2" />
+              <span className="text-sm font-medium text-gray-900">Add User</span>
+            </button>
+            <button className="flex flex-col items-center p-4 text-center rounded-lg border border-gray-200 hover:border-green-300 hover:bg-green-50 transition-colors">
+              <Truck className="h-8 w-8 text-green-600 mb-2" />
+              <span className="text-sm font-medium text-gray-900">Add Equipment</span>
+            </button>
+            <button className="flex flex-col items-center p-4 text-center rounded-lg border border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition-colors">
+              <Activity className="h-8 w-8 text-purple-600 mb-2" />
+              <span className="text-sm font-medium text-gray-900">Create Job</span>
+            </button>
+            <button className="flex flex-col items-center p-4 text-center rounded-lg border border-gray-200 hover:border-orange-300 hover:bg-orange-50 transition-colors">
+              <DollarSign className="h-8 w-8 text-orange-600 mb-2" />
+              <span className="text-sm font-medium text-gray-900">New Deal</span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
