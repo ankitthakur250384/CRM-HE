@@ -28,7 +28,11 @@ export interface ApiResponse<T> {
  */
 const getAuthToken = (): string | null => {
   try {
-    return localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
+    // Check multiple possible storage keys for compatibility
+    return localStorage.getItem('jwt-token') || 
+           localStorage.getItem('authToken') || 
+           sessionStorage.getItem('jwt-token') ||
+           sessionStorage.getItem('authToken');
   } catch (e) {
     console.error('Error accessing storage for auth token:', e);
     return null;

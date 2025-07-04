@@ -25,28 +25,30 @@ class DealServiceError extends Error {
   }
 }
 
-// Import specific implementation based on environment
-let implementation: any = null;
+// Promise to track when implementation is loaded
+let implementationPromise: Promise<any>;
 
-// Initialize the implementations
+// Different implementation based on environment
 if (isBrowser) {
   // In browser environment, use API implementation
-  import('./api/dealService').then(module => {
-    implementation = module;
-    console.log('🌐 Using API-based deal service (browser)');
-  }).catch(err => {
-    console.error('Failed to load API implementation:', err);
-    // Fallback to mock implementation or show error
-  });
+  console.log('🌐 Loading API-based deal service (browser)');
+  implementationPromise = import('./api/dealService');
 } else {
   // In server/Node environment, use PostgreSQL repository directly
-  import('./postgres/dealRepository').then(module => {
-    implementation = module;
-    console.log('🗄️ Using direct PostgreSQL deal repository (server)');
-  }).catch(err => {
-    console.error('Failed to load DB implementation:', err);
-  });
+  console.log('🗄️ Loading direct PostgreSQL deal repository (server)');
+  implementationPromise = import('./postgres/dealRepository');
 }
+
+// Helper to get implementation
+const getImplementation = async () => {
+  try {
+    const impl = await implementationPromise;
+    return impl;
+  } catch (error) {
+    console.error('Failed to load deal service implementation:', error);
+    throw new Error('Deal service unavailable');
+  }
+};
 
 // API functions are now moved to implementation-specific files
 // and are dynamically imported based on environment
@@ -55,13 +57,9 @@ if (isBrowser) {
  * Get all deals
  */
 export const getDeals = async (): Promise<Deal[]> => {
-  if (!implementation) {
-    console.error('No deal service implementation available');
-    return []; // Return empty array as fallback
-  }
-  
   try {
-    return await implementation.getDeals();
+    const impl = await getImplementation();
+    return await impl.getDeals();
   } catch (error) {
     console.error('Error in getDeals:', error);
     return []; // Return empty array on error
@@ -72,13 +70,9 @@ export const getDeals = async (): Promise<Deal[]> => {
  * Get deal by ID
  */
 export const getDealById = async (id: string): Promise<Deal | null> => {
-  if (!implementation) {
-    console.error('No deal service implementation available');
-    return null;
-  }
-  
   try {
-    return await implementation.getDealById(id);
+    const impl = await getImplementation();
+    return await impl.getDealById(id);
   } catch (error) {
     console.error(`Error in getDealById for ID ${id}:`, error);
     return null;
@@ -89,13 +83,9 @@ export const getDealById = async (id: string): Promise<Deal | null> => {
  * Create a new deal
  */
 export const createDeal = async (deal: Omit<Deal, 'id' | 'createdAt' | 'updatedAt'>): Promise<Deal> => {
-  if (!implementation) {
-    console.error('No deal service implementation available');
-    throw new DealServiceError('Deal service unavailable');
-  }
-  
   try {
-    return await implementation.createDeal(deal);
+    const impl = await getImplementation();
+    return await impl.createDeal(deal);
   } catch (error) {
     console.error('Error in createDeal:', error);
     throw new DealServiceError(error instanceof Error ? error.message : 'Failed to create deal', error);
@@ -109,13 +99,9 @@ export const updateDeal = async (
   id: string,
   dealData: Partial<Omit<Deal, 'id' | 'createdAt' | 'updatedAt'>>
 ): Promise<Deal | null> => {
-  if (!implementation) {
-    console.error('No deal service implementation available');
-    return null;
-  }
-  
   try {
-    return await implementation.updateDeal(id, dealData);
+    const impl = await getImplementation();
+    return await impl.updateDeal(id, dealData);
   } catch (error) {
     console.error(`Error in updateDeal for ID ${id}:`, error);
     return null;
@@ -126,11 +112,6 @@ export const updateDeal = async (
  * Update a deal's stage
  */
 export const updateDealStage = async (id: string, stage: DealStage): Promise<Deal | null> => {
-  if (!implementation) {
-    console.error('No deal service implementation available');
-    return null;
-  }
-  
   if (!id) {
     throw new DealServiceError('Deal ID is required for update');
   }
@@ -140,7 +121,8 @@ export const updateDealStage = async (id: string, stage: DealStage): Promise<Dea
   }
   
   try {
-    return await implementation.updateDealStage(id, stage);
+    const impl = await getImplementation();
+    return await impl.updateDealStage(id, stage);
   } catch (error) {
     console.error(`Error in updateDealStage for ID ${id}:`, error);
     return null;
@@ -151,13 +133,9 @@ export const updateDealStage = async (id: string, stage: DealStage): Promise<Dea
  * Delete a deal
  */
 export const deleteDeal = async (id: string): Promise<boolean> => {
-  if (!implementation) {
-    console.error('No deal service implementation available');
-    return false;
-  }
-  
   try {
-    return await implementation.deleteDeal(id);
+    const impl = await getImplementation();
+    return await impl.deleteDeal(id);
   } catch (error) {
     console.error(`Error in deleteDeal for ID ${id}:`, error);
     return false;

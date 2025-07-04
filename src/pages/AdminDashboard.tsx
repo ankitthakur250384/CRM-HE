@@ -1,33 +1,25 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import { 
-  BarChart3, 
   IndianRupee, 
   Truck, 
   Users, 
-  Activity,
-  TrendingUp,
-  CircleDollarSign,
-  CheckCircle
+  Activity
 } from 'lucide-react';
-import { StatCard } from '../components/dashboard/StatCard';
-import { LineChart } from '../components/dashboard/LineChart';
-import { BarChart } from '../components/dashboard/BarChart';
-import { DoughnutChart } from '../components/dashboard/DoughnutChart';
-import { FunnelChart } from '../components/dashboard/FunnelChart';
-import { Card, CardHeader, CardTitle, CardContent } from '../components/common/Card';
-import { StatusBadge } from '../components/common/StatusBadge';
 import { getLeads } from '../services/leadService';
 import { getJobs, getAllOperators } from '../services/jobService';
 import { getEquipment as getAllEquipment } from '../services/equipmentService';
 import { getDeals } from '../services/dealService';
 import { Lead } from '../types/lead';
 import { Job } from '../types/job';
-import { Link } from 'react-router-dom';
 import { formatCurrency } from '../utils/formatters';
 import { Equipment } from '../types/equipment';
 import { Deal } from '../types/deal';
+import { StatCard } from '../components/dashboard/StatCard';
+import { useAuthStore } from '../store/authStore';
 
 export function AdminDashboard() {
+  const { user, isAuthenticated } = useAuthStore();
+  // Initialize with empty arrays to prevent undefined errors
   const [leads, setLeads] = useState<Lead[]>([]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [equipmentCount, setEquipmentCount] = useState(0);
@@ -35,17 +27,62 @@ export function AdminDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [deals, setDeals] = useState<Deal[]>([]);
+  const [error, setError] = useState<string | null>(null);
   
   useEffect(() => {
     const fetchData = async () => {
+      // Only fetch data if we have an authenticated user
+      if (!isAuthenticated || !user) {
+        console.log('⏸️ Skipping data fetch - user not authenticated');
+        setIsLoading(false);
+        return;
+      }
+      
       try {
-        const [leadsData, jobsData, equipmentData, operatorsData, dealsData] = await Promise.all([
-          getLeads(),
-          getJobs(),
-          getAllEquipment(),
-          getAllOperators(),
-          getDeals(),
+        console.log('🔄 AdminDashboard: Starting data fetch...');
+        setError(null);
+        
+        const [leadsResponse, jobsResponse, equipmentResponse, operatorsResponse, dealsResponse] = await Promise.all([
+          getLeads().catch(err => { console.error('Leads error:', err); return []; }),
+          getJobs().catch(err => { console.error('Jobs error:', err); return []; }),
+          getAllEquipment().catch(err => { console.error('Equipment error:', err); return []; }),
+          getAllOperators().catch(err => { console.error('Operators error:', err); return []; }),
+          getDeals().catch(err => { console.error('Deals error:', err); return []; }),
         ]);
+        
+        // Extract data from potentially wrapped responses
+        const extractData = (response: any) => {
+          if (Array.isArray(response)) {
+            return response;
+          } else if (response && typeof response === 'object' && response.data && Array.isArray(response.data)) {
+            return response.data;
+          } else if (response && typeof response === 'object' && response.success && Array.isArray(response.data)) {
+            return response.data;
+          }
+          return [];
+        };
+        
+        const leadsData = extractData(leadsResponse);
+        const jobsData = extractData(jobsResponse);
+        const equipmentData = extractData(equipmentResponse);
+        const operatorsData = extractData(operatorsResponse);
+        const dealsData = extractData(dealsResponse);
+        
+        console.log('🧪 Debug data types after extraction:', {
+          leadsData: Array.isArray(leadsData) ? `Array(${leadsData.length})` : typeof leadsData,
+          jobsData: Array.isArray(jobsData) ? `Array(${jobsData.length})` : typeof jobsData,
+          equipmentData: Array.isArray(equipmentData) ? `Array(${equipmentData.length})` : typeof equipmentData,
+          operatorsData: Array.isArray(operatorsData) ? `Array(${operatorsData.length})` : typeof operatorsData,
+          dealsData: Array.isArray(dealsData) ? `Array(${dealsData.length})` : typeof dealsData,
+        });
+        
+        console.log('📊 Data fetched successfully:', {
+          leads: leadsData.length,
+          jobs: jobsData.length,
+          equipment: equipmentData.length,
+          operators: operatorsData.length,
+          deals: dealsData.length
+        });
         
         setLeads(leadsData);
         setJobs(jobsData);
@@ -53,332 +90,238 @@ export function AdminDashboard() {
         setOperatorCount(operatorsData.length);
         setEquipment(equipmentData);
         setDeals(dealsData);
-      } catch (error) {
-        console.error('Error fetching dashboard data:', error);
+      } catch (error: any) {
+        console.error('❌ Error fetching dashboard data:', error);
+        setError(`Failed to load dashboard data: ${error?.message || error}`);
       } finally {
         setIsLoading(false);
       }
     };
     
     fetchData();
-  }, []);
+  }, [isAuthenticated, user]); // Re-run when auth state changes
   
-  // Calculate total revenue from won deals
-  const totalRevenue = deals
-    .filter(deal => deal.stage === 'won')
-    .reduce((total, deal) => total + deal.value, 0);
-
-  // Calculate monthly percentage change
-  const calculateMonthlyChange = () => {
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
-    const lastMonth = currentMonth === 0 ? 11 : currentMonth - 1;
-    const lastMonthYear = currentMonth === 0 ? currentYear - 1 : currentYear;
-
-    // Get won deals for current month
-    const currentMonthDeals = deals.filter(deal => {
-      const dealDate = new Date(deal.updatedAt);
-      return deal.stage === 'won' && 
-             dealDate.getMonth() === currentMonth &&
-             dealDate.getFullYear() === currentYear;
-    });
-
-    // Get won deals for last month
-    const lastMonthDeals = deals.filter(deal => {
-      const dealDate = new Date(deal.updatedAt);
-      return deal.stage === 'won' && 
-             dealDate.getMonth() === lastMonth &&
-             dealDate.getFullYear() === lastMonthYear;
-    });
-
-    const currentMonthRevenue = currentMonthDeals.reduce((total, deal) => total + deal.value, 0);
-    const lastMonthRevenue = lastMonthDeals.reduce((total, deal) => total + deal.value, 0);
-
-    if (lastMonthRevenue === 0) return { value: 100, isPositive: true };
-    
-    const percentageChange = ((currentMonthRevenue - lastMonthRevenue) / lastMonthRevenue) * 100;
-    return {
-      value: Math.abs(Math.round(percentageChange)),
-      isPositive: percentageChange >= 0
-    };
-  };
-
-  const monthlyChange = calculateMonthlyChange();
+  // Calculate total revenue from won deals with robust error handling
+  console.log('🔍 Calculating revenue - deals:', deals, 'type:', typeof deals, 'isArray:', Array.isArray(deals));
   
-  const equipmentUtilization = jobs.filter(
-    job => job.status === 'in_progress' || job.status === 'scheduled'
-  ).length / (equipmentCount || 1) * 100;
-  
-  // Equipment status counts
-  const availableCount = equipment.filter(e => e.status === 'available').length;
-  const inUseCount = equipment.filter(e => e.status === 'in_use').length;
-  const maintenanceCount = equipment.filter(e => e.status === 'maintenance').length;
-  
-  // Deal conversion calculation
-  const dealConversion = leads.length > 0 ? (deals.length / leads.length) * 100 : 0;
-
-  // Generate monthly revenue data for the past 6 months
-  const revenueChartData = (() => {
-    const now = new Date();
-    const labels = [];
-    const revenueData = [];
-    const winRateData = [];
-    
-    // Get last 6 months
-    for (let i = 5; i >= 0; i--) {
-      const month = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const monthName = month.toLocaleString('default', { month: 'short' });
-      labels.push(monthName);
-      
-      const monthDeals = deals.filter(deal => {
-        const dealDate = new Date(deal.updatedAt);
-        return dealDate.getMonth() === month.getMonth() && 
-               dealDate.getFullYear() === month.getFullYear() && 
-               deal.stage === 'won';
-      });
-      
-      const monthRevenue = monthDeals.reduce((sum, deal) => sum + deal.value, 0);
-      revenueData.push(monthRevenue);
-      
-      // Calculate win rate
-      const totalMonthDeals = deals.filter(deal => {
-        const dealDate = new Date(deal.updatedAt);
-        return dealDate.getMonth() === month.getMonth() && 
-               dealDate.getFullYear() === month.getFullYear() &&
-               (deal.stage === 'won' || deal.stage === 'lost');
-      });
-      
-      const winRate = totalMonthDeals.length > 0 
-        ? (monthDeals.length / totalMonthDeals.length) * 100 
-        : 0;
-        
-      winRateData.push(winRate);
+  let totalRevenue = 0;
+  try {
+    if (Array.isArray(deals) && deals.length > 0) {
+      totalRevenue = deals
+        .filter(deal => deal && deal.stage === 'won')
+        .reduce((total, deal) => total + (deal.value || 0), 0);
     }
-    
-    return {
-      labels,
-      datasets: [
-        {
-          label: 'Revenue',
-          data: revenueData,
-          borderColor: '#6366F1',
-          backgroundColor: 'rgba(99, 102, 241, 0.1)',
-          fill: true,
-          yAxisID: 'y',
-        },
-        {
-          label: 'Win Rate %',
-          data: winRateData,
-          borderColor: '#22C55E',
-          borderDashed: [5, 5],
-          backgroundColor: 'transparent',
-          yAxisID: 'y1',
-        }
-      ]
-    };
-  })();
+  } catch (error) {
+    console.error('Error calculating revenue:', error);
+    totalRevenue = 0;
+  }
 
-  // Equipment status chart data
-  const equipmentChartData = {
-    labels: ['Available', 'In Use', 'Maintenance'],
-    datasets: [
-      {
-        data: [availableCount, inUseCount, maintenanceCount],
-        backgroundColor: ['#22C55E', '#EF4444', '#F59E0B'],
-        borderWidth: 0,
-        hoverOffset: 4
-      }
-    ]
-  };
-
-  // Deal funnel data
-  const dealFunnelStages = [
-    { 
-      label: 'New Leads',
-      value: leads.filter(lead => lead.status === 'new').length,
-      color: '#93C5FD'
-    },
-    { 
-      label: 'Qualified Leads',
-      value: leads.filter(lead => lead.status === 'qualified').length,
-      color: '#60A5FA'
-    },
-    { 
-      label: 'Deals',
-      value: deals.filter(deal => deal.stage === 'proposal').length,
-      color: '#3B82F6'
-    },
-    { 
-      label: 'Won',
-      value: deals.filter(deal => deal.stage === 'won').length,
-      color: '#2563EB'
-    }
-  ];
+  const equipmentUtilization = Array.isArray(jobs) 
+    ? jobs.filter(job => job.status === 'in_progress' || job.status === 'scheduled').length / (equipmentCount || 1) * 100
+    : 0;
   
   if (isLoading) {
-    return <div className="flex justify-center py-10">Loading dashboard...</div>;
+    return (
+      <div className="flex justify-center py-10">
+        <div className="text-center">
+          <div className="h-16 w-16 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
   }
-  // Revenue chart options with simplified options to avoid type errors
-  const revenueChartOptions = {
-    scales: {
-      y: {
-        beginAtZero: true,
-        title: {
-          display: true,
-          text: 'Revenue'
-        }
-      },
-      y1: {
-        beginAtZero: true,
-        position: 'right' as const,
-        title: {
-          display: true,
-          text: 'Win Rate %'
-        },
-        min: 0,
-        max: 100,
-        grid: {
-          drawOnChartArea: false
-        }
-      }
-    }
-  };
+
+  if (error) {
+    return (
+      <div className="flex justify-center py-10">
+        <div className="bg-red-50 border border-red-200 rounded-lg p-6 max-w-md">
+          <h3 className="text-lg font-semibold text-red-800 mb-2">Error Loading Dashboard</h3>
+          <p className="text-red-600">{error}</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="mt-4 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+          >
+            Retry
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  console.log('🎯 AdminDashboard render - Data summary:', {
+    leads: Array.isArray(leads) ? leads.length : 0,
+    deals: Array.isArray(deals) ? deals.length : 0, 
+    jobs: Array.isArray(jobs) ? jobs.length : 0,
+    equipment: Array.isArray(equipment) ? equipment.length : 0,
+    totalRevenue,
+    equipmentUtilization
+  });
 
   return (
     <div className="space-y-6">
+      {/* Debug: User Auth Status */}
+      <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4">
+        <h3 className="text-lg font-semibold text-yellow-800">Auth Debug</h3>
+        <p className="text-yellow-700">
+          User: {user?.email || 'No user'} | Role: {user?.role || 'No role'} | Authenticated: {isAuthenticated ? 'Yes' : 'No'}
+        </p>
+        <p className="text-yellow-600 text-sm">
+          If user role is undefined, authentication needs to be fixed.
+        </p>
+      </div>
+      
+      {/* Stats using StatCard components */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <StatCard
           title="Total Revenue"
           value={formatCurrency(totalRevenue)}
-          icon={<IndianRupee className="h-5 w-5 text-primary-600" />}
+          icon={<IndianRupee className="h-5 w-5 text-blue-600" />}
           variant="primary"
-          trend={monthlyChange}
         />
         <StatCard
-          title="Equipment Utilization"
-          value={`${Math.round(equipmentUtilization)}%`}
-          icon={<Truck className="h-5 w-5 text-secondary-600" />}
+          title="Equipment"
+          value={equipmentCount}
+          icon={<Truck className="h-5 w-5 text-green-600" />}
           variant="secondary"
         />
         <StatCard
-          title="Deal Conversion"
-          value={`${Math.round(dealConversion)}%`}
-          icon={<Activity className="h-5 w-5 text-success-600" />}
+          title="Active Jobs"
+          value={jobs.length}
+          icon={<Activity className="h-5 w-5 text-purple-600" />}
           variant="success"
         />
         <StatCard
-          title="Active Operators"
+          title="Operators"
           value={operatorCount}
-          icon={<Users className="h-5 w-5 text-accent-600" />}
+          icon={<Users className="h-5 w-5 text-orange-600" />}
           variant="accent"
         />
       </div>
       
-      {/* Revenue chart */}
-      <Card>
-        <CardHeader>
-          <div className="flex justify-between items-center">
-            <CardTitle>Revenue & Win Rate Trends</CardTitle>
-            <div className="text-xs text-gray-500">Last 6 months</div>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <LineChart data={revenueChartData} options={revenueChartOptions} height={300} />
-        </CardContent>
-      </Card>
-
+      {/* Summary Cards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Lead to Deal Funnel</CardTitle>
-          </CardHeader>
-          <CardContent className="flex justify-center">
-            <FunnelChart 
-              stages={dealFunnelStages} 
-              height={280}
-            />
-          </CardContent>
-        </Card>
+        <div className="bg-white rounded-lg shadow">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h3 className="text-lg font-medium text-gray-900">Equipment Summary</h3>
+          </div>
+          <div className="p-6">
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-500">Available Equipment:</span>
+                <span className="text-sm font-medium text-green-600">
+                  {Array.isArray(equipment) ? equipment.filter(e => e.status === 'available').length : 0}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-500">In Use:</span>
+                <span className="text-sm font-medium text-blue-600">
+                  {Array.isArray(equipment) ? equipment.filter(e => e.status === 'in_use').length : 0}
+                </span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-500">Under Maintenance:</span>
+                <span className="text-sm font-medium text-orange-600">
+                  {Array.isArray(equipment) ? equipment.filter(e => e.status === 'maintenance').length : 0}
+                </span>
+              </div>
+              <div className="flex justify-between border-t pt-3">
+                <span className="text-sm font-medium text-gray-900">Total Equipment:</span>
+                <span className="text-sm font-medium text-gray-900">{Array.isArray(equipment) ? equipment.length : 0}</span>
+              </div>
+            </div>
+          </div>
+        </div>
         
-        <Card>
-          <CardHeader>
-            <CardTitle>Equipment Status</CardTitle>
-          </CardHeader>
-          <CardContent className="flex justify-center">
-            <DoughnutChart data={equipmentChartData} height={280} />
-          </CardContent>
-        </Card>
+        <div className="bg-white rounded-lg shadow">
+          <div className="px-6 py-4 border-b border-gray-200">
+            <h3 className="text-lg font-medium text-gray-900">Business Overview</h3>
+          </div>
+          <div className="p-6">
+            <div className="space-y-3">
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-500">Total Leads:</span>
+                <span className="text-sm font-medium text-blue-600">{leads.length}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-500">Active Deals:</span>
+                <span className="text-sm font-medium text-green-600">{Array.isArray(deals) ? deals.length : 0}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-sm text-gray-500">Won Deals:</span>
+                <span className="text-sm font-medium text-green-600">
+                  {Array.isArray(deals) ? deals.filter(d => d.stage === 'won').length : 0}
+                </span>
+              </div>
+              <div className="flex justify-between border-t pt-3">
+                <span className="text-sm font-medium text-gray-900">Conversion Rate:</span>
+                <span className="text-sm font-medium text-gray-900">
+                  {leads.length > 0 ? Math.round((Array.isArray(deals) ? deals.length : 0) / leads.length * 100) : 0}%
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
       
-      <div className="grid grid-cols-1 lg:grid-cols-1 gap-6">
-        <Card>
-          <CardHeader>
-            <div className="flex justify-between items-center">
-              <CardTitle>Recent Jobs</CardTitle>
-              <Link to="/jobs" className="text-sm font-medium text-primary-600 hover:text-primary-800">
-                View All Jobs
-              </Link>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {jobs.length === 0 ? (
-              <p className="text-gray-500 text-center py-4">No recent jobs</p>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="min-w-full divide-y divide-gray-200">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Customer
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Equipment
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Location
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Start Date
-                      </th>
-                      <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                        Status
-                      </th>
+      {/* Jobs Table */}
+      <div className="bg-white rounded-lg shadow">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h3 className="text-lg font-medium text-gray-900">Recent Jobs</h3>
+        </div>
+        <div className="px-6 py-4">
+          {jobs.length === 0 ? (
+            <p className="text-gray-500 text-center py-4">No recent jobs</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Customer
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Equipment
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Start Date
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Status
+                    </th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {jobs.slice(0, 5).map((job) => (
+                    <tr key={job.id} className="hover:bg-gray-50">
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="font-medium text-gray-900">{job.customerId || "N/A"}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">{job.equipmentIds ? job.equipmentIds[0] : 'None'}</div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-gray-500">
+                          {new Date(job.scheduledStartDate).toLocaleDateString()}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex px-2 py-1 text-xs font-semibold rounded-full ${
+                          job.status === 'scheduled' ? 'bg-blue-100 text-blue-800' :
+                          job.status === 'in_progress' ? 'bg-green-100 text-green-800' :
+                          job.status === 'completed' ? 'bg-gray-100 text-gray-800' :
+                          job.status === 'cancelled' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {job.status}
+                        </span>
+                      </td>
                     </tr>
-                  </thead>
-                  <tbody className="bg-white divide-y divide-gray-200">
-                    {jobs.slice(0, 5).map((job) => (
-                      <tr key={job.id} className="hover:bg-gray-50">
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="font-medium text-gray-900">{job.customerId || "N/A"}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-500">{job.equipmentIds ? job.equipmentIds[0] : 'None'}</div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-500">
-                            {typeof job.location === 'object' && job.location !== null 
-                              ? (job.location as unknown as { address: string }).address || 'Unknown location'
-                              : job.location || 'Unknown location'
-                            }
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <div className="text-sm text-gray-500">
-                            {new Date(job.scheduledStartDate).toLocaleDateString()}
-                          </div>
-                        </td>
-                        <td className="px-6 py-4 whitespace-nowrap">
-                          <StatusBadge status={job.status as any} />
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </CardContent>
-        </Card>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );

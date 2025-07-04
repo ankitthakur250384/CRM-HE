@@ -1,61 +1,47 @@
 /**
- * Deal Repository - JavaScript Implementation
- * 
- * This file provides a JavaScript implementation of the deal repository
- * that can be directly imported from MJS files.
+ * PostgreSQL Deal Repository (JavaScript version)
+ * Handles database operations for deals using direct PostgreSQL connection
  */
 
-import pg from 'pg';
-import { v4 as uuidv4 } from 'uuid';
-
-// Database configuration
-const pool = new pg.Pool({
-  host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432'),
-  database: process.env.DB_NAME || 'asp_crm',
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'postgres'
-});
+import { query, getClient } from '../../lib/dbConnection.js';
 
 /**
- * Get all deals
+ * Get all deals from the database
  */
-export const getDeals = async () => {
-  let client;
+export const getDeals = async () => {  
   try {
-    client = await pool.connect();
-    const result = await client.query(`
-      SELECT 
-        d.id,
-        d.deal_id,
-        d.customer_id,
-        d.lead_id,
-        d.status,
-        d.amount,
-        d.notes,
-        d.assigned_to,
-        d.created_at,
-        d.updated_at,
-        c.name as customer_name,
-        c.email as customer_email,
-        c.phone as customer_phone,
-        c.company as customer_company,
-        c.address as customer_address,
-        c.designation as customer_designation,
-        u.email as assigned_to_email,
-        COALESCE(u.display_name, u.email) as assigned_to_display_name
+    console.log('Getting all deals directly from PostgreSQL database');
+    
+    // Query matches schema.sql deals table structure
+    const result = await query(`
+      SELECT d.*, 
+             c.name as customer_name, 
+             c.email as customer_email,
+             c.phone as customer_phone,
+             c.company_name as customer_company,
+             c.address as customer_address,
+             c.designation as customer_designation,
+             u1.display_name as assigned_to_name,
+             u2.display_name as created_by_name
       FROM deals d
-      LEFT JOIN customers c ON d.customer_id = c.customer_id
-      LEFT JOIN users u ON d.assigned_to = u.uid
+      LEFT JOIN customers c ON d.customer_id = c.id
+      LEFT JOIN users u1 ON d.assigned_to = u1.uid
+      LEFT JOIN users u2 ON d.created_by = u2.uid
       ORDER BY d.created_at DESC
     `);
     
-    return result.rows.map(row => ({
-      id: row.deal_id,
+    console.log(`Successfully fetched ${result.rows.length} deals from database`);
+    
+    // Map database fields to frontend model
+    const deals = result.rows.map(row => ({
+      id: row.id,
+      title: row.title,
+      description: row.description || '',
+      value: typeof row.value === 'number' ? row.value : parseFloat(row.value),
+      probability: typeof row.probability === 'number' ? row.probability : (row.probability ? parseFloat(row.probability) : 0),
+      stage: row.stage,
+      leadId: row.lead_id,
       customerId: row.customer_id,
-      leadId: row.lead_id || '',
-      title: row.notes ? `Deal for ${row.customer_name || 'Customer'}` : row.deal_id,
-      description: row.notes || '',
       customer: {
         name: row.customer_name || 'Unknown Customer',
         email: row.customer_email || '',
@@ -64,68 +50,221 @@ export const getDeals = async () => {
         address: row.customer_address || '',
         designation: row.customer_designation || ''
       },
-      value: parseFloat(row.amount) || 0,
-      probability: 50,
-      stage: row.status,
+      expectedCloseDate: row.expected_close_date,
+      createdBy: row.created_by,
       assignedTo: row.assigned_to || '',
-      assignedToName: row.assigned_to_display_name || row.assigned_to_email || '',
-      expectedCloseDate: new Date().toISOString(),
-      notes: row.notes || '',
-      createdAt: row.created_at || new Date().toISOString(),
-      updatedAt: row.updated_at || new Date().toISOString()
+      assignedToName: row.assigned_to_name || '',
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      notes: row.notes || ''
     }));
+    
+    return deals;
   } catch (error) {
-    console.error('Error in getDeals:', error);
-    throw new Error(`Failed to get deals: ${error.message}`);
-  } finally {
-    if (client) client.release();
+    console.error('Error fetching deals:', error);
+    throw error;
   }
 };
 
 /**
- * Get deal by ID
+ * Create a new deal in the database
+ */
+export const createDeal = async (dealData) => {
+  const client = await getClient();
+  
+  try {
+    await client.query('BEGIN');
+    
+    console.log('Creating deal in PostgreSQL database');
+    
+    // Map frontend data to database schema
+    const result = await client.query(`
+      INSERT INTO deals (
+        lead_id, customer_id, title, description, value,
+        stage, created_by, assigned_to, probability,
+        expected_close_date, notes
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      RETURNING *
+    `, [
+      dealData.leadId,
+      dealData.customerId,
+      dealData.title,
+      dealData.description,
+      dealData.value,
+      dealData.stage,
+      dealData.createdBy,
+      dealData.assignedTo,
+      dealData.probability,
+      dealData.expectedCloseDate,
+      dealData.notes
+    ]);
+    
+    const newDeal = result.rows[0];
+    
+    // Get additional data for the response
+    const customerQuery = await client.query('SELECT * FROM customers WHERE id = $1', [newDeal.customer_id]);
+    const assignedToQuery = newDeal.assigned_to ? 
+      await client.query('SELECT display_name FROM users WHERE uid = $1', [newDeal.assigned_to]) : 
+      { rows: [] };
+    
+    await client.query('COMMIT');
+    
+    // Map database fields to frontend model
+    const customer = customerQuery.rows[0] || {};
+    const assignedToName = assignedToQuery.rows[0]?.display_name || '';
+    
+    const createdDeal = {
+      id: newDeal.id,
+      title: newDeal.title,
+      description: newDeal.description || '',
+      value: typeof newDeal.value === 'number' ? newDeal.value : parseFloat(newDeal.value),
+      probability: typeof newDeal.probability === 'number' ? newDeal.probability : parseFloat(newDeal.probability || 0),
+      stage: newDeal.stage,
+      leadId: newDeal.lead_id,
+      customerId: newDeal.customer_id,
+      customer: {
+        name: customer.name || 'Unknown Customer',
+        email: customer.email || '',
+        phone: customer.phone || '',
+        company: customer.company_name || '',
+        address: customer.address || '',
+        designation: customer.designation || ''
+      },
+      expectedCloseDate: newDeal.expected_close_date,
+      createdBy: newDeal.created_by,
+      assignedTo: newDeal.assigned_to || '',
+      assignedToName: assignedToName,
+      createdAt: newDeal.created_at,
+      updatedAt: newDeal.updated_at,
+      notes: newDeal.notes || ''
+    };
+    
+    console.log('Deal created successfully:', createdDeal.id);
+    
+    return createdDeal;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error creating deal:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+/**
+ * Update a deal's stage in the database
+ */
+export const updateDealStage = async (id, stage) => {
+  try {
+    if (!id) {
+      throw new Error('Invalid deal ID provided');
+    }
+    
+    console.log(`Updating deal ${id} stage to ${stage} in database`);
+    
+    const result = await query(
+      'UPDATE deals SET stage = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
+      [stage, id]
+    );
+    
+    if (result.rows.length === 0) {
+      console.warn(`Deal ${id} not found when updating stage to ${stage}`);
+      return null;
+    }
+    
+    const updatedDeal = result.rows[0];
+    
+    // Get customer and assigned user info
+    const customerQuery = await query('SELECT * FROM customers WHERE id = $1', [updatedDeal.customer_id]);
+    const assignedToQuery = updatedDeal.assigned_to ? 
+      await query('SELECT display_name FROM users WHERE uid = $1', [updatedDeal.assigned_to]) : 
+      { rows: [] };
+    
+    const customer = customerQuery.rows[0] || {};
+    const assignedToName = assignedToQuery.rows[0]?.display_name || '';
+    
+    // Map database fields to frontend model
+    const mappedDeal = {
+      id: updatedDeal.id,
+      title: updatedDeal.title,
+      description: updatedDeal.description || '',
+      value: typeof updatedDeal.value === 'number' ? updatedDeal.value : parseFloat(updatedDeal.value),
+      probability: typeof updatedDeal.probability === 'number' ? updatedDeal.probability : parseFloat(updatedDeal.probability || 0),
+      stage: updatedDeal.stage,
+      leadId: updatedDeal.lead_id,
+      customerId: updatedDeal.customer_id,
+      customer: {
+        name: customer.name || 'Unknown Customer',
+        email: customer.email || '',
+        phone: customer.phone || '',
+        company: customer.company_name || '',
+        address: customer.address || '',
+        designation: customer.designation || ''
+      },
+      expectedCloseDate: updatedDeal.expected_close_date,
+      createdBy: updatedDeal.created_by,
+      assignedTo: updatedDeal.assigned_to || '',
+      assignedToName: assignedToName,
+      createdAt: updatedDeal.created_at,
+      updatedAt: updatedDeal.updated_at,
+      notes: updatedDeal.notes || ''
+    };
+    
+    console.log(`Deal ${id} stage updated successfully to ${stage}`);
+    
+    return mappedDeal;
+  } catch (error) {
+    console.error(`Error updating deal ${id} stage to ${stage}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Get a deal by ID from the database
  */
 export const getDealById = async (id) => {
-  let client;
   try {
-    client = await pool.connect();
-    const result = await client.query(`
-      SELECT 
-        d.id,
-        d.deal_id,
-        d.customer_id,
-        d.lead_id,
-        d.status,
-        d.amount,
-        d.notes,
-        d.assigned_to,
-        d.created_at,
-        d.updated_at,
-        c.name as customer_name,
-        c.email as customer_email,
-        c.phone as customer_phone,
-        c.company as customer_company,
-        c.address as customer_address,
-        c.designation as customer_designation,
-        u.email as assigned_to_email,
-        COALESCE(u.display_name, u.email) as assigned_to_display_name
+    if (!id) {
+      throw new Error('Invalid deal ID provided');
+    }
+    
+    console.log(`Getting deal ${id} from database`);
+    
+    const result = await query(`
+      SELECT d.*, 
+             c.name as customer_name, 
+             c.email as customer_email,
+             c.phone as customer_phone,
+             c.company_name as customer_company,
+             c.address as customer_address,
+             c.designation as customer_designation,
+             u1.display_name as assigned_to_name,
+             u2.display_name as created_by_name
       FROM deals d
-      LEFT JOIN customers c ON d.customer_id = c.customer_id
-      LEFT JOIN users u ON d.assigned_to = u.uid
-      WHERE d.deal_id = $1
+      LEFT JOIN customers c ON d.customer_id = c.id
+      LEFT JOIN users u1 ON d.assigned_to = u1.uid
+      LEFT JOIN users u2 ON d.created_by = u2.uid
+      WHERE d.id = $1
     `, [id]);
     
     if (result.rows.length === 0) {
+      console.log(`Deal ${id} not found in database`);
       return null;
     }
     
     const row = result.rows[0];
-    return {
-      id: row.deal_id,
+    
+    // Map database fields to frontend model
+    const deal = {
+      id: row.id,
+      title: row.title,
+      description: row.description || '',
+      value: typeof row.value === 'number' ? row.value : parseFloat(row.value),
+      probability: typeof row.probability === 'number' ? row.probability : parseFloat(row.probability || 0),
+      stage: row.stage,
+      leadId: row.lead_id,
       customerId: row.customer_id,
-      leadId: row.lead_id || '',
-      title: row.notes ? `Deal for ${row.customer_name || 'Customer'}` : row.deal_id,
-      description: row.notes || '',
       customer: {
         name: row.customer_name || 'Unknown Customer',
         email: row.customer_email || '',
@@ -134,208 +273,183 @@ export const getDealById = async (id) => {
         address: row.customer_address || '',
         designation: row.customer_designation || ''
       },
-      value: parseFloat(row.amount) || 0,
-      probability: 50,
-      stage: row.status,
+      expectedCloseDate: row.expected_close_date,
+      createdBy: row.created_by,
       assignedTo: row.assigned_to || '',
-      assignedToName: row.assigned_to_display_name || row.assigned_to_email || '',
-      createdBy: '',
-      expectedCloseDate: new Date().toISOString(),
-      notes: row.notes || '',
-      createdAt: row.created_at || new Date().toISOString(),
-      updatedAt: row.updated_at || new Date().toISOString()
+      assignedToName: row.assigned_to_name || '',
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      notes: row.notes || ''
     };
+    
+    console.log(`Deal ${id} retrieved successfully`);
+    
+    return deal;
   } catch (error) {
-    console.error(`Error in getDealById for ID ${id}:`, error);
-    throw new Error(`Failed to get deal with ID ${id}: ${error.message}`);
-  } finally {
-    if (client) client.release();
+    console.error(`Error fetching deal ${id}:`, error);
+    throw error;
   }
 };
 
 /**
- * Create a new deal
- */
-export const createDeal = async (dealData) => {
-  let client;
-  try {
-    client = await pool.connect();
-    
-    // Generate a unique deal ID
-    const dealId = `deal-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
-    
-    const { 
-      customerId, 
-      leadId, 
-      value, 
-      stage, 
-      assignedTo, 
-      notes 
-    } = dealData;
-    
-    await client.query(`
-      INSERT INTO deals (
-        deal_id, 
-        customer_id, 
-        lead_id, 
-        status, 
-        amount, 
-        assigned_to, 
-        notes
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7)
-    `, [
-      dealId,
-      customerId,
-      leadId || null,
-      stage || 'qualification',
-      value || 0,
-      assignedTo,
-      notes
-    ]);
-    
-    // Return the created deal with all fields
-    return {
-      id: dealId,
-      customerId,
-      leadId: leadId || '',
-      title: `New Deal ${dealId}`,
-      description: '',
-      value: parseFloat(value) || 0,
-      probability: 50,
-      stage: stage || 'qualification',
-      assignedTo: assignedTo || '',
-      assignedToName: '',
-      createdBy: '',
-      expectedCloseDate: new Date().toISOString(),
-      notes: notes || '',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-  } catch (error) {
-    console.error('Error in createDeal:', error);
-    throw new Error(`Failed to create deal: ${error.message}`);
-  } finally {
-    if (client) client.release();
-  }
-};
-
-/**
- * Update a deal
+ * Update a deal in the database
  */
 export const updateDeal = async (id, dealData) => {
-  let client;
+  const client = await getClient();
+  
   try {
-    client = await pool.connect();
+    await client.query('BEGIN');
     
-    // Check if the deal exists
-    const checkResult = await client.query('SELECT deal_id FROM deals WHERE deal_id = $1', [id]);
-    if (checkResult.rows.length === 0) {
+    console.log(`Updating deal ${id} in database`);
+    
+    // First check if the deal exists
+    const checkResult = await client.query('SELECT * FROM deals WHERE id = $1', [id]);
+    if (checkResult.rowCount === 0) {
+      console.log(`Deal ${id} not found for update`);
       return null;
     }
     
-    // Build the update query dynamically based on provided fields
+    // Build the SQL update statement dynamically
     const updates = [];
-    const values = [id];
-    let paramIndex = 2;
+    const values = [];
+    let paramCounter = 1;
     
-    if (dealData.customerId !== undefined) {
-      updates.push(`customer_id = $${paramIndex++}`);
-      values.push(dealData.customerId);
+    if (dealData.title !== undefined) {
+      updates.push(`title = $${paramCounter++}`);
+      values.push(dealData.title);
     }
     
-    if (dealData.leadId !== undefined) {
-      updates.push(`lead_id = $${paramIndex++}`);
-      values.push(dealData.leadId || null);
-    }
-    
-    if (dealData.stage !== undefined) {
-      updates.push(`status = $${paramIndex++}`);
-      values.push(dealData.stage);
+    if (dealData.description !== undefined) {
+      updates.push(`description = $${paramCounter++}`);
+      values.push(dealData.description);
     }
     
     if (dealData.value !== undefined) {
-      updates.push(`amount = $${paramIndex++}`);
+      updates.push(`value = $${paramCounter++}`);
       values.push(dealData.value);
     }
     
+    if (dealData.probability !== undefined) {
+      updates.push(`probability = $${paramCounter++}`);
+      values.push(dealData.probability);
+    }
+    
+    if (dealData.stage !== undefined) {
+      updates.push(`stage = $${paramCounter++}`);
+      values.push(dealData.stage);
+    }
+    
+    if (dealData.expectedCloseDate !== undefined) {
+      updates.push(`expected_close_date = $${paramCounter++}`);
+      values.push(dealData.expectedCloseDate);
+    }
+    
     if (dealData.assignedTo !== undefined) {
-      updates.push(`assigned_to = $${paramIndex++}`);
+      updates.push(`assigned_to = $${paramCounter++}`);
       values.push(dealData.assignedTo);
     }
     
     if (dealData.notes !== undefined) {
-      updates.push(`notes = $${paramIndex++}`);
+      updates.push(`notes = $${paramCounter++}`);
       values.push(dealData.notes);
     }
     
     // Always update the updated_at timestamp
     updates.push(`updated_at = NOW()`);
     
-    // Execute the update
-    await client.query(`
-      UPDATE deals 
-      SET ${updates.join(', ')} 
-      WHERE deal_id = $1
+    // Add the id as the last parameter
+    values.push(id);
+    
+    // If there are no fields to update, return the existing deal
+    if (updates.length === 1) { // Only updated_at
+      console.log(`No fields to update for deal ${id}`);
+      return getDealById(id);
+    }
+    
+    // Perform the update
+    const result = await client.query(`
+      UPDATE deals
+      SET ${updates.join(', ')}
+      WHERE id = $${paramCounter}
+      RETURNING *
     `, values);
     
-    // Get the updated deal
-    return await getDealById(id);
+    const updatedDeal = result.rows[0];
+    
+    // Get customer and assigned user info
+    const customerQuery = await client.query('SELECT * FROM customers WHERE id = $1', [updatedDeal.customer_id]);
+    const assignedToQuery = updatedDeal.assigned_to ? 
+      await client.query('SELECT display_name FROM users WHERE uid = $1', [updatedDeal.assigned_to]) : 
+      { rows: [] };
+    
+    await client.query('COMMIT');
+    
+    const customer = customerQuery.rows[0] || {};
+    const assignedToName = assignedToQuery.rows[0]?.display_name || '';
+    
+    // Map database fields to frontend model
+    const mappedDeal = {
+      id: updatedDeal.id,
+      title: updatedDeal.title,
+      description: updatedDeal.description || '',
+      value: typeof updatedDeal.value === 'number' ? updatedDeal.value : parseFloat(updatedDeal.value),
+      probability: typeof updatedDeal.probability === 'number' ? updatedDeal.probability : parseFloat(updatedDeal.probability || 0),
+      stage: updatedDeal.stage,
+      leadId: updatedDeal.lead_id,
+      customerId: updatedDeal.customer_id,
+      customer: {
+        name: customer.name || 'Unknown Customer',
+        email: customer.email || '',
+        phone: customer.phone || '',
+        company: customer.company_name || '',
+        address: customer.address || '',
+        designation: customer.designation || ''
+      },
+      expectedCloseDate: updatedDeal.expected_close_date,
+      createdBy: updatedDeal.created_by,
+      assignedTo: updatedDeal.assigned_to || '',
+      assignedToName: assignedToName,
+      createdAt: updatedDeal.created_at,
+      updatedAt: updatedDeal.updated_at,
+      notes: updatedDeal.notes || ''
+    };
+    
+    console.log(`Deal ${id} updated successfully`);
+    
+    return mappedDeal;
   } catch (error) {
-    console.error(`Error in updateDeal for ID ${id}:`, error);
-    throw new Error(`Failed to update deal with ID ${id}: ${error.message}`);
+    await client.query('ROLLBACK');
+    console.error(`Error updating deal ${id}:`, error);
+    throw error;
   } finally {
-    if (client) client.release();
+    client.release();
   }
 };
 
 /**
- * Update a deal's stage
- */
-export const updateDealStage = async (id, stage) => {
-  let client;
-  try {
-    client = await pool.connect();
-    
-    // Check if the deal exists
-    const checkResult = await client.query('SELECT deal_id FROM deals WHERE deal_id = $1', [id]);
-    if (checkResult.rows.length === 0) {
-      return null;
-    }
-    
-    // Update the stage
-    await client.query('UPDATE deals SET status = $1, updated_at = NOW() WHERE deal_id = $2', [stage, id]);
-    
-    // Get the updated deal
-    return await getDealById(id);
-  } catch (error) {
-    console.error(`Error in updateDealStage for ID ${id}:`, error);
-    throw new Error(`Failed to update stage for deal with ID ${id}: ${error.message}`);
-  } finally {
-    if (client) client.release();
-  }
-};
-
-/**
- * Delete a deal
+ * Delete a deal from the database
  */
 export const deleteDeal = async (id) => {
-  let client;
   try {
-    client = await pool.connect();
-    
-    // Check if the deal exists
-    const checkResult = await client.query('SELECT deal_id FROM deals WHERE deal_id = $1', [id]);
-    if (checkResult.rows.length === 0) {
-      return false;
+    if (!id) {
+      throw new Error('Invalid deal ID provided');
     }
     
-    // Delete the deal
-    await client.query('DELETE FROM deals WHERE deal_id = $1', [id]);
-    return true;
+    console.log(`Deleting deal ${id} from database`);
+    
+    const result = await query('DELETE FROM deals WHERE id = $1 RETURNING id', [id]);
+    
+    const deleted = result.rows.length > 0;
+    
+    if (deleted) {
+      console.log(`Deal ${id} deleted successfully`);
+    } else {
+      console.warn(`Deal ${id} not found for deletion`);
+    }
+    
+    return deleted;
   } catch (error) {
-    console.error(`Error in deleteDeal for ID ${id}:`, error);
-    throw new Error(`Failed to delete deal with ID ${id}: ${error.message}`);
-  } finally {
-    if (client) client.release();
+    console.error(`Error deleting deal ${id}:`, error);
+    throw error;
   }
 };

@@ -65,7 +65,7 @@ export function ProtectedRoute({
   }
   
   // Debug log authentication state when rendering a protected route
-  console.log(`🔒 Protected Route Check - Authenticated: ${isAuthenticated}, User: ${user?.id || 'none'}`);
+  console.log(`🔒 Protected Route Check - Authenticated: ${isAuthenticated}, User: ${user?.name || 'none'}`);
   
   // Basic check - no auth, no access
   if (!isAuthenticated || !user) {

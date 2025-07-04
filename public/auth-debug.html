@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Auth Debug Tool</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 800px; margin: 0 auto; }
+        .section { margin: 20px 0; padding: 20px; border: 1px solid #ddd; border-radius: 5px; background: #f9f9f9; }
+        .status { padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+        .info { background: #d1ecf1; color: #0c5460; }
+        button { padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background: #0056b3; }
+        pre { background: #f1f1f1; padding: 10px; border-radius: 4px; overflow-x: auto; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <h1>🔍 Authentication Debug Tool</h1>
+    
+    <div class="section">
+        <h2>Current Authentication State</h2>
+        <button onclick="checkAuthState()">Check Auth State</button>
+        <div id="auth-state"></div>
+    </div>
+
+    <div class="section">
+        <h2>Test Login Flow</h2>
+        <button onclick="testLogin()">Test Login (admin@aspcranes.com)</button>
+        <div id="login-result"></div>
+    </div>
+
+    <div class="section">
+        <h2>Navigation Test</h2>
+        <button onclick="testNavigation()">Test Navigation to Dashboard</button>
+        <div id="nav-result"></div>
+    </div>
+
+    <div class="section">
+        <h2>Local Storage Debug</h2>
+        <button onclick="showStorage()">Show Local Storage</button>
+        <button onclick="clearStorage()">Clear All Storage</button>
+        <div id="storage-info"></div>
+    </div>
+
+    <script>
+        function log(elementId, message, type = 'info') {
+            const element = document.getElementById(elementId);
+            const timestamp = new Date().toLocaleTimeString();
+            element.innerHTML += `<div class="status ${type}">[${timestamp}] ${message}</div>`;
+        }
+
+        function clear(elementId) {
+            document.getElementById(elementId).innerHTML = '';
+        }
+
+        async function checkAuthState() {
+            clear('auth-state');
+            
+            try {
+                // Check if we can access the auth store
+                log('auth-state', 'Checking authentication state...', 'info');
+                
+                // Check localStorage
+                const token = localStorage.getItem('jwt-token');
+                const explicitLogin = localStorage.getItem('explicit-login-performed');
+                const lastLogin = localStorage.getItem('last-login-time');
+                
+                log('auth-state', `JWT Token: ${token ? 'Present' : 'Missing'}`, token ? 'success' : 'error');
+                log('auth-state', `Explicit Login: ${explicitLogin || 'No'}`, explicitLogin ? 'success' : 'info');
+                log('auth-state', `Last Login: ${lastLogin ? new Date(parseInt(lastLogin)).toLocaleString() : 'Never'}`, 'info');
+                
+                // Test token validity
+                if (token) {
+                    log('auth-state', 'Testing token validity...', 'info');
+                    const response = await fetch('http://localhost:3001/api/auth/verify-token', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ token })
+                    });
+                    
+                    const data = await response.json();
+                    if (response.ok && data.valid) {
+                        log('auth-state', `Token is valid. User: ${data.user.name} (${data.user.role})`, 'success');
+                    } else {
+                        log('auth-state', 'Token is invalid or expired', 'error');
+                    }
+                }
+                
+                // Check current URL
+                log('auth-state', `Current URL: ${window.location.href}`, 'info');
+                
+            } catch (error) {
+                log('auth-state', `Error checking auth state: ${error.message}`, 'error');
+            }
+        }
+
+        async function testLogin() {
+            clear('login-result');
+            
+            try {
+                log('login-result', 'Starting login test...', 'info');
+                
+                // Clear any existing tokens
+                localStorage.removeItem('jwt-token');
+                localStorage.removeItem('explicit-login-performed');
+                
+                // Test API login
+                const response = await fetch('http://localhost:3001/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'admin@aspcranes.com',
+                        password: 'admin123'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (response.ok && data.user && data.token) {
+                    log('login-result', 'API login successful', 'success');
+                    log('login-result', `User: ${data.user.name} (${data.user.role})`, 'success');
+                    
+                    // Store token
+                    localStorage.setItem('jwt-token', data.token);
+                    localStorage.setItem('explicit-login-performed', 'true');
+                    
+                    log('login-result', 'Token stored in localStorage', 'success');
+                    
+                    // Test frontend auth service
+                    try {
+                        log('login-result', 'Testing frontend auth service...', 'info');
+                        const authModule = await import('/src/services/postgresAuthService.ts');
+                        const user = await authModule.signIn('admin@aspcranes.com', 'admin123');
+                        log('login-result', `Frontend auth successful: ${user.name}`, 'success');
+                    } catch (authError) {
+                        log('login-result', `Frontend auth failed: ${authError.message}`, 'error');
+                    }
+                    
+                } else {
+                    throw new Error(data.error || 'Login failed');
+                }
+                
+            } catch (error) {
+                log('login-result', `Login test failed: ${error.message}`, 'error');
+            }
+        }
+
+        function testNavigation() {
+            clear('nav-result');
+            
+            log('nav-result', 'Testing navigation...', 'info');
+            log('nav-result', `Current location: ${window.location.href}`, 'info');
+            
+            // Try different navigation methods
+            setTimeout(() => {
+                log('nav-result', 'Attempting navigation to dashboard...', 'info');
+                window.location.href = 'http://localhost:5173/dashboard';
+            }, 1000);
+        }
+
+        function showStorage() {
+            clear('storage-info');
+            
+            log('storage-info', 'Local Storage Contents:', 'info');
+            for (let i = 0; i < localStorage.length; i++) {
+                const key = localStorage.key(i);
+                const value = localStorage.getItem(key);
+                log('storage-info', `${key}: ${value}`, 'info');
+            }
+            
+            log('storage-info', 'Session Storage Contents:', 'info');
+            for (let i = 0; i < sessionStorage.length; i++) {
+                const key = sessionStorage.key(i);
+                const value = sessionStorage.getItem(key);
+                log('storage-info', `${key}: ${value}`, 'info');
+            }
+        }
+
+        function clearStorage() {
+            localStorage.clear();
+            sessionStorage.clear();
+            clear('storage-info');
+            log('storage-info', 'All storage cleared', 'success');
+        }
+
+        // Auto-run on page load
+        window.addEventListener('load', () => {
+            checkAuthState();
+        });
+    </script>
+</body>
+</html>

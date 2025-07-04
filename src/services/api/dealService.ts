@@ -6,49 +6,45 @@
  */
 
 import { Deal, DealStage } from '../../types/deal';
-import { api } from '../../lib/apiClient';
+import { api } from '../../lib/apiService';
 
 /**
  * Get all deals from the API
  */
 export const getDeals = async (): Promise<Deal[]> => {
-  const response = await api.get<Deal[]>('/deals');
-  
-  if (!response.success || !response.data) {
-    console.error('Failed to fetch deals:', response.error);
-    // Return empty array as fallback
+  try {
+    const response = await api.get<Deal[]>('/deals');
+    return response;
+  } catch (error: any) {
+    console.error('Failed to fetch deals:', error);
     return [];
   }
-  
-  return response.data;
 };
 
 /**
  * Get a deal by ID from the API
  */
 export const getDealById = async (id: string): Promise<Deal | null> => {
-  const response = await api.get<Deal>(`/deals/${id}`);
-  
-  if (!response.success || !response.data) {
-    console.error(`Failed to fetch deal ${id}:`, response.error);
+  try {
+    const response = await api.get<Deal>(`/deals/${id}`);
+    return response;
+  } catch (error: any) {
+    console.error(`Failed to fetch deal ${id}:`, error);
     return null;
   }
-  
-  return response.data;
 };
 
 /**
  * Create a new deal via the API
  */
 export const createDeal = async (deal: Omit<Deal, 'id' | 'createdAt' | 'updatedAt'>): Promise<Deal> => {
-  const response = await api.post<Deal>('/deals', deal);
-  
-  if (!response.success || !response.data) {
-    console.error('Failed to create deal:', response.error);
-    throw new Error(response.error?.message || 'Failed to create deal');
+  try {
+    const response = await api.post<Deal>('/deals', deal);
+    return response;
+  } catch (error: any) {
+    console.error('Failed to create deal:', error);
+    throw new Error(error.message || 'Failed to create deal');
   }
-  
-  return response.data;
 };
 
 /**
@@ -58,40 +54,37 @@ export const updateDeal = async (
   id: string,
   dealData: Partial<Omit<Deal, 'id' | 'createdAt' | 'updatedAt'>>
 ): Promise<Deal | null> => {
-  const response = await api.put<Deal>(`/deals/${id}`, dealData);
-  
-  if (!response.success || !response.data) {
-    console.error(`Failed to update deal ${id}:`, response.error);
+  try {
+    const response = await api.put<Deal>(`/deals/${id}`, dealData);
+    return response;
+  } catch (error: any) {
+    console.error(`Failed to update deal ${id}:`, error);
     return null;
   }
-  
-  return response.data;
 };
 
 /**
  * Update a deal's stage via the API
  */
 export const updateDealStage = async (id: string, stage: DealStage): Promise<Deal | null> => {
-  const response = await api.patch<Deal>(`/deals/${id}/stage`, { stage });
-  
-  if (!response.success || !response.data) {
-    console.error(`Failed to update deal ${id} stage:`, response.error);
+  try {
+    const response = await api.put<Deal>(`/deals/${id}/stage`, { stage });
+    return response;
+  } catch (error: any) {
+    console.error(`Failed to update deal ${id} stage:`, error);
     return null;
   }
-  
-  return response.data;
 };
 
 /**
  * Delete a deal via the API
  */
 export const deleteDeal = async (id: string): Promise<boolean> => {
-  const response = await api.delete<void>(`/deals/${id}`);
-  
-  if (!response.success) {
-    console.error(`Failed to delete deal ${id}:`, response.error);
+  try {
+    await api.delete<void>(`/deals/${id}`);
+    return true;
+  } catch (error: any) {
+    console.error(`Failed to delete deal ${id}:`, error);
     return false;
   }
-  
-  return true;
 };

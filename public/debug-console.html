@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Console</title>
+    <style>
+        body { font-family: monospace; padding: 20px; }
+        .log { margin: 5px 0; padding: 5px; border-left: 3px solid #ccc; }
+        .error { border-color: red; background: #ffeaea; }
+        .warn { border-color: orange; background: #fff8dc; }
+        .info { border-color: blue; background: #e6f3ff; }
+    </style>
+</head>
+<body>
+    <h1>Debug Console for ASP CRM</h1>
+    <div id="logs"></div>
+    
+    <script>
+        const logs = document.getElementById('logs');
+        
+        function addLog(type, message) {
+            const div = document.createElement('div');
+            div.className = `log ${type}`;
+            div.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logs.appendChild(div);
+        }
+        
+        // Override console methods
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+        
+        console.log = function(...args) {
+            addLog('info', args.join(' '));
+            originalLog.apply(console, args);
+        };
+        
+        console.error = function(...args) {
+            addLog('error', args.join(' '));
+            originalError.apply(console, args);
+        };
+        
+        console.warn = function(...args) {
+            addLog('warn', args.join(' '));
+            originalWarn.apply(console, args);
+        };
+        
+        // Test the main app
+        async function testMainApp() {
+            addLog('info', 'Testing main app at http://localhost:5173');
+            
+            try {
+                // Test if we can reach the main app
+                const response = await fetch('http://localhost:5173');
+                addLog('info', `Main app response status: ${response.status}`);
+                
+                // Test API connectivity
+                const apiResponse = await fetch('http://localhost:3001/api/health');
+                const apiData = await apiResponse.json();
+                addLog('info', `API health check: ${JSON.stringify(apiData)}`);
+                
+                // Test authentication
+                const authResponse = await fetch('http://localhost:3001/api/auth/status', {
+                    credentials: 'include'
+                });
+                const authData = await authResponse.json();
+                addLog('info', `Auth status: ${JSON.stringify(authData)}`);
+                
+            } catch (error) {
+                addLog('error', `Error testing main app: ${error.message}`);
+            }
+        }
+        
+        // Start testing
+        testMainApp();
+        
+        // Monitor for errors from the main window
+        window.addEventListener('message', function(event) {
+            if (event.origin !== 'http://localhost:5173') return;
+            addLog('info', `Message from main app: ${JSON.stringify(event.data)}`);
+        });
+    </script>
+</body>
+</html>

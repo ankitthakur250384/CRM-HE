@@ -35,24 +35,47 @@ import { ProtectedRoute } from './components/auth/SimpleProtectedRoute';
 function DashboardRouter() {
   const { user, isAuthenticated } = useAuthStore();
   
+  console.log('🎯 DashboardRouter called');
+  console.log('🔍 Authentication state:', { isAuthenticated });
+  console.log('👤 User object:', JSON.stringify(user, null, 2));
+  console.log('🏷️ User role:', user?.role);
+  
   // This should never actually happen because of ProtectedRoute,
   // but it's a safety check
   if (!isAuthenticated || !user) {
+    console.log('❌ DashboardRouter: Not authenticated, redirecting to login');
     return <Navigate to="/login" replace />;
   }
+  
+  // Check for role
+  if (!user.role) {
+    console.error('❌ DashboardRouter: User authenticated but role is undefined!');
+    console.error('📊 Full user object:', user);
+    
+    // Try to show admin dashboard as fallback
+    console.log('🔄 Fallback: Showing AdminDashboard due to missing role');
+    return <AdminDashboard />;
+  }
+  
+  console.log('✅ DashboardRouter: User role is', user.role);
   
   // Return the appropriate dashboard based on role
   switch (user.role) {
     case 'admin':
+      console.log('📊 Rendering AdminDashboard');
       return <AdminDashboard />;
     case 'sales_agent':
+      console.log('📊 Rendering SalesAgentDashboard');
       return <SalesAgentDashboard />;
     case 'operations_manager':
+      console.log('📊 Rendering OperationsManagerDashboard');
       return <OperationsManagerDashboard />;
     case 'operator':
+      console.log('📊 Rendering OperatorDashboard');
       return <OperatorDashboard />;
     default:
-      return <Navigate to="/login" replace />;
+      console.log('❌ Unknown user role:', user.role, 'showing AdminDashboard as fallback');
+      return <AdminDashboard />;
   }
 }
 
@@ -81,8 +104,12 @@ function AppContent() {
   // Force render login page if URL is empty or root
   const isRootUrl = window.location.pathname === '/' || window.location.pathname === '';
   
+  console.log('🔍 AppContent - Current pathname:', window.location.pathname);
+  console.log('🔍 AppContent - Is root URL:', isRootUrl);
+  
   // If we're at root URL, use React Router's Navigate for better SPA experience
   if (isRootUrl) {
+    console.log('📍 Redirecting from root to /login');
     return <Navigate to="/login" replace />;
   }
   

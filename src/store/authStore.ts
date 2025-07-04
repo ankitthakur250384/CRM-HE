@@ -3,7 +3,7 @@
  * Uses PostgreSQL authentication instead of Firebase
  */
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+// import { persist } from 'zustand/middleware';
 import { AuthState } from '../types/auth';
 import { signIn, signOutUser, getCurrentUser } from '../services/authService.client';
 import { 
@@ -21,9 +21,9 @@ interface AuthStore extends AuthState {
 // Track hydration to prevent loops
 let hasHydrated = false;
 
-// Create the store with proper typing
+// Create the store with proper typing - TEMPORARILY WITHOUT PERSIST
 export const useAuthStore = create<AuthStore>()(
-  persist(
+  // persist(
     (set) => ({
       user: null,
       token: null,
@@ -36,7 +36,23 @@ export const useAuthStore = create<AuthStore>()(
           
           // Sign in with PostgreSQL authentication service
           const user = await signIn(email, password);
-            // Get token from local storage (it's set by the signIn function)
+          console.log('🔐 Login successful - User data received:', JSON.stringify(user, null, 2));
+          console.log('🏷️ User role check:', user?.role);
+          
+          // Validate and ensure user has proper role
+          if (!user || !user.role) {
+            console.error('❌ User object missing or role undefined:', user);
+            throw new Error('Invalid user data - role missing');
+          }
+          
+          if (!['admin', 'sales_agent', 'operations_manager', 'operator', 'support'].includes(user.role)) {
+            console.error('❌ Invalid user role:', user.role);
+            throw new Error(`Invalid user role: ${user.role}`);
+          }
+          
+          console.log('✅ User role validation passed:', user.role);
+          
+          // Get token from local storage (it's set by the signIn function)
           const token = localStorage.getItem('jwt-token') || '';
           
           // Update state after successful authentication
@@ -101,51 +117,72 @@ export const useAuthStore = create<AuthStore>()(
         isAuthenticated: false, 
         error: null 
       })
-    }),
-    {
-      name: 'auth-storage',
-      // Only store in localStorage if explicit login was performed
-      skipHydration: true
-    }
-  )
+    })
+    // Temporarily disabled persist
 );
 
 /**
- * Hydrate the auth store - Production-ready implementation
+ * Hydrate the auth store - Simplified implementation
  */
 export const hydrateAuthStore = async () => {
   // Only rehydrate once to prevent infinite loops
   if (!hasHydrated) {
     try {
-      // For login page, don't hydrate as we want fresh login
-      if (window.location.pathname === '/login') {
-        hasHydrated = true;
-        return;
-      }
+      console.log('🔄 Hydrating auth store...');
       
-      // Check for JWT token and try to get current user
+      // Check if we have a valid JWT token
       const token = localStorage.getItem('jwt-token');
-      if (token) {
+      const explicitLogin = localStorage.getItem('explicit-login-performed');
+      
+      if (token && explicitLogin) {
+        console.log('📦 Found stored auth token, verifying...');
+        
         try {
-          const user = await getCurrentUser();
-          if (user) {
-            useAuthStore.getState().setUser(user);
-            useAuthStore.setState({ token, isAuthenticated: true });
+          // Verify the token with the backend
+          const currentUser = await getCurrentUser();
+          if (currentUser) {
+            console.log('✅ Token valid, restoring user session:', currentUser.name);
+            useAuthStore.setState({ 
+              user: currentUser, 
+              token, 
+              isAuthenticated: true, 
+              error: null 
+            });
           } else {
-            // Token is invalid or expired
-            useAuthStore.getState().clearUser();
+            console.log('❌ Token invalid, clearing stored data');
             localStorage.removeItem('jwt-token');
+            localStorage.removeItem('explicit-login-performed');
+            useAuthStore.setState({ 
+              user: null, 
+              token: null, 
+              isAuthenticated: false, 
+              error: null 
+            });
           }
         } catch (error) {
-          useAuthStore.getState().clearUser();
+          console.log('❌ Token verification failed, clearing stored data');
+          localStorage.removeItem('jwt-token');
+          localStorage.removeItem('explicit-login-performed');
+          useAuthStore.setState({ 
+            user: null, 
+            token: null, 
+            isAuthenticated: false, 
+            error: null 
+          });
         }
+      } else {
+        console.log('🔍 No stored authentication found');
+        useAuthStore.setState({ 
+          user: null, 
+          token: null, 
+          isAuthenticated: false, 
+          error: null 
+        });
       }
-      
-      // Force rehydration of the store
-      useAuthStore.persist.rehydrate();
       
       hasHydrated = true;
     } catch (error) {
+      console.error('❌ Auth store hydration failed:', error);
       hasHydrated = true; // Mark as hydrated even on error to prevent loops
     }
   }

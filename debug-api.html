@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Debug Tool</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .result { margin: 10px 0; padding: 10px; background: #f5f5f5; border-radius: 3px; }
+        .error { background: #ffebee; color: #c62828; }
+        .success { background: #e8f5e8; color: #2e7d32; }
+        button { padding: 8px 15px; margin: 5px; cursor: pointer; }
+        input { padding: 5px; margin: 5px; width: 200px; }
+    </style>
+</head>
+<body>
+    <h1>ASP Cranes CRM - API Debug Tool</h1>
+    
+    <div class="section">
+        <h2>1. API Health Check</h2>
+        <button onclick="testHealth()">Test Health Endpoint</button>
+        <div id="health-result" class="result"></div>
+    </div>
+    
+    <div class="section">
+        <h2>2. Authentication Test</h2>
+        <input type="email" id="email" placeholder="Email" value="admin@aspcranes.com">
+        <input type="password" id="password" placeholder="Password" value="admin123">
+        <button onclick="testLogin()">Test Login</button>
+        <div id="auth-result" class="result"></div>
+    </div>
+    
+    <div class="section">
+        <h2>3. Environment Check</h2>
+        <button onclick="checkEnv()">Check Environment</button>
+        <div id="env-result" class="result"></div>
+    </div>
+
+    <script>
+        const API_URL = 'http://localhost:3001/api';
+        
+        async function testHealth() {
+            const resultDiv = document.getElementById('health-result');
+            try {
+                const response = await fetch(`${API_URL}/health`);
+                const data = await response.json();
+                resultDiv.className = 'result success';
+                resultDiv.innerHTML = `✅ Health check successful: ${JSON.stringify(data, null, 2)}`;
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `❌ Health check failed: ${error.message}`;
+            }
+        }
+        
+        async function testLogin() {
+            const resultDiv = document.getElementById('auth-result');
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                const response = await fetch(`${API_URL}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ email, password })
+                });
+                
+                const data = await response.json();
+                if (response.ok) {
+                    resultDiv.className = 'result success';
+                    resultDiv.innerHTML = `✅ Login successful: ${JSON.stringify(data, null, 2)}`;
+                } else {
+                    resultDiv.className = 'result error';
+                    resultDiv.innerHTML = `❌ Login failed: ${JSON.stringify(data, null, 2)}`;
+                }
+            } catch (error) {
+                resultDiv.className = 'result error';
+                resultDiv.innerHTML = `❌ Login request failed: ${error.message}`;
+            }
+        }
+        
+        function checkEnv() {
+            const resultDiv = document.getElementById('env-result');
+            const env = {
+                userAgent: navigator.userAgent,
+                url: window.location.href,
+                localStorage: !!window.localStorage,
+                fetch: !!window.fetch,
+                apiUrl: API_URL
+            };
+            
+            resultDiv.className = 'result success';
+            resultDiv.innerHTML = `Environment info: <pre>${JSON.stringify(env, null, 2)}</pre>`;
+        }
+        
+        // Auto-run health check on load
+        window.onload = function() {
+            testHealth();
+            checkEnv();
+        };
+    </script>
+</body>
+</html>

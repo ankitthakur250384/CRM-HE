@@ -76,10 +76,7 @@ export function AppShell({ requiredRole, children }: AppShellProps) {
     };
     
     // Monitor this operation to detect potential freezes
-    const endMonitoring = monitorOperation('AppShell Auth Validation');
-    validateAuth().finally(() => {
-      endMonitoring();
-    });
+    monitorOperation('AppShell Auth Validation', () => validateAuth());
   }, [navigate, isAuthenticated, user, requiredRole]);
 
   // Close sidebar when navigating on mobile

@@ -25,11 +25,11 @@ const initBcrypt = async () => {
     // These are just placeholders - we won't actually use them
     // The real authentication happens in the authenticateUser function below
     bcrypt = {
-      compare: async (password: string, hash: string) => {
+      compare: async (_password: string, _hash: string) => {
         console.error('bcrypt.compare should not be called directly in browser');
         return false;
       },
-      hash: async (password: string) => {
+      hash: async (_password: string) => {
         console.error('bcrypt.hash should not be called directly in browser');
         return '';
       }
@@ -79,9 +79,15 @@ export async function authenticateUser(email: string, password: string): Promise
       const { authApi } = await import('../../lib/apiClient');
       
       // Call the authentication API using our enhanced client
-      const data = await authApi.login(email, password);
-      console.log('Authentication successful:', data);
-      return data;
+      const response = await authApi.login<{user: User, token: string}>(email, password);
+      
+      if (!response.success || !response.data) {
+        console.error('Authentication failed:', response.error);
+        throw new Error(response.error?.message || 'Authentication failed');
+      }
+      
+      console.log('Authentication successful:', response.data);
+      return response.data;
     }
     
     // For server-side/Node.js environments, use direct database access
@@ -119,7 +125,7 @@ export async function authenticateUser(email: string, password: string): Promise
     }
     
     // Generate JWT token
-    const token = jwt.sign(
+    const token = await jwt.sign(
       { 
         userId: user.uid,
         email: user.email,
@@ -151,13 +157,26 @@ export async function authenticateUser(email: string, password: string): Promise
 export async function verifyToken(token: string): Promise<User | null> {
   try {
     // Verify token
-    const decoded = jwt.verify(token, JWT_SECRET);
+    const decoded = await jwt.verify(token, JWT_SECRET);
     
     // If in browser, use API
     if (typeof window !== 'undefined') {
       const { authApi } = await import('../../lib/apiClient');
-      const response = await authApi.verifyToken(token);
-      return response.user;
+      const response = await authApi.verifyToken<{valid: boolean, user: User}>(token);
+      
+      if (!response.success || !response.data) {
+        console.error('Token verification failed:', response.error);
+        return null;
+      }
+      
+      // Extract user from the response structure {valid: true, user: {...}}
+      const responseData = response.data;
+      if (responseData.valid && responseData.user) {
+        return responseData.user;
+      }
+      
+      console.error('Token verification returned invalid response:', responseData);
+      return null;
     }
     
     // For server-side, query the database directly
@@ -230,7 +249,7 @@ export async function changePassword(userId: string, newPassword: string): Promi
     const passwordHash = await bcrypt.hash(newPassword, 10);
     
     // Update password in database
-    const result = await db.result(
+    const result = await db.query(
       `UPDATE users 
        SET password_hash = $1, updated_at = NOW() 
        WHERE uid = $2`,

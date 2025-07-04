@@ -18,7 +18,7 @@ export function LoginForm() {
   const [isLoading, setIsLoading] = useState(false);
   const [renderError, setRenderError] = useState<string | null>(null);
   const [apiState, setApiState] = useState<'loading' | 'available' | 'error'>('loading');
-  const { login, error, isAuthenticated } = useAuthStore();
+  const { login, error, isAuthenticated, user } = useAuthStore();
   
   // Debug logging for LoginForm render
   console.log("LoginForm rendering");
@@ -67,10 +67,12 @@ export function LoginForm() {
   
   // If already authenticated, redirect to dashboard
   useEffect(() => {
-    if (isAuthenticated) {
+    console.log('🔍 LoginForm useEffect - Authentication check:', { isAuthenticated, user: user?.name });
+    if (isAuthenticated && user) {
+      console.log('✅ User is authenticated, navigating to:', from);
       navigate(from, { replace: true });
     }
-  }, [isAuthenticated, navigate, from]);
+  }, [isAuthenticated, user, navigate, from]);
   
   // Stabilize the login form by marking it as mounted
   useEffect(() => {
@@ -91,7 +93,7 @@ export function LoginForm() {
     }
     
     setIsLoading(true);
-    console.log("Login attempt for:", email);
+    console.log("🔑 Login attempt for:", email);
     
     try {
       // Check if API is reachable before attempting login
@@ -118,8 +120,31 @@ export function LoginForm() {
       }
       
       // Call login function from auth store (now uses PostgreSQL)
+      console.log('🔐 Calling auth store login...');
       await login(email, password);
-      console.log("Login attempt successful");
+      console.log('✅ Login attempt successful, auth state should be updated');
+      
+      // Wait a moment for state to update, then force navigation
+      setTimeout(() => {
+        const currentState = useAuthStore.getState();
+        console.log('🔍 Current auth state after login:', {
+          isAuthenticated: currentState.isAuthenticated,
+          user: currentState.user?.name,
+          userRole: currentState.user?.role,
+          token: currentState.token ? 'Present' : 'Missing',
+          fullUser: currentState.user
+        });
+        
+        // Force navigation if authenticated
+        if (currentState.isAuthenticated && currentState.user) {
+          console.log('🚀 Forcing navigation to dashboard...');
+          console.log('👤 User object before navigation:', JSON.stringify(currentState.user, null, 2));
+          navigate('/dashboard', { replace: true });
+        } else {
+          console.log('❌ Auth state not updated properly, user may need to refresh');
+        }
+      }, 500);
+      
       // Login will update isAuthenticated, triggering the redirect effect
     } catch (err) {
       console.error("Login error:", err);
