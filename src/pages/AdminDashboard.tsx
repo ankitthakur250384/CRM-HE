@@ -5,8 +5,7 @@ import {
   Users, 
   Activity,
   TrendingUp,
-  Calendar,
-  DollarSign
+  Calendar
 } from 'lucide-react';
 
 // Services
@@ -270,115 +269,115 @@ export function AdminDashboard() {
         />
       </div>
       
-      {/* 2. Main Content Area (2 columns: Left = Recent Activities, Right = Charts) */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left Column: Recent Activities */}
-        <RecentActivities className="h-fit" />
-        
-        {/* Right Column: Equipment Status Chart */}
+      {/* 2. Charts Section (3 charts in a row) */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Equipment Status Chart */}
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Equipment Status</h3>
-          <div style={{ height: '300px' }}>
-            <DoughnutChart data={equipmentStatusData} height={300} />
+          <div style={{ height: '250px' }}>
+            <DoughnutChart data={equipmentStatusData} height={250} />
           </div>
         </div>
-      </div>
-      
-      {/* 3. Additional Charts Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        
         {/* Monthly Revenue Chart */}
         <div className="bg-white rounded-lg shadow p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Revenue Trend</h3>
-          <div style={{ height: '300px' }}>
-            <LineChart data={monthlyRevenueData} height={300} />
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Monthly Revenue</h3>
+          <div style={{ height: '250px' }}>
+            <LineChart data={monthlyRevenueData} height={250} />
           </div>
         </div>
         
         {/* Job Status Chart */}
         <div className="bg-white rounded-lg shadow p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Jobs by Status</h3>
-          <div style={{ height: '300px' }}>
-            <BarChart data={jobStatusData} height={300} />
+          <div style={{ height: '250px' }}>
+            <BarChart data={jobStatusData} height={250} />
           </div>
         </div>
       </div>
       
-      {/* 4. Business Analytics Section */}
+      {/* 3. Main Content Area (2 columns: Left = Recent Activities, Right = Business Analytics) */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Equipment Summary */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-medium text-gray-900">Equipment Summary</h3>
-              <Truck className="h-5 w-5 text-gray-400" />
-            </div>
-          </div>
-          <div className="p-6">
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-500">Available Equipment:</span>
-                <span className="text-sm font-medium text-green-600">
-                  {Array.isArray(equipment) ? equipment.filter(e => e.status === 'available').length : 0}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-500">In Use:</span>
-                <span className="text-sm font-medium text-blue-600">
-                  {Array.isArray(equipment) ? equipment.filter(e => e.status === 'in_use').length : 0}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-500">Under Maintenance:</span>
-                <span className="text-sm font-medium text-orange-600">
-                  {Array.isArray(equipment) ? equipment.filter(e => e.status === 'maintenance').length : 0}
-                </span>
-              </div>
-              <div className="flex justify-between border-t pt-3">
-                <span className="text-sm font-medium text-gray-900">Utilization Rate:</span>
-                <span className="text-sm font-medium text-gray-900">
-                  {equipmentCount > 0 ? Math.round(equipmentUtilization) : 0}%
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
+        {/* Left Column: Recent Activities */}
+        <RecentActivities className="h-fit" />
         
-        {/* Business Overview */}
-        <div className="bg-white rounded-lg shadow">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-medium text-gray-900">Business Overview</h3>
-              <TrendingUp className="h-5 w-5 text-gray-400" />
+        {/* Right Column: Business Analytics Summary */}
+        <div className="grid grid-cols-1 gap-6">
+          {/* Equipment Summary */}
+          <div className="bg-white rounded-lg shadow">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium text-gray-900">Equipment Summary</h3>
+                <Truck className="h-5 w-5 text-gray-400" />
+              </div>
+            </div>
+            <div className="p-6">
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">Available Equipment:</span>
+                  <span className="text-sm font-medium text-green-600">
+                    {Array.isArray(equipment) ? equipment.filter(e => e.status === 'available').length : 0}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">In Use:</span>
+                  <span className="text-sm font-medium text-blue-600">
+                    {Array.isArray(equipment) ? equipment.filter(e => e.status === 'in_use').length : 0}
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">Under Maintenance:</span>
+                  <span className="text-sm font-medium text-orange-600">
+                    {Array.isArray(equipment) ? equipment.filter(e => e.status === 'maintenance').length : 0}
+                  </span>
+                </div>
+                <div className="flex justify-between border-t pt-3">
+                  <span className="text-sm font-medium text-gray-900">Utilization Rate:</span>
+                  <span className="text-sm font-medium text-gray-900">
+                    {equipmentCount > 0 ? Math.round(equipmentUtilization) : 0}%
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
-          <div className="p-6">
-            <div className="space-y-3">
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-500">Total Leads:</span>
-                <span className="text-sm font-medium text-blue-600">{leads.length}</span>
+          
+          {/* Business Overview */}
+          <div className="bg-white rounded-lg shadow">
+            <div className="px-6 py-4 border-b border-gray-200">
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-medium text-gray-900">Business Overview</h3>
+                <TrendingUp className="h-5 w-5 text-gray-400" />
               </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-500">Active Deals:</span>
-                <span className="text-sm font-medium text-green-600">{Array.isArray(deals) ? deals.length : 0}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-sm text-gray-500">Won Deals:</span>
-                <span className="text-sm font-medium text-green-600">
-                  {Array.isArray(deals) ? deals.filter(d => d.stage === 'won').length : 0}
-                </span>
-              </div>
-              <div className="flex justify-between border-t pt-3">
-                <span className="text-sm font-medium text-gray-900">Conversion Rate:</span>
-                <span className="text-sm font-medium text-gray-900">
-                  {leads.length > 0 ? Math.round((Array.isArray(deals) ? deals.length : 0) / leads.length * 100) : 0}%
-                </span>
+            </div>
+            <div className="p-6">
+              <div className="space-y-3">
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">Total Leads:</span>
+                  <span className="text-sm font-medium text-blue-600">{leads.length}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">Active Deals:</span>
+                  <span className="text-sm font-medium text-green-600">{Array.isArray(deals) ? deals.length : 0}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-sm text-gray-500">Won Deals:</span>
+                  <span className="text-sm font-medium text-green-600">
+                    {Array.isArray(deals) ? deals.filter(d => d.stage === 'won').length : 0}
+                  </span>
+                </div>
+                <div className="flex justify-between border-t pt-3">
+                  <span className="text-sm font-medium text-gray-900">Conversion Rate:</span>
+                  <span className="text-sm font-medium text-gray-900">
+                    {leads.length > 0 ? Math.round((Array.isArray(deals) ? deals.length : 0) / leads.length * 100) : 0}%
+                  </span>
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
       
-      {/* 5. Recent Jobs Overview */}
+      {/* 4. Recent Jobs Overview */}
       <div className="bg-white rounded-lg shadow">
         <div className="px-6 py-4 border-b border-gray-200">
           <div className="flex items-center justify-between">
@@ -450,33 +449,6 @@ export function AdminDashboard() {
             </button>
           </div>
         )}
-      </div>
-      
-      {/* 6. Quick Actions Section */}
-      <div className="bg-white rounded-lg shadow">
-        <div className="px-6 py-4 border-b border-gray-200">
-          <h3 className="text-lg font-medium text-gray-900">Quick Actions</h3>
-        </div>
-        <div className="p-6">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <button className="flex flex-col items-center p-4 text-center rounded-lg border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-colors">
-              <Users className="h-8 w-8 text-blue-600 mb-2" />
-              <span className="text-sm font-medium text-gray-900">Add User</span>
-            </button>
-            <button className="flex flex-col items-center p-4 text-center rounded-lg border border-gray-200 hover:border-green-300 hover:bg-green-50 transition-colors">
-              <Truck className="h-8 w-8 text-green-600 mb-2" />
-              <span className="text-sm font-medium text-gray-900">Add Equipment</span>
-            </button>
-            <button className="flex flex-col items-center p-4 text-center rounded-lg border border-gray-200 hover:border-purple-300 hover:bg-purple-50 transition-colors">
-              <Activity className="h-8 w-8 text-purple-600 mb-2" />
-              <span className="text-sm font-medium text-gray-900">Create Job</span>
-            </button>
-            <button className="flex flex-col items-center p-4 text-center rounded-lg border border-gray-200 hover:border-orange-300 hover:bg-orange-50 transition-colors">
-              <DollarSign className="h-8 w-8 text-orange-600 mb-2" />
-              <span className="text-sm font-medium text-gray-900">New Deal</span>
-            </button>
-          </div>
-        </div>
       </div>
     </div>
   );
