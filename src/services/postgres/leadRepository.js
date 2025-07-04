@@ -14,7 +14,10 @@ export const getLeads = async () => {
     
     // Query matches schema.sql leads table structure
     const result = await query(`
-      SELECT l.*, c.name as customer_name, c.company_name, u.display_name as assigned_to_name
+      SELECT l.*, 
+             COALESCE(c.name, l.customer_name, 'Unknown Customer') as customer_name, 
+             c.company_name, 
+             u.display_name as assigned_to_name
       FROM leads l
       LEFT JOIN customers c ON l.customer_id = c.id
       LEFT JOIN users u ON l.assigned_to = u.uid
@@ -25,8 +28,8 @@ export const getLeads = async () => {
     const leads = result.rows.map(row => ({
       id: row.id,
       customerId: row.customer_id,
-      customerName: row.customer_name,
-      companyName: row.company_name,
+      customerName: row.customer_name || 'Unknown Customer',
+      companyName: row.company_name || '',
       email: row.email,
       phone: row.phone,
       serviceNeeded: row.service_needed,
@@ -46,6 +49,13 @@ export const getLeads = async () => {
     }));
     
     console.log(`Successfully retrieved ${leads.length} leads from database`);
+    console.log('🧪 Debug: First few leads customer names:', 
+      leads.slice(0, 3).map(lead => ({ 
+        id: lead.id, 
+        customerName: lead.customerName,
+        companyName: lead.companyName 
+      }))
+    );
     
     return leads;
   } catch (error) {

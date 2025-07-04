@@ -26,7 +26,21 @@ export function SalesAgentDashboard() {
     useEffect(() => {
     const fetchData = async () => {
       try {
-        const leadsData = await getLeads();
+        const leadsResponse = await getLeads();
+        
+        // Extract data from potentially wrapped responses
+        const extractData = (response: any) => {
+          if (Array.isArray(response)) {
+            return response;
+          } else if (response && typeof response === 'object' && response.data && Array.isArray(response.data)) {
+            return response.data;
+          } else if (response && typeof response === 'object' && response.success && Array.isArray(response.data)) {
+            return response.data;
+          }
+          return [];
+        };
+        
+        const leadsData = extractData(leadsResponse);
         setLeads(leadsData);
         
         // Get the most recent converted lead to fetch its quotations
@@ -39,6 +53,9 @@ export function SalesAgentDashboard() {
         
       } catch (error) {
         console.error('Error fetching dashboard data:', error);
+        // Ensure we have empty arrays to prevent undefined errors
+        setLeads([]);
+        setQuotations([]);
       } finally {
         setIsLoading(false);
       }
@@ -47,18 +64,18 @@ export function SalesAgentDashboard() {
     fetchData();
   }, []);
   // Count leads by status
-  const newLeadsCount = leads.filter(lead => lead.status === 'new').length;
-  const inProcessLeadsCount = leads.filter(lead => lead.status === 'in_process').length;
-  const qualifiedLeadsCount = leads.filter(lead => lead.status === 'qualified').length;
-  const convertedLeadsCount = leads.filter(lead => lead.status === 'converted').length;
+  const newLeadsCount = Array.isArray(leads) ? leads.filter(lead => lead.status === 'new').length : 0;
+  const inProcessLeadsCount = Array.isArray(leads) ? leads.filter(lead => lead.status === 'in_process').length : 0;
+  const qualifiedLeadsCount = Array.isArray(leads) ? leads.filter(lead => lead.status === 'qualified').length : 0;
+  const convertedLeadsCount = Array.isArray(leads) ? leads.filter(lead => lead.status === 'converted').length : 0;
   
   // Calculate total quotation value
-  const totalQuotationValue = quotations.reduce((total, quotation) => total + quotation.totalRent, 0);
+  const totalQuotationValue = Array.isArray(quotations) ? quotations.reduce((total, quotation) => total + quotation.totalRent, 0) : 0;
   
   // Recent leads (limit to 5)
-  const recentLeads = [...leads].sort((a, b) => {
+  const recentLeads = Array.isArray(leads) ? [...leads].sort((a, b) => {
     return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-  }).slice(0, 5);
+  }).slice(0, 5) : [];
   
   // Prepare data for lead funnel
   const leadFunnelStages = [

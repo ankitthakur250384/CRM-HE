@@ -7,8 +7,6 @@ import type {
 } from '@hello-pangea/dnd';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import { 
-  Users, 
-  Calendar, 
   Search,
   Building2,
   MoreVertical,
@@ -63,7 +61,28 @@ export function Deals() {
       setIsLoading(true);
       setError(null);
       
-      const data = await getDeals();
+      const response = await getDeals();
+      
+      // Extract data from potentially wrapped responses
+      const extractData = (response: any) => {
+        if (Array.isArray(response)) {
+          return response;
+        } else if (response && typeof response === 'object' && response.data && Array.isArray(response.data)) {
+          return response.data;
+        } else if (response && typeof response === 'object' && response.success && Array.isArray(response.data)) {
+          return response.data;
+        }
+        return [];
+      };
+      
+      const data = extractData(response);
+      
+      console.log('🧪 Debug deals response:', {
+        originalResponse: response,
+        extractedData: data,
+        isArray: Array.isArray(data),
+        length: Array.isArray(data) ? data.length : 'not array'
+      });
       
       if (!data || data.length === 0) {
         console.log('No deals returned from API or empty array');
@@ -244,13 +263,13 @@ export function Deals() {
   };
   
   // Filter deals based on search term
-  const filteredDeals = deals.filter(deal => {
+  const filteredDeals = Array.isArray(deals) ? deals.filter(deal => {
     const title = deal.title || '';
     const customerName = deal.customer?.name || '';
     
     return title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       customerName.toLowerCase().includes(searchTerm.toLowerCase());
-  });
+  }) : [];
 
   // Get deals for a specific stage
   const getDealsByStage = (stage: DealStage) => 
@@ -291,7 +310,7 @@ export function Deals() {
           {deal.title || `Deal for ${deal.customer?.name || 'Customer'}`}
         </h4>
         <div className="flex space-x-1">
-          <Button variant="ghost" size="icon-sm" className="h-6 w-6">
+          <Button variant="ghost" size="sm" className="h-6 w-6">
             <MoreVertical className="h-3 w-3" />
           </Button>
         </div>

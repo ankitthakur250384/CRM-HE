@@ -93,7 +93,30 @@ export function LeadManagement() {
   const fetchLeads = async () => {
     try {
       console.log('Fetching leads from API...');
-      const data = await getLeads();
+      const response = await getLeads();
+      
+      // Extract data from potentially wrapped responses
+      const extractData = (response: any) => {
+        if (Array.isArray(response)) {
+          return response;
+        } else if (response && typeof response === 'object' && response.data && Array.isArray(response.data)) {
+          return response.data;
+        } else if (response && typeof response === 'object' && response.success && Array.isArray(response.data)) {
+          return response.data;
+        }
+        return [];
+      };
+      
+      const data = extractData(response);
+      
+      console.log('🧪 Debug leads response:', {
+        originalResponse: response,
+        extractedData: data,
+        isArray: Array.isArray(data),
+        length: Array.isArray(data) ? data.length : 'not array',
+        firstLead: data.length > 0 ? data[0] : 'none'
+      });
+      
       console.log('Leads data received:', data);
       setLeads(data || []); // Ensure we always have an array
       setIsLoading(false);
