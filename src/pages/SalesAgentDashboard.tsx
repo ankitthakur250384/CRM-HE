@@ -44,7 +44,7 @@ export function SalesAgentDashboard() {
         setLeads(leadsData);
         
         // Get the most recent converted lead to fetch its quotations
-        const convertedLeads = leadsData.filter(lead => lead.status === 'converted');
+        const convertedLeads = leadsData.filter((lead: any) => lead.status === 'converted');
         if (convertedLeads.length > 0) {
           const recentConvertedLead = convertedLeads[0];
           const leadQuotations = await getQuotationsForLead(recentConvertedLead.id);

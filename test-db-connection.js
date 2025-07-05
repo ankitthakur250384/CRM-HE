@@ -85,10 +85,10 @@ async function testConnection() {
     }
     
     // List all users
-    const users = await client.query('SELECT id, email, role, name, created_at FROM users');
+    const users = await client.query('SELECT uid, email, role, display_name, created_at FROM users');
     console.log('\n👥 Existing users:');
     users.rows.forEach(user => {
-      console.log(`   - ${user.email} (${user.role}) - ${user.name}`);
+      console.log(`   - ${user.email} (${user.role}) - ${user.display_name}`);
     });
     
     client.release();

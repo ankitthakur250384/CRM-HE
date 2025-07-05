@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>React Debug Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-container { padding: 20px; border: 2px solid #ddd; margin: 10px 0; }
+        .success { border-color: green; background: #f0fff0; }
+        .error { border-color: red; background: #fff0f0; }
+    </style>
+</head>
+<body>
+    <h1>ASP CRM - React Debug Test</h1>
+    
+    <div class="test-container">
+        <h2>Environment Check</h2>
+        <div id="env-check">Checking...</div>
+    </div>
+    
+    <div class="test-container">
+        <h2>API Health Check</h2>
+        <div id="api-check">Checking...</div>
+    </div>
+    
+    <div class="test-container">
+        <h2>React App Status</h2>
+        <div id="react-check">
+            <p>Trying to access React app at: <a href="/" target="_blank">http://localhost:5174/</a></p>
+            <p>If the React app is working, you should see a loading spinner or login form.</p>
+            <button onclick="checkReactApp()">Test React App</button>
+        </div>
+    </div>
+    
+    <div class="test-container">
+        <h2>Browser Console</h2>
+        <p>Please check your browser's developer console (F12) for any JavaScript errors.</p>
+        <p>Common issues:</p>
+        <ul>
+            <li>Module loading errors (import/export issues)</li>
+            <li>Missing dependencies</li>
+            <li>Syntax errors in React components</li>
+            <li>CSS/Tailwind compilation issues</li>
+        </ul>
+    </div>
+
+    <script>
+        // Environment check
+        const envDiv = document.getElementById('env-check');
+        envDiv.innerHTML = `
+            <p><strong>Current URL:</strong> ${window.location.href}</p>
+            <p><strong>User Agent:</strong> ${navigator.userAgent}</p>
+            <p><strong>Local Storage:</strong> ${localStorage.length} items</p>
+            <p><strong>Session Storage:</strong> ${sessionStorage.length} items</p>
+        `;
+        envDiv.parentElement.className = 'test-container success';
+
+        // API health check
+        async function checkAPI() {
+            const apiDiv = document.getElementById('api-check');
+            try {
+                const response = await fetch('http://localhost:3001/api/health');
+                const data = await response.text();
+                
+                if (response.ok) {
+                    apiDiv.innerHTML = `<p class="success">✅ API is healthy</p><p>Response: ${data}</p>`;
+                    apiDiv.parentElement.className = 'test-container success';
+                } else {
+                    apiDiv.innerHTML = `<p class="error">❌ API error: ${response.status}</p>`;
+                    apiDiv.parentElement.className = 'test-container error';
+                }
+            } catch (error) {
+                apiDiv.innerHTML = `<p class="error">❌ API connection failed: ${error.message}</p>`;
+                apiDiv.parentElement.className = 'test-container error';
+            }
+        }
+
+        function checkReactApp() {
+            const reactDiv = document.getElementById('react-check');
+            
+            // Try to access the React app
+            fetch('/')
+                .then(response => response.text())
+                .then(html => {
+                    if (html.includes('<div id="root">')) {
+                        reactDiv.innerHTML += '<p>✅ HTML template looks good (contains root div)</p>';
+                    } else {
+                        reactDiv.innerHTML += '<p>❌ HTML template missing root div</p>';
+                    }
+                    
+                    if (html.includes('script')) {
+                        reactDiv.innerHTML += '<p>✅ JavaScript modules are included</p>';
+                    } else {
+                        reactDiv.innerHTML += '<p>❌ No JavaScript modules found</p>';
+                    }
+                })
+                .catch(error => {
+                    reactDiv.innerHTML += `<p>❌ React app fetch error: ${error.message}</p>`;
+                });
+        }
+
+        // Run API check immediately
+        checkAPI();
+    </script>
+</body>
+</html>

@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Direct Auth Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .result { margin: 10px 0; padding: 10px; border: 1px solid #ccc; background: #f9f9f9; }
+        .error { border-color: #f00; background: #ffe6e6; }
+        .success { border-color: #0a0; background: #e6ffe6; }
+        button { margin: 5px; padding: 10px 20px; }
+    </style>
+</head>
+<body>
+    <h1>Direct Auth API Test</h1>
+    
+    <div>
+        <button onclick="testDirectLogin()">Test Direct API Login</button>
+        <button onclick="clearStorage()">Clear Storage</button>
+    </div>
+    
+    <div id="results"></div>
+    
+    <script>
+        async function testDirectLogin() {
+            try {
+                addResult('🔑 Testing direct API login...', 'info');
+                
+                // Call the API directly
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        email: 'admin@aspcranes.com',
+                        password: 'admin123'
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.message || 'Login failed');
+                }
+                
+                const { token, user } = await response.json();
+                
+                addResult('✅ API Response received:', 'success');
+                addResult('🎫 Token: ' + (token ? 'Present (' + token.length + ' chars)' : 'Missing'), token ? 'success' : 'error');
+                addResult('👤 User: ' + JSON.stringify(user, null, 2), user ? 'success' : 'error');
+                addResult('🏷️ User Role: ' + user.role, user.role ? 'success' : 'error');
+                
+                // Store in localStorage like the auth service does
+                localStorage.setItem('jwt-token', token);
+                localStorage.setItem('explicit-login-performed', 'true');
+                
+                addResult('💾 Stored in localStorage', 'success');
+                
+                // Try to decode the JWT
+                if (token) {
+                    try {
+                        const parts = token.split('.');
+                        const payload = JSON.parse(atob(parts[1]));
+                        addResult('🔍 JWT Payload: ' + JSON.stringify(payload, null, 2), 'info');
+                    } catch (e) {
+                        addResult('❌ Failed to decode JWT: ' + e.message, 'error');
+                    }
+                }
+                
+            } catch (error) {
+                addResult('❌ Login failed: ' + error.message, 'error');
+                console.error('Login error:', error);
+            }
+        }
+        
+        function clearStorage() {
+            localStorage.clear();
+            sessionStorage.clear();
+            addResult('🧹 Cleared all storage', 'success');
+        }
+        
+        function addResult(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.innerHTML = '<pre>' + message + '</pre>';
+            results.appendChild(div);
+            results.scrollTop = results.scrollHeight;
+        }
+        
+        // Initial status
+        window.addEventListener('load', () => {
+            addResult('🚀 Direct Auth Test Ready', 'info');
+            
+            // Check current storage
+            const token = localStorage.getItem('jwt-token');
+            const explicitLogin = localStorage.getItem('explicit-login-performed');
+            addResult('💾 Current storage state:\\n- JWT: ' + (token ? 'Present' : 'Missing') + '\\n- Explicit login: ' + explicitLogin, 'info');
+        });
+    </script>
+</body>
+</html>

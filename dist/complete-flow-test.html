@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Login Flow</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .result { margin: 10px 0; padding: 10px; border: 1px solid #ccc; background: #f9f9f9; white-space: pre-wrap; }
+        .error { border-color: #f00; background: #ffe6e6; }
+        .success { border-color: #0a0; background: #e6ffe6; }
+        button { margin: 5px; padding: 10px 20px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <h1>Test Complete Login Flow</h1>
+    
+    <div>
+        <button onclick="testCompleteFlow()">Test Complete Login Flow</button>
+        <button onclick="clearAll()">Clear All Storage</button>
+    </div>
+    
+    <div id="results"></div>
+    
+    <script>
+        function log(message, type = 'info') {
+            const results = document.getElementById('results');
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.textContent = message;
+            results.appendChild(div);
+            results.scrollTop = results.scrollHeight;
+            console.log(message);
+        }
+        
+        async function testCompleteFlow() {
+            try {
+                log('🚀 Starting complete login flow test...', 'info');
+                
+                // Clear storage first
+                localStorage.clear();
+                sessionStorage.clear();
+                log('🧹 Cleared all storage', 'info');
+                
+                // Test 1: Direct API call
+                log('🔑 Step 1: Testing direct API call...', 'info');
+                
+                const response = await fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'admin@aspcranes.com',
+                        password: 'admin123'
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error(`API call failed: ${response.status}`);
+                }
+                
+                const { token, user } = await response.json();
+                log(`✅ Direct API successful! User: ${user.name}, Role: ${user.role}`, 'success');
+                
+                // Test 2: Store token manually
+                log('🔑 Step 2: Storing token manually...', 'info');
+                localStorage.setItem('jwt-token', token);
+                localStorage.setItem('explicit-login-performed', 'true');
+                log('💾 Token stored in localStorage', 'info');
+                
+                // Test 3: Import auth service and test getCurrentUser
+                log('🔑 Step 3: Testing getCurrentUser function...', 'info');
+                
+                const authModule = await import('/src/services/authService.client.ts');
+                const currentUser = await authModule.getCurrentUser();
+                
+                if (currentUser) {
+                    log(`✅ getCurrentUser successful! User: ${currentUser.name}, Role: ${currentUser.role}`, 'success');
+                } else {
+                    log('❌ getCurrentUser returned null', 'error');
+                }
+                
+                // Test 4: Import and test auth store
+                log('🔑 Step 4: Testing auth store...', 'info');
+                
+                const storeModule = await import('/src/store/authStore.ts');
+                const store = storeModule.useAuthStore.getState();
+                
+                log(`📊 Store state: authenticated=${store.isAuthenticated}, user=${store.user?.name}, role=${store.user?.role}`, 'info');
+                
+                // Test 5: Try manual login through store
+                log('🔑 Step 5: Testing store login...', 'info');
+                await store.login('admin@aspcranes.com', 'admin123');
+                
+                const newStore = storeModule.useAuthStore.getState();
+                log(`📊 After store login: authenticated=${newStore.isAuthenticated}, user=${newStore.user?.name}, role=${newStore.user?.role}`, 'success');
+                
+                // Test 6: Check if DashboardRouter would work
+                log('🔑 Step 6: Testing dashboard routing logic...', 'info');
+                
+                if (newStore.isAuthenticated && newStore.user && newStore.user.role) {
+                    log(`✅ Dashboard routing should work! User role: ${newStore.user.role}`, 'success');
+                    
+                    // Simulate dashboard routing
+                    switch (newStore.user.role) {
+                        case 'admin':
+                            log('📊 Would show AdminDashboard', 'success');
+                            break;
+                        case 'sales_agent':
+                            log('📊 Would show SalesAgentDashboard', 'success');
+                            break;
+                        case 'operations_manager':
+                            log('📊 Would show OperationsManagerDashboard', 'success');
+                            break;
+                        case 'operator':
+                            log('📊 Would show OperatorDashboard', 'success');
+                            break;
+                        default:
+                            log(`❌ Unknown role: ${newStore.user.role}`, 'error');
+                    }
+                } else {
+                    log('❌ Dashboard routing would fail - missing authentication or role', 'error');
+                }
+                
+                log('🎉 Complete flow test finished!', 'success');
+                
+            } catch (error) {
+                log(`❌ Test failed: ${error.message}`, 'error');
+                console.error('Test error:', error);
+            }
+        }
+        
+        function clearAll() {
+            localStorage.clear();
+            sessionStorage.clear();
+            log('🧹 Cleared all storage', 'success');
+        }
+        
+        // Auto-run on load
+        window.addEventListener('load', () => {
+            log('🚀 Test page loaded - Ready for testing', 'info');
+        });
+    </script>
+</body>
+</html>

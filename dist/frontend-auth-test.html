@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Frontend Login Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; background: #f5f5f5; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        .section { margin-bottom: 30px; padding: 20px; border: 1px solid #e0e0e0; border-radius: 6px; }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+        .info { color: #17a2b8; }
+        .warning { color: #ffc107; }
+        button { padding: 12px 24px; margin: 8px 4px; background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px; }
+        button:hover { background: #0056b3; }
+        button:disabled { background: #6c757d; cursor: not-allowed; }
+        input { padding: 10px; margin: 5px; border: 1px solid #ced4da; border-radius: 4px; width: 250px; font-size: 14px; }
+        #console { background: #1e1e1e; color: #d4d4d4; padding: 15px; border-radius: 4px; font-family: 'Courier New', monospace; font-size: 12px; height: 300px; overflow-y: auto; white-space: pre-wrap; }
+        .step { margin: 10px 0; padding: 10px; background: #f8f9fa; border-left: 4px solid #007bff; }
+        .spinner { display: inline-block; width: 16px; height: 16px; border: 2px solid #f3f3f3; border-top: 2px solid #007bff; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔐 Frontend Authentication Test</h1>
+        <p class="info">This page tests the frontend authentication flow step by step</p>
+        
+        <div class="section">
+            <h2>📋 Test Configuration</h2>
+            <div>
+                <label>Email: <input type="email" id="email" value="admin@aspcranes.com"></label>
+                <label>Password: <input type="password" id="password" value="admin123"></label>
+            </div>
+            <button onclick="runFullTest()">🚀 Run Complete Authentication Test</button>
+            <button onclick="clearConsole()">🗑️ Clear Console</button>
+        </div>
+
+        <div class="section">
+            <h2>🔄 Test Steps</h2>
+            <div id="steps"></div>
+        </div>
+
+        <div class="section">
+            <h2>📊 Console Output</h2>
+            <div id="console"></div>
+        </div>
+    </div>
+
+    <script type="module">
+        const consoleDiv = document.getElementById('console');
+        const stepsDiv = document.getElementById('steps');
+        
+        let stepCount = 0;
+        
+        function addStep(message, status = 'info') {
+            stepCount++;
+            const step = document.createElement('div');
+            step.className = 'step';
+            step.innerHTML = `
+                <strong>Step ${stepCount}:</strong> 
+                <span class="${status}">${message}</span>
+                ${status === 'loading' ? '<span class="spinner"></span>' : ''}
+            `;
+            stepsDiv.appendChild(step);
+            return step;
+        }
+        
+        function updateStep(step, message, status) {
+            step.innerHTML = `
+                <strong>Step ${stepCount}:</strong> 
+                <span class="${status}">${message}</span>
+            `;
+        }
+        
+        function log(message, level = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const color = {
+                'info': '#d4d4d4',
+                'success': '#4caf50',
+                'error': '#f44336',
+                'warning': '#ff9800'
+            }[level] || '#d4d4d4';
+            
+            consoleDiv.innerHTML += `<span style="color: ${color}">[${timestamp}] [${level.toUpperCase()}] ${message}</span>\n`;
+            consoleDiv.scrollTop = consoleDiv.scrollHeight;
+            
+            // Also log to browser console
+            console[level] || console.log(`[${level.toUpperCase()}] ${message}`);
+        }
+        
+        function clearConsole() {
+            consoleDiv.innerHTML = '';
+            stepsDiv.innerHTML = '';
+            stepCount = 0;
+            log('Console cleared', 'info');
+        }
+        
+        // Override console methods to capture all logs
+        const originalConsole = {
+            log: console.log,
+            error: console.error,
+            warn: console.warn,
+            info: console.info
+        };
+        
+        console.log = (...args) => { log(args.join(' '), 'info'); originalConsole.log(...args); };
+        console.error = (...args) => { log(args.join(' '), 'error'); originalConsole.error(...args); };
+        console.warn = (...args) => { log(args.join(' '), 'warning'); originalConsole.warn(...args); };
+        console.info = (...args) => { log(args.join(' '), 'info'); originalConsole.info(...args); };
+        
+        async function runFullTest() {
+            clearConsole();
+            log('🚀 Starting complete authentication test', 'info');
+            
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            
+            try {
+                // Step 1: Test API connectivity
+                let step = addStep('Testing API connectivity...', 'loading');
+                try {
+                    const healthResponse = await fetch('http://localhost:3001/api/health');
+                    const healthData = await healthResponse.json();
+                    updateStep(step, `API connectivity: ${healthData.status}`, 'success');
+                    log(`API health check: ${JSON.stringify(healthData)}`, 'success');
+                } catch (error) {
+                    updateStep(step, `API connectivity failed: ${error.message}`, 'error');
+                    log(`API health check failed: ${error.message}`, 'error');
+                    return;
+                }
+                
+                // Step 2: Test direct API login
+                step = addStep('Testing direct API login...', 'loading');
+                try {
+                    const loginResponse = await fetch('http://localhost:3001/api/auth/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ email, password })
+                    });
+                    const loginData = await loginResponse.json();
+                    
+                    if (loginResponse.ok) {
+                        updateStep(step, `Direct API login successful`, 'success');
+                        log(`Direct API login response: ${JSON.stringify(loginData, null, 2)}`, 'success');
+                    } else {
+                        updateStep(step, `Direct API login failed: ${loginData.error}`, 'error');
+                        log(`Direct API login failed: ${JSON.stringify(loginData)}`, 'error');
+                        return;
+                    }
+                } catch (error) {
+                    updateStep(step, `Direct API login error: ${error.message}`, 'error');
+                    log(`Direct API login error: ${error.message}`, 'error');
+                    return;
+                }
+                
+                // Step 3: Test API client
+                step = addStep('Testing enhanced API client...', 'loading');
+                try {
+                    // This simulates what the frontend authentication service does
+                    const apiClientModule = await import('/src/lib/apiClient.ts');
+                    log('API client module loaded successfully', 'info');
+                    
+                    const response = await apiClientModule.authApi.login(email, password);
+                    log(`API client response: ${JSON.stringify(response, null, 2)}`, 'info');
+                    
+                    if (response.success && response.data) {
+                        updateStep(step, `API client login successful`, 'success');
+                        log(`API client login successful. Token present: ${!!response.data.token}`, 'success');
+                        
+                        // Store token for next test
+                        localStorage.setItem('jwt-token', response.data.token);
+                    } else {
+                        updateStep(step, `API client login failed: ${response.error?.message}`, 'error');
+                        log(`API client login failed: ${JSON.stringify(response.error)}`, 'error');
+                        return;
+                    }
+                } catch (error) {
+                    updateStep(step, `API client error: ${error.message}`, 'error');
+                    log(`API client error: ${error.message}`, 'error');
+                    log(`Error stack: ${error.stack}`, 'error');
+                    return;
+                }
+                
+                // Step 4: Test authentication service
+                step = addStep('Testing PostgreSQL authentication service...', 'loading');
+                try {
+                    const authServiceModule = await import('/src/services/postgresAuthService.ts');
+                    log('Authentication service module loaded successfully', 'info');
+                    
+                    const user = await authServiceModule.signIn(email, password);
+                    updateStep(step, `Authentication service login successful`, 'success');
+                    log(`Authentication service response: ${JSON.stringify(user, null, 2)}`, 'success');
+                } catch (error) {
+                    updateStep(step, `Authentication service error: ${error.message}`, 'error');
+                    log(`Authentication service error: ${error.message}`, 'error');
+                    log(`Error stack: ${error.stack}`, 'error');
+                    return;
+                }
+                
+                // Step 5: Test token verification
+                step = addStep('Testing token verification...', 'loading');
+                try {
+                    const authServiceModule = await import('/src/services/postgresAuthService.ts');
+                    const currentUser = await authServiceModule.getCurrentUser();
+                    
+                    if (currentUser) {
+                        updateStep(step, `Token verification successful`, 'success');
+                        log(`Current user: ${JSON.stringify(currentUser, null, 2)}`, 'success');
+                    } else {
+                        updateStep(step, `Token verification failed - no user returned`, 'warning');
+                        log('Token verification returned null user', 'warning');
+                    }
+                } catch (error) {
+                    updateStep(step, `Token verification error: ${error.message}`, 'error');
+                    log(`Token verification error: ${error.message}`, 'error');
+                }
+                
+                // Step 6: Test complete flow
+                step = addStep('✅ All tests completed successfully!', 'success');
+                log('🎉 Complete authentication flow test finished successfully', 'success');
+                
+            } catch (error) {
+                log(`Unexpected error during testing: ${error.message}`, 'error');
+                log(`Error stack: ${error.stack}`, 'error');
+            }
+        }
+        
+        // Auto-run basic connectivity test on load
+        window.addEventListener('load', () => {
+            log('Frontend authentication test page loaded', 'info');
+            log('Ready to test authentication flow', 'info');
+        });
+        
+        // Make functions global for button onclick
+        window.runFullTest = runFullTest;
+        window.clearConsole = clearConsole;
+    </script>
+</body>
+</html>

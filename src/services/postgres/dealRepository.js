@@ -13,18 +13,20 @@ export const getDeals = async () => {
     console.log('Getting all deals directly from PostgreSQL database');
     
     // Query matches schema.sql deals table structure
+    // Enhanced query to get comprehensive customer information
     const result = await query(`
       SELECT d.*, 
-             c.name as customer_name, 
-             c.email as customer_email,
-             c.phone as customer_phone,
-             c.company_name as customer_company,
-             c.address as customer_address,
-             c.designation as customer_designation,
+             COALESCE(c.name, l.customer_name, 'Unknown Customer') as customer_name,
+             COALESCE(c.email, l.email, '') as customer_email,
+             COALESCE(c.phone, l.phone, '') as customer_phone,
+             COALESCE(c.company_name, l.company_name, '') as customer_company,
+             COALESCE(c.address, '') as customer_address,
+             COALESCE(c.designation, l.designation, '') as customer_designation,
              u1.display_name as assigned_to_name,
              u2.display_name as created_by_name
       FROM deals d
       LEFT JOIN customers c ON d.customer_id = c.id
+      LEFT JOIN leads l ON d.lead_id = l.id
       LEFT JOIN users u1 ON d.assigned_to = u1.uid
       LEFT JOIN users u2 ON d.created_by = u2.uid
       ORDER BY d.created_at DESC

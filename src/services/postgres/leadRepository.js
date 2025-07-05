@@ -13,10 +13,15 @@ export const getLeads = async () => {
     console.log('Getting all leads directly from PostgreSQL database');
     
     // Query matches schema.sql leads table structure
+    // Use COALESCE to handle both linked customers and standalone customer names
     const result = await query(`
       SELECT l.*, 
-             COALESCE(c.name, l.customer_name, 'Unknown Customer') as customer_name, 
-             c.company_name, 
+             COALESCE(c.name, l.customer_name, 'Unknown Customer') as customer_name,
+             COALESCE(c.company_name, l.company_name, '') as company_name,
+             COALESCE(c.email, l.email) as email,
+             COALESCE(c.phone, l.phone) as phone,
+             COALESCE(c.address, '') as customer_address,
+             COALESCE(c.designation, l.designation, '') as designation,
              u.display_name as assigned_to_name
       FROM leads l
       LEFT JOIN customers c ON l.customer_id = c.id
@@ -28,10 +33,11 @@ export const getLeads = async () => {
     const leads = result.rows.map(row => ({
       id: row.id,
       customerId: row.customer_id,
-      customerName: row.customer_name || 'Unknown Customer',
-      companyName: row.company_name || '',
+      customerName: row.customer_name,
+      companyName: row.company_name,
       email: row.email,
       phone: row.phone,
+      customerAddress: row.customer_address,
       serviceNeeded: row.service_needed,
       siteLocation: row.site_location,
       startDate: row.start_date,
@@ -73,7 +79,14 @@ export const createLead = async (lead) => {
   try {
     await client.query('BEGIN');
     
-    console.log('Creating lead in PostgreSQL database');
+    console.log('Creating lead in PostgreSQL database:', {
+      customerName: lead.customerName,
+      email: lead.email,
+      companyName: lead.companyName
+    });
+    
+    // Find or create customer to ensure proper data consistency
+    const customerData = await findOrCreateCustomerForLead(lead, client);
     
     // Map frontend data to database schema
     const result = await client.query(`
@@ -86,9 +99,9 @@ export const createLead = async (lead) => {
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
       RETURNING *
     `, [
-      lead.customerId,
-      lead.customerName,
-      lead.companyName,
+      customerData.customerId,
+      customerData.customerName,
+      customerData.companyName,
       lead.email,
       lead.phone,
       lead.serviceNeeded,
@@ -302,5 +315,103 @@ export const deleteLead = async (id) => {
   } catch (error) {
     console.error(`Error deleting lead ${id}:`, error);
     throw error;
+  }
+};
+
+/**
+ * Helper function to find or create a customer for a lead
+ * Enhanced version with better error handling and data consistency
+ */
+export const findOrCreateCustomerForLead = async (leadData, client) => {
+  try {
+    console.log('🔍 Finding or creating customer for lead:', {
+      email: leadData.email,
+      customerName: leadData.customerName,
+      companyName: leadData.companyName
+    });
+    
+    // First, try to find an existing customer by email (most reliable identifier)
+    const existingCustomerResult = await client.query(
+      'SELECT id, name, company_name, contact_name FROM customers WHERE email = $1',
+      [leadData.email]
+    );
+    
+    if (existingCustomerResult.rows.length > 0) {
+      const customer = existingCustomerResult.rows[0];
+      console.log(`✅ Found existing customer ${customer.id} (${customer.name}) for email ${leadData.email}`);
+      return {
+        customerId: customer.id,
+        customerName: customer.name,
+        companyName: customer.company_name
+      };
+    }
+    
+    // If no existing customer found by email, try by name + company combination
+    if (leadData.customerName && leadData.companyName) {
+      const nameCompanyResult = await client.query(
+        'SELECT id, name, company_name FROM customers WHERE name ILIKE $1 AND company_name ILIKE $2',
+        [`%${leadData.customerName}%`, `%${leadData.companyName}%`]
+      );
+      
+      if (nameCompanyResult.rows.length > 0) {
+        const customer = nameCompanyResult.rows[0];
+        console.log(`✅ Found existing customer ${customer.id} by name+company match`);
+        
+        // Update the customer's email if it was missing
+        await client.query(
+          'UPDATE customers SET email = $1, updated_at = NOW() WHERE id = $2 AND (email IS NULL OR email = \'\')',
+          [leadData.email, customer.id]
+        );
+        
+        return {
+          customerId: customer.id,
+          customerName: customer.name,
+          companyName: customer.company_name
+        };
+      }
+    }
+    
+    // No existing customer found, create a new one
+    console.log(`🆕 Creating new customer for email ${leadData.email}`);
+    const customerName = leadData.customerName || 'Unknown Customer';
+    const companyName = leadData.companyName || customerName;
+    
+    const newCustomerResult = await client.query(`
+      INSERT INTO customers (
+        name, company_name, contact_name, email, phone, address, 
+        type, designation, notes
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING id, name, company_name
+    `, [
+      customerName,
+      companyName,
+      customerName, // contact_name defaults to name
+      leadData.email,
+      leadData.phone || '',
+      leadData.siteLocation || '', // Use site location as address fallback
+      'other', // Default type
+      leadData.designation || '',
+      `Auto-created from lead on ${new Date().toISOString()}`
+    ]);
+    
+    const newCustomer = newCustomerResult.rows[0];
+    console.log(`🎉 Created new customer ${newCustomer.id} (${newCustomer.name}) for lead`);
+    
+    return {
+      customerId: newCustomer.id,
+      customerName: newCustomer.name,
+      companyName: newCustomer.company_name
+    };
+    
+  } catch (error) {
+    console.error('❌ Error finding/creating customer for lead:', error);
+    // Fall back to using lead data directly without customer linking
+    console.log('🔄 Falling back to lead data without customer linking');
+    return {
+      customerId: null,
+      customerName: leadData.customerName || 'Unknown Customer',
+      companyName: leadData.companyName || ''
+    };
   }
 };

@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Connectivity Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-container {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 20px;
+        }
+        .success { color: #28a745; }
+        .error { color: #dc3545; }
+        .pending { color: #ffc107; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #0056b3;
+        }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+        .endpoint {
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 API Connectivity Test</h1>
+    
+    <div class="test-container">
+        <h2>Environment Info</h2>
+        <div id="env-info">
+            <p><strong>Frontend URL:</strong> <span id="frontend-url"></span></p>
+            <p><strong>API URL:</strong> <span id="api-url"></span></p>
+            <p><strong>Browser:</strong> <span id="browser-info"></span></p>
+        </div>
+    </div>
+
+    <div class="test-container">
+        <h2>API Endpoints Test</h2>
+        <button onclick="testAllEndpoints()">Test All Endpoints</button>
+        <button onclick="clearResults()">Clear Results</button>
+        
+        <div id="test-results"></div>
+    </div>
+
+    <div class="test-container">
+        <h2>CORS Test</h2>
+        <button onclick="testCORS()">Test CORS Configuration</button>
+        <div id="cors-results"></div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3001';
+        
+        document.getElementById('frontend-url').textContent = window.location.origin;
+        document.getElementById('api-url').textContent = API_BASE;
+        document.getElementById('browser-info').textContent = navigator.userAgent;
+
+        const endpoints = [
+            { path: '/api', name: 'API Info' },
+            { path: '/api/health', name: 'Health Check' },
+            { path: '/api/check', name: 'Status Check' },
+            { path: '/api/auth', name: 'Auth (Protected)' },
+            { path: '/api/deals', name: 'Deals (Protected)' },
+            { path: '/api/leads', name: 'Leads (Protected)' },
+            { path: '/api/customers', name: 'Customers (Protected)' },
+            { path: '/api/equipment', name: 'Equipment (Protected)' },
+            { path: '/api/quotations', name: 'Quotations (Protected)' }
+        ];
+
+        async function testEndpoint(endpoint) {
+            try {
+                const response = await fetch(`${API_BASE}${endpoint.path}`, {
+                    method: 'GET',
+                    credentials: 'include',
+                    mode: 'cors',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
+
+                const data = await response.text();
+                return {
+                    success: response.ok,
+                    status: response.status,
+                    statusText: response.statusText,
+                    data: data,
+                    headers: Object.fromEntries(response.headers.entries())
+                };
+            } catch (error) {
+                return {
+                    success: false,
+                    error: error.message,
+                    type: error.name
+                };
+            }
+        }
+
+        async function testAllEndpoints() {
+            const resultsDiv = document.getElementById('test-results');
+            resultsDiv.innerHTML = '<p class="pending">Testing endpoints...</p>';
+            
+            let results = '';
+            
+            for (const endpoint of endpoints) {
+                const result = await testEndpoint(endpoint);
+                
+                const statusClass = result.success ? 'success' : 'error';
+                const icon = result.success ? '✅' : '❌';
+                
+                results += `
+                    <div class="endpoint">
+                        <h4>${icon} ${endpoint.name}</h4>
+                        <p><strong>URL:</strong> ${API_BASE}${endpoint.path}</p>
+                        <p><strong>Status:</strong> <span class="${statusClass}">${result.status || 'Failed'} ${result.statusText || ''}</span></p>
+                        ${result.error ? `<p><strong>Error:</strong> <span class="error">${result.error}</span></p>` : ''}
+                        ${result.data ? `<details><summary>Response Data</summary><pre>${result.data}</pre></details>` : ''}
+                        ${result.headers ? `<details><summary>Response Headers</summary><pre>${JSON.stringify(result.headers, null, 2)}</pre></details>` : ''}
+                    </div>
+                `;
+                
+                // Add a small delay to avoid overwhelming the server
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            
+            resultsDiv.innerHTML = results;
+        }
+
+        async function testCORS() {
+            const resultsDiv = document.getElementById('cors-results');
+            resultsDiv.innerHTML = '<p class="pending">Testing CORS configuration...</p>';
+            
+            try {
+                // Test preflight request
+                const preflightResponse = await fetch(`${API_BASE}/api/health`, {
+                    method: 'OPTIONS',
+                    headers: {
+                        'Access-Control-Request-Method': 'GET',
+                        'Access-Control-Request-Headers': 'Content-Type, Authorization',
+                        'Origin': window.location.origin
+                    }
+                });
+
+                const corsHeaders = {
+                    'Access-Control-Allow-Origin': preflightResponse.headers.get('Access-Control-Allow-Origin'),
+                    'Access-Control-Allow-Methods': preflightResponse.headers.get('Access-Control-Allow-Methods'),
+                    'Access-Control-Allow-Headers': preflightResponse.headers.get('Access-Control-Allow-Headers'),
+                    'Access-Control-Allow-Credentials': preflightResponse.headers.get('Access-Control-Allow-Credentials')
+                };
+
+                const corsSuccess = preflightResponse.ok && corsHeaders['Access-Control-Allow-Origin'];
+                const statusClass = corsSuccess ? 'success' : 'error';
+                const icon = corsSuccess ? '✅' : '❌';
+
+                resultsDiv.innerHTML = `
+                    <div class="endpoint">
+                        <h4>${icon} CORS Preflight Test</h4>
+                        <p><strong>Status:</strong> <span class="${statusClass}">${preflightResponse.status} ${preflightResponse.statusText}</span></p>
+                        <p><strong>Origin Allowed:</strong> ${corsHeaders['Access-Control-Allow-Origin'] || 'Not set'}</p>
+                        <p><strong>Methods Allowed:</strong> ${corsHeaders['Access-Control-Allow-Methods'] || 'Not set'}</p>
+                        <p><strong>Headers Allowed:</strong> ${corsHeaders['Access-Control-Allow-Headers'] || 'Not set'}</p>
+                        <p><strong>Credentials Allowed:</strong> ${corsHeaders['Access-Control-Allow-Credentials'] || 'Not set'}</p>
+                    </div>
+                `;
+            } catch (error) {
+                resultsDiv.innerHTML = `
+                    <div class="endpoint">
+                        <h4>❌ CORS Test Failed</h4>
+                        <p><strong>Error:</strong> <span class="error">${error.message}</span></p>
+                    </div>
+                `;
+            }
+        }
+
+        function clearResults() {
+            document.getElementById('test-results').innerHTML = '';
+            document.getElementById('cors-results').innerHTML = '';
+        }
+
+        // Auto-run basic test on page load
+        window.onload = function() {
+            setTimeout(() => {
+                testEndpoint({ path: '/api/health', name: 'Health Check' }).then(result => {
+                    const status = result.success ? '✅ API is accessible' : '❌ API connection failed';
+                    const statusClass = result.success ? 'success' : 'error';
+                    document.getElementById('test-results').innerHTML = `<p class="${statusClass}">${status}</p>`;
+                });
+            }, 1000);
+        };
+    </script>
+</body>
+</html>

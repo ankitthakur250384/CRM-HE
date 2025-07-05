@@ -1,0 +1,366 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Debug</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background-color: #f5f5f5; }
+        .test-container { background-color: white; padding: 20px; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .success { color: #22c55e; }
+        .error { color: #ef4444; }
+        .warning { color: #f59e0b; }
+        .info { color: #3b82f6; }
+        pre { background-color: #f8fafc; padding: 10px; border-radius: 4px; overflow-x: auto; }
+        button { background-color: #3b82f6; color: white; padding: 10px 20px; border: none; border-radius: 4px; cursor: pointer; margin: 5px; }
+        button:hover { background-color: #2563eb; }
+        .status { font-weight: bold; padding: 5px; margin: 5px 0; border-radius: 4px; }
+        .loading { background-color: #fef3c7; color: #92400e; }
+        .loaded { background-color: #d1fae5; color: #065f46; }
+        .failed { background-color: #fee2e2; color: #991b1b; }
+    </style>
+</head>
+<body>
+    <h1>ASP Cranes CRM - Dashboard Debug Tool</h1>
+    
+    <div class="test-container">
+        <h2>API Endpoint Tests</h2>
+        <button onclick="testAllEndpoints()">Test All Dashboard Endpoints</button>
+        <button onclick="testWithAuth()">Test With Authentication</button>
+        <button onclick="clearResults()">Clear Results</button>
+        <div id="endpoint-results"></div>
+    </div>
+
+    <div class="test-container">
+        <h2>Service Functions Test</h2>
+        <button onclick="testServiceFunctions()">Test Service Functions</button>
+        <div id="service-results"></div>
+    </div>
+
+    <div class="test-container">
+        <h2>Frontend Debug</h2>
+        <button onclick="testFrontendState()">Check Frontend State</button>
+        <button onclick="simulateDashboardLoad()">Simulate Dashboard Load</button>
+        <div id="frontend-results"></div>
+    </div>
+
+    <script>
+        const BASE_URL = 'http://localhost:3001';
+        
+        function log(message, type = 'info') {
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        function displayResult(containerId, title, content, type = 'info') {
+            const container = document.getElementById(containerId);
+            const div = document.createElement('div');
+            div.className = `status ${type === 'success' ? 'loaded' : type === 'error' ? 'failed' : 'loading'}`;
+            div.innerHTML = `<strong>${title}:</strong><br><pre>${content}</pre>`;
+            container.appendChild(div);
+        }
+
+        function clearResults() {
+            document.getElementById('endpoint-results').innerHTML = '';
+            document.getElementById('service-results').innerHTML = '';
+            document.getElementById('frontend-results').innerHTML = '';
+        }
+
+        // Test all dashboard-related API endpoints
+        async function testAllEndpoints() {
+            const container = document.getElementById('endpoint-results');
+            container.innerHTML = '<div class="loading">Testing endpoints...</div>';
+
+            const endpoints = [
+                { name: 'Health Check', url: '/api/health', method: 'GET' },
+                { name: 'Login', url: '/api/auth/login', method: 'POST', 
+                  body: { email: 'admin@aspcranes.com', password: 'admin123' } },
+                { name: 'Leads', url: '/api/leads', method: 'GET' },
+                { name: 'Jobs', url: '/api/jobs', method: 'GET' },
+                { name: 'Equipment', url: '/api/equipment', method: 'GET' },
+                { name: 'Operators', url: '/api/operators', method: 'GET' },
+                { name: 'Deals', url: '/api/deals', method: 'GET' }
+            ];
+
+            let authToken = null;
+            
+            for (const endpoint of endpoints) {
+                try {
+                    log(`Testing ${endpoint.name}: ${endpoint.method} ${endpoint.url}`);
+                    
+                    const options = {
+                        method: endpoint.method,
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(authToken && endpoint.name !== 'Login' ? { 'Authorization': `Bearer ${authToken}` } : {})
+                        }
+                    };
+
+                    if (endpoint.body) {
+                        options.body = JSON.stringify(endpoint.body);
+                    }
+
+                    const response = await fetch(BASE_URL + endpoint.url, options);
+                    const data = await response.json();
+                    
+                    if (endpoint.name === 'Login' && response.ok && data.token) {
+                        authToken = data.token;
+                        log('Auth token obtained for subsequent requests');
+                    }
+                    
+                    const result = {
+                        status: response.status,
+                        ok: response.ok,
+                        data: data,
+                        headers: Object.fromEntries(response.headers.entries())
+                    };
+
+                    displayResult('endpoint-results', 
+                        `${endpoint.name} (${response.status})`, 
+                        JSON.stringify(result, null, 2),
+                        response.ok ? 'success' : 'error'
+                    );
+
+                } catch (error) {
+                    log(`Error testing ${endpoint.name}: ${error.message}`, 'error');
+                    displayResult('endpoint-results', 
+                        `${endpoint.name} (ERROR)`, 
+                        `Error: ${error.message}`,
+                        'error'
+                    );
+                }
+            }
+        }
+
+        // Test with authentication flow
+        async function testWithAuth() {
+            const container = document.getElementById('endpoint-results');
+            container.innerHTML = '<div class="loading">Testing with authentication...</div>';
+
+            try {
+                // First login
+                const loginResponse = await fetch(BASE_URL + '/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        email: 'admin@aspcranes.com', 
+                        password: 'admin123' 
+                    })
+                });
+
+                if (!loginResponse.ok) {
+                    throw new Error(`Login failed: ${loginResponse.status}`);
+                }
+
+                const loginData = await loginResponse.json();
+                const token = loginData.token;
+
+                displayResult('endpoint-results', 'Login Success', 
+                    JSON.stringify(loginData, null, 2), 'success');
+
+                // Test authenticated endpoints
+                const authEndpoints = [
+                    { name: 'Leads', url: '/api/leads' },
+                    { name: 'Jobs', url: '/api/jobs' },
+                    { name: 'Equipment', url: '/api/equipment' },
+                    { name: 'Deals', url: '/api/deals' },
+                    { name: 'Operators', url: '/api/operators' }
+                ];
+
+                for (const endpoint of authEndpoints) {
+                    try {
+                        const response = await fetch(BASE_URL + endpoint.url, {
+                            headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        
+                        const data = await response.json();
+                        
+                        displayResult('endpoint-results', 
+                            `${endpoint.name} (${response.status})`, 
+                            `Count: ${Array.isArray(data) ? data.length : 'N/A'}\nData: ${JSON.stringify(data, null, 2)}`,
+                            response.ok ? 'success' : 'error'
+                        );
+
+                    } catch (error) {
+                        displayResult('endpoint-results', 
+                            `${endpoint.name} (ERROR)`, 
+                            `Error: ${error.message}`,
+                            'error'
+                        );
+                    }
+                }
+
+            } catch (error) {
+                displayResult('endpoint-results', 'Authentication Error', 
+                    error.message, 'error');
+            }
+        }
+
+        // Test service functions (simulates what React app does)
+        async function testServiceFunctions() {
+            const container = document.getElementById('service-results');
+            container.innerHTML = '<div class="loading">Testing service functions...</div>';
+
+            // First get auth token
+            try {
+                const loginResponse = await fetch(BASE_URL + '/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        email: 'admin@aspcranes.com', 
+                        password: 'admin123' 
+                    })
+                });
+
+                const loginData = await loginResponse.json();
+                const token = loginData.token;
+
+                // Store token in localStorage to simulate what the app does
+                localStorage.setItem('jwt-token', token);
+                localStorage.setItem('asp_cranes_user', JSON.stringify(loginData.user));
+
+                displayResult('service-results', 'Auth Setup', 
+                    'Token stored in localStorage', 'success');
+
+                // Test each service function pattern
+                const services = [
+                    { name: 'getLeads', endpoint: '/api/leads' },
+                    { name: 'getJobs', endpoint: '/api/jobs' },
+                    { name: 'getAllEquipment', endpoint: '/api/equipment' },
+                    { name: 'getAllOperators', endpoint: '/api/operators' },
+                    { name: 'getDeals', endpoint: '/api/deals' }
+                ];
+
+                for (const service of services) {
+                    try {
+                        const response = await fetch(BASE_URL + service.endpoint, {
+                            headers: { 
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json'
+                            }
+                        });
+
+                        if (!response.ok) {
+                            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                        }
+
+                        const data = await response.json();
+                        
+                        displayResult('service-results', 
+                            service.name, 
+                            `Success: ${Array.isArray(data) ? data.length : 'N/A'} items\n${JSON.stringify(data, null, 2)}`,
+                            'success'
+                        );
+
+                    } catch (error) {
+                        displayResult('service-results', 
+                            service.name, 
+                            `Error: ${error.message}`,
+                            'error'
+                        );
+                    }
+                }
+
+            } catch (error) {
+                displayResult('service-results', 'Service Test Error', 
+                    error.message, 'error');
+            }
+        }
+
+        // Test frontend state and localStorage
+        function testFrontendState() {
+            const container = document.getElementById('frontend-results');
+            container.innerHTML = '';
+
+            // Check localStorage
+            const token = localStorage.getItem('jwt-token');
+            const user = localStorage.getItem('asp_cranes_user');
+            
+            displayResult('frontend-results', 'Auth Token', 
+                token ? `Present: ${token.substring(0, 20)}...` : 'Not found', 
+                token ? 'success' : 'error');
+
+            displayResult('frontend-results', 'User Data', 
+                user ? JSON.stringify(JSON.parse(user), null, 2) : 'Not found',
+                user ? 'success' : 'error');
+
+            // Check if running on React dev server
+            const currentUrl = window.location.href;
+            displayResult('frontend-results', 'Current URL', currentUrl, 'info');
+
+            // Test fetch with current auth
+            if (token) {
+                fetch(BASE_URL + '/api/health', {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                })
+                .then(response => response.json())
+                .then(data => {
+                    displayResult('frontend-results', 'Auth Health Check', 
+                        JSON.stringify(data, null, 2), 'success');
+                })
+                .catch(error => {
+                    displayResult('frontend-results', 'Auth Health Check', 
+                        `Error: ${error.message}`, 'error');
+                });
+            }
+        }
+
+        // Simulate dashboard data loading
+        async function simulateDashboardLoad() {
+            const container = document.getElementById('frontend-results');
+            container.innerHTML = '<div class="loading">Simulating dashboard load...</div>';
+
+            try {
+                // Get auth token
+                const token = localStorage.getItem('jwt-token');
+                if (!token) {
+                    throw new Error('No auth token found. Please login first.');
+                }
+
+                // Simulate Promise.all from AdminDashboard
+                const endpoints = [
+                    { name: 'Leads', url: '/api/leads' },
+                    { name: 'Jobs', url: '/api/jobs' },
+                    { name: 'Equipment', url: '/api/equipment' },
+                    { name: 'Operators', url: '/api/operators' },
+                    { name: 'Deals', url: '/api/deals' }
+                ];
+
+                const promises = endpoints.map(endpoint => 
+                    fetch(BASE_URL + endpoint.url, {
+                        headers: { 
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    }).then(async response => {
+                        if (!response.ok) {
+                            throw new Error(`${endpoint.name}: HTTP ${response.status}`);
+                        }
+                        const data = await response.json();
+                        return { name: endpoint.name, data, count: Array.isArray(data) ? data.length : 'N/A' };
+                    })
+                );
+
+                const results = await Promise.all(promises);
+                
+                displayResult('frontend-results', 'Dashboard Data Summary', 
+                    results.map(r => `${r.name}: ${r.count} items`).join('\n'), 'success');
+
+                results.forEach(result => {
+                    displayResult('frontend-results', result.name, 
+                        JSON.stringify(result.data, null, 2), 'success');
+                });
+
+            } catch (error) {
+                displayResult('frontend-results', 'Dashboard Load Error', 
+                    error.message, 'error');
+            }
+        }
+
+        // Auto-run basic test on page load
+        window.addEventListener('load', () => {
+            log('Dashboard debug tool loaded');
+            testFrontendState();
+        });
+    </script>
+</body>
+</html>

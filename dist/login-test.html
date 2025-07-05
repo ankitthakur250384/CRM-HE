@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Flow Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 800px; margin: 0 auto; }
+        .test-section { margin-bottom: 30px; padding: 20px; border: 1px solid #ddd; border-radius: 5px; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        button { padding: 10px 20px; margin: 10px 5px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        #output { background: #f8f9fa; padding: 15px; border-radius: 5px; white-space: pre-wrap; max-height: 400px; overflow-y: auto; }
+        input { padding: 8px; margin: 5px; border: 1px solid #ddd; border-radius: 3px; width: 200px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>ASP Cranes CRM - Login Flow Test</h1>
+        
+        <div class="test-section">
+            <h2>1. API Health Check</h2>
+            <button onclick="testHealth()">Test Backend Health</button>
+            <div id="health-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>2. Authentication Test</h2>
+            <div>
+                <label>Email: <input type="email" id="email" value="admin@aspcranes.com"></label>
+                <label>Password: <input type="password" id="password" value="admin123"></label>
+            </div>
+            <button onclick="testLogin()">Test Login API</button>
+            <div id="login-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>3. Frontend Integration Test</h2>
+            <button onclick="testFrontendLogin()">Test Frontend Login Flow</button>
+            <div id="frontend-result"></div>
+        </div>
+
+        <div class="test-section">
+            <h2>4. Console Output</h2>
+            <div id="output"></div>
+        </div>
+    </div>
+
+    <script>
+        const API_BASE = 'http://localhost:3001/api';
+        const output = document.getElementById('output');
+        
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const className = type === 'error' ? 'error' : type === 'success' ? 'success' : 'info';
+            output.innerHTML += `<span class="${className}">[${timestamp}] ${message}</span>\n`;
+            output.scrollTop = output.scrollHeight;
+            console.log(`[${type.toUpperCase()}] ${message}`);
+        }
+
+        // Capture console logs
+        const originalLog = console.log;
+        const originalError = console.error;
+        const originalWarn = console.warn;
+
+        console.log = (...args) => {
+            log(`Console: ${args.join(' ')}`, 'info');
+            originalLog.apply(console, args);
+        };
+
+        console.error = (...args) => {
+            log(`Console Error: ${args.join(' ')}`, 'error');
+            originalError.apply(console, args);
+        };
+
+        console.warn = (...args) => {
+            log(`Console Warning: ${args.join(' ')}`, 'info');
+            originalWarn.apply(console, args);
+        };
+
+        async function testHealth() {
+            const resultDiv = document.getElementById('health-result');
+            try {
+                log('Testing backend health...');
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `<span class="success">✓ Backend healthy: ${JSON.stringify(data)}</span>`;
+                    log('Backend health check passed', 'success');
+                } else {
+                    throw new Error(`Health check failed: ${response.status}`);
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">✗ Backend health failed: ${error.message}</span>`;
+                log(`Backend health check failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testLogin() {
+            const resultDiv = document.getElementById('login-result');
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+
+            try {
+                log(`Testing login for ${email}...`);
+                const response = await fetch(`${API_BASE}/auth/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email, password }),
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    resultDiv.innerHTML = `<span class="success">✓ Login successful</span><br>
+                        Token: ${data.token ? 'Present' : 'Missing'}<br>
+                        User: ${data.user ? JSON.stringify(data.user, null, 2) : 'Missing'}`;
+                    log('Login API test passed', 'success');
+                    
+                    // Store token for further tests
+                    localStorage.setItem('authToken', data.token);
+                } else {
+                    throw new Error(`Login failed: ${data.message || response.statusText}`);
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">✗ Login failed: ${error.message}</span>`;
+                log(`Login API test failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testFrontendLogin() {
+            const resultDiv = document.getElementById('frontend-result');
+            
+            try {
+                log('Testing frontend login flow...');
+                
+                // Open the main app in a new window
+                const appWindow = window.open('http://localhost:5173', '_blank');
+                
+                if (appWindow) {
+                    resultDiv.innerHTML = `<span class="info">Frontend opened in new window. Please test login manually and check this console for any errors.</span>`;
+                    log('Frontend window opened for manual testing', 'info');
+                    
+                    // Listen for messages from the app window
+                    window.addEventListener('message', (event) => {
+                        if (event.origin === 'http://localhost:5173') {
+                            log(`Message from frontend: ${JSON.stringify(event.data)}`);
+                        }
+                    });
+                } else {
+                    throw new Error('Could not open frontend window (popup blocked?)');
+                }
+            } catch (error) {
+                resultDiv.innerHTML = `<span class="error">✗ Frontend test failed: ${error.message}</span>`;
+                log(`Frontend test failed: ${error.message}`, 'error');
+            }
+        }
+
+        // Initialize
+        log('Login Flow Test initialized');
+        log('Default credentials: admin@aspcranes.com / admin123');
+    </script>
+</body>
+</html>

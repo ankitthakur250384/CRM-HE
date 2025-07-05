@@ -506,3 +506,157 @@ export const deleteContact = async (id: string): Promise<boolean> => {
     throw error;
   }
 };
+
+/**
+ * Find customers by email, phone, or name for connection purposes
+ */
+export const findCustomersByContact = async (email?: string, phone?: string, name?: string): Promise<Customer[]> => {
+  try {
+    console.log('Searching for customers by contact info:', { email, phone, name });
+    
+    let queryStr = 'SELECT * FROM customers WHERE ';
+    const conditions: string[] = [];
+    const params: any[] = [];
+    let paramIndex = 1;
+    
+    if (email) {
+      conditions.push(`email = $${paramIndex}`);
+      params.push(email);
+      paramIndex++;
+    }
+    
+    if (phone) {
+      conditions.push(`phone = $${paramIndex}`);
+      params.push(phone);
+      paramIndex++;
+    }
+    
+    if (name) {
+      conditions.push(`(name ILIKE $${paramIndex} OR contact_name ILIKE $${paramIndex})`);
+      params.push(`%${name}%`);
+      paramIndex++;
+    }
+    
+    if (conditions.length === 0) {
+      return [];
+    }
+    
+    queryStr += conditions.join(' OR ');
+    queryStr += ' ORDER BY created_at DESC';
+    
+    const result = await query(queryStr, params);
+    
+    const customers = result.rows.map((row: any) => ({
+      id: row.id,
+      name: row.name,
+      contactName: row.contact_name,
+      email: row.email,
+      phone: row.phone,
+      address: row.address,
+      type: row.type as CustomerType,
+      notes: row.notes,
+      createdAt: row.created_at,
+      updatedAt: row.updated_at
+    }));
+    
+    console.log(`Found ${customers.length} matching customers`);
+    return customers;
+    
+  } catch (error) {
+    console.error('Error searching customers by contact:', error);
+    throw error;
+  }
+};
+
+/**
+ * Create or find customer for lead connection
+ * This ensures every lead is connected to a customer
+ */
+export const createOrFindCustomerForLead = async (leadData: {
+  customerName?: string;
+  companyName?: string;
+  email: string;
+  phone?: string;
+  siteLocation?: string;
+  designation?: string;
+}): Promise<Customer> => {
+  const client = await getClient();
+  
+  try {
+    await client.query('BEGIN');
+    
+    // First try to find existing customer by email
+    const existingResult = await client.query(
+      'SELECT * FROM customers WHERE email = $1',
+      [leadData.email]
+    );
+    
+    if (existingResult.rows.length > 0) {
+      const customer = existingResult.rows[0];
+      console.log(`Found existing customer ${customer.id} for email ${leadData.email}`);
+      
+      await client.query('COMMIT');
+      
+      return {
+        id: customer.id,
+        name: customer.name,
+        contactName: customer.contact_name,
+        email: customer.email,
+        phone: customer.phone,
+        address: customer.address,
+        type: customer.type as CustomerType,
+        notes: customer.notes,
+        createdAt: customer.created_at,
+        updatedAt: customer.updated_at
+      };
+    }
+    
+    // Create new customer
+    const customerName = leadData.customerName || 'Unknown Customer';
+    const companyName = leadData.companyName || customerName;
+    
+    const newCustomerResult = await client.query(`
+      INSERT INTO customers (
+        name, company_name, contact_name, email, phone, address, 
+        type, designation, notes
+      )
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      RETURNING *
+    `, [
+      customerName,
+      companyName,
+      customerName, // contact_name same as name initially
+      leadData.email,
+      leadData.phone || '',
+      leadData.siteLocation || '',
+      'other', // default type
+      leadData.designation || '',
+      `Auto-created from lead on ${new Date().toISOString()}`
+    ]);
+    
+    const newCustomer = newCustomerResult.rows[0];
+    console.log(`Created new customer ${newCustomer.id} for lead`);
+    
+    await client.query('COMMIT');
+    
+    return {
+      id: newCustomer.id,
+      name: newCustomer.name,
+      contactName: newCustomer.contact_name,
+      email: newCustomer.email,
+      phone: newCustomer.phone,
+      address: newCustomer.address,
+      type: newCustomer.type as CustomerType,
+      notes: newCustomer.notes,
+      createdAt: newCustomer.created_at,
+      updatedAt: newCustomer.updated_at
+    };
+    
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error('Error creating/finding customer for lead:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
