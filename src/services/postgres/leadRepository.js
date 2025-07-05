@@ -88,6 +88,19 @@ export const createLead = async (lead) => {
     // Find or create customer to ensure proper data consistency
     const customerData = await findOrCreateCustomerForLead(lead, client);
     
+    // Validate assigned_to field - ensure it's either null or a valid user ID
+    let validAssignedTo = null;
+    if (lead.assignedTo && lead.assignedTo.trim() !== '') {
+      const userCheck = await client.query('SELECT uid FROM users WHERE uid = $1', [lead.assignedTo]);
+      if (userCheck.rows.length > 0) {
+        validAssignedTo = lead.assignedTo;
+        console.log(`✅ Valid assignedTo user found: ${lead.assignedTo}`);
+      } else {
+        console.warn(`⚠️ Invalid assignedTo user ID: ${lead.assignedTo}, setting to null`);
+        validAssignedTo = null;
+      }
+    }
+
     // Map frontend data to database schema
     const result = await client.query(`
       INSERT INTO leads (
@@ -111,7 +124,7 @@ export const createLead = async (lead) => {
       lead.shiftTiming,
       lead.status,
       lead.source,
-      lead.assignedTo,
+      validAssignedTo, // Use validated assignedTo value
       lead.designation,
       lead.notes,
       lead.files ? JSON.stringify(lead.files) : null

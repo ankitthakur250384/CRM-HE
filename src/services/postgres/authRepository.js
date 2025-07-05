@@ -149,6 +149,35 @@ export const findUserById = async (uid) => {
 };
 
 /**
+ * Find users by role
+ */
+export const findUsersByRole = async (role) => {
+  const client = await pool.connect();
+  
+  try {
+    const result = await client.query(`
+      SELECT 
+        uid, 
+        email, 
+        display_name, 
+        role, 
+        created_at, 
+        updated_at
+      FROM users 
+      WHERE role = $1
+      ORDER BY display_name ASC
+    `, [role]);
+    
+    return result.rows;
+  } catch (error) {
+    console.error('Error finding users by role:', error);
+    throw error;
+  } finally {
+    client.release();
+  }
+};
+
+/**
  * Create new user
  */
 export const createUser = async (uid, email, password_hash, role, display_name) => {

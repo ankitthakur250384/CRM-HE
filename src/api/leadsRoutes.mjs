@@ -93,8 +93,8 @@ router.get('/:id', authenticateToken, asyncHandler(async (req, res) => {
  * POST /leads - Create new lead
  */
 router.post('/', authenticateToken, asyncHandler(async (req, res) => {
-  // Validate required fields
-  const requiredFields = ['customerId', 'serviceNeeded', 'status'];
+  // Validate required fields - customerId is optional since it will be created/found automatically
+  const requiredFields = ['customerName', 'email', 'serviceNeeded'];
   const missingFields = requiredFields.filter(field => !req.body[field]);
   
   if (missingFields.length > 0) {
@@ -104,7 +104,13 @@ router.post('/', authenticateToken, asyncHandler(async (req, res) => {
     });
   }
   
-  const lead = await leadRepository.createLead(req.body);
+  // Ensure status defaults to 'new' if not provided
+  const leadData = {
+    ...req.body,
+    status: req.body.status || 'new'
+  };
+  
+  const lead = await leadRepository.createLead(leadData);
   res.status(201).json(lead);
 }));
 

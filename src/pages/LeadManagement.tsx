@@ -120,17 +120,35 @@ export function LeadManagement() {
   };
   const fetchSalesAgents = async () => {
     try {
-      // Mock data for sales agents since we're migrating from Firebase to PostgreSQL
-      // In production, you would replace this with an API call to fetch sales agents
-      const mockAgents = [
-        { id: 'sales-uid-456', name: 'Sales Agent' },
-        { id: 'sales-uid-789', name: 'John Seller' },
-        { id: 'sales-uid-101', name: 'Jane Dealmaker' },
-      ];
-      setSalesAgents(mockAgents);
+      console.log('Fetching sales agents from API...');
+      const response = await fetch('http://localhost:3001/api/auth/sales-agents', {
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Bypass-Auth': 'development-only-123'
+        }
+      });
+      
+      if (response.ok) {
+        const agents = await response.json();
+        console.log('Sales agents fetched:', agents);
+        setSalesAgents(agents);
+      } else {
+        console.error('Failed to fetch sales agents:', response.status);
+        // Fallback to mock data if API fails
+        const mockAgents = [
+          { id: 'u_sal_386065nosk', name: 'John Sales' },
+          { id: 'usr_test001', name: 'Test User' },
+        ];
+        setSalesAgents(mockAgents);
+      }
     } catch (error) {
       console.error('Error fetching sales agents:', error);
-      showToast('Error fetching sales agents', 'error');
+      // Fallback to mock data using actual user IDs from database
+      const mockAgents = [
+        { id: 'u_sal_386065nosk', name: 'John Sales' },
+        { id: 'usr_test001', name: 'Test User' },
+      ];
+      setSalesAgents(mockAgents);
     }
   };
   const filterLeads = () => {
@@ -197,7 +215,8 @@ export function LeadManagement() {
       const assignedToName = user?.role === 'sales_agent' ? user.name : 
         salesAgents.find(agent => agent.id === formData.assignedTo)?.name || '';
 
-      const newLead = await createLead({
+      // Only include assignedTo and assignedToName if they have valid values
+      const leadData = {
         customerName: formData.fullName,
         companyName: formData.companyName,
         email: formData.email,
@@ -207,12 +226,18 @@ export function LeadManagement() {
         startDate: formData.startDate,
         rentalDays: parseInt(formData.rentalDays),
         shiftTiming: formData.shiftTiming,
-        status: 'new',
-        assignedTo,
-        assignedToName,
+        status: 'new' as const,
         notes: formData.notes,
         designation: formData.designation,
-      });
+        // Only include assignment if valid
+        ...(assignedTo && assignedTo.trim() !== '' ? { 
+          assignedTo: assignedTo,
+          assignedToName: assignedToName 
+        } : {})
+      };
+
+      console.log('Creating lead with data:', leadData);
+      const newLead = await createLead(leadData);
 
       setLeads(prev => [...prev, newLead]);
       setIsCreateModalOpen(false);

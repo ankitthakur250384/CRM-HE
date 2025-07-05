@@ -180,6 +180,29 @@ router.post('/verify-token', async (req, res) => {
   }
 });
 
+// Get sales agents (for lead assignment)
+router.get('/sales-agents', async (req, res) => {
+  try {
+    console.log('📋 Fetching sales agents...');
+    
+    // Get all users with sales_agent role
+    const salesAgents = await authRepository.findUsersByRole('sales_agent');
+    
+    // Format for frontend use
+    const formattedAgents = salesAgents.map(agent => ({
+      id: agent.uid,
+      name: agent.display_name,
+      email: agent.email
+    }));
+    
+    console.log(`✅ Found ${formattedAgents.length} sales agents`);
+    res.json(formattedAgents);
+  } catch (error) {
+    console.error('Error fetching sales agents:', error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
+
 // Get user profile
 router.get('/profile', async (req, res) => {
   const authHeader = req.headers['authorization'];

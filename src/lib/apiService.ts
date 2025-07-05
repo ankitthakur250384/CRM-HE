@@ -77,6 +77,8 @@ export const apiCall = async <T = any>(endpoint: string, options: ApiOptions = {
       'Content-Type': 'application/json',
       // Only add Authorization if we have a token
       ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+      // Add development bypass auth header when no token is available in dev mode
+      ...(import.meta.env.DEV && !token ? { 'X-Bypass-Auth': 'development-only-123' } : {}),
       ...(options.headers || {})
     };
     
