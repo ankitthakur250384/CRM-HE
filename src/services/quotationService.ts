@@ -20,27 +20,39 @@ export const getQuotations = async (): Promise<Quotation[]> => {
 
 /**
  * Create a new quotation
- * @param quotationInputs - The quotation data
- * @param leadId - Optional lead ID
- * @param dealId - Optional deal ID
- * @param customerId - Optional customer ID
- * @param customerName - Optional customer name
- * @param customerContact - Optional customer contact details
  */
-export const createQuotation = async (
+export async function createQuotation(
   quotationInputs: QuotationInputs,
   leadId?: string,
   dealId?: string,
   customerId?: string,
   customerName?: string,
   customerContact?: any
-): Promise<Quotation> => {
+): Promise<Quotation>;
+
+export async function createQuotation(
+  quotationData: any
+): Promise<Quotation>;
+
+export async function createQuotation(
+  quotationInputsOrData: QuotationInputs | any,
+  leadId?: string,
+  dealId?: string,
+  customerId?: string,
+  customerName?: string,
+  customerContact?: any
+): Promise<Quotation> {
   try {
-    // For future implementation - could fetch lead, deal and customer data here
-    // if needed before passing to repository
-  
+    // Check if it's the overload with complete data (single argument with dealId or leadId)
+    if (leadId === undefined && dealId === undefined && customerId === undefined && 
+        (quotationInputsOrData.dealId || quotationInputsOrData.leadId)) {
+      // Complete quotation data object
+      return quotationRepository.createQuotation(quotationInputsOrData);
+    }
+    
+    // Original signature - separate parameters
     return quotationRepository.createQuotation({
-      ...quotationInputs,
+      ...quotationInputsOrData,
       leadId,
       dealId,
       customerId,
@@ -51,7 +63,7 @@ export const createQuotation = async (
     console.error('Error creating quotation:', error);
     throw error;
   }
-};
+}
 
 /**
  * Get a quotation by ID

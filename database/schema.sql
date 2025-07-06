@@ -47,8 +47,8 @@ CREATE TABLE IF NOT EXISTS auth_tokens (
     device_info JSONB
 );
 
-CREATE INDEX idx_auth_tokens_user_id ON auth_tokens(user_id);
-CREATE INDEX idx_auth_tokens_expiry ON auth_tokens(expires_at);
+CREATE INDEX IF NOT EXISTS idx_auth_tokens_user_id ON auth_tokens(user_id);
+CREATE INDEX IF NOT EXISTS idx_auth_tokens_expiry ON auth_tokens(expires_at);
 
 -- ========== CUSTOMERS ==========
 
@@ -92,7 +92,7 @@ CREATE TRIGGER update_contacts_updated_at
 BEFORE UPDATE ON contacts
 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE INDEX idx_contacts_customer_id ON contacts(customer_id);
+CREATE INDEX IF NOT EXISTS idx_contacts_customer_id ON contacts(customer_id);
 
 -- ========== LEADS ==========
 
@@ -112,7 +112,7 @@ CREATE TABLE leads (
     shift_timing VARCHAR(50),
     status VARCHAR(20) NOT NULL CHECK (status IN ('new', 'in_process', 'qualified', 'unqualified', 'lost', 'converted')),
     source VARCHAR(20) CHECK (source IN ('website', 'referral', 'direct', 'social', 'email', 'phone', 'other')),
-    assigned_to VARCHAR(50) REFERENCES users(uid) ON DELETE SET NULL,
+    assigned_to VARCHAR(50) NOT NULL REFERENCES users(uid) ON DELETE SET NULL,
     designation VARCHAR(100),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
@@ -125,9 +125,9 @@ CREATE TRIGGER update_leads_updated_at
 BEFORE UPDATE ON leads
 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE INDEX idx_leads_customer_id ON leads(customer_id);
-CREATE INDEX idx_leads_assigned_to ON leads(assigned_to);
-CREATE INDEX idx_leads_status ON leads(status);
+CREATE INDEX IF NOT EXISTS idx_leads_customer_id ON leads(customer_id);
+CREATE INDEX IF NOT EXISTS idx_leads_assigned_to ON leads(assigned_to);
+CREATE INDEX IF NOT EXISTS idx_leads_status ON leads(status);
 
 -- ========== DEALS ==========
 
@@ -136,15 +136,16 @@ DROP TABLE IF EXISTS deals CASCADE;
 CREATE TABLE deals (
     id VARCHAR(50) PRIMARY KEY DEFAULT 'deal_' || SUBSTRING(uuid_generate_v4()::text FROM 1 FOR 8),
     lead_id VARCHAR(50) REFERENCES leads(id) ON DELETE CASCADE,
-    customer_id VARCHAR(50) REFERENCES customers(id) ON DELETE CASCADE,
+    customer_id VARCHAR(50) NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
     title VARCHAR(100) NOT NULL,
     description TEXT NOT NULL,
     value NUMERIC(12, 2) NOT NULL CHECK (value >= 0),
     stage VARCHAR(20) NOT NULL CHECK (stage IN ('qualification', 'proposal', 'negotiation', 'won', 'lost')),
-    created_by VARCHAR(50) REFERENCES users(uid) ON DELETE SET NULL,
-    assigned_to VARCHAR(50) REFERENCES users(uid) ON DELETE SET NULL,
+    created_by VARCHAR(50) NOT NULL REFERENCES users(uid) ON DELETE SET NULL,
+    assigned_to VARCHAR(50) NOT NULL REFERENCES users(uid) ON DELETE SET NULL,
     probability INTEGER CHECK (probability BETWEEN 0 AND 100),
     expected_close_date DATE,
+    customer_contact JSONB,
     notes TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
@@ -155,10 +156,11 @@ CREATE TRIGGER update_deals_updated_at
 BEFORE UPDATE ON deals
 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE INDEX idx_deals_lead_id ON deals(lead_id);
-CREATE INDEX idx_deals_customer_id ON deals(customer_id);
-CREATE INDEX idx_deals_assigned_to ON deals(assigned_to);
-CREATE INDEX idx_deals_stage ON deals(stage);
+CREATE INDEX IF NOT EXISTS idx_deals_lead_id ON deals(lead_id);
+CREATE INDEX IF NOT EXISTS idx_deals_customer_id ON deals(customer_id);
+CREATE INDEX IF NOT EXISTS idx_deals_assigned_to ON deals(assigned_to);
+CREATE INDEX IF NOT EXISTS idx_deals_created_by ON deals(created_by);
+CREATE INDEX IF NOT EXISTS idx_deals_stage ON deals(stage);
 
 -- ========== EQUIPMENT ==========
 
@@ -190,8 +192,8 @@ CREATE TRIGGER update_equipment_updated_at
 BEFORE UPDATE ON equipment
 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE INDEX idx_equipment_status ON equipment(status);
-CREATE INDEX idx_equipment_category ON equipment(category);
+CREATE INDEX IF NOT EXISTS idx_equipment_status ON equipment(status);
+CREATE INDEX IF NOT EXISTS idx_equipment_category ON equipment(category);
 
 -- ========== QUOTATIONS ==========
 
@@ -202,7 +204,7 @@ CREATE TABLE IF NOT EXISTS quotation_templates (
     description TEXT,
     content TEXT NOT NULL,
     is_default BOOLEAN DEFAULT FALSE,
-    created_by VARCHAR(50) REFERENCES users(uid) ON DELETE SET NULL,
+    created_by VARCHAR(50) NOT NULL REFERENCES users(uid) ON DELETE SET NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -212,12 +214,16 @@ CREATE TRIGGER update_quotation_templates_updated_at
 BEFORE UPDATE ON quotation_templates
 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+CREATE INDEX IF NOT EXISTS idx_quotation_templates_created_by ON quotation_templates(created_by);
+CREATE INDEX IF NOT EXISTS idx_quotation_templates_is_default ON quotation_templates(is_default);
+
 -- Create quotations table
 DROP TABLE IF EXISTS quotations CASCADE;
 CREATE TABLE quotations (
     id VARCHAR(50) PRIMARY KEY DEFAULT 'quot_' || SUBSTRING(uuid_generate_v4()::text FROM 1 FOR 8),
+    deal_id VARCHAR(50) REFERENCES deals(id) ON DELETE SET NULL,
     lead_id VARCHAR(50) REFERENCES leads(id) ON DELETE SET NULL,
-    customer_id VARCHAR(50) REFERENCES customers(id) ON DELETE SET NULL,
+    customer_id VARCHAR(50) NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
     customer_name VARCHAR(255) NOT NULL,
     machine_type VARCHAR(100) NOT NULL,
     order_type VARCHAR(50) NOT NULL CHECK (order_type IN ('micro', 'small', 'monthly', 'yearly')),
@@ -241,6 +247,7 @@ CREATE TABLE quotations (
     incidental_charges TEXT[],
     other_factors TEXT[],
     total_rent NUMERIC(12, 2) NOT NULL CHECK (total_rent >= 0),
+    total_cost NUMERIC(12, 2) NOT NULL DEFAULT 0 CHECK (total_cost >= 0),
     working_cost NUMERIC(12, 2) CHECK (working_cost >= 0),
     mob_demob_cost NUMERIC(12, 2) CHECK (mob_demob_cost >= 0),
     food_accom_cost NUMERIC(12, 2) CHECK (food_accom_cost >= 0),
@@ -248,11 +255,14 @@ CREATE TABLE quotations (
     risk_adjustment NUMERIC(10, 2) CHECK (risk_adjustment >= 0),
     gst_amount NUMERIC(10, 2) CHECK (gst_amount >= 0),
     version INTEGER NOT NULL DEFAULT 1 CHECK (version > 0),
-    created_by VARCHAR(50) REFERENCES users(uid) ON DELETE SET NULL,
+    created_by VARCHAR(50) NOT NULL REFERENCES users(uid) ON DELETE SET NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'sent', 'accepted', 'rejected')),
     template_id VARCHAR(50) REFERENCES quotation_templates(id) ON DELETE SET NULL,
+    notes TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+    -- Business logic constraints
+    CONSTRAINT quotation_must_have_deal_or_lead CHECK (deal_id IS NOT NULL OR lead_id IS NOT NULL)
 );
 
 -- Create trigger for updated_at and indexes
@@ -260,10 +270,12 @@ CREATE TRIGGER update_quotations_updated_at
 BEFORE UPDATE ON quotations
 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE INDEX idx_quotations_customer_id ON quotations(customer_id);
-CREATE INDEX idx_quotations_lead_id ON quotations(lead_id);
-CREATE INDEX idx_quotations_status ON quotations(status);
-CREATE INDEX idx_quotations_order_type ON quotations(order_type);
+CREATE INDEX IF NOT EXISTS idx_quotations_customer_id ON quotations(customer_id);
+CREATE INDEX IF NOT EXISTS idx_quotations_lead_id ON quotations(lead_id);
+CREATE INDEX IF NOT EXISTS idx_quotations_deal_id ON quotations(deal_id);
+CREATE INDEX IF NOT EXISTS idx_quotations_status ON quotations(status);
+CREATE INDEX IF NOT EXISTS idx_quotations_order_type ON quotations(order_type);
+CREATE INDEX IF NOT EXISTS idx_quotations_created_by ON quotations(created_by);
 
 -- Create quotation machines junction table
 DROP TABLE IF EXISTS quotation_machines CASCADE;
@@ -277,8 +289,8 @@ CREATE TABLE quotation_machines (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_quotation_machines_quotation_id ON quotation_machines(quotation_id);
-CREATE INDEX idx_quotation_machines_equipment_id ON quotation_machines(equipment_id);
+CREATE INDEX IF NOT EXISTS idx_quotation_machines_quotation_id ON quotation_machines(quotation_id);
+CREATE INDEX IF NOT EXISTS idx_quotation_machines_equipment_id ON quotation_machines(equipment_id);
 
 -- ========== JOBS ==========
 
@@ -287,7 +299,7 @@ DROP TABLE IF EXISTS jobs CASCADE;
 CREATE TABLE jobs (
     id VARCHAR(50) PRIMARY KEY DEFAULT 'job_' || SUBSTRING(uuid_generate_v4()::text FROM 1 FOR 8),
     title VARCHAR(255) NOT NULL,
-    customer_id VARCHAR(50) REFERENCES customers(id) ON DELETE SET NULL,
+    customer_id VARCHAR(50) NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
     customer_name VARCHAR(255) NOT NULL,
     deal_id VARCHAR(50) REFERENCES deals(id) ON DELETE SET NULL,
     lead_id VARCHAR(50) REFERENCES leads(id) ON DELETE SET NULL,
@@ -298,7 +310,7 @@ CREATE TABLE jobs (
     actual_end_date TIMESTAMP WITH TIME ZONE,
     location TEXT NOT NULL,
     notes TEXT,
-    created_by VARCHAR(50) REFERENCES users(uid) ON DELETE SET NULL,
+    created_by VARCHAR(50) NOT NULL REFERENCES users(uid) ON DELETE SET NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -308,12 +320,13 @@ CREATE TRIGGER update_jobs_updated_at
 BEFORE UPDATE ON jobs
 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE INDEX idx_jobs_customer_id ON jobs(customer_id);
-CREATE INDEX idx_jobs_deal_id ON jobs(deal_id);
-CREATE INDEX idx_jobs_lead_id ON jobs(lead_id);
-CREATE INDEX idx_jobs_status ON jobs(status);
-CREATE INDEX idx_jobs_scheduled_start_date ON jobs(scheduled_start_date);
-CREATE INDEX idx_jobs_scheduled_end_date ON jobs(scheduled_end_date);
+CREATE INDEX IF NOT EXISTS idx_jobs_customer_id ON jobs(customer_id);
+CREATE INDEX IF NOT EXISTS idx_jobs_deal_id ON jobs(deal_id);
+CREATE INDEX IF NOT EXISTS idx_jobs_lead_id ON jobs(lead_id);
+CREATE INDEX IF NOT EXISTS idx_jobs_created_by ON jobs(created_by);
+CREATE INDEX IF NOT EXISTS idx_jobs_status ON jobs(status);
+CREATE INDEX IF NOT EXISTS idx_jobs_scheduled_start_date ON jobs(scheduled_start_date);
+CREATE INDEX IF NOT EXISTS idx_jobs_scheduled_end_date ON jobs(scheduled_end_date);
 
 -- ========== OPERATORS ==========
 
@@ -338,8 +351,8 @@ CREATE TRIGGER update_operators_updated_at
 BEFORE UPDATE ON operators
 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE INDEX idx_operators_availability ON operators(availability);
-CREATE INDEX idx_operators_user_id ON operators(user_id);
+CREATE INDEX IF NOT EXISTS idx_operators_availability ON operators(availability);
+CREATE INDEX IF NOT EXISTS idx_operators_user_id ON operators(user_id);
 
 -- Create site assessments table
 DROP TABLE IF EXISTS site_assessments CASCADE;
@@ -347,14 +360,14 @@ CREATE TABLE site_assessments (
     id VARCHAR(50) PRIMARY KEY DEFAULT 'sa_' || SUBSTRING(uuid_generate_v4()::text FROM 1 FOR 8),
     title VARCHAR(255) NOT NULL,
     description TEXT NOT NULL,
-    customer_id VARCHAR(50) REFERENCES customers(id) ON DELETE CASCADE,
-    job_id VARCHAR(50),
+    customer_id VARCHAR(50) NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
+    job_id VARCHAR(50) REFERENCES jobs(id) ON DELETE SET NULL,
     location TEXT NOT NULL,
     constraints TEXT[],
     notes TEXT,
     images TEXT[],
     videos TEXT[],
-    created_by VARCHAR(50) REFERENCES users(uid) ON DELETE SET NULL,
+    created_by VARCHAR(50) NOT NULL REFERENCES users(uid) ON DELETE SET NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
@@ -364,13 +377,14 @@ CREATE TRIGGER update_site_assessments_updated_at
 BEFORE UPDATE ON site_assessments
 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE INDEX idx_site_assessments_customer_id ON site_assessments(customer_id);
-CREATE INDEX idx_site_assessments_job_id ON site_assessments(job_id);
+CREATE INDEX IF NOT EXISTS idx_site_assessments_customer_id ON site_assessments(customer_id);
+CREATE INDEX IF NOT EXISTS idx_site_assessments_job_id ON site_assessments(job_id);
+CREATE INDEX IF NOT EXISTS idx_site_assessments_created_by ON site_assessments(created_by);
 
--- Update site_assessments.job_id foreign key
-ALTER TABLE site_assessments 
-ADD CONSTRAINT fk_site_assessments_job_id 
-FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE SET NULL;
+-- Remove duplicate foreign key constraint (already handled in table definition above)
+-- ALTER TABLE site_assessments 
+-- ADD CONSTRAINT fk_site_assessments_job_id 
+-- FOREIGN KEY (job_id) REFERENCES jobs(id) ON DELETE SET NULL;
 
 -- Create job equipment junction table
 DROP TABLE IF EXISTS job_equipment CASCADE;
@@ -382,8 +396,8 @@ CREATE TABLE job_equipment (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_job_equipment_job_id ON job_equipment(job_id);
-CREATE INDEX idx_job_equipment_equipment_id ON job_equipment(equipment_id);
+CREATE INDEX IF NOT EXISTS idx_job_equipment_job_id ON job_equipment(job_id);
+CREATE INDEX IF NOT EXISTS idx_job_equipment_equipment_id ON job_equipment(equipment_id);
 
 -- Create job operators junction table
 DROP TABLE IF EXISTS job_operators CASCADE;
@@ -394,8 +408,8 @@ CREATE TABLE job_operators (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_job_operators_job_id ON job_operators(job_id);
-CREATE INDEX idx_job_operators_operator_id ON job_operators(operator_id);
+CREATE INDEX IF NOT EXISTS idx_job_operators_job_id ON job_operators(job_id);
+CREATE INDEX IF NOT EXISTS idx_job_operators_operator_id ON job_operators(operator_id);
 
 -- ========== SERVICES ==========
 
@@ -417,8 +431,8 @@ CREATE TRIGGER update_services_updated_at
 BEFORE UPDATE ON services
 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
-CREATE INDEX idx_services_category ON services(category);
-CREATE INDEX idx_services_is_active ON services(is_active);
+CREATE INDEX IF NOT EXISTS idx_services_category ON services(category);
+CREATE INDEX IF NOT EXISTS idx_services_is_active ON services(is_active);
 
 -- ========== NOTIFICATIONS ==========
 
@@ -436,9 +450,9 @@ CREATE TABLE notifications (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_notifications_user_id ON notifications(user_id);
-CREATE INDEX idx_notifications_is_read ON notifications(is_read);
-CREATE INDEX idx_notifications_created_at ON notifications(created_at);
+CREATE INDEX IF NOT EXISTS idx_notifications_user_id ON notifications(user_id);
+CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read);
+CREATE INDEX IF NOT EXISTS idx_notifications_created_at ON notifications(created_at);
 
 -- ========== AUDIT LOGS ==========
 
@@ -456,9 +470,9 @@ CREATE TABLE audit_logs (
     created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE INDEX idx_audit_logs_user_id ON audit_logs(user_id);
-CREATE INDEX idx_audit_logs_entity_type_id ON audit_logs(entity_type, entity_id);
-CREATE INDEX idx_audit_logs_created_at ON audit_logs(created_at);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_user_id ON audit_logs(user_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_entity_type_id ON audit_logs(entity_type, entity_id);
+CREATE INDEX IF NOT EXISTS idx_audit_logs_created_at ON audit_logs(created_at);
 
 -- ========== CONFIGURATION ==========
 
@@ -492,8 +506,93 @@ VALUES ('quotation', '{
 ON CONFLICT (name) DO NOTHING;
 
 -- Create indexes for full text search on common search fields
-CREATE INDEX idx_customers_name_trgm ON customers USING gin (name gin_trgm_ops);
-CREATE INDEX idx_customers_email_trgm ON customers USING gin (email gin_trgm_ops);
-CREATE INDEX idx_leads_customer_name_trgm ON leads USING gin (customer_name gin_trgm_ops);
-CREATE INDEX idx_leads_email_trgm ON leads USING gin (email gin_trgm_ops);
-CREATE INDEX idx_equipment_name_trgm ON equipment USING gin (name gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_customers_name_trgm ON customers USING gin (name gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_customers_email_trgm ON customers USING gin (email gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_leads_customer_name_trgm ON leads USING gin (customer_name gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_leads_email_trgm ON leads USING gin (email gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS idx_equipment_name_trgm ON equipment USING gin (name gin_trgm_ops);
+
+-- ========== DATA INTEGRITY CONSTRAINTS ==========
+
+-- Additional business rule constraints
+
+-- Ensure quotations have valid start/end date relationships
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'check_quotation_days_positive' 
+        AND table_name = 'quotations'
+    ) THEN
+        ALTER TABLE quotations ADD CONSTRAINT check_quotation_days_positive 
+        CHECK (number_of_days > 0 AND working_hours > 0);
+    END IF;
+END $$;
+
+-- Ensure jobs have valid date relationships
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'check_job_dates' 
+        AND table_name = 'jobs'
+    ) THEN
+        ALTER TABLE jobs ADD CONSTRAINT check_job_dates 
+        CHECK (scheduled_end_date >= scheduled_start_date);
+    END IF;
+END $$;
+
+-- Ensure jobs have valid actual dates if provided
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'check_job_actual_dates' 
+        AND table_name = 'jobs'
+    ) THEN
+        ALTER TABLE jobs ADD CONSTRAINT check_job_actual_dates 
+        CHECK (actual_end_date IS NULL OR actual_start_date IS NULL OR actual_end_date >= actual_start_date);
+    END IF;
+END $$;
+
+-- Ensure equipment capacity and weight constraints make sense
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'check_equipment_capacity_weight' 
+        AND table_name = 'equipment'
+    ) THEN
+        ALTER TABLE equipment ADD CONSTRAINT check_equipment_capacity_weight 
+        CHECK (max_lifting_capacity > 0 AND unladen_weight > 0);
+    END IF;
+END $$;
+
+-- Ensure deals have realistic probability
+DO $$ 
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.table_constraints 
+        WHERE constraint_name = 'check_deal_probability' 
+        AND table_name = 'deals'
+    ) THEN
+        ALTER TABLE deals ADD CONSTRAINT check_deal_probability 
+        CHECK (probability IS NULL OR (probability >= 0 AND probability <= 100));
+    END IF;
+END $$;
+
+-- Ensure leads have future start dates for new leads
+-- (Commented out as it might be too restrictive for existing data)
+-- ALTER TABLE leads ADD CONSTRAINT check_lead_start_date 
+-- CHECK (status = 'converted' OR start_date >= CURRENT_DATE);
+
+-- Performance optimization indexes
+CREATE INDEX IF NOT EXISTS idx_deals_value ON deals(value);
+CREATE INDEX IF NOT EXISTS idx_quotations_total_cost ON quotations(total_cost);
+CREATE INDEX IF NOT EXISTS idx_equipment_lifting_capacity ON equipment(max_lifting_capacity);
+CREATE INDEX IF NOT EXISTS idx_jobs_dates ON jobs(scheduled_start_date, scheduled_end_date);
+
+-- Additional foreign key performance indexes
+CREATE INDEX IF NOT EXISTS idx_quotation_machines_quotation_equipment ON quotation_machines(quotation_id, equipment_id);
+CREATE INDEX IF NOT EXISTS idx_job_equipment_job_equipment ON job_equipment(job_id, equipment_id);
+CREATE INDEX IF NOT EXISTS idx_job_operators_job_operator ON job_operators(job_id, operator_id);

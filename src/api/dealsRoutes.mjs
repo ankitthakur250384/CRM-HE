@@ -63,6 +63,28 @@ router.get('/:id', authenticateToken, asyncHandler(async (req, res) => {
 }));
 
 /**
+ * GET /deals/search/by-title?title=... - Search deals by title (for quotation creation)
+ */
+router.get('/search/by-title', authenticateToken, asyncHandler(async (req, res) => {
+  const { title } = req.query;
+  
+  if (!title || typeof title !== 'string') {
+    return res.status(400).json({
+      success: false,
+      message: 'Title query parameter is required and must be a string'
+    });
+  }
+  
+  const deals = await dealRepository.findDealsByTitle(title);
+  
+  res.json({
+    success: true,
+    data: deals,
+    count: deals.length
+  });
+}));
+
+/**
  * POST /deals - Create new deal
  */
 router.post('/', authenticateToken, asyncHandler(async (req, res) => {

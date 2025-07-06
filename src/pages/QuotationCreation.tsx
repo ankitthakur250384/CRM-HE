@@ -7,7 +7,6 @@ import {
   Calculator,
   Truck,
   Users,
-  MapPin,
   Clock,
   IndianRupee,
   AlertTriangle,
@@ -21,7 +20,6 @@ import {
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/common/Card';
 import { Button } from '../components/common/Button';
-import { Input } from '../components/common/Input';
 import { FormInput } from '../components/common/FormInput';
 import { Select } from '../components/common/Select';
 import { Toast } from '../components/common/Toast';
@@ -29,12 +27,11 @@ import { RequiredFieldsInfo } from '../components/common/RequiredFieldsInfo';
 import { useAuthStore } from '../store/authStore';
 import { Deal } from '../types/deal';
 import { Equipment, OrderType, CraneCategory, BaseRates } from '../types/equipment';
-import { Quotation, QuotationInputs } from '../types/quotation';
-import type { SundayWorking } from '../types/quotation';
+import { QuotationInputs } from '../types/quotation';
 import { getDealById } from '../services/dealService';
 import { getEquipment, getEquipmentByCategory } from '../services/equipmentService';
 import { createQuotation, updateQuotation, getQuotationById } from '../services/quotationService';
-import { getResourceRatesConfig, getAdditionalParamsConfig, getQuotationConfig } from '../services/configService';
+import { getResourceRatesConfig } from '../services/configService';
 import { formatCurrency } from '../utils/formatters';
 import { useQuotationConfigStore } from '../store/quotationConfigStore';
 
@@ -97,11 +94,6 @@ const INCIDENTAL_OPTIONS = [
 const RIGGER_AMOUNT = 40000;
 const HELPER_AMOUNT = 12000;
 
-const SUNDAY_WORKING_OPTIONS = [
-  { value: 'yes', label: 'Yes' },
-  { value: 'no', label: 'No' }
-];
-
 interface SelectedMachine {
   id: string;
   machineType: string;
@@ -126,18 +118,21 @@ export function QuotationCreation() {
   const [searchParams] = useSearchParams();
   const dealId = searchParams.get('dealId') || '';
   const quotationId = searchParams.get('quotationId');
-  const fresh = searchParams.get('fresh');
 
   const { orderTypeLimits, fetchConfig } = useQuotationConfigStore();
   const [deal, setDeal] = useState<Deal | null>(null);
-  const [equipment, setEquipment] = useState<Equipment[]>([]);
   const [availableEquipment, setAvailableEquipment] = useState<Equipment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedEquipmentBaseRate, setSelectedEquipmentBaseRate] = useState<number>(0);
-  const [resourceRates, setResourceRates] = useState({
-    foodRatePerMonth: 0,
-    accommodationRatePerMonth: 0
+  const [resourceRates, setResourceRates] = useState<{
+    foodRate: number;
+    accommodationRate: number;
+    transportRate?: number;
+  }>({
+    foodRate: 0,
+    accommodationRate: 0,
+    transportRate: 0
   });
 
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({
@@ -311,7 +306,6 @@ export function QuotationCreation() {
       // Fetch equipment data
       const equipmentData = await getEquipment();
       console.log('Fetched equipment data:', equipmentData);
-      setEquipment(equipmentData);
 
       // Fetch resource rates
       const rates = await getResourceRatesConfig();
@@ -541,12 +535,12 @@ export function QuotationCreation() {
     let foodAccomCost;
     if (isMonthly) {
       foodAccomCost = (
-        (Number(formData.foodResources) * resourceRates.foodRatePerMonth) +
-        (Number(formData.accomResources) * resourceRates.accommodationRatePerMonth)
+        (Number(formData.foodResources) * resourceRates.foodRate) +
+        (Number(formData.accomResources) * resourceRates.accommodationRate)
       );
     } else {
-      const foodDailyRate = resourceRates.foodRatePerMonth / 26;
-      const accomDailyRate = resourceRates.accommodationRatePerMonth / 26;
+      const foodDailyRate = resourceRates.foodRate / 26;
+      const accomDailyRate = resourceRates.accommodationRate / 26;
       foodAccomCost = (
         (Number(formData.foodResources) * foodDailyRate +
         Number(formData.accomResources) * accomDailyRate) *
@@ -695,7 +689,8 @@ export function QuotationCreation() {
 
       const quotationData = {
         ...formData,
-        leadId: deal.id,
+        dealId: deal.id,  // Include the deal ID
+        leadId: deal.leadId,  // Include the original lead ID from the deal
         customerId: deal.customerId,
         customerName: deal.customer.name,
         customerContact: {
@@ -733,6 +728,15 @@ export function QuotationCreation() {
         showToast('Quotation updated successfully', 'success');
       } else {
         // Create new quotation
+        console.log('🔍 Creating quotation with data:', {
+          ...quotationData,
+          selectedMachines: quotationData.selectedMachines?.map(m => ({
+            id: m.id,
+            name: m.name,
+            quantity: m.quantity,
+            baseRate: m.baseRate
+          })) || []
+        });
         savedQuotation = await createQuotation(quotationData);
         showToast('Quotation created successfully', 'success');
       }
@@ -740,7 +744,12 @@ export function QuotationCreation() {
       console.log('Saved quotation:', savedQuotation);
       navigate('/quotations');
     } catch (error) {
-      console.error('Error saving quotation:', error);
+      console.error('❌ Error saving quotation:', error);
+      console.error('❌ Error details:', {
+        message: (error as any)?.message,
+        response: (error as any)?.response?.data || (error as any)?.response,
+        status: (error as any)?.response?.status
+      });
       showToast('Error saving quotation', 'error');
     } finally {
       setIsSaving(false);
@@ -758,7 +767,7 @@ export function QuotationCreation() {
 
   const handleEquipmentSelect = (equipmentId: string) => {
     const selected = availableEquipment.find(eq => eq.id === equipmentId);
-    if (selected) {
+    if (selected && selected.baseRates) {
       const baseRate = selected.baseRates[formData.orderType];
       setSelectedEquipmentBaseRate(baseRate);
       
@@ -822,8 +831,8 @@ export function QuotationCreation() {
       machineType: formData.machineType,
       equipmentId: selected.equipmentId,
       name: selected.name,
-      baseRates: selected.baseRates,
-      baseRate: selected.baseRates[formData.orderType],
+      baseRates: selected.baseRates || {},
+      baseRate: selected.baseRates?.[formData.orderType] || 0,
       runningCostPerKm: selected.runningCostPerKm || 0,
       quantity: 1
     };
@@ -1029,7 +1038,7 @@ export function QuotationCreation() {
                           if (orderTypeChanged) {
                             updatedMachines = prev.selectedMachines.map(machine => ({
                               ...machine,
-                              baseRate: machine.baseRates[newOrderType] || machine.baseRate
+                              baseRate: machine.baseRates?.[newOrderType] || machine.baseRate
                             }));
                           }
                           
@@ -1242,7 +1251,7 @@ export function QuotationCreation() {
                               { value: '', label: 'Select equipment...' },
                               ...availableEquipment.map(eq => ({
                                 value: eq.id,
-                                label: `${eq.equipmentId} - ${eq.name} (${formatCurrency(eq.baseRates[formData.orderType])}${formData.orderType === 'monthly' ? '/month' : '/hr'})`,
+                                label: `${eq.equipmentId} - ${eq.name} (${formatCurrency(eq.baseRates?.[formData.orderType] || 0)}${formData.orderType === 'monthly' ? '/month' : '/hr'})`,
                               }))
                             ]}
                             value={formData.selectedEquipment.id}

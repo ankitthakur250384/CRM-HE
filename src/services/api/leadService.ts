@@ -52,7 +52,7 @@ export const createLead = async (lead: Omit<Lead, 'id' | 'createdAt' | 'updatedA
  */
 export const updateLeadStatus = async (id: string, status: LeadStatus): Promise<Lead | null> => {
   try {
-    const response = await api.put<Lead>(`/leads/${id}/status`, { status });
+    const response = await api.patch<Lead>(`/leads/${id}/status`, { status });
     return response;
   } catch (error: any) {
     console.error(`Failed to update lead ${id} status:`, error);
@@ -69,7 +69,7 @@ export const updateLeadAssignment = async (
   salesAgentName: string
 ): Promise<Lead | null> => {
   try {
-    const response = await api.put<Lead>(`/leads/${leadId}/assign`, { 
+    const response = await api.patch<Lead>(`/leads/${leadId}/assign`, { 
       salesAgentId, 
       salesAgentName 
     });

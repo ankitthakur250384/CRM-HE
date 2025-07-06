@@ -68,7 +68,7 @@ export const updateDeal = async (
  */
 export const updateDealStage = async (id: string, stage: DealStage): Promise<Deal | null> => {
   try {
-    const response = await api.put<Deal>(`/deals/${id}/stage`, { stage });
+    const response = await api.patch<Deal>(`/deals/${id}/stage`, { stage });
     return response;
   } catch (error: any) {
     console.error(`Failed to update deal ${id} stage:`, error);

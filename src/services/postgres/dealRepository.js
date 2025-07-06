@@ -294,6 +294,138 @@ export const getDealById = async (id) => {
 };
 
 /**
+ * Find deals by title (for quotation creation - allows lookup by deal name)
+ */
+export const findDealsByTitle = async (title) => {
+  try {
+    if (!title || typeof title !== 'string') {
+      throw new Error('Invalid deal title provided');
+    }
+    
+    // Use ILIKE for case-insensitive partial matching
+    const result = await query(`
+      SELECT d.*, 
+             c.name as customer_name, 
+             c.email as customer_email,
+             c.phone as customer_phone,
+             c.company_name as customer_company,
+             c.address as customer_address,
+             c.designation as customer_designation,
+             u1.display_name as assigned_to_name,
+             u2.display_name as created_by_name
+      FROM deals d
+      LEFT JOIN customers c ON d.customer_id = c.id
+      LEFT JOIN users u1 ON d.assigned_to = u1.uid
+      LEFT JOIN users u2 ON d.created_by = u2.uid
+      WHERE d.title ILIKE $1
+      ORDER BY 
+        CASE WHEN d.title = $2 THEN 1 ELSE 2 END,  -- Exact matches first
+        d.created_at DESC
+    `, [`%${title}%`, title]);
+    
+    // Map database fields to frontend model
+    const deals = result.rows.map(row => ({
+      id: row.id,
+      title: row.title,
+      description: row.description || '',
+      value: typeof row.value === 'number' ? row.value : parseFloat(row.value),
+      probability: typeof row.probability === 'number' ? row.probability : parseFloat(row.probability || 0),
+      stage: row.stage,
+      leadId: row.lead_id,
+      customerId: row.customer_id,
+      customer: {
+        name: row.customer_name || 'Unknown Customer',
+        email: row.customer_email || '',
+        phone: row.customer_phone || '',
+        company: row.customer_company || '',
+        address: row.customer_address || '',
+        designation: row.customer_designation || ''
+      },
+      expectedCloseDate: row.expected_close_date,
+      createdBy: row.created_by,
+      assignedTo: row.assigned_to || '',
+      assignedToName: row.assigned_to_name || '',
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      notes: row.notes || ''
+    }));
+    
+    return deals;
+  } catch (error) {
+    console.error(`Error finding deals by title "${title}":`, error);
+    throw error;
+  }
+};
+
+/**
+ * Get a deal by exact title (returns the first exact match)
+ */
+export const getDealByTitle = async (title) => {
+  try {
+    if (!title || typeof title !== 'string') {
+      throw new Error('Invalid deal title provided');
+    }
+    
+    const result = await query(`
+      SELECT d.*, 
+             c.name as customer_name, 
+             c.email as customer_email,
+             c.phone as customer_phone,
+             c.company_name as customer_company,
+             c.address as customer_address,
+             c.designation as customer_designation,
+             u1.display_name as assigned_to_name,
+             u2.display_name as created_by_name
+      FROM deals d
+      LEFT JOIN customers c ON d.customer_id = c.id
+      LEFT JOIN users u1 ON d.assigned_to = u1.uid
+      LEFT JOIN users u2 ON d.created_by = u2.uid
+      WHERE d.title = $1
+      ORDER BY d.created_at DESC
+      LIMIT 1
+    `, [title]);
+    
+    if (result.rows.length === 0) {
+      return null;
+    }
+    
+    const row = result.rows[0];
+    
+    // Map database fields to frontend model
+    const deal = {
+      id: row.id,
+      title: row.title,
+      description: row.description || '',
+      value: typeof row.value === 'number' ? row.value : parseFloat(row.value),
+      probability: typeof row.probability === 'number' ? row.probability : parseFloat(row.probability || 0),
+      stage: row.stage,
+      leadId: row.lead_id,
+      customerId: row.customer_id,
+      customer: {
+        name: row.customer_name || 'Unknown Customer',
+        email: row.customer_email || '',
+        phone: row.customer_phone || '',
+        company: row.customer_company || '',
+        address: row.customer_address || '',
+        designation: row.customer_designation || ''
+      },
+      expectedCloseDate: row.expected_close_date,
+      createdBy: row.created_by,
+      assignedTo: row.assigned_to || '',
+      assignedToName: row.assigned_to_name || '',
+      createdAt: row.created_at,
+      updatedAt: row.updated_at,
+      notes: row.notes || ''
+    };
+    
+    return deal;
+  } catch (error) {
+    console.error(`Error getting deal by title "${title}":`, error);
+    throw error;
+  }
+};
+
+/**
  * Update a deal in the database
  */
 export const updateDeal = async (id, dealData) => {

@@ -55,7 +55,8 @@ export interface SelectedMachine {
 
 export interface Quotation extends QuotationInputs {
   id: string;
-  leadId: string;
+  dealId?: string;  // Add dealId to support quotations from deals
+  leadId?: string;  // Make leadId optional since we might have quotations from deals instead
   customerId: string;
   customerName: string;
   customerContact: CustomerContact;

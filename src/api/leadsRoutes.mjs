@@ -139,14 +139,12 @@ router.patch('/:id/status', authenticateToken, asyncHandler(async (req, res) => 
 router.patch('/:id/assign', authenticateToken, asyncHandler(async (req, res) => {
   const { salesAgentId, salesAgentName } = req.body;
   
-  if (!salesAgentId) {
-    return res.status(400).json({ message: 'Sales agent ID is required' });
-  }
+  // Allow empty salesAgentId for unassignment (will be converted to null in repository)
   
   const lead = await leadRepository.updateLeadAssignment(
     req.params.id, 
-    salesAgentId, 
-    salesAgentName || 'Unknown Agent'
+    salesAgentId || '', // Pass empty string which will be handled in repository
+    salesAgentName || 'Unassigned'
   );
   
   if (!lead) {

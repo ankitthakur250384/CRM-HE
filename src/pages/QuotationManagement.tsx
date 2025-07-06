@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { 
   Plus, 
   Search, 
@@ -7,17 +7,8 @@ import {
   Send,
   Eye,
   Edit2,
-  Trash2,
   FileText,
-  IndianRupee,
-  Calendar,
-  User,
-  Building2,
   X,
-  Clock,
-  MapPin,
-  Truck,
-  Settings,
   RefreshCw
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
@@ -60,7 +51,6 @@ export function QuotationManagement() {
   const [selectedQuotation, setSelectedQuotation] = useState<Quotation | null>(null);
   const [defaultTemplate, setDefaultTemplate] = useState<Template | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  const [isDetailsOpen, setIsDetailsOpen] = useState(false);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [selectedDealId, setSelectedDealId] = useState<string>('');
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
@@ -262,16 +252,18 @@ export function QuotationManagement() {
     }
   };
 
-  const filterQuotations = () => {    let filtered = [...quotations];
+  const filterQuotations = () => {
+    let filtered = [...quotations];
 
     if (searchTerm) {
       filtered = filtered.filter(quotation =>
         (quotation.customerContact?.name || quotation.customerName || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (quotation.customerContact?.company || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
-        (quotation.selectedEquipment?.name || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (quotation.machineType || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
         (quotation.selectedMachines && quotation.selectedMachines.some(m => 
           (m.name || '').toLowerCase().includes(searchTerm.toLowerCase())
-        ))
+        )) ||
+        (quotation.selectedEquipment?.name || '').toLowerCase().includes(searchTerm.toLowerCase())
       );
     }
 
@@ -404,13 +396,19 @@ export function QuotationManagement() {
       // Use the template merger utility
       const content = mergeQuotationWithTemplate(quotation, defaultTemplate);
       
-      // Create mailto link with the quotation content      // Create a more descriptive equipment text based on whether we have multiple machines      // Safely get equipment description
-      let equipmentDescription = quotation.selectedEquipment?.name || 'Selected Equipment';
+      // Create mailto link with the quotation content
+      // Create a more descriptive equipment text based on whether we have multiple machines
+      // Safely get equipment description
+      let equipmentDescription = 'Equipment';
       
       if (quotation.selectedMachines && quotation.selectedMachines.length > 1) {
         equipmentDescription = `${quotation.selectedMachines.length} machines (${quotation.selectedMachines.map(m => m.name).join(', ')})`;
       } else if (quotation.selectedMachines && quotation.selectedMachines.length === 1) {
         equipmentDescription = quotation.selectedMachines[0].name;
+      } else if (quotation.selectedEquipment?.name) {
+        equipmentDescription = quotation.selectedEquipment.name;
+      } else if (quotation.machineType) {
+        equipmentDescription = quotation.machineType;
       }
       
       const subject = `Quotation from ASP Cranes - ${quotation.id.slice(0, 8).toUpperCase()}`;
@@ -550,7 +548,7 @@ ASP Cranes Team`;
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
                     {filteredQuotations.map((quotation) => (
-                      <tr key={quotation.id} className="hover:bg-gray-50">                        <td className="px-2 sm:px-6 py-3 sm:py-4">
+                      <tr key={quotation.id} className="hover:bg-gray-50"><td className="px-2 sm:px-6 py-3 sm:py-4">
                           <div className="flex items-start flex-col">
                             <div className="text-xs sm:text-sm font-medium text-gray-900">
                               {quotation.customerContact?.name || quotation.customerName || 'Customer'}
@@ -563,9 +561,11 @@ ASP Cranes Team`;
                             </div>
                             {/* Mobile-only equipment info */}
                             <div className="text-xs text-gray-500 sm:hidden mt-1">
-                              {quotation.selectedEquipment?.name || 
-                               (quotation.selectedMachines && quotation.selectedMachines.length > 0 ? 
-                                `${quotation.selectedMachines.length} machine(s)` : 'No equipment')}
+                              {quotation.selectedMachines && quotation.selectedMachines.length > 0
+                                ? quotation.selectedMachines.length === 1 
+                                  ? quotation.selectedMachines[0].name
+                                  : `${quotation.selectedMachines.length} machines`
+                                : quotation.selectedEquipment?.name || quotation.machineType || 'No equipment data'}
                             </div>
                             {/* Mobile-only total info */}
                             <div className="text-xs font-medium text-gray-800 sm:hidden mt-1">
@@ -583,15 +583,20 @@ ASP Cranes Team`;
                                 {quotation.selectedMachines.length} machine{quotation.selectedMachines.length > 1 ? 's' : ''}
                               </div>
                             </>
-                          ) : quotation.selectedEquipment && quotation.selectedEquipment.name ? (
+                          ) : quotation.selectedEquipment?.name ? (
                             <>
                               <div className="text-xs sm:text-sm text-gray-900">{quotation.selectedEquipment.name}</div>
-                              <div className="text-xs sm:text-sm text-gray-500">{quotation.machineType || 'Standard'}</div>
+                              <div className="text-xs sm:text-sm text-gray-500">Equipment</div>
+                            </>
+                          ) : quotation.machineType ? (
+                            <>
+                              <div className="text-xs sm:text-sm text-gray-900">{quotation.machineType}</div>
+                              <div className="text-xs sm:text-sm text-gray-500">Equipment Type</div>
                             </>
                           ) : (
                             <>
                               <div className="text-xs sm:text-sm text-gray-500">No equipment data</div>
-                              <div className="text-xs sm:text-sm text-gray-400">{quotation.machineType || 'Type not specified'}</div>
+                              <div className="text-xs sm:text-sm text-gray-400">Type not specified</div>
                             </>
                           )}
                         </td>

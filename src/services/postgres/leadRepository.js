@@ -428,3 +428,83 @@ export const findOrCreateCustomerForLead = async (leadData, client) => {
     };
   }
 };
+
+/**
+ * Update a lead's assignment in the database
+ * Updates the 'assigned_to' field in the 'leads' table
+ */
+export const updateLeadAssignment = async (leadId, salesAgentId, salesAgentName) => {
+  try {
+    if (!leadId) {
+      throw new Error('Invalid lead ID provided');
+    }
+    
+    // Validate assigned_to field - ensure it's either null or a valid user ID
+    let validAssignedTo = null;
+    if (salesAgentId && salesAgentId.trim() !== '') {
+      const userCheck = await query('SELECT uid FROM users WHERE uid = $1', [salesAgentId]);
+      if (userCheck.rows.length > 0) {
+        validAssignedTo = salesAgentId;
+        console.log(`✅ Valid assignedTo user found: ${salesAgentId}`);
+      } else {
+        console.warn(`⚠️ Invalid assignedTo user ID: ${salesAgentId}, setting to null`);
+        validAssignedTo = null;
+      }
+    }
+    
+    // Log whether we're assigning or unassigning
+    const actionType = validAssignedTo === null ? 'Unassigning' : 'Assigning';
+    console.log(`${actionType} lead ${leadId} ${validAssignedTo === null ? '' : `to ${salesAgentName}`}`);
+    
+    const result = await query(
+      'UPDATE leads SET assigned_to = $1 WHERE id = $2 RETURNING *',
+      [validAssignedTo, leadId]
+    );
+    
+    if (result.rows.length === 0) {
+      console.warn(`Lead ${leadId} not found when updating assignment`);
+      return null;
+    }
+    
+    const updatedLead = result.rows[0];
+    
+    // Get the assigned user's name if needed
+    let assignedToName = '';
+    if (updatedLead.assigned_to) {
+      const userResult = await query('SELECT display_name FROM users WHERE uid = $1', [updatedLead.assigned_to]);
+      if (userResult.rows.length > 0) {
+        assignedToName = userResult.rows[0].display_name;
+      }
+    }
+    
+    // Map database fields to frontend model
+    const mappedLead = {
+      id: updatedLead.id,
+      customerId: updatedLead.customer_id,
+      customerName: updatedLead.customer_name,
+      companyName: updatedLead.company_name,
+      email: updatedLead.email,
+      phone: updatedLead.phone,
+      serviceNeeded: updatedLead.service_needed,
+      siteLocation: updatedLead.site_location,
+      startDate: updatedLead.start_date,
+      rentalDays: updatedLead.rental_days,
+      shiftTiming: updatedLead.shift_timing,
+      status: updatedLead.status,
+      source: updatedLead.source,
+      assignedTo: updatedLead.assigned_to || '',
+      assignedToName: assignedToName || salesAgentName, // Use the provided name for display
+      designation: updatedLead.designation,
+      createdAt: updatedLead.created_at,
+      updatedAt: updatedLead.updated_at,
+      files: updatedLead.files ? JSON.parse(updatedLead.files) : null,
+      notes: updatedLead.notes
+    };
+    
+    console.log(`Lead ${leadId} assignment updated successfully`);
+    return mappedLead;
+  } catch (error) {
+    console.error(`Error updating lead ${leadId} assignment:`, error);
+    throw error;
+  }
+};

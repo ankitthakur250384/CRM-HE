@@ -203,8 +203,16 @@ export const apiCall = async <T = any>(endpoint: string, options: ApiOptions = {
       throw new Error(`${errorMessage} (${endpoint})`);
     }
     
-    // Return successful response
-    return response.json() as Promise<T>;
+    // Return successful response - handle both wrapped and direct responses
+    const jsonResponse = await response.json();
+    
+    // Check if the response is wrapped in a success/data structure
+    if (jsonResponse && typeof jsonResponse === 'object' && 'success' in jsonResponse && 'data' in jsonResponse) {
+      return jsonResponse.data as T;
+    }
+    
+    // Otherwise return the response directly
+    return jsonResponse as T;
   } catch (error) {
     console.error(`API call failed: ${endpoint}`, error);
     throw error;
@@ -225,6 +233,12 @@ export const api = {
   put: <T = any>(endpoint: string, data: any) => 
     apiCall<T>(endpoint, { 
       method: 'PUT', 
+      body: JSON.stringify(data) 
+    }),
+    
+  patch: <T = any>(endpoint: string, data: any) => 
+    apiCall<T>(endpoint, { 
+      method: 'PATCH', 
       body: JSON.stringify(data) 
     }),
     

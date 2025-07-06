@@ -35,9 +35,17 @@ const asyncHandler = (fn) => (req, res, next) => {
   });
 };
 
-// GET all equipment
+// GET all equipment (with optional category filter)
 router.get('/', authenticateToken, asyncHandler(async (req, res) => {
-  const equipment = await equipmentRepository.getAllEquipment();
+  const { category } = req.query;
+  
+  let equipment;
+  if (category) {
+    equipment = await equipmentRepository.getEquipmentByType(category);
+  } else {
+    equipment = await equipmentRepository.getAllEquipment();
+  }
+  
   res.json({
     success: true,
     data: equipment
@@ -63,8 +71,15 @@ router.get('/:id', authenticateToken, asyncHandler(async (req, res) => {
 
 // CREATE equipment
 router.post('/', authenticateToken, asyncHandler(async (req, res) => {
-  // Validate required fields
-  const requiredFields = ['name', 'type'];
+  // Validate required fields according to schema
+  const requiredFields = [
+    'name', 
+    'category', 
+    'manufacturingDate', 
+    'registrationDate', 
+    'maxLiftingCapacity', 
+    'unladenWeight'
+  ];
   const missingFields = requiredFields.filter(field => !req.body[field]);
   
   if (missingFields.length > 0) {
@@ -72,6 +87,54 @@ router.post('/', authenticateToken, asyncHandler(async (req, res) => {
       success: false,
       message: 'Missing required fields',
       fields: missingFields
+    });
+  }
+
+  // Validate date formats (should be YYYY-MM or YYYY-MM-DD)
+  const dateFields = ['manufacturingDate', 'registrationDate'];
+  const invalidDates = [];
+  
+  dateFields.forEach(field => {
+    const dateValue = req.body[field];
+    if (dateValue && !/^\d{4}-\d{2}(-\d{2})?$/.test(dateValue)) {
+      invalidDates.push(field);
+    }
+  });
+  
+  if (invalidDates.length > 0) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid date format. Expected YYYY-MM or YYYY-MM-DD format',
+      fields: invalidDates
+    });
+  }
+
+  // Validate category values
+  const validCategories = ['mobile_crane', 'tower_crane', 'crawler_crane', 'pick_and_carry_crane'];
+  if (!validCategories.includes(req.body.category)) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid category',
+      validCategories: validCategories
+    });
+  }
+
+  // Validate numeric fields
+  const numericFields = ['maxLiftingCapacity', 'unladenWeight'];
+  const invalidNumbers = [];
+  
+  numericFields.forEach(field => {
+    const value = req.body[field];
+    if (value !== undefined && (isNaN(value) || value <= 0)) {
+      invalidNumbers.push(field);
+    }
+  });
+  
+  if (invalidNumbers.length > 0) {
+    return res.status(400).json({
+      success: false,
+      message: 'Invalid numeric values. Must be positive numbers',
+      fields: invalidNumbers
     });
   }
   
