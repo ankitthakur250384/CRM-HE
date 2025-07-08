@@ -21,6 +21,7 @@ import quotationRoutes from './api/quotationRoutes.mjs';
 import customerRoutes from './api/customerRoutes.mjs';
 import equipmentRoutes from './api/equipmentRoutes.mjs';
 import configRoutes from './api/configRoutes.mjs';
+import userRoutes from './api/userRoutes.mjs';
 
 // Load environment variables
 dotenv.config();
@@ -93,7 +94,8 @@ app.get('/api', (req, res) => {
       quotations: '/api/quotations',
       customers: '/api/customers',
       equipment: '/api/equipment',
-      config: '/api/config'
+      config: '/api/config',
+      users: '/api/users'
     }
   });
 });
@@ -120,6 +122,7 @@ app.use('/api/quotations', quotationRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/equipment', equipmentRoutes);
 app.use('/api/config', configRoutes);
+app.use('/api/users', userRoutes);
 
 // Root route
 app.get('/', (req, res) => {
