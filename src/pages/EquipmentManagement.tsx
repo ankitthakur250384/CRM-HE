@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit2, Trash2, Settings, Calendar, Weight, Plane as Crane, IndianRupee, Truck, AlertTriangle } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, Calendar, Weight, Plane as Crane, Truck, AlertTriangle } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { FormInput } from '../components/common/FormInput';
@@ -420,7 +420,7 @@ export function EquipmentManagement() {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Specifications
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sm:px-6">
                       Rates
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -459,18 +459,33 @@ export function EquipmentManagement() {
                       </td>
                       <td className="px-6 py-4">
                         <div className="text-sm space-y-2">
+                        <div className="flex items-center gap-2">
+                          <Calendar className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                          <span className="text-gray-900">
+                            Mfg: {item.manufacturingDate || 'N/A'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Weight className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                          <span className="text-gray-900">
+                            {item.maxLiftingCapacity ? `${item.maxLiftingCapacity} tons max lift` : 'N/A'}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Truck className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                          <span className="text-gray-900">
+                            {item.unladenWeight ? `${item.unladenWeight} tons unladen` : 'N/A'}
+                          </span>
+                        </div>
+                        {item.registrationDate && (
                           <div className="flex items-center gap-2">
-                            <Calendar className="h-4 w-4 text-gray-400" />
-                            <span>Mfg: {item.manufacturingDate}</span>
+                            <Calendar className="h-4 w-4 text-gray-400 flex-shrink-0" />
+                            <span className="text-gray-900">
+                              Reg: {item.registrationDate}
+                            </span>
                           </div>
-                          <div className="flex items-center gap-2">
-                            <Weight className="h-4 w-4 text-gray-400" />
-                            <span>{item.maxLiftingCapacity} tons max lift</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Crane className="h-4 w-4 text-gray-400" />
-                            <span>{item.unladenWeight} tons unladen</span>
-                          </div>
+                        )}
+
                         </div>
                       </td>
                       <td className="px-6 py-4 min-w-[300px]">

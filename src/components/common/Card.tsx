@@ -98,12 +98,14 @@ const CardHeader = memo(React.forwardRef<HTMLDivElement, React.HTMLAttributes<HT
 CardHeader.displayName = 'CardHeader';
 
 // Enhanced CardTitle with gradient text support
-const CardTitle = memo(React.forwardRef<HTMLHeadingElement, React.HTMLAttributes<HTMLHeadingElement> & {
+interface CardTitleProps extends React.ComponentPropsWithoutRef<'h2'> {
   gradient?: boolean;
   level?: 1 | 2 | 3 | 4 | 5 | 6;
-}>(
+}
+
+const CardTitle = memo(React.forwardRef<HTMLHeadingElement, CardTitleProps>(
   ({ className = '', gradient = false, level = 2, children, ...props }, ref) => {
-    const Component = `h${level}` as keyof JSX.IntrinsicElements;
+    const Component = `h${level}` as any;
     const gradientClasses = gradient ? 'bg-gradient-to-r from-brand-blue to-brand-blue/80 bg-clip-text text-transparent' : '';
     
     return (

@@ -1,17 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Calendar as CalendarIcon,
   ChevronLeft,
   ChevronRight,
-  Clock,
-  MapPin,
   Plus,
-  Truck,
-  User,
-  X
 } from 'lucide-react';
 import { format, addDays, startOfWeek, endOfWeek, eachDayOfInterval, addHours, isSameDay, isWithinInterval } from 'date-fns';
-import { Card, CardHeader, CardTitle, CardContent } from '../components/common/Card';
+import { Card, CardContent } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { Input } from '../components/common/Input';
 import { Select } from '../components/common/Select';
@@ -27,7 +21,6 @@ import { getQuotationsForLead } from '../services/quotationService';
 import { Job, Equipment, Operator } from '../types/job';
 import { Lead } from '../types/lead';
 import { Deal } from '../types/deal';
-import { Quotation } from '../types/quotation';
 import { useLocation, useNavigate } from 'react-router-dom';
 
 const TIME_SLOTS = Array.from({ length: 15 }, (_, i) => addHours(new Date().setHours(6, 0, 0, 0), i));
@@ -295,16 +288,19 @@ export function JobScheduling() {
       }
 
       const newJob = await createJob({
+        title: 'Scheduled Job',
         leadId: formData.leadId,
+        customerId: lead?.customerId || '',
         customerName,
-        equipmentId: formData.equipmentId,
-        operatorId: formData.operatorId,
-        startDate: formData.startDate,
-        endDate: formData.endDate,
+        equipmentIds: [formData.equipmentId],
+        operatorIds: [formData.operatorId],
+        scheduledStartDate: formData.startDate,
+        scheduledEndDate: formData.endDate,
         location: formData.location,
         status: 'scheduled',
         notes: formData.notes,
-        dealId: wonDealId || undefined, // Link job to deal if it was created from a won deal
+        dealId: wonDealId || undefined,
+        createdBy: user?.id || '',
       });
 
       setJobs(prev => [...prev, newJob]);
@@ -355,13 +351,13 @@ export function JobScheduling() {
 
   const checkAvailability = (equipmentId: string, operatorId: string, startDate: string, endDate: string) => {
     const conflictingJobs = jobs.filter(job => {
-      const jobStart = new Date(job.startDate);
-      const jobEnd = new Date(job.endDate);
+      const jobStart = new Date(job.scheduledStartDate);
+      const jobEnd = new Date(job.scheduledEndDate);
       const newStart = new Date(startDate);
       const newEnd = new Date(endDate);
 
       return (
-        (job.equipmentId === equipmentId || job.operatorId === operatorId) &&
+        (job.equipmentIds.includes(equipmentId) || job.operatorIds.includes(operatorId)) &&
         job.status !== 'completed' &&
         job.status !== 'cancelled' &&
         ((newStart >= jobStart && newStart < jobEnd) ||
@@ -415,8 +411,8 @@ export function JobScheduling() {
                     // const currentSlotEnd = addHours(currentSlotStart, 1);
 
                     const slotJobs = jobs.filter(job => {
-                      const jobStart = new Date(job.startDate);
-                      const jobEnd = new Date(job.endDate);
+                      const jobStart = new Date(job.scheduledStartDate);
+                      const jobEnd = new Date(job.scheduledEndDate);
                       return (
                         isSameDay(currentSlotStart, jobStart) &&
                         isWithinInterval(currentSlotStart, { start: jobStart, end: jobEnd })
@@ -458,7 +454,8 @@ export function JobScheduling() {
                               <StatusBadge status={job.status as any} className="ml-2" />
                             </div>
                             <div className="text-xs text-gray-500 mt-1">
-                              {format(new Date(job.startDate), 'h:mm a')} - {format(new Date(job.endDate), 'h:mm a')}
+                              {/* Use scheduledStartDate and scheduledEndDate for display */}
+                              {format(new Date(job.scheduledStartDate), 'h:mm a')} - {format(new Date(job.scheduledEndDate), 'h:mm a')}
                             </div>
                           </div>
                         ))}
@@ -753,9 +750,10 @@ export function JobScheduling() {
                   <div className="text-error-600">
                     <p>Conflicts found:</p>
                     <ul className="list-disc list-inside text-sm">
+                      {/* Use equipmentIds and operatorIds for conflict display */}
                       {conflicts.map(conflict => (
                         <li key={conflict.id}>
-                          {conflict.customerName} - {format(new Date(conflict.startDate), 'MMM d, h:mm a')}
+                          {conflict.customerName} - {format(new Date(conflict.scheduledStartDate), 'MMM d, h:mm a')}
                         </li>
                       ))}
                     </ul>
@@ -815,28 +813,31 @@ export function JobScheduling() {
               <div>
                 <h4 className="text-sm font-medium text-gray-500">Equipment</h4>
                 <p className="mt-1">
-                  {equipment.find(e => e.id === selectedJob.equipmentId)?.name}
+                  {/* Use equipmentIds and operatorIds for display */}
+                  {equipment.find(e => selectedJob.equipmentIds.includes(e.id))?.name}
                 </p>
               </div>
 
               <div>
                 <h4 className="text-sm font-medium text-gray-500">Operator</h4>
                 <p className="mt-1">
-                  {operators.find(o => o.id === selectedJob.operatorId)?.name}
+                  {operators.find(o => selectedJob.operatorIds.includes(o.id))?.name}
                 </p>
               </div>
 
               <div>
                 <h4 className="text-sm font-medium text-gray-500">Start Date</h4>
                 <p className="mt-1">
-                  {format(new Date(selectedJob.startDate), 'MMM d, yyyy h:mm a')}
+                  {/* Use scheduledStartDate and scheduledEndDate for display */}
+                  {format(new Date(selectedJob.scheduledStartDate), 'MMM d, yyyy h:mm a')}
                 </p>
               </div>
 
               <div>
                 <h4 className="text-sm font-medium text-gray-500">End Date</h4>
                 <p className="mt-1">
-                  {format(new Date(selectedJob.endDate), 'MMM d, yyyy h:mm a')}
+                  {/* Use scheduledStartDate and scheduledEndDate for display */}
+                  {format(new Date(selectedJob.scheduledEndDate), 'MMM d, yyyy h:mm a')}
                 </p>
               </div>
 

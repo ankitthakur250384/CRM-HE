@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import userService, { User, CreateUserData } from '../../services/userService';
+import userService, { CreateUserData } from '../../services/userService';
 
 interface SimpleUserFormProps {
   onSuccess: () => void;

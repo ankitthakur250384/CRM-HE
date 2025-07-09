@@ -7,13 +7,11 @@ import {
   Mail, 
   Phone, 
   MapPin,
-  Building2,
-  Users
+  Building2
 } from 'lucide-react';
-import { Card, CardHeader, CardTitle, CardContent } from '../components/common/Card';
+import { Card, CardContent } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { FormInput } from '../components/common/FormInput';
-import { TextArea } from '../components/common/TextArea';
 import { Modal } from '../components/common/Modal';
 import { Toast } from '../components/common/Toast';
 import { Badge } from '../components/common/Badge';
@@ -26,8 +24,6 @@ import {
   updateCustomer,
   deleteCustomer,
   getContactsByCustomer,
-  createContact,
-  updateContact,
   deleteContact
 } from '../services/customerService';
 

@@ -1279,6 +1279,7 @@ export function QuotationCreation() {
                           </svg>}
                           disabled={!formData.machineType || !formData.selectedEquipment.id}
                           className="w-full"
+                          size="default"
                         >
                           {formData.selectedMachines.length === 0 ? 'Add Machine to Quotation' : 'Add Another Machine'}
                         </Button>
@@ -1883,7 +1884,7 @@ export function QuotationCreation() {
                   variant="outline"
                   onClick={() => navigate('/quotations')}
                   className="sm:flex-1 order-2 sm:order-1"
-                  size="md"
+                  size="default"
                 >
                   Cancel
                 </Button>
@@ -1893,7 +1894,7 @@ export function QuotationCreation() {
                     disabled={isSaving || (formData.selectedMachines.length === 0 && !formData.selectedEquipment.id)}
                     className="w-full bg-primary-600 hover:bg-primary-700"
                     leftIcon={isSaving ? <Clock className="animate-spin" /> : <Save />}
-                    size="md"
+                    size="default"
                     variant="accent"
                   >
                     {isSaving ? 'Saving...' : quotationId ? 'Update Quotation' : 'Create Quotation'}
