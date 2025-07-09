@@ -1,82 +1,175 @@
-import React from 'react';
+import React, { memo } from 'react';
+import { cva, type VariantProps } from 'class-variance-authority';
+import { Loader2 } from 'lucide-react';
 
-interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'default' | 'outline' | 'ghost' | 'destructive';
-  size?: 'xs' | 'sm' | 'md' | 'lg';
+const buttonVariants = cva(
+  'inline-flex items-center justify-center font-medium transition-all duration-300 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none relative overflow-hidden',
+  {
+    variants: {
+      variant: {
+        default: 'bg-gradient-to-r from-brand-blue to-brand-blue/90 text-white shadow-lg hover:shadow-xl hover:shadow-brand-blue/25 hover:scale-[1.02] focus:ring-brand-blue/30 active:scale-[0.98]',
+        destructive: 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg hover:shadow-xl hover:shadow-red-500/25 hover:scale-[1.02] focus:ring-red-500/30 active:scale-[0.98]',
+        outline: 'border-2 border-brand-blue text-brand-blue bg-transparent hover:bg-brand-blue hover:text-white hover:scale-[1.02] focus:ring-brand-blue/30 active:scale-[0.98]',
+        secondary: 'bg-gradient-to-r from-gray-100 to-gray-200 text-gray-900 shadow-sm hover:shadow-md hover:from-gray-200 hover:to-gray-300 hover:scale-[1.02] focus:ring-gray-400/30 active:scale-[0.98]',
+        ghost: 'text-gray-700 hover:bg-gray-100 hover:text-gray-900 focus:ring-gray-400/30 hover:scale-[1.02] active:scale-[0.98]',
+        link: 'text-brand-blue underline-offset-4 hover:underline hover:text-brand-blue/80 focus:ring-brand-blue/30',
+        success: 'bg-gradient-to-r from-green-600 to-green-700 text-white shadow-lg hover:shadow-xl hover:shadow-green-500/25 hover:scale-[1.02] focus:ring-green-500/30 active:scale-[0.98]',
+        warning: 'bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-lg hover:shadow-xl hover:shadow-amber-500/25 hover:scale-[1.02] focus:ring-amber-500/30 active:scale-[0.98]',
+        gradient: 'bg-gradient-to-r from-brand-blue via-purple-600 to-brand-blue text-white shadow-lg hover:shadow-xl hover:shadow-purple-500/25 hover:scale-[1.02] focus:ring-purple-500/30 active:scale-[0.98]',
+        accent: 'bg-gradient-to-r from-brand-gold via-brand-gold to-brand-gold/95 text-brand-dark shadow-xl hover:shadow-2xl hover:shadow-brand-gold/40 hover:scale-[1.05] hover:from-brand-gold/90 hover:to-brand-gold hover:brightness-110 focus:ring-brand-gold/50 active:scale-[0.98] font-semibold transform',
+      },
+      size: {
+        xs: 'h-7 px-2 text-xs rounded-md',
+        sm: 'h-8 px-3 text-xs rounded-lg',
+        default: 'h-10 px-4 py-2 text-sm rounded-lg',
+        lg: 'h-12 px-6 text-base rounded-xl',
+        xl: 'h-14 px-8 text-lg rounded-xl',
+        icon: 'h-10 w-10 rounded-lg',
+        'icon-xs': 'h-7 w-7 rounded-md',
+        'icon-sm': 'h-8 w-8 rounded-lg',
+        'icon-lg': 'h-12 w-12 rounded-xl',
+      },
+    },
+    defaultVariants: {
+      variant: 'default',
+      size: 'default',
+    },
+  }
+);
+
+interface ButtonProps
+  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
+    VariantProps<typeof buttonVariants> {
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
   isLoading?: boolean;
+  loadingText?: string;
   fullWidth?: boolean;
-  className?: string;
-  children: React.ReactNode;
+  asChild?: boolean;
 }
 
-const variants = {
-  default: 'bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500 shadow-sm',
-  outline: 'border border-gray-300 text-gray-700 hover:bg-gray-50 focus:ring-primary-500',
-  ghost: 'text-gray-700 hover:bg-gray-100 focus:ring-gray-500',
-  destructive: 'bg-error-600 text-white hover:bg-error-700 focus:ring-error-500',
-};
+const Button = memo(React.forwardRef<HTMLButtonElement, ButtonProps>(
+  ({
+    className = '',
+    variant,
+    size,
+    leftIcon,
+    rightIcon,
+    isLoading = false,
+    loadingText,
+    fullWidth = false,
+    disabled,
+    children,
+    asChild = false,
+    ...props
+  }, ref) => {
+    const baseClasses = buttonVariants({ variant, size });
+    const widthClasses = fullWidth ? 'w-full' : '';
+    const isDisabled = disabled || isLoading;
 
-const sizes = {
-  xs: 'px-2 py-1 text-xs',
-  sm: 'px-2.5 py-1.5 text-sm',
-  md: 'px-3 py-2 sm:px-4 sm:py-2 text-sm sm:text-base',
-  lg: 'px-4 py-2 sm:px-6 sm:py-3 text-base sm:text-lg',
-};
+    const content = (
+      <>
+        {/* Shimmer effect for gradient buttons */}
+        {(variant === 'default' || variant === 'gradient') && (
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-full hover:translate-x-full transition-transform duration-1000 ease-in-out" />
+        )}
+        
+        {isLoading ? (
+          <>
+            <Loader2 className="w-4 h-4 animate-spin mr-2" />
+            {loadingText || 'Loading...'}
+          </>
+        ) : (
+          <>
+            {leftIcon && (
+              <span className="mr-2 flex-shrink-0">
+                {leftIcon}
+              </span>
+            )}
+            {children}
+            {rightIcon && (
+              <span className="ml-2 flex-shrink-0">
+                {rightIcon}
+              </span>
+            )}
+          </>
+        )}
+      </>
+    );
 
-export function Button({
-  variant = 'default',
-  size = 'md',
-  leftIcon,
-  rightIcon,
-  isLoading,
-  fullWidth,
-  className = '',
-  children,
-  disabled,
-  ...props
-}: ButtonProps) {
-  return (
-    <button
-      className={`
-        inline-flex items-center justify-center
-        font-medium rounded-lg
-        focus:outline-none focus:ring-2 focus:ring-offset-2
-        transition-colors
-        disabled:opacity-50 disabled:cursor-not-allowed
-        ${variants[variant]}
-        ${sizes[size]}
-        ${fullWidth ? 'w-full' : ''}
-        ${className}
-      `}
-      disabled={disabled || isLoading}
+    if (asChild) {
+      return <span className={`${baseClasses} ${widthClasses} ${className}`}>{content}</span>;
+    }
+
+    return (
+      <button
+        className={`${baseClasses} ${widthClasses} ${className}`}
+        ref={ref}
+        disabled={isDisabled}
+        aria-busy={isLoading}
+        {...props}
+      >
+        {content}
+      </button>
+    );
+  }
+));
+
+Button.displayName = 'Button';
+
+// Enhanced IconButton for better icon handling
+interface IconButtonProps extends Omit<ButtonProps, 'leftIcon' | 'rightIcon' | 'children'> {
+  icon: React.ReactNode;
+  'aria-label': string;
+  tooltip?: string;
+}
+
+const IconButton = memo(React.forwardRef<HTMLButtonElement, IconButtonProps>(
+  ({ icon, className = '', size = 'icon', ...props }, ref) => (
+    <Button
+      ref={ref}
+      size={size}
+      className={className}
       {...props}
     >
-      {isLoading && (
-        <svg
-          className="animate-spin -ml-1 mr-2 h-4 w-4"
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-        >
-          <circle
-            className="opacity-25"
-            cx="12"
-            cy="12"
-            r="10"
-            stroke="currentColor"
-            strokeWidth="4"
-          />
-          <path
-            className="opacity-75"
-            fill="currentColor"
-            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-          />
-        </svg>
-      )}      {leftIcon && !isLoading && <span className="mr-1.5 sm:mr-2 flex-shrink-0 flex items-center">{leftIcon}</span>}
-      <span className="truncate">{children}</span>
-      {rightIcon && <span className="ml-1.5 sm:ml-2 flex-shrink-0 flex items-center">{rightIcon}</span>}
-    </button>
-  );
+      {icon}
+    </Button>
+  )
+));
+
+IconButton.displayName = 'IconButton';
+
+// Button Group for related actions
+interface ButtonGroupProps {
+  children: React.ReactNode;
+  className?: string;
+  orientation?: 'horizontal' | 'vertical';
+  size?: 'sm' | 'default' | 'lg';
 }
+
+const ButtonGroup = memo(({ 
+  children, 
+  className = '', 
+  orientation = 'horizontal',
+  size = 'default' 
+}: ButtonGroupProps) => {
+  const orientationClasses = orientation === 'horizontal' ? 'flex-row' : 'flex-col';
+  const sizeClasses = {
+    sm: 'space-x-2 space-y-0',
+    default: 'space-x-3 space-y-0',
+    lg: 'space-x-4 space-y-0'
+  }[size];
+
+  return (
+    <div 
+      className={`flex ${orientationClasses} ${sizeClasses} ${className}`}
+      role="group"
+    >
+      {children}
+    </div>
+  );
+});
+
+ButtonGroup.displayName = 'ButtonGroup';
+
+export { Button, IconButton, ButtonGroup, buttonVariants };

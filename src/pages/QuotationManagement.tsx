@@ -467,6 +467,7 @@ ASP Cranes Team`;
             onClick={() => setIsCreateModalOpen(true)}
             className="w-full sm:w-auto"
             leftIcon={<Plus className="w-4 h-4" />}
+            variant="accent"
           >
             Create New Quotation
           </Button>
@@ -753,6 +754,7 @@ ASP Cranes Team`;
                 onClick={handleProceedWithDeal}
                 disabled={!selectedDealId || isLoading}
                 className="w-full sm:w-auto flex items-center justify-center gap-2"
+                variant="accent"
               >
                 {isLoading ? (
                   <RefreshCw className="w-4 h-4 animate-spin" />

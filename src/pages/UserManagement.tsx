@@ -353,7 +353,7 @@ export function UserManagement() {
             />
           </div>
 
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-4">
             <Select
               options={[
 
@@ -362,7 +362,7 @@ export function UserManagement() {
               ]}
               value={roleFilter}
               onChange={(value) => setRoleFilter(value as UserRole | 'all')}
-              className="w-40"
+              className="w-full sm:w-40"
             />
 
             <Select
@@ -372,7 +372,7 @@ export function UserManagement() {
               ]}
               value={statusFilter}
               onChange={(value) => setStatusFilter(value as 'active' | 'inactive' | 'all')}
-              className="w-40"
+              className="w-full sm:w-40"
             />
           </div>
         </div>
@@ -383,7 +383,8 @@ export function UserManagement() {
             setIsModalOpen(true);
           }}
           leftIcon={<UserPlus size={16} />}
-
+          variant="accent"
+          className="w-full sm:w-auto flex-shrink-0"
         >
           Add User
         </Button>
@@ -608,7 +609,7 @@ export function UserManagement() {
             >
               Cancel
             </Button>
-            <Button type="submit">
+            <Button type="submit" variant="accent">
               {selectedUser ? 'Update User' : 'Add User'}
             </Button>
           </div>

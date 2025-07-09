@@ -187,6 +187,7 @@ export function DealDetails() {
                 className="text-xs"
                 size="sm"
                 onClick={() => navigate(`/quotations/create?dealId=${deal.id}`)}
+                variant="accent"
               >
                 Create Quotation
               </Button>
@@ -352,6 +353,7 @@ export function DealDetails() {
               <Button
                 className="w-full"
                 onClick={() => navigate(`/quotations/create?dealId=${deal.id}`)}
+                variant="accent"
               >
                 Create Quotation
               </Button>

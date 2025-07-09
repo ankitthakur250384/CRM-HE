@@ -360,7 +360,7 @@ export function EquipmentManagement() {
             />
           </div>
 
-          <div className="flex gap-4">
+          <div className="flex flex-col sm:flex-row gap-4">
             <Select
               value={categoryFilter}
               onChange={(value) => setCategoryFilter(value as 'all' | CraneCategory)}
@@ -368,7 +368,7 @@ export function EquipmentManagement() {
                 { value: 'all', label: 'All Categories' },
                 ...CATEGORY_OPTIONS,
               ]}
-              className="w-48"
+              className="w-full sm:w-48"
             />
             <Select
               value={statusFilter}
@@ -377,7 +377,7 @@ export function EquipmentManagement() {
                 { value: 'all', label: 'All Status' },
                 ...STATUS_OPTIONS,
               ]}
-              className="w-48"
+              className="w-full sm:w-48"
             />
           </div>
         </div>
@@ -388,6 +388,8 @@ export function EquipmentManagement() {
             setIsModalOpen(true);
           }}
           leftIcon={<Plus className="w-4 h-4" />}
+          variant="accent"
+          className="w-full sm:w-auto flex-shrink-0"
         >
           Add Equipment
         </Button>
@@ -723,7 +725,7 @@ export function EquipmentManagement() {
             >
               Cancel
             </Button>
-            <Button type="submit">
+            <Button type="submit" variant="accent">
               {selectedEquipment ? 'Update Equipment' : 'Add Equipment'}
             </Button>
           </div>

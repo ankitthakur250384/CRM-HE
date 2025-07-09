@@ -23,6 +23,11 @@ console.log('🔄 Auth store hydration temporarily disabled for debugging');
 //   .then(() => console.log('✅ Auth store hydration completed'))
 //   .catch(error => console.error('❌ Auth store hydration failed:', error));
 
+// Force dark mode for testing
+if (!document.body.classList.contains('dark')) {
+  document.body.classList.add('dark');
+}
+
 // Get root element
 const rootElement = document.getElementById('root');
 if (!rootElement) {

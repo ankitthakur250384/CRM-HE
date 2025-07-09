@@ -778,7 +778,7 @@ export function JobScheduling() {
           >
             Cancel
           </Button>
-          <Button onClick={handleCreateJob}>Schedule Job</Button>
+          <Button onClick={handleCreateJob} variant="accent">Schedule Job</Button>
         </div>
       </Modal>
 

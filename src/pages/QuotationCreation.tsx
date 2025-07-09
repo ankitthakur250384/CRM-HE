@@ -1894,6 +1894,7 @@ export function QuotationCreation() {
                     className="w-full bg-primary-600 hover:bg-primary-700"
                     leftIcon={isSaving ? <Clock className="animate-spin" /> : <Save />}
                     size="md"
+                    variant="accent"
                   >
                     {isSaving ? 'Saving...' : quotationId ? 'Update Quotation' : 'Create Quotation'}
                   </Button>

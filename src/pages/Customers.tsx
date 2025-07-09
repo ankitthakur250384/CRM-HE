@@ -173,14 +173,14 @@ export function Customers() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex justify-between items-center mb-6">
+      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 mb-6">
         <div className="flex-1 max-w-md relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
           <FormInput
             placeholder="Search customers..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10"
+            className="pl-10 w-full"
           />
         </div>
 
@@ -190,6 +190,8 @@ export function Customers() {
             setIsModalOpen(true);
           }}
           leftIcon={<Plus size={16} />}
+          variant="accent"
+          className="w-full sm:w-auto flex-shrink-0"
         >
           Add Customer
         </Button>
@@ -369,7 +371,7 @@ export function Customers() {
             >
               Cancel
             </Button>
-            <Button type="submit">
+            <Button type="submit" variant="accent">
               {selectedCustomer ? 'Update Customer' : 'Add Customer'}
             </Button>
           </div>

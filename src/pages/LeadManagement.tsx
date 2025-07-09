@@ -433,34 +433,42 @@ export function LeadManagement() {
       <MockDataWarning data={leads} dataType="leads" />
       
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Leads Pipeline</CardTitle>
-          <div className="flex items-center space-x-4">
-            <div className="flex items-center space-x-2">
-              <Search className="w-4 h-4 text-gray-500" />
+        <CardHeader>
+          {/* Title and Add Button Row */}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 pb-4">
+            <CardTitle className="text-xl font-semibold text-gray-900">Leads Pipeline</CardTitle>
+            <Button
+              onClick={() => setIsCreateModalOpen(true)}
+              className="whitespace-nowrap self-start sm:self-auto"
+              leftIcon={<Plus className="h-4 w-4" />}
+              variant="accent"
+            >
+              Add Lead
+            </Button>
+          </div>
+                    {/* Search and Filter Bar */}
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:gap-4 p-4 bg-gradient-to-r from-gray-50/80 to-gray-100/50 rounded-xl border border-gray-200/60 shadow-sm relative z-10">
+            <div className="flex items-center space-x-3 flex-1 min-w-0">
+              <Search className="w-4 h-4 text-gray-500 flex-shrink-0" />
               <Input
                 type="text"
                 placeholder="Search leads..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-[200px]"
+                className="w-full bg-white border-gray-200 focus:border-blue-500 focus:ring-blue-500/20 min-w-0 text-gray-900 placeholder:text-gray-500"
               />
             </div>
-            <Select
-              value={statusFilter}
-              onChange={(value) => setStatusFilter(value as LeadStatus | 'all')}
-              options={[
-                { value: 'all', label: 'All Status' },
-                ...LEAD_STATUS_OPTIONS
-              ]}
-              className="w-[150px]"
-            />            <Button
-              onClick={() => setIsCreateModalOpen(true)}
-              className="whitespace-nowrap"
-              leftIcon={<Plus className="h-4 w-4" />}
-            >
-              Add Lead
-            </Button>
+            <div className="relative z-20 w-full sm:w-[180px] flex-shrink-0">
+              <Select
+                value={statusFilter}
+                onChange={(value) => setStatusFilter(value as LeadStatus | 'all')}
+                options={[
+                  { value: 'all', label: 'All Status' },
+                  ...LEAD_STATUS_OPTIONS
+                ]}
+                className="w-full bg-white border-gray-200"
+              />
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -471,33 +479,33 @@ export function LeadManagement() {
               No leads found. Create a new lead to get started.
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto rounded-xl border border-gray-200/60 bg-white shadow-sm">
               <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+                <thead className="bg-gradient-to-r from-gray-50 to-gray-100">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                       Customer
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                       Service
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                       Location
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                       Status
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                       Assigned To
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                       Actions
                     </th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredLeads.map((lead) => (
-                    <tr key={lead.id} className="hover:bg-gray-50">
+                    <tr key={lead.id} className="hover:bg-gradient-to-r hover:from-blue-50/50 hover:to-indigo-50/30 transition-all duration-200">
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div>
                           <div className="font-medium text-gray-900">
@@ -512,12 +520,12 @@ export function LeadManagement() {
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
+                        <div className="text-sm text-gray-900 font-medium">
                           {lead.serviceNeeded || 'Not specified'}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-gray-900">
+                        <div className="text-sm text-gray-900 font-medium">
                           {lead.siteLocation || 'Not specified'}
                         </div>
                       </td>
@@ -549,13 +557,14 @@ export function LeadManagement() {
                         )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                        <div className="flex items-center space-x-2">
+                        <div className="flex items-center justify-end space-x-2">
                           {lead.status === 'qualified' && (
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => handleConvertToDeal(lead)}
                               leftIcon={<ArrowRight size={16} />}
+                              className="hover:bg-blue-50 hover:border-blue-300"
                             >
                               Convert to Deal
                             </Button>
@@ -704,7 +713,7 @@ export function LeadManagement() {
               }}
             >
               Cancel
-            </Button>            <Button type="submit">
+            </Button>            <Button type="submit" variant="accent">
               Create Lead
             </Button>
           </div>
@@ -766,7 +775,7 @@ export function LeadManagement() {
             >
               Cancel
             </Button>
-            <Button onClick={handleDealCreation}>
+            <Button onClick={handleDealCreation} variant="accent">
               Create Deal
             </Button>
           </div>
