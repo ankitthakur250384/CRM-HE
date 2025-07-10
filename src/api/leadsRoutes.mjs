@@ -154,4 +154,31 @@ router.patch('/:id/assign', authenticateToken, asyncHandler(async (req, res) => 
   res.json(lead);
 }));
 
+/**
+ * PUT /leads/:id - Update lead (complete update)
+ */
+router.put('/:id', authenticateToken, asyncHandler(async (req, res) => {
+  const leadId = req.params.id;
+  const leadData = req.body;
+  
+  // Validate required fields (using frontend camelCase format)
+  const requiredFields = ['companyName', 'customerName', 'phone', 'email'];
+  const missingFields = requiredFields.filter(field => !leadData[field]);
+  
+  if (missingFields.length > 0) {
+    return res.status(400).json({
+      message: 'Missing required fields',
+      fields: missingFields
+    });
+  }
+  
+  const updatedLead = await leadRepository.updateLead(leadId, leadData);
+  
+  if (!updatedLead) {
+    return res.status(404).json({ message: `Lead with ID ${leadId} not found` });
+  }
+  
+  res.json(updatedLead);
+}));
+
 export default router;

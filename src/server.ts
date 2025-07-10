@@ -10,6 +10,8 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import authRoutes from './api/authRoutes';
 import dbRoutes from './api/dbRoutes';
+// @ts-ignore - Using .mjs file which doesn't have type declarations
+import leadsRoutes from './api/leadsRoutes.mjs';
 
 // Load environment variables
 dotenv.config();
@@ -19,15 +21,21 @@ const app = express();
 const PORT = process.env.PORT || 3001;
 
 // Middleware
-app.use(cors());
+app.use(cors({
+  origin: 'http://localhost:5173',
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-bypass-auth'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
+}));
 app.use(express.json());
 
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/db', dbRoutes);
+app.use('/api/leads', leadsRoutes);
 
 // Health check endpoint
-app.get('/api/health', (req, res) => {
+app.get('/api/health', (_, res) => {
   res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
@@ -39,7 +47,7 @@ if (process.env.NODE_ENV === 'production') {
   app.use(express.static(buildPath));
   
   // Serve index.html for all other routes
-  app.get('*', (req, res) => {
+  app.get('*', (_, res) => {
     res.sendFile(path.join(buildPath, 'index.html'));
   });
 }

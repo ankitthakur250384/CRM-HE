@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit2, Trash2, Calendar, Weight, Plane as Crane, Truck, AlertTriangle } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, Calendar, Weight, Truck, AlertTriangle } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { FormInput } from '../components/common/FormInput';
@@ -756,7 +756,7 @@ export function EquipmentManagement() {
         }}
       >
         <div className="space-y-4">
-          <p>Are you sure you want to delete this equipment? This action cannot be undone.</p>
+          <p className="text-gray-700">Are you sure you want to delete this equipment? This action cannot be undone.</p>
           <div className="flex justify-end gap-3">
             <Button
               variant="outline"

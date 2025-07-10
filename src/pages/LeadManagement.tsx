@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { 
   Plus, 
   Search, 
-  ArrowRight
+  ArrowRight,
+  Edit2
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/common/Card';
 import { FormInput } from '../components/common/FormInput';
@@ -17,8 +18,8 @@ import { CustomerSelectionModal } from '../components/common/CustomerSelectionMo
 import { RequiredFieldsInfo } from '../components/common/RequiredFieldsInfo';
 import MockDataWarning from '../components/common/MockDataWarning';
 import { useAuthStore } from '../store/authStore';
-import { Lead, LeadStatus, Customer } from '../types/lead';
-import { getLeads, createLead, updateLeadStatus, updateLeadAssignment } from '../services/leadService';
+import { Lead, LeadStatus, LeadSource, Customer } from '../types/lead';
+import { getLeads, createLead, updateLeadStatus, updateLeadAssignment, updateLead } from '../services/leadService';
 import { createDeal } from '../services/dealService';
 import { useNavigate } from 'react-router-dom';
 import { extractDataFromApiResponse, getCustomerIdentifier } from '../utils/customerUtils';
@@ -54,6 +55,7 @@ export function LeadManagement() {
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isCustomerSelectionModalOpen, setIsCustomerSelectionModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [toast, setToast] = useState<{
     show: boolean;
@@ -83,6 +85,22 @@ export function LeadManagement() {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [isDealValueModalOpen, setIsDealValueModalOpen] = useState(false);
 
+  const [editForm, setEditForm] = useState({
+    fullName: '',
+    companyName: '',
+    phoneNumber: '',
+    email: '',
+    serviceNeeded: '',
+    siteLocation: '',
+    startDate: '',
+    rentalDays: 1,
+    shiftTiming: '',
+    status: 'new',
+    source: '',
+    designation: '',
+    notes: '',
+  });
+
   useEffect(() => {
     fetchLeads();
     fetchSalesAgents();
@@ -91,6 +109,29 @@ export function LeadManagement() {
     console.log('Filtering leads. Current leads array:', leads);
     filterLeads();
   }, [leads, searchTerm, statusFilter]);
+  // When opening the edit modal, populate the edit form with the selected lead's data
+  useEffect(() => {
+    if (isEditModalOpen && selectedLead) {
+      // Get today's date as default for start_date if it's missing
+      const today = new Date().toISOString().split('T')[0];
+      
+      setEditForm({
+        fullName: selectedLead.customerName || '',
+        companyName: selectedLead.companyName || '',
+        phoneNumber: selectedLead.phone || '',
+        email: selectedLead.email || '',
+        serviceNeeded: selectedLead.serviceNeeded || '',
+        siteLocation: selectedLead.siteLocation || '',
+        startDate: selectedLead.startDate || today,
+        rentalDays: selectedLead.rentalDays || 1,
+        shiftTiming: selectedLead.shiftTiming || '',
+        status: selectedLead.status || 'new',
+        source: selectedLead.source || '',
+        designation: selectedLead.designation || '',
+        notes: selectedLead.notes || '',
+      });
+    }
+  }, [isEditModalOpen, selectedLead]);
   const fetchLeads = async () => {
     try {
       console.log('Fetching leads from API...');
@@ -159,7 +200,10 @@ export function LeadManagement() {
       return;
     }
 
-    console.log(`Starting filtering with ${leads.length} leads`);
+    console.log(`Starting filtering with ${leads.length} leads. Current filters:`, {
+      searchTerm,
+      statusFilter
+    });
     let filtered = [...leads];
 
     // Filter by search term
@@ -170,17 +214,20 @@ export function LeadManagement() {
         (lead?.email?.toLowerCase().includes(searchTerm.toLowerCase()) || false) ||
         (lead?.phone?.includes(searchTerm) || false)
       );
+      console.log(`After search filter: ${filtered.length} leads`);
     }
 
     // Filter by status
     if (statusFilter !== 'all') {
       filtered = filtered.filter(lead => lead?.status === statusFilter);
+      console.log(`After status filter (${statusFilter}): ${filtered.length} leads`);
     } else {
       // By default, exclude converted leads from the pipeline
       filtered = filtered.filter(lead => lead?.status !== 'converted');
+      console.log(`After excluding converted leads: ${filtered.length} leads`);
     }
 
-    console.log(`After filtering: ${filtered.length} leads match criteria`);
+    console.log(`Final filtered leads: ${filtered.length} leads match criteria`);
     setFilteredLeads(filtered);
   };
 
@@ -420,6 +467,74 @@ export function LeadManagement() {
     setTimeout(() => setToast({ show: false, title: '' }), 3000);
   };
 
+  const handleEditLead = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Validate required fields
+    if (!editForm.fullName || !editForm.phoneNumber || !editForm.email || 
+        !editForm.serviceNeeded || !editForm.siteLocation || !editForm.startDate || 
+        !editForm.rentalDays || editForm.rentalDays < 1) {
+      showToast('Please fill in all required fields', 'error');
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(editForm.email)) {
+      showToast('Please enter a valid email address', 'error');
+      return;
+    }
+
+    // Validate phone number (basic validation)
+    const phoneRegex = /^\+?[\d\s-]{10,}$/;
+    if (!phoneRegex.test(editForm.phoneNumber)) {
+      showToast('Please enter a valid phone number', 'error');
+      return;
+    }
+
+    try {
+      const updatedLead = await updateLead(selectedLead!.id, {
+        customerName: editForm.fullName,
+        companyName: editForm.companyName,
+        email: editForm.email,
+        phone: editForm.phoneNumber,
+        serviceNeeded: editForm.serviceNeeded,
+        siteLocation: editForm.siteLocation,
+        startDate: editForm.startDate,
+        rentalDays: editForm.rentalDays,
+        shiftTiming: editForm.shiftTiming,
+        status: editForm.status as LeadStatus,
+        source: editForm.source as LeadSource,
+        designation: editForm.designation,
+        notes: editForm.notes,
+      });
+
+      console.log('Update response:', updatedLead);
+
+      if (updatedLead) {
+        // Update the specific lead in the state
+        setLeads(prev => {
+          const newLeads = prev.map(lead => 
+            lead.id === selectedLead!.id ? updatedLead : lead
+          );
+          console.log('Updated leads array:', newLeads);
+          return newLeads;
+        });
+      } else {
+        // If no updated lead returned, refetch all leads to ensure consistency
+        console.log('No updated lead returned, refetching all leads');
+        await fetchLeads();
+      }
+      
+      setIsEditModalOpen(false);
+      setSelectedLead(null);
+      showToast('Lead updated successfully', 'success');
+    } catch (error) {
+      console.error('Error updating lead:', error);
+      showToast('Error updating lead', 'error');
+    }
+  };
+
   if (!user || (user.role !== 'sales_agent' && user.role !== 'admin')) {
     return (
       <div className="p-4 text-center text-gray-500">
@@ -558,6 +673,18 @@ export function LeadManagement() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center justify-end space-x-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedLead(lead);
+                              setIsEditModalOpen(true);
+                            }}
+                            leftIcon={<Edit2 size={16} />}
+                            className="hover:bg-blue-50 hover:border-blue-300"
+                          >
+                            Edit
+                          </Button>
                           {lead.status === 'qualified' && (
                             <Button
                               variant="outline"
@@ -780,6 +907,145 @@ export function LeadManagement() {
             </Button>
           </div>
         </div>
+      </Modal>
+
+      {/* Edit Lead Modal */}
+      <Modal
+        isOpen={isEditModalOpen}
+        onClose={() => {
+          setIsEditModalOpen(false);
+          setSelectedLead(null);
+        }}
+        title="Edit Lead Details"
+        size="lg"
+      >
+        {selectedLead && (
+          <form onSubmit={handleEditLead} className="space-y-6">
+            <RequiredFieldsInfo />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <FormInput
+                label="Full Name"
+                value={editForm.fullName}
+                onChange={(e) => setEditForm(prev => ({ ...prev, fullName: e.target.value }))}
+                required
+              />
+              <FormInput
+                label="Company Name"
+                value={editForm.companyName}
+                onChange={(e) => setEditForm(prev => ({ ...prev, companyName: e.target.value }))}
+                helperText="Optional"
+              />
+              <FormInput
+                label="Phone Number"
+                type="tel"
+                value={editForm.phoneNumber}
+                onChange={(e) => setEditForm(prev => ({ ...prev, phoneNumber: e.target.value }))}
+                required
+              />
+              <FormInput
+                label="Email Address"
+                type="email"
+                value={editForm.email}
+                onChange={(e) => setEditForm(prev => ({ ...prev, email: e.target.value }))}
+                required
+              />
+              <FormInput
+                label="Service Needed"
+                value={editForm.serviceNeeded}
+                onChange={(e) => setEditForm(prev => ({ ...prev, serviceNeeded: e.target.value }))}
+                required
+              />
+              <FormInput
+                label="Site Location"
+                value={editForm.siteLocation}
+                onChange={(e) => setEditForm(prev => ({ ...prev, siteLocation: e.target.value }))}
+                required
+              />
+              <FormInput
+                label="Start Date"
+                type="date"
+                value={editForm.startDate}
+                onChange={(e) => setEditForm(prev => ({ ...prev, startDate: e.target.value }))}
+                required
+              />
+              <FormInput
+                label="Rental Days"
+                type="number"
+                min="1"
+                value={editForm.rentalDays.toString()}
+                onChange={(e) => setEditForm(prev => ({ ...prev, rentalDays: parseInt(e.target.value) || 1 }))}
+                required
+              />
+              <FormInput
+                label="Shift Timing"
+                value={editForm.shiftTiming}
+                onChange={(e) => setEditForm(prev => ({ ...prev, shiftTiming: e.target.value }))}
+                placeholder="e.g., Day Shift, Night Shift"
+              />
+              <Select
+                label="Status"
+                value={editForm.status}
+                onChange={(value) => setEditForm(prev => ({ ...prev, status: value }))}
+                options={[
+                  { label: 'New', value: 'new' },
+                  { label: 'In Process', value: 'in_process' },
+                  { label: 'Qualified', value: 'qualified' },
+                  { label: 'Unqualified', value: 'unqualified' },
+                  { label: 'Lost', value: 'lost' },
+                  { label: 'Converted', value: 'converted' },
+                ]}
+                required
+              />
+              <Select
+                label="Source"
+                value={editForm.source}
+                onChange={(value) => setEditForm(prev => ({ ...prev, source: value }))}
+                options={[
+                  { label: 'Select Source', value: '' },
+                  { label: 'Website', value: 'website' },
+                  { label: 'Referral', value: 'referral' },
+                  { label: 'Direct', value: 'direct' },
+                  { label: 'Social Media', value: 'social' },
+                  { label: 'Email', value: 'email' },
+                  { label: 'Phone', value: 'phone' },
+                  { label: 'Other', value: 'other' },
+                ]}
+              />
+            </div>
+            <div>
+              <FormInput
+                label="Designation"
+                value={editForm.designation}
+                onChange={(e) => setEditForm(prev => ({ ...prev, designation: e.target.value }))}
+                placeholder="Job title or role"
+              />
+            </div>
+            <div>
+              <TextArea
+                label="Notes"
+                value={editForm.notes}
+                onChange={(e) => setEditForm(prev => ({ ...prev, notes: e.target.value }))}
+                placeholder="Additional notes or comments..."
+                rows={3}
+              />
+            </div>
+            <div className="flex justify-end gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setIsEditModalOpen(false);
+                  setSelectedLead(null);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button type="submit" variant="accent">
+                Save Changes
+              </Button>
+            </div>
+          </form>
+        )}
       </Modal>
 
       {/* Toast Notifications */}

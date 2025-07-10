@@ -103,3 +103,19 @@ export const updateLeadAssignment = async (
     return null;
   }
 };
+
+/**
+ * Update a lead's details
+ */
+export const updateLead = async (id: string, leadData: Partial<Lead>): Promise<Lead | null> => {
+  try {
+    console.log('🔧 Lead service - updating lead:', { id, leadData });
+    const impl = await getImplementation();
+    const result = await impl.updateLead(id, leadData);
+    console.log('🔧 Lead service - update result:', result);
+    return result;
+  } catch (error) {
+    console.error('🔧 Lead service - update error:', error);
+    throw error;
+  }
+};

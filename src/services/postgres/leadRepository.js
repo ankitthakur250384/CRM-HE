@@ -508,3 +508,128 @@ export const updateLeadAssignment = async (leadId, salesAgentId, salesAgentName)
     throw error;
   }
 };
+
+/**
+ * Update a lead completely with new data
+ */
+export const updateLead = async (leadId, leadData) => {
+  const client = await getClient();
+  
+  // Defensive mapping: always use camelCase, fallback to snake_case
+  const getField = (camel, snake) => {
+    if (leadData[camel] !== undefined && leadData[camel] !== null && leadData[camel] !== '') return leadData[camel];
+    if (leadData[snake] !== undefined && leadData[snake] !== null && leadData[snake] !== '') return leadData[snake];
+    return undefined;
+  };
+  
+  try {
+    await client.query('BEGIN');
+    
+    // Find or create customer if needed
+    let customerId = leadData.customerId;
+    let customerName = leadData.customerName;
+    let companyName = leadData.companyName;
+
+    if (leadData.email && (!customerId || !customerName)) {
+      const customerInfo = await findOrCreateCustomerForLead(leadData, client);
+      customerId = customerInfo.customerId;
+      customerName = customerInfo.customerName;
+      companyName = customerInfo.companyName;
+    }
+
+    // Defensive required fields
+    const requiredFields = [
+      customerName,
+      companyName,
+      getField('email', 'email'),
+      getField('phone', 'phone'),
+      getField('serviceNeeded', 'service_needed'),
+      getField('siteLocation', 'site_location'),
+      getField('startDate', 'start_date'),
+      getField('rentalDays', 'rental_days'),
+      getField('status', 'status')
+    ];
+    if (requiredFields.some(f => f === undefined || f === null || f === '')) {
+      throw new Error('Missing required lead fields for update');
+    }
+
+    const updateResult = await client.query(`
+      UPDATE leads 
+      SET 
+        customer_id = $1,
+        customer_name = $2,
+        company_name = $3,
+        email = $4,
+        phone = $5,
+        service_needed = $6,
+        site_location = $7,
+        start_date = $8,
+        rental_days = $9,
+        shift_timing = $10,
+        status = $11,
+        source = $12,
+        designation = $13,
+        notes = $14,
+        updated_at = NOW()
+      WHERE id = $15
+      RETURNING *
+    `, [
+      customerId,
+      customerName,
+      companyName,
+      getField('email', 'email'),
+      getField('phone', 'phone'),
+      getField('serviceNeeded', 'service_needed'),
+      getField('siteLocation', 'site_location'),
+      getField('startDate', 'start_date'),
+      getField('rentalDays', 'rental_days'),
+      getField('shiftTiming', 'shift_timing'),
+      getField('status', 'status') || 'new',
+      getField('source', 'source'),
+      getField('designation', 'designation'),
+      getField('notes', 'notes'),
+      leadId
+    ]);
+    
+    if (updateResult.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return null;
+    }
+    
+    await client.query('COMMIT');
+    const updatedLead = updateResult.rows[0];
+
+    // Map database fields to frontend model
+    const mappedLead = {
+      id: updatedLead.id,
+      customerId: updatedLead.customer_id,
+      customerName: updatedLead.customer_name,
+      companyName: updatedLead.company_name,
+      email: updatedLead.email,
+      phone: updatedLead.phone,
+      serviceNeeded: updatedLead.service_needed,
+      siteLocation: updatedLead.site_location,
+      startDate: updatedLead.start_date,
+      rentalDays: updatedLead.rental_days,
+      shiftTiming: updatedLead.shift_timing,
+      status: updatedLead.status,
+      source: updatedLead.source,
+      assignedTo: updatedLead.assigned_to || '',
+      assignedToName: updatedLead.assigned_to_name || '',
+      designation: updatedLead.designation,
+      createdAt: updatedLead.created_at,
+      updatedAt: updatedLead.updated_at,
+      files: updatedLead.files ? JSON.parse(updatedLead.files) : null,
+      notes: updatedLead.notes
+    };
+    
+    console.log(`Lead ${leadId} updated successfully`);
+    return mappedLead;
+  } catch (error) {
+    await client.query('ROLLBACK');
+    console.error(`Error updating lead ${leadId}:`, error);
+    throw error;
+  } finally {
+    client.release();
+  }
+};

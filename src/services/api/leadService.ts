@@ -79,3 +79,18 @@ export const updateLeadAssignment = async (
     return null;
   }
 };
+
+/**
+ * Update a lead's details via the API
+ */
+export const updateLead = async (id: string, leadData: Partial<Lead>): Promise<Lead | null> => {
+  try {
+    console.log('🔄 Updating lead:', { id, leadData });
+    const response = await api.put<Lead>(`/leads/${id}`, leadData);
+    console.log('✅ Lead update response:', response);
+    return response;
+  } catch (error: any) {
+    console.error(`❌ Failed to update lead ${id}:`, error);
+    return null;
+  }
+};

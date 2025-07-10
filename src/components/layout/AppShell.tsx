@@ -15,6 +15,7 @@ export const AppShell = memo(function AppShell({ requiredRole, children }: AppSh
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
   const authChecked = useRef(false);
 
   // Add sidebar logout event listener
@@ -111,13 +112,13 @@ export const AppShell = memo(function AppShell({ requiredRole, children }: AppSh
       <Sidebar 
         isMobileOpen={isMobileSidebarOpen} 
         onMobileClose={() => setIsMobileSidebarOpen(false)} 
+        isCollapsed={isSidebarCollapsed}
+        onCollapseToggle={setIsSidebarCollapsed}
       />
-      
       {/* Main content area */}
-      <div className="flex flex-col flex-1 overflow-hidden lg:ml-72">
+      <div className={`flex flex-col flex-1 overflow-hidden transition-all duration-300 ${isSidebarCollapsed ? 'lg:ml-16' : 'lg:ml-72'}`}>
         {/* Header */}
         <Header onMobileMenuClick={toggleMobileSidebar} />
-        
         {/* Main content with enhanced styling */}
         <main className="flex-1 overflow-x-hidden overflow-y-auto bg-transparent">
           <div className="min-h-full">

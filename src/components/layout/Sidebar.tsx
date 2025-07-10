@@ -12,11 +12,9 @@ import {
   Settings, 
   Users,
   Building2, 
-  X,
   Handshake,
   LogOut,
-  ChevronLeft,
-  ChevronRight
+  Menu
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -30,6 +28,8 @@ const logoFallback = '/crane-icon.svg';
 interface SidebarProps {
   isMobileOpen?: boolean;
   onMobileClose?: () => void;
+  isCollapsed?: boolean;
+  onCollapseToggle?: (collapsed: boolean) => void;
 }
 
 interface NavItem {
@@ -122,16 +122,18 @@ const navItems: NavItem[] = [
   },
 ];
 
-export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
+export function Sidebar({ isMobileOpen = false, onMobileClose, isCollapsed: controlledCollapsed, onCollapseToggle }: SidebarProps) {
   const { user } = useAuthStore();
   const location = useLocation();
-  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [internalCollapsed, setInternalCollapsed] = useState(false);
+  const isControlled = controlledCollapsed !== undefined;
+  const isCollapsed = isControlled ? controlledCollapsed : internalCollapsed;
 
   // Handle window resize events for better responsive behavior
   useEffect(() => {
     const handleResize = () => {
       if (window.innerWidth < 1024) {
-        setIsCollapsed(true);
+        setInternalCollapsed(true);
       }
     };
 
@@ -155,7 +157,11 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
   };
 
   const toggleCollapse = () => {
-    setIsCollapsed(!isCollapsed);
+    if (isControlled && onCollapseToggle) {
+      onCollapseToggle(!isCollapsed);
+    } else {
+      setInternalCollapsed((prev) => !prev);
+    }
   };
 
   // Enhanced mobile overlay with blur effect
@@ -204,62 +210,47 @@ export function Sidebar({ isMobileOpen = false, onMobileClose }: SidebarProps) {
     <>
       {mobileOverlay}
       {desktopSidebar}
+      {/* Removed the floating navicon button for desktop */}
     </>
   );
 
   function renderSidebarContent(collapsed: boolean) {
     return (
       <div className="flex flex-col h-full text-white">
-        {/* Header with logo and collapse button */}
-        <div className="flex items-center justify-between p-4 border-b border-white/10">
+        {/* Header with navicon, logo, and title in a row */}
+        <div className="flex items-center gap-2 p-4 border-b border-white/10">
+          <button
+            onClick={toggleCollapse}
+            className="flex items-center justify-center w-8 h-8 rounded hover:bg-white/10 transition-colors duration-200 focus:outline-none"
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+          >
+            <Menu className="h-6 w-6 text-white" />
+          </button>
           <Link 
             to="/dashboard" 
             className="flex items-center group"
             aria-label="Go to dashboard"
           >
-            <div className="relative">
-              <img              
-                src={aspLogo} 
-                alt="ASP Cranes" 
-                className={`object-contain transition-all duration-300 group-hover:scale-105 ${
-                  collapsed ? 'h-8 w-8' : 'h-10 w-auto'
-                }`}
-                onError={(e) => {
-                  e.currentTarget.src = logoFallback;
-                  e.currentTarget.onerror = null;
-                }}
-              />
-              {!collapsed && (
-                <motion.span 
-                  className="ml-3 text-xl font-bold bg-gradient-to-r from-white to-brand-gold bg-clip-text text-transparent"
-                  initial={{ opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: 0.1 }}
-                >
-                  ASP CRM
-                </motion.span>
-              )}
-            </div>
+            <img               
+              src={aspLogo} 
+              alt="ASP Cranes" 
+              className={`object-contain transition-all duration-300 group-hover:scale-105 ${collapsed ? 'h-8 w-8' : 'h-10 w-auto'}`}
+              onError={(e) => {
+                e.currentTarget.src = logoFallback;
+                e.currentTarget.onerror = null;
+              }}
+            />
+            {!collapsed && (
+              <motion.span 
+                className="ml-3 text-xl font-bold bg-gradient-to-r from-white to-brand-gold bg-clip-text text-transparent"
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.1 }}
+              >
+                ASP CRM
+              </motion.span>
+            )}
           </Link>
-          
-          {/* Mobile close / Desktop collapse buttons */}
-          {onMobileClose ? (
-            <button
-              onClick={onMobileClose}
-              className="p-2 rounded-lg hover:bg-white/10 transition-colors lg:hidden"
-              aria-label="Close navigation"
-            >
-              <X className="h-5 w-5" />
-            </button>
-          ) : (
-            <button
-              onClick={toggleCollapse}
-              className="hidden lg:flex p-2 rounded-lg hover:bg-white/10 transition-colors"
-              aria-label={collapsed ? "Expand navigation" : "Collapse navigation"}
-            >
-              {collapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
-            </button>
-          )}
         </div>
 
         {/* Navigation */}
