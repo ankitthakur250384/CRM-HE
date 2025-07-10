@@ -1,10 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
-import { Input } from '../common/Input';
-import { Button } from '../common/Button';
 import { AlertCircle } from 'lucide-react';
-import logo from '../../assets/asp-logo.jpg';
 
 interface LocationState {
   from?: {
@@ -220,86 +217,52 @@ export function LoginForm() {
   // Try to render the form with error handling
   try {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-gray-50 to-gray-100">
-        <div className="w-full max-w-md px-8 py-12 bg-white rounded-2xl shadow-xl">
-          <div className="text-center mb-10">
-            <div className="flex justify-center mb-6">
-              <div className="relative w-48 h-32">
-                <img 
-                  src={logo} 
-                  alt="ASP Cranes" 
-                  className="w-full h-full object-contain"
-                  onError={(e) => {
-                    e.currentTarget.src = 'https://placeholder.pics/svg/300x200/DEDEDE/555555/ASP%20Cranes';
-                    console.error('Logo image failed to load');
-                  }}
-                />
-              </div>
-            </div>
-            <h1 className="text-4xl font-bold text-gray-900 mb-2">ASP Cranes CRM</h1>
-            <p className="text-gray-600 text-lg">
-              Sign in to access your dashboard
-            </p>
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-5">
+          <div>
+            <input
+              id="email"
+              name="email"
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              autoComplete="email"
+              placeholder="Email address"
+              className="w-full border-0 border-b border-gray-300 focus:border-black focus:ring-0 text-base py-3 px-0 bg-transparent placeholder-gray-400 outline-none"
+            />
           </div>
-          
-          <div className="bg-blue-50 border-l-4 border-blue-500 p-3 mb-6">
-            <p className="text-sm text-blue-800">
-              Using secure PostgreSQL authentication
-            </p>
+          <div>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              autoComplete="current-password"
+              placeholder="Password"
+              className="w-full border-0 border-b border-gray-300 focus:border-black focus:ring-0 text-base py-3 px-0 bg-transparent placeholder-gray-400 outline-none"
+            />
           </div>
-          
-          {error && (
-            <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
-              <p className="text-sm">{error}</p>
-            </div>
-          )}
-          
-          <form onSubmit={handleSubmit} className="space-y-6">
-            <div className="space-y-5">
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                label="Email address"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                autoComplete="email"
-                className="h-12"
-                placeholder="Enter your email"
-              />
-              
-              <Input
-                id="password"
-                name="password"
-                type="password"
-                label="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                autoComplete="current-password"
-                className="h-12"
-                placeholder="Enter your password"
-              />
-            </div>
-            
-            <Button
-              type="submit"
-              fullWidth
-              isLoading={isLoading}
-              className="h-12 text-lg font-medium"
-            >
-              Sign in
-            </Button>
-          </form>
         </div>
-        
-        <div className="mt-8 text-center text-sm text-gray-600">
-          <p>© 2025 ASP Cranes.</p>
-          <p className="mt-1">Built by AVARIQ Tech Solutions Pvt. Ltd.</p>
+        <div className="flex justify-end text-xs mt-1">
+          <a href="#" className="text-blue-700 hover:underline">Forget password <span className="font-bold">Click here</span></a>
         </div>
-      </div>
+        <button
+          type="submit"
+          disabled={isLoading}
+          className="w-full h-12 bg-black text-white rounded-md text-lg font-semibold mt-2 transition-colors duration-150 hover:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-black focus:ring-opacity-50"
+        >
+          {isLoading ? 'Logging in...' : 'Login Now'}
+        </button>
+        {error && (
+          <div className="mt-4 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+            <p className="text-sm">{error}</p>
+          </div>
+        )}
+      </form>
     );
   } catch (err) {
     console.error('Error rendering login form:', err);
