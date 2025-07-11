@@ -10,6 +10,10 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import authRoutes from './api/authRoutes';
 import dbRoutes from './api/dbRoutes';
+import jobRoutes from './api/jobRoutes';
+import operatorRoutes from './api/operatorRoutes';
+// @ts-ignore - Using .mjs file which doesn't have type declarations
+import equipmentRoutes from './api/equipmentRoutes.mjs';
 // @ts-ignore - Using .mjs file which doesn't have type declarations
 import leadsRoutes from './api/leadsRoutes.mjs';
 
@@ -32,6 +36,9 @@ app.use(express.json());
 // API routes
 app.use('/api/auth', authRoutes);
 app.use('/api/db', dbRoutes);
+app.use('/api/jobs', jobRoutes);
+app.use('/api/operators', operatorRoutes);
+app.use('/api/equipment', equipmentRoutes);
 app.use('/api/leads', leadsRoutes);
 
 // Health check endpoint

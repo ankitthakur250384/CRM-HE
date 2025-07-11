@@ -14,7 +14,7 @@ import { Modal } from '../components/common/Modal';
 import { StatusBadge } from '../components/common/StatusBadge';
 import { Toast } from '../components/common/Toast';
 import { useAuthStore } from '../store/authStore';
-import { getJobs, getAllEquipment, getAllOperators, createJob, updateJobStatus } from '../services/jobService';
+import { getJobs, getAllEquipment, getAllOperators, createJob, getEquipmentById } from '../services/jobService';
 import { getLeads } from '../services/leadService';
 import { getDealById, getDeals } from '../services/dealService';
 import { getQuotationsForLead } from '../services/quotationService';
@@ -22,6 +22,7 @@ import { Job, Equipment, Operator } from '../types/job';
 import { Lead } from '../types/lead';
 import { Deal } from '../types/deal';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { jobApiClient } from '../services/jobApiClient';
 
 const TIME_SLOTS = Array.from({ length: 15 }, (_, i) => addHours(new Date().setHours(6, 0, 0, 0), i));
 
@@ -58,6 +59,8 @@ export function JobScheduling() {
     notes: '',
   });
 
+  const [operatorFilter, setOperatorFilter] = useState<string>(''); // '' means all operators
+
   useEffect(() => {
     fetchData();
     
@@ -89,6 +92,18 @@ export function JobScheduling() {
       navigate('/jobs', { replace: true });
     }
   }, [location]);
+
+  // Reset operator selection if the selected operator becomes unavailable when dates change
+  useEffect(() => {
+    if (formData.operatorId && formData.startDate && formData.endDate) {
+      const availableOperators = getAvailableOperators();
+      const isSelectedOperatorAvailable = availableOperators.some(op => op.id === formData.operatorId);
+      
+      if (!isSelectedOperatorAvailable) {
+        setFormData(prev => ({ ...prev, operatorId: '' }));
+      }
+    }
+  }, [formData.startDate, formData.endDate, jobs]);
 
   const fetchData = async () => {
     try {
@@ -287,7 +302,7 @@ export function JobScheduling() {
         return;
       }
 
-      const newJob = await createJob({
+      await createJob({
         title: 'Scheduled Job',
         leadId: formData.leadId,
         customerId: lead?.customerId || '',
@@ -303,7 +318,8 @@ export function JobScheduling() {
         createdBy: user?.id || '',
       });
 
-      setJobs(prev => [...prev, newJob]);
+      // Instead of setJobs, refetch all jobs from backend
+      await fetchData();
       setIsCreateModalOpen(false);
       resetForm();
       
@@ -318,18 +334,6 @@ export function JobScheduling() {
     }
   };
 
-  const handleStatusChange = async (jobId: string, newStatus: Job['status']) => {
-    try {
-      const updatedJob = await updateJobStatus(jobId, newStatus);
-      if (updatedJob) {
-        setJobs(prev => prev.map(job => job.id === jobId ? updatedJob : job));
-        showToast('Job status updated', 'success');
-      }
-    } catch (error) {
-      console.error('Error updating job status:', error);
-      showToast('Error updating job status', 'error');
-    }
-  };
   const resetForm = () => {
     setFormData({
       leadId: '',
@@ -369,6 +373,32 @@ export function JobScheduling() {
     return conflictingJobs;
   };
 
+  // Get available operators for the selected time slot
+  const getAvailableOperators = () => {
+    if (!formData.startDate || !formData.endDate) {
+      return operators; // Return all operators if no time selected
+    }
+
+    const start = new Date(formData.startDate);
+    const end = new Date(formData.endDate);
+
+    return operators.filter(operator => {
+      const conflictingJobs = jobs.filter(job => {
+        const jobStart = new Date(job.scheduledStartDate);
+        const jobEnd = new Date(job.scheduledEndDate);
+        
+        return (
+          job.operatorIds.includes(operator.id) &&
+          job.status !== 'completed' &&
+          job.status !== 'cancelled' &&
+          ((start >= jobStart && start < jobEnd) || (end > jobStart && end <= jobEnd) || (start <= jobStart && end >= jobEnd))
+        );
+      });
+
+      return conflictingJobs.length === 0;
+    });
+  };
+
   const renderWeekView = () => {
     const weekStart = startOfWeek(currentDate, { weekStartsOn: 1 });
     const weekEnd = endOfWeek(currentDate, { weekStartsOn: 1 });
@@ -382,7 +412,7 @@ export function JobScheduling() {
             {TIME_SLOTS.map((time, i) => (
               <div
                 key={i}
-                className="h-20 border-b border-gray-100 flex items-center justify-end pr-2 text-sm text-gray-500"
+                className="h-20 border-b border-gray-100 flex items-center justify-end pr-2 text-sm text-gray-900"
               >
                 {format(time, 'h:mm a')}
               </div>
@@ -398,7 +428,7 @@ export function JobScheduling() {
                 >
                   <div className="text-center">
                     <div className="text-sm text-gray-900">{format(day, 'EEE')}</div>
-                    <div className="text-xs text-gray-500">{format(day, 'MMM d')}</div>
+                    <div className="text-xs text-gray-700">{format(day, 'MMM d')}</div>
                   </div>
                 </div>
               ))}
@@ -413,7 +443,9 @@ export function JobScheduling() {
                     const slotJobs = jobs.filter(job => {
                       const jobStart = new Date(job.scheduledStartDate);
                       const jobEnd = new Date(job.scheduledEndDate);
+                      const matchesOperator = !operatorFilter || job.operatorIds.includes(operatorFilter);
                       return (
+                        matchesOperator &&
                         isSameDay(currentSlotStart, jobStart) &&
                         isWithinInterval(currentSlotStart, { start: jobStart, end: jobEnd })
                       );
@@ -422,9 +454,13 @@ export function JobScheduling() {
                     return (
                       <div
                         key={`${timeIndex}-${dayIndex}`}
-                        className={`h-20 border-b border-r border-gray-100 relative ${
+                        className={`border-b border-r border-gray-100 relative ${
                           timeIndex === 0 ? 'border-t' : ''
-                        } ${dayIndex === 0 ? 'border-l' : ''}`}                        onClick={() => {
+                        } ${dayIndex === 0 ? 'border-l' : ''}`}
+                        style={{
+                          minHeight: `${Math.max(80, slotJobs.length * 44 + 8)}px`, // Dynamic height based on number of jobs
+                        }}
+                        onClick={() => {
                           setIsCreateModalOpen(true);
                           setFormData(prev => ({
                             ...prev,
@@ -433,14 +469,15 @@ export function JobScheduling() {
                           }));
                         }}
                       >
-                        {slotJobs.map(job => (
+                        {slotJobs.map((job, jobIndex) => (
                           <div
                             key={job.id}
                             className="absolute inset-x-0 mx-1 bg-primary-100 border border-primary-200 rounded-md p-2 cursor-pointer hover:bg-primary-200 transition-colors"
                             style={{
-                              top: '4px',
+                              top: `${4 + (jobIndex * 44)}px`, // Stack jobs vertically with 44px offset
                               minHeight: '40px',
-                              zIndex: 10,
+                              zIndex: 10 + jobIndex,
+                              right: jobIndex > 0 ? `${jobIndex * 8}px` : '4px', // Slight horizontal offset for visibility
                             }}
                             onClick={(e) => {
                               e.stopPropagation();
@@ -453,7 +490,7 @@ export function JobScheduling() {
                               </span>
                               <StatusBadge status={job.status as any} className="ml-2" />
                             </div>
-                            <div className="text-xs text-gray-500 mt-1">
+                            <div className="text-xs text-black mt-1">
                               {/* Use scheduledStartDate and scheduledEndDate for display */}
                               {format(new Date(job.scheduledStartDate), 'h:mm a')} - {format(new Date(job.scheduledEndDate), 'h:mm a')}
                             </div>
@@ -479,9 +516,19 @@ export function JobScheduling() {
     );
   }
 
+  // Show loading state while data is being fetched
+  if (isLoading) {
+    return (
+      <div className="p-8 text-center">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+        <p className="text-gray-900">Loading job scheduling data...</p>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="space-y-6 font-sans">
+      <div className="flex flex-wrap items-center mb-2 justify-between">
         <div className="flex items-center gap-4">
           <Button
             variant="outline"
@@ -490,11 +537,9 @@ export function JobScheduling() {
           >
             <ChevronLeft className="h-4 w-4" />
           </Button>
-          
-          <h2 className="text-lg font-semibold">
+          <h2 className="text-lg font-semibold font-sans">
             {format(currentDate, 'MMMM yyyy')}
           </h2>
-          
           <Button
             variant="outline"
             size="sm"
@@ -503,19 +548,26 @@ export function JobScheduling() {
             <ChevronRight className="h-4 w-4" />
           </Button>
         </div>
-        
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 flex-1 justify-end min-w-0">
           <Select
-            options={[
-              { value: 'week', label: 'Week View' },
-              { value: 'month', label: 'Month View' },
-            ]}
+            options={[{ value: 'week', label: 'Week View' }, { value: 'month', label: 'Month View' }]}
             value={view}
             onChange={(value: string) => setView(value as 'week' | 'month')}
-            className="w-32"
+            className="w-24 min-w-0"
           />
-          
+          <Select
+            label="Operator"
+            options={[
+              { value: '', label: 'All Operators' },
+              ...operators.map(op => ({ value: op.id, label: op.name }))
+            ]}
+            value={operatorFilter}
+            onChange={setOperatorFilter}
+            className="w-32 min-w-0"
+          />
           <Button
+            size="lg"
+            className="ml-2 font-bold px-6 py-2"
             onClick={() => {
               if (leads.length === 0) {
                 setToast({
@@ -528,21 +580,23 @@ export function JobScheduling() {
                 setIsCreateModalOpen(true);
               }
             }}
-            leftIcon={<Plus size={16} />}
+            leftIcon={<Plus size={20} />}
           >
             New Job
           </Button>
         </div>
       </div>
-
       <Card>
         <CardContent className="p-6">
+          <div className="mb-4">
+            <h3 className="text-lg font-semibold text-gray-900">Job Schedule</h3>
+          </div>
           {isLoading ? (
             <div className="text-center py-4">Loading schedule...</div>
           ) : leads.length === 0 ? (
             <div className="text-center py-12 bg-gray-50 rounded-lg">
-              <h3 className="text-lg font-medium text-gray-800 mb-2">No Won Deals Yet</h3>
-              <p className="text-gray-600">
+              <h3 className="text-lg font-medium text-gray-900 mb-2 font-sans">No Won Deals Yet</h3>
+              <p className="text-gray-700 font-sans">
                 Jobs can only be scheduled for deals that have been marked as "won". 
                 Return to the Deals page and move a deal to the "won" stage first.
               </p>
@@ -580,10 +634,10 @@ export function JobScheduling() {
             label="Select Customer (Won Deals)"
             options={[
               { value: '', label: '-- Select a customer with a won deal --' },
-              ...leads.map(lead => ({
+              ...(Array.isArray(leads) ? leads.map(lead => ({
                 value: lead.id,
                 label: `${lead.customerName} - Won Deal`,
-              }))
+              })) : [])
             ]}
             value={formData.leadId}
             onChange={(value: string) => {
@@ -648,6 +702,7 @@ export function JobScheduling() {
               }
             }}
             required
+            className="text-black"
           />
 
           <div className="grid grid-cols-2 gap-4">
@@ -659,21 +714,23 @@ export function JobScheduling() {
                 (dealEquipment.length > 0 && wonDealId) 
                 ? [
                     { value: '', label: '-- Select deal-specific equipment --' },
-                    ...dealEquipment.map(item => ({
+                    ...(Array.isArray(dealEquipment) ? dealEquipment.map(item => ({
                       value: item.id,
                       label: `${item.name} (From Deal)`,
-                    }))
+                    })) : [])
                   ] 
                 : [
                     { value: '', label: '-- Select equipment --' },
-                    ...equipment.map(item => ({
+                    ...(Array.isArray(equipment) ? equipment.map(item => ({
                       value: item.id,
                       label: item.name,
-                    }))
+                    })) : [])
                   ]
               }
               value={formData.equipmentId}
-              onChange={(value: string) => setFormData(prev => ({ ...prev, equipmentId: value }))}              required
+              onChange={(value: string) => setFormData(prev => ({ ...prev, equipmentId: value }))}
+              required
+              className="text-black"
             />
                 {/* Information about equipment selection */}
               {isLoadingEquipment ? (
@@ -693,14 +750,35 @@ export function JobScheduling() {
 
             <Select
               label="Operator"
-              options={operators.map(op => ({
-                value: op.id,
-                label: op.name,
-              }))}
+              options={[
+                { value: '', label: '-- Select operator --' },
+                ...getAvailableOperators().map(op => ({
+                  value: op.id,
+                  label: op.name,
+                }))
+              ]}
               value={formData.operatorId}
               onChange={(value: string) => setFormData(prev => ({ ...prev, operatorId: value }))}
               required
+              className="text-black"
             />
+            {formData.startDate && formData.endDate && (
+              <p className="mt-1 text-xs text-gray-600">
+                {(() => {
+                  const availableOperators = getAvailableOperators();
+                  const totalOperators = operators.length;
+                  const unavailableCount = totalOperators - availableOperators.length;
+                  
+                  if (unavailableCount === 0) {
+                    return `All ${totalOperators} operators are available`;
+                  } else if (availableOperators.length === 0) {
+                    return `No operators available for this time slot`;
+                  } else {
+                    return `${availableOperators.length} of ${totalOperators} operators available (${unavailableCount} busy)`;
+                  }
+                })()}
+              </p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -710,6 +788,7 @@ export function JobScheduling() {
               value={formData.startDate}
               onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
               required
+              className="text-black"
             />
 
             <Input
@@ -718,6 +797,7 @@ export function JobScheduling() {
               value={formData.endDate}
               onChange={(e) => setFormData(prev => ({ ...prev, endDate: e.target.value }))}
               required
+              className="text-black"
             />
           </div>
 
@@ -726,6 +806,7 @@ export function JobScheduling() {
             value={formData.location}
             onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
             required
+            className="text-black"
           />
 
           <TextArea
@@ -733,6 +814,7 @@ export function JobScheduling() {
             value={formData.notes}
             onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
             rows={4}
+            className="text-black"
           />
 
           {formData.equipmentId && formData.operatorId && formData.startDate && formData.endDate && (
@@ -787,80 +869,7 @@ export function JobScheduling() {
         size="lg"
       >
         {selectedJob && (
-          <div className="space-y-6">
-            <div className="grid grid-cols-2 gap-6">
-              <div>
-                <h4 className="text-sm font-medium text-gray-500">Customer</h4>
-                <p className="mt-1">{selectedJob.customerName}</p>
-              </div>
-
-              <div>
-                <h4 className="text-sm font-medium text-gray-500">Status</h4>
-                <div className="mt-1">
-                  <Select
-                    options={[
-                      { value: 'scheduled', label: 'Scheduled' },
-                      { value: 'in_progress', label: 'In Progress' },
-                      { value: 'completed', label: 'Completed' },
-                      { value: 'cancelled', label: 'Cancelled' },
-                    ]}
-                    value={selectedJob.status}
-                    onChange={(value: string) => handleStatusChange(selectedJob.id, value as Job['status'])}
-                  />
-                </div>
-              </div>
-
-              <div>
-                <h4 className="text-sm font-medium text-gray-500">Equipment</h4>
-                <p className="mt-1">
-                  {/* Use equipmentIds and operatorIds for display */}
-                  {equipment.find(e => selectedJob.equipmentIds.includes(e.id))?.name}
-                </p>
-              </div>
-
-              <div>
-                <h4 className="text-sm font-medium text-gray-500">Operator</h4>
-                <p className="mt-1">
-                  {operators.find(o => selectedJob.operatorIds.includes(o.id))?.name}
-                </p>
-              </div>
-
-              <div>
-                <h4 className="text-sm font-medium text-gray-500">Start Date</h4>
-                <p className="mt-1">
-                  {/* Use scheduledStartDate and scheduledEndDate for display */}
-                  {format(new Date(selectedJob.scheduledStartDate), 'MMM d, yyyy h:mm a')}
-                </p>
-              </div>
-
-              <div>
-                <h4 className="text-sm font-medium text-gray-500">End Date</h4>
-                <p className="mt-1">
-                  {/* Use scheduledStartDate and scheduledEndDate for display */}
-                  {format(new Date(selectedJob.scheduledEndDate), 'MMM d, yyyy h:mm a')}
-                </p>
-              </div>
-
-              <div className="col-span-2">
-                <h4 className="text-sm font-medium text-gray-500">Location</h4>
-                <p className="mt-1">{selectedJob.location}</p>
-              </div>
-
-              <div className="col-span-2">
-                <h4 className="text-sm font-medium text-gray-500">Notes</h4>
-                <p className="mt-1 whitespace-pre-wrap">{selectedJob.notes || 'No notes'}</p>
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-3 mt-6">
-              <Button
-                variant="outline"
-                onClick={() => setSelectedJob(null)}
-              >
-                Close
-              </Button>
-            </div>
-          </div>
+          <JobDetailsContent selectedJob={selectedJob} />
         )}
       </Modal>
 
@@ -874,6 +883,155 @@ export function JobScheduling() {
           onClose={() => setToast({ show: false, title: '' })}
         />
       )}
+    </div>
+  );
+}
+
+// New component for Job Details modal content
+function JobDetailsContent({ selectedJob }: { selectedJob: any }) {
+  const [equipmentNames, setEquipmentNames] = React.useState<string>('');
+  const [operatorNames, setOperatorNames] = React.useState<string>('');
+
+  React.useEffect(() => {
+    async function fetchEquipmentNames() {
+      try {
+        // Use API client to get job equipment mapping
+        const jobEquipment = await jobApiClient.getJobEquipment(selectedJob.id);
+        if (!jobEquipment || jobEquipment.length === 0) {
+          setEquipmentNames('No equipment assigned');
+          return;
+        }
+        
+        const names: string[] = [];
+        for (const eq of jobEquipment) {
+          // eq.equipment_id is the equipment ID from job_equipment table
+          const eqData = await getEquipmentById(eq.equipment_id);
+          if (eqData && eqData.name) {
+            names.push(eqData.name);
+          }
+        }
+        setEquipmentNames(names.length > 0 ? names.join(', ') : 'No equipment assigned');
+      } catch (error) {
+        console.error('Error fetching equipment names:', error);
+        setEquipmentNames('Error loading equipment');
+      }
+    }
+    fetchEquipmentNames();
+  }, [selectedJob.id]);
+
+  React.useEffect(() => {
+    async function fetchOperatorNames() {
+      try {
+        // Use API client to get job operators mapping
+        const jobOperators = await jobApiClient.getJobOperators(selectedJob.id);
+        if (!jobOperators || jobOperators.length === 0) {
+          setOperatorNames('No operator assigned');
+          return;
+        }
+        
+        const names: string[] = [];
+        for (const op of jobOperators) {
+          // op.operator_id is the operator ID from job_operators table
+          // Fetch all operators to get the name by ID
+          const allOperators = await getAllOperators();
+          const operatorData = allOperators.find((o: any) => o.id === op.operator_id);
+          if (operatorData && operatorData.name) {
+            names.push(operatorData.name);
+          }
+        }
+        setOperatorNames(names.length > 0 ? names.join(', ') : 'No operator assigned');
+      } catch (error) {
+        console.error('Error fetching operator names:', error);
+        setOperatorNames('Error loading operators');
+      }
+    }
+    fetchOperatorNames();
+  }, [selectedJob.id]);
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 gap-6">
+        <div>
+          <h4 className="text-sm font-medium text-black">Customer</h4>
+          <input
+            type="text"
+            className="mt-1 text-black bg-gray-100 border border-gray-300 rounded px-2 py-1 w-full"
+            value={selectedJob.customerName}
+            disabled
+            readOnly
+          />
+        </div>
+        <div>
+          <h4 className="text-sm font-medium text-black">Status</h4>
+          <input
+            type="text"
+            className="mt-1 text-black bg-gray-100 border border-gray-300 rounded px-2 py-1 w-full"
+            value={selectedJob.status}
+            disabled
+            readOnly
+          />
+        </div>
+        <div>
+          <h4 className="text-sm font-medium text-black">Equipment</h4>
+          <input
+            type="text"
+            className="mt-1 text-black bg-gray-100 border border-gray-300 rounded px-2 py-1 w-full"
+            value={equipmentNames}
+            disabled
+            readOnly
+          />
+        </div>
+        <div>
+          <h4 className="text-sm font-medium text-black">Operator</h4>
+          <input
+            type="text"
+            className="mt-1 text-black bg-gray-100 border border-gray-300 rounded px-2 py-1 w-full"
+            value={operatorNames}
+            disabled
+            readOnly
+          />
+        </div>
+        <div>
+          <h4 className="text-sm font-medium text-black">Start Date</h4>
+          <input
+            type="text"
+            className="mt-1 text-black bg-gray-100 border border-gray-300 rounded px-2 py-1 w-full"
+            value={format(new Date(selectedJob.scheduledStartDate), 'MMM d, yyyy h:mm a')}
+            disabled
+            readOnly
+          />
+        </div>
+        <div>
+          <h4 className="text-sm font-medium text-black">End Date</h4>
+          <input
+            type="text"
+            className="mt-1 text-black bg-gray-100 border border-gray-300 rounded px-2 py-1 w-full"
+            value={format(new Date(selectedJob.scheduledEndDate), 'MMM d, yyyy h:mm a')}
+            disabled
+            readOnly
+          />
+        </div>
+        <div className="col-span-2">
+          <h4 className="text-sm font-medium text-black">Location</h4>
+          <input
+            type="text"
+            className="mt-1 text-black bg-gray-100 border border-gray-300 rounded px-2 py-1 w-full"
+            value={selectedJob.location}
+            disabled
+            readOnly
+          />
+        </div>
+        <div className="col-span-2">
+          <h4 className="text-sm font-medium text-black">Notes</h4>
+          <input
+            type="text"
+            className="mt-1 text-black bg-gray-100 border border-gray-300 rounded px-2 py-1 w-full"
+            value={selectedJob.notes || 'No notes'}
+            disabled
+            readOnly
+          />
+        </div>
+      </div>
     </div>
   );
 }

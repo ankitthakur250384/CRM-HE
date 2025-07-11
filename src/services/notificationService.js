@@ -1,7 +1,5 @@
-import { Notification } from '../types/notification';
-
 // Mock Notifications
-const MOCK_NOTIFICATIONS: Notification[] = [
+const MOCK_NOTIFICATIONS = [
   {
     id: '1',
     userId: '3', // Mike Operator
@@ -35,14 +33,14 @@ const MOCK_NOTIFICATIONS: Notification[] = [
 ];
 
 // Get notifications for a user
-export const getUserNotifications = async (userId: string): Promise<Notification[]> => {
+export const getUserNotifications = async (userId) => {
   // Simulate API delay
   await new Promise(resolve => setTimeout(resolve, 400));
   return MOCK_NOTIFICATIONS.filter(n => n.userId === userId).map(n => ({ ...n }));
 };
 
 // Mark notification as read
-export const markNotificationAsRead = async (id: string): Promise<Notification | null> => {
+export const markNotificationAsRead = async (id) => {
   // Simulate API delay
   await new Promise(resolve => setTimeout(resolve, 300));
   
@@ -58,13 +56,11 @@ export const markNotificationAsRead = async (id: string): Promise<Notification |
 };
 
 // Create notification
-export const createNotification = async (
-  notification: Omit<Notification, 'id' | 'createdAt' | 'read'>
-): Promise<Notification> => {
+export const createNotification = async (notification) => {
   // Simulate API delay
   await new Promise(resolve => setTimeout(resolve, 500));
   
-  const newNotification: Notification = {
+  const newNotification = {
     ...notification,
     id: Math.random().toString(36).substring(2, 9),
     createdAt: new Date().toISOString(),
@@ -76,7 +72,7 @@ export const createNotification = async (
 };
 
 // Get unread notifications count
-export const getUnreadNotificationCount = async (userId: string): Promise<number> => {
+export const getUnreadNotificationCount = async (userId) => {
   const notifications = await getUserNotifications(userId);
   return notifications.filter(n => !n.read).length;
 };

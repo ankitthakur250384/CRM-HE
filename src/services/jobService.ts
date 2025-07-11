@@ -1,30 +1,30 @@
 /**
  * Job Service
  * 
- * This file serves as a wrapper around the PostgreSQL job repository.
- * It replaces the Firestore implementation and provides the same interface.
+ * This file serves as a wrapper around the job API client.
+ * It provides a clean interface for job-related operations.
  */
 
-import * as jobRepository from './postgres/jobRepository';
-import * as equipmentRepository from './postgres/equipmentRepository';
-import * as operatorRepository from './postgres/operatorRepository';
+import { jobApiClient } from './jobApiClient';
 import { Job, JobStatus, Equipment as JobEquipment, Operator } from '../types/job';
-import { Equipment as DatabaseEquipment } from '../types/equipment';
 import { getLeadById } from './leadService';
 
 // Get all jobs
 export const getJobs = async (): Promise<Job[]> => {
-  return jobRepository.getJobs();
+  return jobApiClient.getAllJobs();
 };
 
 // Get job by ID
 export const getJobById = async (id: string): Promise<Job | null> => {
-  return jobRepository.getJobById(id);
+  return jobApiClient.getJobById(id);
 };
 
 // Get jobs for an operator
 export const getJobsByOperator = async (operatorId: string): Promise<Job[]> => {
-  return jobRepository.getJobsByOperator(operatorId);
+  // This would need to be implemented in the API
+  // For now, get all jobs and filter client-side
+  const jobs = await getJobs();
+  return jobs.filter(job => job.operatorIds && job.operatorIds.includes(operatorId));
 };
 
 // Create job
@@ -37,7 +37,7 @@ export const createJob = async (jobData: Omit<Job, 'id' | 'createdAt' | 'updated
   }
   
   // Create job with the updated customer name
-  return jobRepository.createJob({
+  return jobApiClient.createJob({
     ...jobData,
     customerName
   });
@@ -45,45 +45,26 @@ export const createJob = async (jobData: Omit<Job, 'id' | 'createdAt' | 'updated
 
 // Update job
 export const updateJob = async (id: string, updates: Partial<Job>): Promise<Job | null> => {
-  return jobRepository.updateJob(id, updates);
+  return jobApiClient.updateJob(id, updates);
 };
 
 // Update job status
 export const updateJobStatus = async (id: string, status: JobStatus): Promise<Job | null> => {
-  return jobRepository.updateJobStatus(id, status);
-};
-
-// Helper function to adapt equipment type from database to job format
-const adaptEquipmentToJobFormat = (equipment: DatabaseEquipment | null): JobEquipment | null => {
-  if (!equipment) return null;
-  
-  return {
-    id: equipment.id,
-    name: equipment.name,
-    type: equipment.category, // Map category to type
-    description: equipment.description || '',
-    baseRate: equipment.baseRates.monthly // Default to monthly rate
-  };
-};
-
-// Get equipment by ID
-export const getEquipmentById = async (id: string): Promise<JobEquipment | null> => {
-  const equipment = await equipmentRepository.getEquipmentById(id);
-  return adaptEquipmentToJobFormat(equipment);
+  return jobApiClient.updateJob(id, { status });
 };
 
 // Get all equipment
 export const getAllEquipment = async (): Promise<JobEquipment[]> => {
-  const equipmentList = await equipmentRepository.getEquipment();
-  return equipmentList.map(equipment => adaptEquipmentToJobFormat(equipment)!).filter(Boolean); // Filter out any null values (shouldn't happen, but for safety)
+  return jobApiClient.getAllEquipment();
 };
 
-// Get operator by ID
-export const getOperatorById = async (id: string): Promise<Operator | null> => {
-  return operatorRepository.getOperatorById(id);
+// Get equipment by ID
+export const getEquipmentById = async (id: string): Promise<JobEquipment | null> => {
+  const equipmentList = await getAllEquipment();
+  return equipmentList.find(eq => eq.id === id) || null;
 };
 
 // Get all operators
 export const getAllOperators = async (): Promise<Operator[]> => {
-  return operatorRepository.getOperators();
+  return jobApiClient.getAllOperators();
 };

@@ -229,7 +229,8 @@ export function LoginForm() {
               required
               autoComplete="email"
               placeholder="Email address"
-              className="w-full border-0 border-b border-gray-300 focus:border-black focus:ring-0 text-base py-3 px-0 bg-transparent placeholder-gray-400 outline-none"
+              className="w-full border-0 border-b border-gray-300 focus:border-black focus:ring-0 text-base py-3 px-0 bg-transparent placeholder-gray-400 outline-none text-[#222] font-semibold"
+              style={{ color: '#222', WebkitTextFillColor: '#222', background: 'transparent' }}
             />
           </div>
           <div>
@@ -242,7 +243,8 @@ export function LoginForm() {
               required
               autoComplete="current-password"
               placeholder="Password"
-              className="w-full border-0 border-b border-gray-300 focus:border-black focus:ring-0 text-base py-3 px-0 bg-transparent placeholder-gray-400 outline-none"
+              className="w-full border-0 border-b border-gray-300 focus:border-black focus:ring-0 text-base py-3 px-0 bg-transparent placeholder-gray-400 outline-none text-[#222] font-semibold"
+              style={{ color: '#222', WebkitTextFillColor: '#222', background: 'transparent' }}
             />
           </div>
         </div>

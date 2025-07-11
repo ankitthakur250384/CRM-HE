@@ -22,6 +22,9 @@ import customerRoutes from './api/customerRoutes.mjs';
 import equipmentRoutes from './api/equipmentRoutes.mjs';
 import configRoutes from './api/configRoutes.mjs';
 import userRoutes from './api/userRoutes.mjs';
+import jobRoutes from './api/jobRoutes.mjs';
+import operatorRoutes from './api/operatorRoutes.mjs';
+import activityRoutes from './api/activityRoutes.mjs';
 
 // Load environment variables
 dotenv.config();
@@ -95,7 +98,9 @@ app.get('/api', (req, res) => {
       customers: '/api/customers',
       equipment: '/api/equipment',
       config: '/api/config',
-      users: '/api/users'
+      users: '/api/users',
+      jobs: '/api/jobs',
+      operators: '/api/operators'
     }
   });
 });
@@ -123,6 +128,9 @@ app.use('/api/customers', customerRoutes);
 app.use('/api/equipment', equipmentRoutes);
 app.use('/api/config', configRoutes);
 app.use('/api/users', userRoutes);
+app.use('/api/jobs', jobRoutes);
+app.use('/api/operators', operatorRoutes);
+app.use('/api/activities', activityRoutes);
 
 // Root route
 app.get('/', (req, res) => {
@@ -166,5 +174,8 @@ app.listen(PORT, () => {
     console.log(`- Customer routes: http://localhost:${PORT}/api/customers`);
     console.log(`- Equipment routes: http://localhost:${PORT}/api/equipment`);
     console.log(`- Config routes: http://localhost:${PORT}/api/config`);
+    console.log(`- Job routes: http://localhost:${PORT}/api/jobs`);
+    console.log(`- Operator routes: http://localhost:${PORT}/api/operators`);
+    console.log(`- Activity routes: http://localhost:${PORT}/api/activities`);
   }
 });

@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Card } from '../common/Card';
 import { Badge } from '../common/Badge';
 import { 
@@ -8,16 +9,7 @@ import {
   DollarSign,
   AlertCircle 
 } from 'lucide-react';
-
-interface Activity {
-  id: string;
-  type: 'lead' | 'deal' | 'job' | 'equipment' | 'user';
-  title: string;
-  description: string;
-  timestamp: Date;
-  status?: 'success' | 'warning' | 'error' | 'info';
-  user?: string;
-}
+import { getRecentActivities, Activity } from '../../services/activityService';
 
 interface RecentActivitiesProps {
   activities?: Activity[];
@@ -118,7 +110,47 @@ const mockActivities: Activity[] = [
   }
 ];
 
-export function RecentActivities({ activities = mockActivities, className }: RecentActivitiesProps) {
+export function RecentActivities({ activities, className }: RecentActivitiesProps) {
+  const [localActivities, setLocalActivities] = useState<Activity[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchActivities = async () => {
+      try {
+        if (activities) {
+          setLocalActivities(activities);
+        } else {
+          const fetchedActivities = await getRecentActivities(5);
+          setLocalActivities(fetchedActivities);
+        }
+      } catch (error) {
+        console.error('Error fetching activities:', error);
+        setLocalActivities(mockActivities);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchActivities();
+  }, [activities]);
+
+  if (loading) {
+    return (
+      <Card className={`p-6 ${className}`}>
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-semibold text-gray-900">Recent Activities</h3>
+          <Clock className="h-5 w-5 text-gray-400" />
+        </div>
+        <div className="space-y-4">
+          <div className="text-center py-8 text-gray-500">
+            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-2"></div>
+            <p>Loading activities...</p>
+          </div>
+        </div>
+      </Card>
+    );
+  }
+
   return (
     <Card className={`p-6 ${className}`}>
       <div className="flex items-center justify-between mb-6">
@@ -127,13 +159,13 @@ export function RecentActivities({ activities = mockActivities, className }: Rec
       </div>
       
       <div className="space-y-4">
-        {activities.length === 0 ? (
+        {localActivities.length === 0 ? (
           <div className="text-center py-8 text-gray-500">
             <AlertCircle className="h-8 w-8 mx-auto mb-2 text-gray-400" />
             <p>No recent activities</p>
           </div>
         ) : (
-          activities.map((activity) => (
+          localActivities.map((activity) => (
             <div key={activity.id} className="flex items-start space-x-3 p-3 rounded-lg hover:bg-gray-50 transition-colors">
               <div className={`flex-shrink-0 p-2 rounded-full ${getStatusColor(activity.status)}`}>
                 {getActivityIcon(activity.type)}
@@ -166,7 +198,7 @@ export function RecentActivities({ activities = mockActivities, className }: Rec
         )}
       </div>
       
-      {activities.length > 0 && (
+      {localActivities.length > 0 && (
         <div className="mt-6 pt-4 border-t border-gray-200">
           <button className="text-sm text-blue-600 hover:text-blue-800 font-medium">
             View all activities →

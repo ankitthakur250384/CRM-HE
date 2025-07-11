@@ -3,6 +3,7 @@ export type NotificationType =
   | 'job_rejected'
   | 'job_completed'
   | 'job_rescheduled'
+  | 'job_created'
   | 'feedback_requested'
   | 'lead_status_change'
   | 'quotation_created';

@@ -3,98 +3,53 @@
  * Handles database operations for jobs using PostgreSQL
  */
 import { Job, JobStatus } from '../../types/job';
+import { db } from '../../lib/db';
 
 /**
- * Get all jobs from the database
+ * Transform database row to camelCase format with populated equipment and operator IDs
+ */
+const transformJobRow = async (row: any): Promise<Job | null> => {
+  if (!row) return null;
+  
+  // Fetch equipment IDs for this job
+  const equipmentRows = await db.any('SELECT equipment_id FROM job_equipment WHERE job_id = $1', [row.id]);
+  const equipmentIds = equipmentRows.map((e: any) => e.equipment_id);
+  
+  // Fetch operator IDs for this job
+  const operatorRows = await db.any('SELECT operator_id FROM job_operators WHERE job_id = $1', [row.id]);
+  const operatorIds = operatorRows.map((o: any) => o.operator_id);
+  
+  return {
+    id: row.id,
+    title: row.title,
+    leadId: row.lead_id,
+    customerId: row.customer_id,
+    customerName: row.customer_name,
+    equipmentIds: equipmentIds,
+    operatorIds: operatorIds,
+    dealId: row.deal_id,
+    status: row.status,
+    scheduledStartDate: row.scheduled_start_date,
+    scheduledEndDate: row.scheduled_end_date,
+    actualStartDate: row.actual_start_date,
+    actualEndDate: row.actual_end_date,
+    location: row.location,
+    notes: row.notes,
+    createdBy: row.created_by,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    assignedTo: row.assigned_to
+  };
+};
+
+/**
+ * Get all jobs from the database (real Postgres query)
  */
 export const getJobs = async (): Promise<Job[]> => {
   try {
-    console.log('Getting all jobs from PostgreSQL');
-    
-    // Mock data for development
-    return [
-      {
-        id: 'job-1',
-        title: 'Mobile Crane Installation',
-        dealId: 'deal-1',
-        leadId: 'lead-1',
-        customerId: 'customer-1',
-        customerName: 'ABC Construction',
-        equipmentIds: ['eq-1'],
-        operatorIds: ['op-1', 'op-2'],
-        location: {
-          address: '123 Main St, Anytown',
-          coordinates: {
-            latitude: 18.52043,
-            longitude: 73.85674
-          }
-        },
-        scheduledStartDate: new Date('2025-07-10').toISOString(),
-        scheduledEndDate: new Date('2025-07-20').toISOString(),
-        actualStartDate: new Date('2025-07-10').toISOString(),
-        actualEndDate: null,
-        status: 'in_progress',
-        notes: 'Regular communication with site manager required',
-        createdBy: 'ops-uid-789',
-        createdAt: new Date('2025-06-15').toISOString(),
-        updatedAt: new Date('2025-07-10').toISOString(),
-        assignedTo: 'ops-uid-789'
-      },
-      {
-        id: 'job-2',
-        title: 'Tower Crane Setup',
-        dealId: 'deal-2',
-        leadId: 'lead-2',
-        customerId: 'customer-2',
-        customerName: 'XYZ Developers',
-        equipmentIds: ['eq-2'],
-        operatorIds: ['op-3'],
-        location: {
-          address: '456 Oak Ave, Somewhere',
-          coordinates: {
-            latitude: 18.53043,
-            longitude: 73.86674
-          }
-        },
-        scheduledStartDate: new Date('2025-07-25').toISOString(),
-        scheduledEndDate: new Date('2025-08-15').toISOString(),
-        actualStartDate: null,
-        actualEndDate: null,
-        status: 'scheduled',
-        notes: 'Special permits required for this job',
-        createdBy: 'ops-uid-789',
-        createdAt: new Date('2025-06-20').toISOString(),
-        updatedAt: new Date('2025-06-20').toISOString(),
-        assignedTo: 'ops-uid-789'
-      },
-      {
-        id: 'job-3',
-        title: 'Crawler Crane Operation',
-        dealId: 'deal-3',
-        leadId: 'lead-3',
-        customerId: 'customer-3',
-        customerName: 'Metro Infrastructure',
-        equipmentIds: ['eq-3'],
-        operatorIds: ['op-4', 'op-5'],
-        location: {
-          address: '789 Park Rd, Bigcity',
-          coordinates: {
-            latitude: 18.54043,
-            longitude: 73.87674
-          }
-        },
-        scheduledStartDate: new Date('2025-06-05').toISOString(),
-        scheduledEndDate: new Date('2025-06-15').toISOString(),
-        actualStartDate: new Date('2025-06-05').toISOString(),
-        actualEndDate: new Date('2025-06-18').toISOString(),
-        status: 'completed',
-        notes: 'Project completed with slight delay due to weather',
-        createdBy: 'ops-uid-789',
-        createdAt: new Date('2025-05-20').toISOString(),
-        updatedAt: new Date('2025-06-18').toISOString(),
-        assignedTo: 'ops-uid-789'
-      }
-    ];
+    const jobs = await db.any('SELECT * FROM jobs');
+    const transformedJobs = await Promise.all(jobs.map(transformJobRow));
+    return transformedJobs.filter(job => job !== null) as Job[];
   } catch (error) {
     console.error('Error fetching jobs:', error);
     throw error;
@@ -106,10 +61,9 @@ export const getJobs = async (): Promise<Job[]> => {
  */
 export const getJobsForCustomer = async (customerId: string): Promise<Job[]> => {
   try {
-    console.log(`Getting jobs for customer ${customerId} from PostgreSQL`);
-    
-    const jobs = await getJobs();
-    return jobs.filter(job => job.customerId === customerId);
+    const jobs = await db.any('SELECT * FROM jobs WHERE customer_id = $1', [customerId]);
+    const transformedJobs = await Promise.all(jobs.map(transformJobRow));
+    return transformedJobs.filter(job => job !== null) as Job[];
   } catch (error) {
     console.error(`Error fetching jobs for customer ${customerId}:`, error);
     throw error;
@@ -121,10 +75,9 @@ export const getJobsForCustomer = async (customerId: string): Promise<Job[]> => 
  */
 export const getJobsForLead = async (leadId: string): Promise<Job[]> => {
   try {
-    console.log(`Getting jobs for lead ${leadId} from PostgreSQL`);
-    
-    const jobs = await getJobs();
-    return jobs.filter(job => job.leadId === leadId);
+    const jobs = await db.any('SELECT * FROM jobs WHERE lead_id = $1', [leadId]);
+    const transformedJobs = await Promise.all(jobs.map(transformJobRow));
+    return transformedJobs.filter(job => job !== null) as Job[];
   } catch (error) {
     console.error(`Error fetching jobs for lead ${leadId}:`, error);
     throw error;
@@ -136,10 +89,9 @@ export const getJobsForLead = async (leadId: string): Promise<Job[]> => {
  */
 export const getJobsForDeal = async (dealId: string): Promise<Job[]> => {
   try {
-    console.log(`Getting jobs for deal ${dealId} from PostgreSQL`);
-    
-    const jobs = await getJobs();
-    return jobs.filter(job => job.dealId === dealId);
+    const jobs = await db.any('SELECT * FROM jobs WHERE deal_id = $1', [dealId]);
+    const transformedJobs = await Promise.all(jobs.map(transformJobRow));
+    return transformedJobs.filter(job => job !== null) as Job[];
   } catch (error) {
     console.error(`Error fetching jobs for deal ${dealId}:`, error);
     throw error;
@@ -147,16 +99,30 @@ export const getJobsForDeal = async (dealId: string): Promise<Job[]> => {
 };
 
 /**
- * Get a job by ID
+ * Get jobs for a specific operator
+ */
+export const getJobsByOperator = async (operatorId: string): Promise<Job[]> => {
+  try {
+    const jobs = await db.any(`
+      SELECT j.* FROM jobs j
+      JOIN job_operators jo ON j.id = jo.job_id
+      WHERE jo.operator_id = $1
+    `, [operatorId]);
+    const transformedJobs = await Promise.all(jobs.map(transformJobRow));
+    return transformedJobs.filter(job => job !== null) as Job[];
+  } catch (error) {
+    console.error(`Error fetching jobs for operator ${operatorId}:`, error);
+    throw error;
+  }
+};
+
+/**
+ * Get a job by ID (real Postgres query)
  */
 export const getJobById = async (id: string): Promise<Job | null> => {
   try {
-    console.log(`Getting job ${id} from PostgreSQL`);
-    
-    const jobs = await getJobs();
-    const job = jobs.find(j => j.id === id);
-    
-    return job || null;
+    const job = await db.oneOrNone('SELECT * FROM jobs WHERE id = $1', [id]);
+    return job ? await transformJobRow(job) : null;
   } catch (error) {
     console.error(`Error fetching job ${id}:`, error);
     throw error;
@@ -164,20 +130,40 @@ export const getJobById = async (id: string): Promise<Job | null> => {
 };
 
 /**
- * Create a new job
+ * Create a new job (real Postgres query)
  */
 export const createJob = async (jobData: Omit<Job, 'id' | 'createdAt' | 'updatedAt'>): Promise<Job> => {
   try {
-    console.log('Creating job in PostgreSQL:', jobData);
-    
-    const newJob: Job = {
-      ...jobData,
-      id: `job-${Date.now()}`,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-    
-    return newJob;
+    // Start a transaction
+    const result = await db.tx(async (t: any) => {
+      // Create the job first
+      const job = await t.one(
+        `INSERT INTO jobs (title, deal_id, lead_id, customer_id, customer_name, location, scheduled_start_date, scheduled_end_date, actual_start_date, actual_end_date, status, notes, created_by)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)
+         RETURNING *`,
+        [jobData.title, jobData.dealId, jobData.leadId, jobData.customerId, jobData.customerName, jobData.location, jobData.scheduledStartDate, jobData.scheduledEndDate, jobData.actualStartDate, jobData.actualEndDate, jobData.status, jobData.notes, jobData.createdBy]
+      );
+
+      // Insert equipment associations
+      if (jobData.equipmentIds && jobData.equipmentIds.length > 0) {
+        for (const equipmentId of jobData.equipmentIds) {
+          await t.none('INSERT INTO job_equipment (job_id, equipment_id) VALUES ($1, $2)', [job.id, equipmentId]);
+        }
+      }
+
+      // Insert operator associations
+      if (jobData.operatorIds && jobData.operatorIds.length > 0) {
+        for (const operatorId of jobData.operatorIds) {
+          await t.none('INSERT INTO job_operators (job_id, operator_id) VALUES ($1, $2)', [job.id, operatorId]);
+        }
+      }
+
+      return job;
+    });
+
+    // Transform and return the complete job
+    const transformedJob = await transformJobRow(result);
+    return transformedJob as Job;
   } catch (error) {
     console.error('Error creating job:', error);
     throw error;
@@ -185,25 +171,58 @@ export const createJob = async (jobData: Omit<Job, 'id' | 'createdAt' | 'updated
 };
 
 /**
- * Update a job
+ * Update a job (real Postgres query)
  */
 export const updateJob = async (id: string, jobData: Partial<Job>): Promise<Job | null> => {
   try {
-    console.log(`Updating job ${id} in PostgreSQL`);
-    
-    const job = await getJobById(id);
-    
-    if (!job) {
-      return null;
-    }
-    
-    const updatedJob = {
-      ...job,
-      ...jobData,
-      updatedAt: new Date().toISOString()
-    };
-    
-    return updatedJob;
+    const result = await db.tx(async (t: any) => {
+      // Extract equipmentIds and operatorIds from jobData
+      const { equipmentIds, operatorIds, ...dbJobData } = jobData;
+      
+      // Update the job record if there are database fields to update
+      let updatedJob = null;
+      if (Object.keys(dbJobData).length > 0) {
+        const fields = Object.keys(dbJobData);
+        const values = Object.values(dbJobData);
+        const setClause = fields.map((f, i) => `${f} = $${i + 2}`).join(', ');
+        const query = `UPDATE jobs SET ${setClause}, updated_at = NOW() WHERE id = $1 RETURNING *`;
+        updatedJob = await t.oneOrNone(query, [id, ...values]);
+      } else {
+        // If no direct job fields to update, just fetch the current job
+        updatedJob = await t.oneOrNone('SELECT * FROM jobs WHERE id = $1', [id]);
+      }
+      
+      if (!updatedJob) return null;
+
+      // Update equipment associations if provided
+      if (equipmentIds !== undefined) {
+        // Remove existing associations
+        await t.none('DELETE FROM job_equipment WHERE job_id = $1', [id]);
+        // Add new associations
+        if (equipmentIds.length > 0) {
+          for (const equipmentId of equipmentIds) {
+            await t.none('INSERT INTO job_equipment (job_id, equipment_id) VALUES ($1, $2)', [id, equipmentId]);
+          }
+        }
+      }
+
+      // Update operator associations if provided
+      if (operatorIds !== undefined) {
+        // Remove existing associations
+        await t.none('DELETE FROM job_operators WHERE job_id = $1', [id]);
+        // Add new associations
+        if (operatorIds.length > 0) {
+          for (const operatorId of operatorIds) {
+            await t.none('INSERT INTO job_operators (job_id, operator_id) VALUES ($1, $2)', [id, operatorId]);
+          }
+        }
+      }
+
+      return updatedJob;
+    });
+
+    // Transform and return the complete job
+    return result ? await transformJobRow(result) : null;
   } catch (error) {
     console.error(`Error updating job ${id}:`, error);
     throw error;
@@ -225,16 +244,12 @@ export const updateJobStatus = async (id: string, status: JobStatus): Promise<Jo
 };
 
 /**
- * Delete a job
+ * Delete a job (real Postgres query)
  */
 export const deleteJob = async (id: string): Promise<boolean> => {
   try {
-    console.log(`Deleting job ${id} from PostgreSQL`);
-    
-    // In a real implementation, we would delete from the database
-    // For this mock, we just return true to indicate success
-    
-    return true;
+    const result = await db.result('DELETE FROM jobs WHERE id = $1', [id]);
+    return result.rowCount > 0;
   } catch (error) {
     console.error(`Error deleting job ${id}:`, error);
     throw error;
@@ -242,16 +257,29 @@ export const deleteJob = async (id: string): Promise<boolean> => {
 };
 
 /**
- * Get jobs for a specific operator
+ * CRUD for job_equipment
  */
-export const getJobsByOperator = async (operatorId: string): Promise<Job[]> => {
-  try {
-    console.log(`Getting jobs for operator ${operatorId} from PostgreSQL`);
-    
-    const jobs = await getJobs();
-    return jobs.filter(job => job.operatorIds && job.operatorIds.includes(operatorId));
-  } catch (error) {
-    console.error(`Error fetching jobs for operator ${operatorId}:`, error);
-    throw error;
-  }
+export const getJobEquipment = async (jobId: string) => {
+  return db.any('SELECT * FROM job_equipment WHERE job_id = $1', [jobId]);
+};
+export const addJobEquipment = async (jobId: string, equipmentId: string) => {
+  return db.one('INSERT INTO job_equipment (job_id, equipment_id) VALUES ($1, $2) RETURNING *', [jobId, equipmentId]);
+};
+export const removeJobEquipment = async (jobId: string, equipmentId: string) => {
+  const result = await db.result('DELETE FROM job_equipment WHERE job_id = $1 AND equipment_id = $2', [jobId, equipmentId]);
+  return result.rowCount > 0;
+};
+
+/**
+ * CRUD for job_operators
+ */
+export const getJobOperators = async (jobId: string) => {
+  return db.any('SELECT * FROM job_operators WHERE job_id = $1', [jobId]);
+};
+export const addJobOperator = async (jobId: string, operatorId: string) => {
+  return db.one('INSERT INTO job_operators (job_id, operator_id) VALUES ($1, $2) RETURNING *', [jobId, operatorId]);
+};
+export const removeJobOperator = async (jobId: string, operatorId: string) => {
+  const result = await db.result('DELETE FROM job_operators WHERE job_id = $1 AND operator_id = $2', [jobId, operatorId]);
+  return result.rowCount > 0;
 };
