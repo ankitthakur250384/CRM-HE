@@ -1,0 +1,176 @@
+{
+  "timestamp": "2025-06-23T07:12:48.299Z",
+  "count": 5,
+  "deals": [
+    {
+      "id": "deal-1",
+      "title": "Construction Site Tower Crane",
+      "description": "Tower crane for 12-story apartment complex construction",
+      "value": 125000,
+      "probability": 80,
+      "stage": "proposal",
+      "status": "active",
+      "customer": {
+        "id": "cust-123",
+        "name": "ABC Construction",
+        "email": "contact@abcconstruction.com",
+        "phone": "555-987-6543",
+        "company": "ABC Construction",
+        "address": "123 Builder St, Construction City",
+        "designation": "General Contractor"
+      },
+      "salesAgent": {
+        "id": "agent-1",
+        "name": "James Wilson",
+        "email": "james@aspcranes.com"
+      },
+      "equipment": {
+        "id": "eq-456",
+        "name": "Tower Crane 200ft",
+        "type": "tower-crane"
+      },
+      "timeline": {
+        "startDate": "2025-07-01T00:00:00.000Z",
+        "endDate": "2025-09-30T00:00:00.000Z"
+      },
+      "createdAt": "2025-06-15T10:30:00.000Z",
+      "updatedAt": "2025-06-22T16:45:00.000Z"
+    },
+    {
+      "id": "deal-2",
+      "title": "Highway Bridge Project",
+      "description": "Mobile cranes for highway overpass construction",
+      "value": 87500,
+      "probability": 90,
+      "stage": "negotiation",
+      "status": "active",
+      "customer": {
+        "id": "cust-456",
+        "name": "XYZ Development",
+        "email": "projects@xyzdevelopment.com",
+        "phone": "555-123-4567",
+        "company": "XYZ Development",
+        "address": "456 Development Ave, Builder Town",
+        "designation": "Infrastructure Developer"
+      },
+      "salesAgent": {
+        "id": "agent-2",
+        "name": "Sarah Johnson",
+        "email": "sarah@aspcranes.com"
+      },
+      "equipment": {
+        "id": "eq-789",
+        "name": "All-Terrain Crane 120T",
+        "type": "all-terrain-crane"
+      },
+      "timeline": {
+        "startDate": "2025-07-15T00:00:00.000Z",
+        "endDate": "2025-08-30T00:00:00.000Z"
+      },
+      "createdAt": "2025-06-10T09:15:00.000Z",
+      "updatedAt": "2025-06-20T11:30:00.000Z"
+    },
+    {
+      "id": "deal-3",
+      "title": "Commercial Complex HVAC Installation",
+      "description": "Crane rental for HVAC equipment installation on commercial complex",
+      "value": 45000,
+      "probability": 100,
+      "stage": "won",
+      "status": "completed",
+      "customer": {
+        "id": "cust-789",
+        "name": "Premier Buildings",
+        "email": "operations@premierbuildings.com",
+        "phone": "555-456-7890",
+        "company": "Premier Buildings",
+        "address": "789 Commercial Blvd, Business District",
+        "designation": "Commercial Developer"
+      },
+      "salesAgent": {
+        "id": "agent-1",
+        "name": "James Wilson",
+        "email": "james@aspcranes.com"
+      },
+      "equipment": {
+        "id": "eq-123",
+        "name": "Mobile Crane 80T",
+        "type": "mobile-crane"
+      },
+      "timeline": {
+        "startDate": "2025-06-01T00:00:00.000Z",
+        "endDate": "2025-06-15T00:00:00.000Z"
+      },
+      "createdAt": "2025-05-15T14:00:00.000Z",
+      "updatedAt": "2025-06-16T10:00:00.000Z"
+    },
+    {
+      "id": "deal-4",
+      "title": "Wind Farm Installation",
+      "description": "Specialized cranes for wind turbine installation",
+      "value": 230000,
+      "probability": 60,
+      "stage": "qualification",
+      "status": "active",
+      "customer": {
+        "id": "cust-101",
+        "name": "Green Energy Solutions",
+        "email": "projects@greenenergy.com",
+        "phone": "555-222-3333",
+        "company": "Green Energy Solutions",
+        "address": "101 Renewable Way, Energy Park",
+        "designation": "Renewable Energy Developer"
+      },
+      "salesAgent": {
+        "id": "agent-3",
+        "name": "Michael Brown",
+        "email": "michael@aspcranes.com"
+      },
+      "equipment": {
+        "id": "eq-555",
+        "name": "Crawler Crane 250T",
+        "type": "crawler-crane"
+      },
+      "timeline": {
+        "startDate": "2025-08-01T00:00:00.000Z",
+        "endDate": "2025-10-31T00:00:00.000Z"
+      },
+      "createdAt": "2025-06-05T16:20:00.000Z",
+      "updatedAt": "2025-06-18T09:45:00.000Z"
+    },
+    {
+      "id": "deal-5",
+      "title": "Marina Development Project",
+      "description": "Barge-mounted crane for marina construction",
+      "value": 175000,
+      "probability": 40,
+      "stage": "qualification",
+      "status": "active",
+      "customer": {
+        "id": "cust-202",
+        "name": "Waterfront Developments",
+        "email": "info@waterfrontdev.com",
+        "phone": "555-777-8888",
+        "company": "Waterfront Developments",
+        "address": "202 Harbor Drive, Marina City",
+        "designation": "Marine Construction"
+      },
+      "salesAgent": {
+        "id": "agent-2",
+        "name": "Sarah Johnson",
+        "email": "sarah@aspcranes.com"
+      },
+      "equipment": {
+        "id": "eq-777",
+        "name": "Floating Crane 150T",
+        "type": "floating-crane"
+      },
+      "timeline": {
+        "startDate": "2025-09-15T00:00:00.000Z",
+        "endDate": "2025-12-15T00:00:00.000Z"
+      },
+      "createdAt": "2025-06-12T11:10:00.000Z",
+      "updatedAt": "2025-06-17T15:30:00.000Z"
+    }
+  ]
+}

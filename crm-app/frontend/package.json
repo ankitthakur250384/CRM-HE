@@ -1,0 +1,42 @@
+{
+  "name": "asp-cranes-crm-frontend",
+  "version": "1.0.0",
+  "description": "Frontend for ASP Cranes CRM",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.18.0",
+    "@headlessui/react": "^1.7.17",
+    "@hello-pangea/dnd": "^18.0.1",
+    "@radix-ui/react-dialog": "^1.1.14",
+    "@radix-ui/react-slot": "^1.2.3",
+    "@radix-ui/react-tabs": "^1.1.12",
+    "axios": "^1.10.0",
+    "chart.js": "^4.5.0",
+    "class-variance-authority": "^0.7.0",
+    "date-fns": "^2.30.0",
+    "framer-motion": "^10.16.4",
+    "lucide-react": "^0.344.0",
+    "react-beautiful-dnd": "^13.1.1",
+    "react-chartjs-2": "^5.3.0",
+    "tailwind-merge": "^3.3.0",
+    "uuid": "^11.1.0",
+    "zustand": "^4.4.6"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.18",
+    "postcss": "^8.4.35",
+    "tailwindcss": "^3.4.1",
+    "typescript": "^5.5.3",
+    "vite": "^5.4.19"
+  }
+}
