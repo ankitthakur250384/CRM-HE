@@ -1,3 +1,8 @@
+
+
+// ...existing code...
+
+
 /**
  * Client-side Auth Service
  * 
@@ -6,7 +11,16 @@
  */
 
 import { User } from '../types/auth';
-import * as jwt from '../lib/jwtService';
+// Simple JWT decode (frontend safe, no verification)
+function decodeJwt(token: string): any {
+  try {
+    const payload = token.split('.')[1];
+    return JSON.parse(atob(payload.replace(/-/g, '+').replace(/_/g, '/')));
+  } catch (e) {
+    return {};
+  }
+}
+
 
 // API request headers
 const getHeaders = () => {
@@ -28,48 +42,43 @@ const getHeaders = () => {
 export const signIn = async (email: string, password: string): Promise<User> => {
   try {
     console.log('🔑 Starting sign in process for:', email);
-    
-    // Use environment variable API URL or fall back to relative URL
-    const apiUrl = import.meta.env.VITE_API_URL || '';
+    const apiUrl = import.meta.env.VITE_API_URL;
+    if (!apiUrl) {
+      throw new Error('VITE_API_URL is not set in the environment.');
+    }
     const loginUrl = `${apiUrl}/auth/login`;
-    
     console.log('Login URL:', loginUrl);
-    
     const response = await fetch(loginUrl, {
       method: 'POST',
       headers: getHeaders(),
       body: JSON.stringify({ email, password })
     });
-    
     if (!response.ok) {
-      const errorData = await response.json();
-      throw new Error(errorData.message || 'Authentication failed');
+      let errorMessage = 'Authentication failed';
+      try {
+        const errorData = await response.json();
+        if (errorData && errorData.message) errorMessage = errorData.message;
+      } catch (e) {
+        // If response is not JSON, keep default error message
+      }
+      throw new Error(errorMessage);
     }
-    
-    const { token, user } = await response.json();
-    
-    console.log('🔍 Raw response from server:', { token: !!token, user });
-    console.log('👤 User object:', JSON.stringify(user, null, 2));
-    console.log('🏷️ User role:', user?.role);
-    
-    // Validate user object structure
-    if (!user || !user.id || !user.email) {
+    let data;
+    try {
+      data = await response.json();
+    } catch (e) {
+      throw new Error('Invalid response from server.');
+    }
+    const { token, user } = data;
+    if (!user || !user.id || !user.email || !token) {
       throw new Error('Invalid user data received from server');
     }
-    
-    // Ensure user has a valid role - assign default if missing
     if (!user.role || !['admin', 'sales_agent', 'operations_manager', 'operator', 'support'].includes(user.role)) {
       console.warn('⚠️ User role missing or invalid, assigning default role');
-      user.role = 'admin'; // Default to admin for testing
+      user.role = 'admin';
     }
-    
-    console.log('✅ Final user object with role:', JSON.stringify(user, null, 2));
-    
-    // Store token in local storage
     localStorage.setItem('jwt-token', token);
-    
     console.log('✅ Authentication successful');
-    
     return user;
   } catch (error) {
     console.error('Error signing in:', error);
@@ -110,7 +119,7 @@ export const getCurrentUser = async (): Promise<User | null> => {
     }
 
     // First try to decode the token without verification
-    const decoded = jwt.decode(token);
+    const decoded = decodeJwt(token);
     
     // Check if token is expired
     if (decoded.exp && decoded.exp * 1000 < Date.now()) {
@@ -167,3 +176,13 @@ export const updateUserPassword = async (userId: string, newPassword: string): P
     throw error;
   }
 };
+
+// Default export for compatibility with default imports
+const authService = {
+  signIn,
+  signOutUser,
+  getCurrentUser,
+  updateUserPassword,
+};
+
+export default authService;

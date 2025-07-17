@@ -24,10 +24,10 @@ import { useAuthStore } from '../store/authStore';
 import { Quotation } from '../types/quotation';
 import { Template } from '../types/template';
 import { Deal } from '../types/deal';
-import { getQuotations } from '../services/quotationService';
-import { getDeals, getDealById } from '../services/dealService';
+import { getQuotations } from '../services/quotation';
+import { getDeals, getDealById } from '../services/deal';
 import { getDefaultTemplateConfig, getTemplateById } from '../services/configService';
-import { mergeQuotationWithTemplate } from '../utils/templateMerger';
+// import { mergeQuotationWithTemplate } from '../utils/templateMerger';
 import { formatCurrency } from '../utils/formatters';
 
 const STATUS_OPTIONS = [
@@ -109,7 +109,7 @@ export function QuotationManagement() {
         console.log('Sample customer data:', {
           id: customersData[0].id,
           name: customersData[0].name,
-          contactName: customersData[0].contactName
+          // contactName: customersData[0].contactName // Property doesn't exist on Customer type
         });
       }
       
@@ -340,8 +340,12 @@ export function QuotationManagement() {
         return;
       }
 
-      // Use the template merger utility to get the merged content
-      const content = mergeQuotationWithTemplate(quotation, defaultTemplate);
+      // Use inline template merger logic
+      let content = defaultTemplate.content;
+      content = content.replace(/\{\{customer_name\}\}/g, quotation.customerContact?.name || quotation.customerName || '');
+      content = content.replace(/\{\{equipment_name\}\}/g, quotation.selectedEquipment?.name || '');
+      content = content.replace(/\{\{project_duration\}\}/g, `${quotation.numberOfDays} days`);
+      content = content.replace(/\{\{total_amount\}\}/g, quotation.totalRent?.toLocaleString('en-IN', { style: 'currency', currency: 'INR' }) || '');
       
       // Create a new window with the content for PDF generation
       const printWindow = window.open('', '_blank');
@@ -393,8 +397,12 @@ export function QuotationManagement() {
         return;
       }
 
-      // Use the template merger utility
-      const content = mergeQuotationWithTemplate(quotation, defaultTemplate);
+      // Use inline template merger logic
+      let content = defaultTemplate.content;
+      content = content.replace(/\{\{customer_name\}\}/g, quotation.customerContact?.name || quotation.customerName || '');
+      content = content.replace(/\{\{equipment_name\}\}/g, quotation.selectedEquipment?.name || '');
+      content = content.replace(/\{\{project_duration\}\}/g, `${quotation.numberOfDays} days`);
+      content = content.replace(/\{\{total_amount\}\}/g, quotation.totalRent?.toLocaleString('en-IN', { style: 'currency', currency: 'INR' }) || '');
       
       // Create mailto link with the quotation content
       // Create a more descriptive equipment text based on whether we have multiple machines

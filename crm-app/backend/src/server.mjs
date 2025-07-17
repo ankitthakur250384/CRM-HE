@@ -25,6 +25,10 @@ import userRoutes from './routes/userRoutes.mjs';
 import jobRoutes from './routes/jobRoutes.mjs';
 import operatorRoutes from './routes/operatorRoutes.mjs';
 import activityRoutes from './routes/activityRoutes.mjs';
+import notificationRoutes from './routes/notificationRoutes.mjs';
+
+import dbConfigRoutes from './routes/dbConfigRoutes.mjs';
+import templateRoutes from './routes/templateRoutes.mjs';
 
 // Load environment variables
 dotenv.config();
@@ -131,6 +135,13 @@ app.use('/api/users', userRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/operators', operatorRoutes);
 app.use('/api/activities', activityRoutes);
+app.use('/api/notifications', notificationRoutes);
+
+// Mount template routes
+app.use('/api/templates', templateRoutes);
+
+// Mount database config routes
+app.use('/api/dbconfig', dbConfigRoutes);
 
 // Root route
 app.get('/', (req, res) => {

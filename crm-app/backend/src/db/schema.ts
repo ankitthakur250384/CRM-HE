@@ -1,8 +1,10 @@
+
 import { db } from '../lib/db';
 
 // Schema definition for PostgreSQL tables
 // These will match our Firestore collections
-export const schema = {  users: `
+export const schema = {
+  users: `
     CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
       uid VARCHAR(255) UNIQUE NOT NULL,
@@ -14,7 +16,6 @@ export const schema = {  users: `
       updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
   `,
-
   customers: `
     CREATE TABLE IF NOT EXISTS customers (
       id SERIAL PRIMARY KEY,
@@ -29,7 +30,6 @@ export const schema = {  users: `
       updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
   `,
-
   leads: `
     CREATE TABLE IF NOT EXISTS leads (
       id SERIAL PRIMARY KEY,
@@ -43,7 +43,6 @@ export const schema = {  users: `
       updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
   `,
-
   deals: `
     CREATE TABLE IF NOT EXISTS deals (
       id SERIAL PRIMARY KEY,
@@ -56,6 +55,17 @@ export const schema = {  users: `
       assigned_to VARCHAR(255),
       created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
       updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
+    );
+  `,
+  notifications: `
+    CREATE TABLE IF NOT EXISTS notifications (
+      id SERIAL PRIMARY KEY,
+      notification_id VARCHAR(255) UNIQUE NOT NULL,
+      user_id VARCHAR(255) NOT NULL,
+      title VARCHAR(255) NOT NULL,
+      message TEXT NOT NULL,
+      read BOOLEAN DEFAULT false,
+      created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
     );
   `,
 
@@ -207,6 +217,8 @@ export async function runMigrations() {
     
     await db.none(schema.config);
     console.log('✓ Created config table');
+    await db.none(schema.notifications);
+    console.log('✓ Created notifications table');
 
     console.log('✅ All database migrations completed successfully');
     return true;

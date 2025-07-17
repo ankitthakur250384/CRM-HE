@@ -217,8 +217,8 @@ const runProductionStartupChecks = () => {
     // Check if development files are present
     try {
       Promise.all([
-        import('../utils/devLogin').catch(() => null),
-        import('../utils/authDebug').catch(() => null)
+        import('../utils/devLogin.js').catch(() => null),
+        import('../utils/authDebug.js').catch(() => null)
       ]).then(modules => {
         const hasDevelopmentModules = modules.some(m => m !== null);
         if (hasDevelopmentModules) {

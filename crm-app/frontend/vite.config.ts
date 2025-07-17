@@ -1,6 +1,7 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import path from 'path';
+import { fileURLToPath } from 'node:url';
 // @ts-ignore - Import the JS file directly
 import noServerModules from './src/plugins/noServerModules.js';
 
@@ -8,6 +9,10 @@ import noServerModules from './src/plugins/noServerModules.js';
 export default defineConfig(({ mode }) => {
   // Get correct production status
   const isProduction = mode === 'production' || process.env.NODE_ENV === 'production';
+  
+  // Polyfill __dirname for ESM
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
   
   console.log(`Building for ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
   
@@ -17,15 +22,6 @@ export default defineConfig(({ mode }) => {
       noServerModules(), // Must be first plugin
       react()
     ],
-    server: {
-      proxy: {
-        '/api': {
-          target: 'http://localhost:3001',
-          changeOrigin: true,
-          secure: false
-        }
-      }
-    },
     optimizeDeps: {
       exclude: ['lucide-react'],
       include: ['zustand', 'zustand/middleware']
@@ -43,9 +39,37 @@ export default defineConfig(({ mode }) => {
         '../lib/dbClient.js': '/src/shims/dbClient.js',
         '../../lib/dbClient.js': '/src/shims/dbClient.js',
         'dotenv': '/src/shims/dotenv.js',
-        // Exclude development utilities in production builds - these must be ABSOLUTE paths
+        
+        // Backend service imports should be handled by API calls in production
+        // These imports point to the backend services, but for frontend builds
+        // we need to provide stubs or redirect to API calls
+        '../services/templateService': isProduction ? '/src/shims/emptyModule.js' : '/src/services/template.ts',
+        '../services/leadService': isProduction ? '/src/shims/emptyModule.js' : '/src/services/lead.ts',
+        '../services/jobService': isProduction ? '/src/shims/emptyModule.js' : '/src/services/job.ts',
+        '../services/customerService': isProduction ? '/src/shims/emptyModule.js' : '/src/services/customer.ts',
+        '../services/quotationService': isProduction ? '/src/shims/emptyModule.js' : '/src/services/quotation.ts',
+        '../services/userService': isProduction ? '/src/shims/emptyModule.js' : '/src/services/authService.ts',
+        '../services/authService.client': isProduction ? '/src/shims/emptyModule.js' : '/src/services/authService.ts',
+        '../../services/postgresAuthService': isProduction ? '/src/shims/emptyModule.js' : '/src/services/authService.ts',
+        '../services/siteAssessmentService': isProduction ? '/src/shims/emptyModule.js' : '/src/shims/emptyModule.js',
+        '../services/serviceManagementService': isProduction ? '/src/shims/emptyModule.js' : '/src/shims/emptyModule.js',
+        '../services/dealService': isProduction ? '/src/shims/emptyModule.js' : '/src/services/deal.ts',
+        '../services/configService': isProduction ? '/src/shims/emptyModule.js' : '/src/services/configService.ts',
+        '../services/equipmentService': isProduction ? '/src/shims/emptyModule.js' : '/src/services/equipment.ts',
+        '../utils/templateMerger': isProduction ? '/src/shims/emptyModule.js' : '/src/services/templateMerger.ts',
+        '../../utils/debugHelper': isProduction ? '/src/shims/emptyModule.js' : '/src/services/debugHelper.ts',
+        '../utils/customerUtils': isProduction ? '/src/shims/emptyModule.js' : '/src/services/customerUtils.ts',
+        '../services/jobApiClient': isProduction ? '/src/shims/emptyModule.js' : '/src/services/job.ts',
+        '../../utils/templateMerger': isProduction ? '/src/shims/emptyModule.js' : '/src/services/templateMerger.ts',
+        '../../services/jobApiClient': isProduction ? '/src/shims/emptyModule.js' : '/src/services/job.ts',
+        '../../services/templateService': isProduction ? '/src/shims/emptyModule.js' : '/src/services/template.ts',
+        '../../services/notificationService': isProduction ? '/src/shims/emptyModule.js' : '/src/services/notification.ts',
+        '../../utils/apiHeaders': isProduction ? '/src/shims/emptyModule.js' : '/src/services/apiHeaders.ts',
+        '../../services/customerService': isProduction ? '/src/shims/emptyModule.js' : '/src/services/customer.ts',
+        '../../services/activityService': isProduction ? '/src/shims/emptyModule.js' : '/src/shims/emptyModule.js',
+        
+        // Exclude development utilities in production builds
         ...(isProduction ? {
-          // Add MANY path variations to make sure all imports are caught
           './utils/devLogin': path.resolve(__dirname, 'src/shims/emptyModule.js'),
           '../utils/devLogin': path.resolve(__dirname, 'src/shims/emptyModule.js'),
           '../../utils/devLogin': path.resolve(__dirname, 'src/shims/emptyModule.js'),

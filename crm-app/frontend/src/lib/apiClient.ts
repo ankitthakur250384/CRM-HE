@@ -1,4 +1,11 @@
 /**
+ * Returns headers including Authorization if token exists
+ */
+export function getHeaders(): Record<string, string> {
+  const token = getAuthToken();
+  return token ? { 'Authorization': `Bearer ${token}` } : {};
+}
+/**
  * Enhanced API Client
  * 
  * Production-ready API client with robust error handling, authentication,

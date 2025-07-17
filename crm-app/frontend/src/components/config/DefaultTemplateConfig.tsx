@@ -6,7 +6,7 @@ import { Toast } from '../common/Toast';
 import { Card, CardHeader, CardTitle, CardContent } from '../common/Card';
 import { Template } from '../../types/template';
 import { Quotation } from '../../types/quotation';
-import { mergeQuotationWithTemplate } from '../../utils/templateMerger';
+import { mergeTemplateViaAPI } from '../../services/templateMerger';
 import { getTemplates, updateTemplate } from '../../services/templateService';
 
 interface DefaultTemplateConfigProps {
@@ -47,10 +47,10 @@ const SAMPLE_QUOTATION: Quotation = {
   usage: 'normal',
   riskFactor: 'low',
   extraCharge: 5000,
-  incidentalCharges: 10000,
+  incidentalCharges: ['10000'],
   otherFactorsCharge: 2000,
   billing: 'gst',
-  baseRate: 4000,
+  // baseRate removed, not in Quotation type
   includeGst: true,
   shift: 'single',
   dayNight: 'day',
@@ -62,7 +62,11 @@ const SAMPLE_QUOTATION: Quotation = {
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
   createdBy: 'system',
-  status: 'draft'
+  status: 'draft',
+  machineType: 'mobile',
+  dealType: 'rental',
+  sundayWorking: 'no', // or another valid SundayWorking value
+  otherFactors: []
 };
 
 export function DefaultTemplateConfig({ onSave }: DefaultTemplateConfigProps) {
@@ -76,6 +80,23 @@ export function DefaultTemplateConfig({ onSave }: DefaultTemplateConfigProps) {
     title: string;
     variant?: 'success' | 'error' | 'warning';
   }>({ show: false, title: '' });
+  const [previewHtml, setPreviewHtml] = useState('');
+
+  useEffect(() => {
+    async function fetchPreview() {
+      if (selectedTemplate && SAMPLE_QUOTATION) {
+        try {
+          const html = await mergeTemplateViaAPI(selectedTemplate.id, SAMPLE_QUOTATION);
+          setPreviewHtml(html);
+        } catch (err) {
+          setPreviewHtml('<div style="color:red">Error generating preview</div>');
+        }
+      } else {
+        setPreviewHtml('');
+      }
+    }
+    fetchPreview();
+  }, [selectedTemplate]);
 
   useEffect(() => {
     loadTemplatesAndConfig();
@@ -245,9 +266,7 @@ export function DefaultTemplateConfig({ onSave }: DefaultTemplateConfigProps) {
           </CardHeader>
           <CardContent>
             <div className="bg-white border rounded-lg p-6 shadow-sm max-h-[800px] overflow-y-auto">
-              <div 
-                dangerouslySetInnerHTML={{ __html: mergeQuotationWithTemplate(SAMPLE_QUOTATION, selectedTemplate) }}
-              />
+              <div dangerouslySetInnerHTML={{ __html: previewHtml }} />
             </div>
           </CardContent>
         </Card>

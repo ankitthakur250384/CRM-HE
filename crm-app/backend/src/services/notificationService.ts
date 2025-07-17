@@ -1,78 +1,39 @@
 import { Notification } from '../types/notification';
+import { db } from '../lib/db';
 
-// Mock Notifications
-const MOCK_NOTIFICATIONS: Notification[] = [
-  {
-    id: '1',
-    userId: '3', // Mike Operator
-    type: 'job_assigned',
-    title: 'New Job Assigned',
-    message: 'You have been assigned to a new job for Skyrise Developers',
-    read: false,
-    createdAt: '2023-09-25T14:35:00Z',
-    link: '/operator/jobs/1',
-  },
-  {
-    id: '2',
-    userId: '2', // Sara Manager
-    type: 'lead_status_change',
-    title: 'Lead Status Updated',
-    message: 'Lead "Skyrise Developers" has been marked as Won',
-    read: true,
-    createdAt: '2023-09-22T16:15:00Z',
-    link: '/manager/leads/3',
-  },
-  {
-    id: '3',
-    userId: '1', // John Sales
-    type: 'quotation_created',
-    title: 'Quotation Created',
-    message: 'A new quotation has been created for BuildRight Inc',
-    read: false,
-    createdAt: '2023-09-26T10:20:00Z',
-    link: '/sales/quotations/1',
-  },
-];
-
-// Get notifications for a user
+// Get notifications for a user from the database
 export const getUserNotifications = async (userId: string): Promise<Notification[]> => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 400));
-  return MOCK_NOTIFICATIONS.filter(n => n.userId === userId).map(n => ({ ...n }));
+  const rows = await db.any(
+    `SELECT notification_id as id, user_id as "userId", title, message, read, created_at as "createdAt"
+     FROM notifications WHERE user_id = $1 ORDER BY created_at DESC`,
+    [userId]
+  );
+  // Optionally add type and link if you add those columns
+  return rows;
 };
 
-// Mark notification as read
+// Mark notification as read in the database
 export const markNotificationAsRead = async (id: string): Promise<Notification | null> => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 300));
-  
-  const index = MOCK_NOTIFICATIONS.findIndex(n => n.id === id);
-  if (index === -1) return null;
-  
-  MOCK_NOTIFICATIONS[index] = {
-    ...MOCK_NOTIFICATIONS[index],
-    read: true,
-  };
-  
-  return { ...MOCK_NOTIFICATIONS[index] };
+  const row = await db.oneOrNone(
+    `UPDATE notifications SET read = true WHERE notification_id = $1 RETURNING notification_id as id, user_id as "userId", title, message, read, created_at as "createdAt"`,
+    [id]
+  );
+  return row;
 };
 
 // Create notification
 export const createNotification = async (
   notification: Omit<Notification, 'id' | 'createdAt' | 'read'>
 ): Promise<Notification> => {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 500));
-  
-  const newNotification: Notification = {
-    ...notification,
-    id: Math.random().toString(36).substring(2, 9),
-    createdAt: new Date().toISOString(),
-    read: false,
-  };
-  
-  MOCK_NOTIFICATIONS.push(newNotification);
-  return { ...newNotification };
+  const { userId, title, message } = notification;
+  const row = await db.one(
+    `INSERT INTO notifications (notification_id, user_id, title, message, read, created_at)
+     VALUES (gen_random_uuid()::text, $1, $2, $3, false, NOW())
+     RETURNING notification_id as id, user_id as "userId", title, message, read, created_at as "createdAt"`,
+    [userId, title, message]
+  );
+  // Note: type and link are extracted but not used in current implementation
+  return row;
 };
 
 // Get unread notifications count

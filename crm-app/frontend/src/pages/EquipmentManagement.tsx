@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Search, Edit2, Trash2, Calendar, Weight, Truck, AlertTriangle } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, Calendar, Weight, Truck } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { FormInput } from '../components/common/FormInput';
@@ -10,7 +10,7 @@ import { Toast } from '../components/common/Toast';
 import { Badge } from '../components/common/Badge';
 import { useAuthStore } from '../store/authStore';
 import { Equipment, CraneCategory, BaseRates } from '../types/equipment';
-import { getEquipment, createEquipment, updateEquipment, deleteEquipment } from '../services/equipmentService';
+import { getEquipment, createEquipment, updateEquipment, deleteEquipment } from '../services/api/equipmentService';
 import { formatCurrency } from '../utils/formatters';
 
 // Helper function to normalize equipment data
@@ -40,29 +40,7 @@ const normalizeEquipment = (equipment: Equipment): Equipment => {
   };
 };
 
-// Mock data warning component
-const MockDataWarning = ({ show }: { show: boolean }) => {
-  if (!show) return null;
-  
-  return (
-    <div className="mb-4 p-3 bg-yellow-50 border-l-4 border-yellow-400 text-yellow-700 flex items-center">
-      <AlertTriangle className="mr-2 h-5 w-5" />
-      <div>
-        <p className="font-bold">Mock Data In Use</p>
-        <p className="text-sm">The PostgreSQL API server is unavailable. Using local mock data instead.</p>
-        <p className="text-sm mt-1">
-          <strong>Troubleshooting:</strong> 
-          <ul className="list-disc ml-5 mt-1">
-            <li>Verify the PostgreSQL server is running</li>
-            <li>Check that the API server is started</li>
-            <li>Ensure the database connection parameters are correct</li>
-            <li>See API_CONNECTION_GUIDE.md for more details</li>
-          </ul>
-        </p>
-      </div>
-    </div>
-  );
-};
+// Removed MockDataWarning component
 
 const STATUS_OPTIONS = [
   { value: 'available', label: 'Available' },
@@ -121,8 +99,7 @@ export function EquipmentManagement() {
     description: '',
     status: 'available' as Equipment['status'],
   });
-  // State to track if we're using mock data
-  const [usingMockData, setUsingMockData] = useState(false);
+  // Remove mock data state
 
   useEffect(() => {
     fetchEquipment();
@@ -139,22 +116,14 @@ export function EquipmentManagement() {
       
       setEquipment(data);
       
-      // Check if we're using mock data
-      const hasMockData = data.some(item => item._mockFlag === true || item._source === 'schema' || item._source === 'client');
-      setUsingMockData(hasMockData);
-      
-      if (hasMockData) {
-        console.warn('Using mock equipment data. API connection might be unavailable.');
-        showToast('Using mock equipment data. Check API connection.', 'warning');
-      } else {
-        console.log('Successfully connected to equipment API');
-      }
+      // Only use real API data, no mock checks
+      console.log('Successfully connected to equipment API');
       
       setIsLoading(false);
     } catch (error) {
       console.error('Error fetching equipment:', error);
       showToast('Error fetching equipment', 'error');
-      setUsingMockData(true); // Assume mock data if error
+      // Removed mock data fallback
       setIsLoading(false);
     }
   };
@@ -251,12 +220,7 @@ export function EquipmentManagement() {
             )
           );
           
-          // Check if we got mock data or real API data
-          if (updatedEquipment._mockFlag) {
-            showToast('Equipment updated in local state only (API unavailable)', 'warning');
-          } else {
-            showToast('Equipment updated successfully', 'success');
-          }
+          showToast('Equipment updated successfully', 'success');
         } else {
           showToast('Failed to update equipment', 'error');
         }
@@ -271,12 +235,7 @@ export function EquipmentManagement() {
         
         setEquipment(prev => [...prev, newEquipment]);
         
-        // Check if we got mock data or real API data
-        if (newEquipment._mockFlag) {
-          showToast('Equipment created in local state only (API unavailable)', 'warning');
-        } else {
-          showToast('Equipment added successfully', 'success');
-        }
+        showToast('Equipment added successfully', 'success');
       }
 
       // Refresh equipment from API to ensure we have latest data
@@ -346,7 +305,7 @@ export function EquipmentManagement() {
   return (
     <div className="p-6 space-y-6">
       {/* Display mock data warning */}
-      <MockDataWarning show={usingMockData} />
+      {/* Removed mock data warning */}
       
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div className="flex flex-col sm:flex-row gap-4 flex-1">

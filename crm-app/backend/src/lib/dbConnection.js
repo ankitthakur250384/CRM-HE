@@ -19,12 +19,12 @@ if (!isBrowser) {
 
 // Get database configuration from environment variables
 const dbConfig = {
-  host: isBrowser ? 'localhost' : (process.env.VITE_DB_HOST || 'localhost'),
-  port: parseInt(isBrowser ? '5432' : (process.env.VITE_DB_PORT || '5432')),
-  database: isBrowser ? 'asp_crm' : (process.env.VITE_DB_NAME || 'asp_crm'),
-  user: isBrowser ? 'postgres' : (process.env.VITE_DB_USER || 'postgres'),
-  password: isBrowser ? 'postgres' : (process.env.VITE_DB_PASSWORD || 'postgres'),
-  ssl: isBrowser ? false : ((process.env.VITE_DB_SSL) === 'true' ? true : false),
+  host: isBrowser ? 'localhost' : (process.env.DB_HOST || 'localhost'),
+  port: parseInt(isBrowser ? '5432' : (process.env.DB_PORT || '5432')),
+  database: isBrowser ? 'asp_crm' : (process.env.DB_NAME || 'asp_crm'),
+  user: isBrowser ? 'postgres' : (process.env.DB_USER || 'postgres'),
+  password: isBrowser ? 'postgres' : (process.env.DB_PASSWORD || 'vedant21'),
+  ssl: isBrowser ? false : ((process.env.DB_SSL) === 'true' ? true : false),
   max: 20, // Maximum number of clients in the pool
   idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
   connectionTimeoutMillis: 2000, // Return an error after 2 seconds if connection could not be established

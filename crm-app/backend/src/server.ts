@@ -1,3 +1,5 @@
+import notificationRoutes from './routes/notificationRoutes';
+import templateRoutes from './routes/templateRoutes';
 /**
  * API Server for ASP Cranes CRM
  * This server provides authentication and database access for the frontend
@@ -8,10 +10,10 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import authRoutes from './api/authRoutes';
-import dbRoutes from './api/dbRoutes';
-import jobRoutes from './api/jobRoutes';
-import operatorRoutes from './api/operatorRoutes';
+import authRoutes from './routes/authRoutes';
+import dbRoutes from './routes/dbRoutes';
+import jobRoutes from './routes/jobRoutes';
+import operatorRoutes from './routes/operatorRoutes';
 // @ts-ignore - Using .mjs file which doesn't have type declarations
 import equipmentRoutes from './api/equipmentRoutes.mjs';
 // @ts-ignore - Using .mjs file which doesn't have type declarations
@@ -40,6 +42,8 @@ app.use('/api/jobs', jobRoutes);
 app.use('/api/operators', operatorRoutes);
 app.use('/api/equipment', equipmentRoutes);
 app.use('/api/leads', leadsRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/templates', templateRoutes);
 
 // Health check endpoint
 app.get('/api/health', (_, res) => {

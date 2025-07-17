@@ -1,3 +1,73 @@
+import { getHeaders } from './apiHeaders';
+// Update an existing quotation via backend API
+export async function updateQuotation(quotationId: string, updates: Partial<Quotation>): Promise<Quotation> {
+  const apiUrl = import.meta.env.VITE_API_URL || '/api';
+  const response = await fetch(`${apiUrl}/quotations/${quotationId}`, {
+    method: 'PATCH',
+    headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(updates),
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    throw new Error('Failed to update quotation');
+  }
+  return response.json();
+}
+// Fetch a single quotation by ID from backend API
+export async function getQuotationById(quotationId: string): Promise<Quotation> {
+  const apiUrl = import.meta.env.VITE_API_URL || '/api';
+  const response = await fetch(`${apiUrl}/quotations/${quotationId}`, {
+    method: 'GET',
+    headers: getHeaders(),
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    throw new Error('Failed to fetch quotation by ID');
+  }
+  return response.json();
+}
+// Create a new quotation via backend API
+export async function createQuotation(quotation: Partial<Quotation>): Promise<Quotation> {
+  const apiUrl = import.meta.env.VITE_API_URL || '/api';
+  const response = await fetch(`${apiUrl}/quotations`, {
+    method: 'POST',
+    headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(quotation),
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    throw new Error('Failed to create quotation');
+  }
+  return response.json();
+}
+// Fetch all quotations from backend API
+export async function getQuotations(): Promise<Quotation[]> {
+  const apiUrl = import.meta.env.VITE_API_URL || '/api';
+  const response = await fetch(`${apiUrl}/quotations`, {
+    method: 'GET',
+    headers: getHeaders(),
+    credentials: 'include',
+  });
+  if (!response.ok) {
+    throw new Error('Failed to fetch quotations');
+  }
+  const data = await response.json();
+  // Support both array and {data: array} responses
+  if (Array.isArray(data)) return data;
+  if (data && Array.isArray(data.data)) return data.data;
+  return [];
+}
+// Fetch quotations for a lead from backend API
+export async function getQuotationsForLead(leadId: string): Promise<any[]> {
+  const apiUrl = import.meta.env.VITE_API_URL || '/api';
+  const res = await fetch(`${apiUrl}/quotations?leadId=${encodeURIComponent(leadId)}`, {
+    method: 'GET',
+    headers: getHeaders(),
+    credentials: 'include',
+  });
+  if (!res.ok) throw new Error('Failed to fetch quotations');
+  return await res.json();
+}
 import { OrderType, BaseRates } from './equipment';
 
 export interface CustomerContact {

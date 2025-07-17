@@ -1,3 +1,4 @@
+import { getHeaders } from './apiHeaders';
 /**
  * Production Deployment Validator
  * This module checks that the production build is correctly configured
@@ -54,9 +55,9 @@ export const validateProductionDeploy = () => {
     import('../utils/devLogin')
       .then((module) => {
         // Check if the module has the dev function
-        if (module && typeof module.createDevToken === 'function') {
+        if (module && typeof (module as any).createDevToken === 'function') {
           // Call it to see if it returns null (correct in production) or a token (security issue)
-          const result = module.createDevToken();
+          const result = (module as any).createDevToken();
           if (result !== null) {
             devLoginAccessible = true;
             console.error('‼️ CRITICAL SECURITY ERROR: Development authentication module is accessible and functional in production!');
@@ -129,9 +130,10 @@ export const validateProductionDeploy = () => {
     if (isProd()) {
       try {
         // Log security incident
-        fetch('/api/security-incident', {
+        const apiUrl = import.meta.env.VITE_API_URL || '/api';
+        fetch(`${apiUrl}/security-incident`, {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json'},
+          headers: { ...getHeaders(), 'Content-Type': 'application/json' },
           body: JSON.stringify({
             type: 'production_validation_failed',
             timestamp: new Date().toISOString(),

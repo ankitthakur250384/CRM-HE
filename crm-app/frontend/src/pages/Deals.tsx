@@ -19,7 +19,7 @@ import { Input } from '../components/common/Input';
 import { Toast } from '../components/common/Toast';
 import { useAuthStore } from '../store/authStore';
 import { Deal, DealStage } from '../types/deal';
-import { getDeals, updateDealStage } from '../services/dealService';
+import { getDeals, updateDealStage } from '../services/deal';
 import { formatCurrency } from '../utils/formatters';
 import { useNavigate } from 'react-router-dom';
 
@@ -322,7 +322,7 @@ export function Deals() {
       </div>
       
       <div className="flex justify-between items-center">
-        <div className="font-medium text-xs">{formatCurrency(deal.value)}</div>
+        <div className="font-bold text-base text-primary-800">{formatCurrency(deal.value)}</div>
         <div className="text-xs bg-gray-100 px-2 py-1 rounded text-gray-600">
           {deal.probability || 50}%
         </div>

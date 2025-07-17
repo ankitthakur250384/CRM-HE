@@ -1,3 +1,4 @@
+import { getHeaders } from './apiHeaders';
 /**
  * Production Deployment Utilities
  * 
@@ -64,9 +65,10 @@ export const validatePrivateCloudDeployment = (): boolean => {
 
     // Log to monitoring system if available
     try {
-      fetch('/api/deployment-check', {
+      const apiUrl = import.meta.env.VITE_API_URL || '/api';
+      fetch(`${apiUrl}/deployment-check`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { ...getHeaders(), 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           status: 'failed',
           issues,

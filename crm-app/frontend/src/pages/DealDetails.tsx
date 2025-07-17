@@ -5,8 +5,8 @@ import { Card, CardHeader, CardTitle, CardContent } from '../components/common/C
 import { Button } from '../components/common/Button';
 import { Select } from '../components/common/Select';
 import { Toast } from '../components/common/Toast';
-import { getDealById, updateDealStage } from '../services/dealService';
-import { getQuotationsForLead } from '../services/quotationService';
+import { getDealById, updateDealStage } from '../services/deal';
+import { getQuotationsForLead } from '../services/quotation';
 import { Deal } from '../types/deal';
 import { SelectedMachine, Quotation } from '../types/quotation';
 import { useAuthStore } from '../store/authStore';
@@ -72,9 +72,9 @@ export function DealDetails() {
       
       // Extract and flatten all equipment from quotations
       const allEquipment: SelectedMachine[] = [];
-      quotationList.forEach(quotation => {
+      quotationList.forEach((quotation: Quotation) => {
         if (quotation.selectedMachines && quotation.selectedMachines.length > 0) {
-          quotation.selectedMachines.forEach(machine => {
+          quotation.selectedMachines.forEach((machine: SelectedMachine) => {
             // Avoid duplicates
             if (!allEquipment.some(equip => equip.id === machine.id)) {
               allEquipment.push(machine);
@@ -178,8 +178,8 @@ export function DealDetails() {
           <CardContent className="p-4">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-xs text-gray-500">Value</div>
-                <div className="text-base font-semibold text-gray-900">
+                <div className="text-xs text-gray-700 font-medium">Value</div>
+                <div className="text-lg font-bold text-primary-700">
                   {formatCurrency(deal.value)}
                 </div>
               </div>
