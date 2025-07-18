@@ -3,7 +3,8 @@ WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
-RUN npm install --unsafe-perm
+RUN npm install --unsafe-perm \
+    && chmod +x node_modules/.bin/vite
 
 # Ensure node_modules/.bin is in PATH
 ENV PATH="/app/node_modules/.bin:${PATH}"
