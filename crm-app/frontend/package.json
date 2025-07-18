@@ -4,6 +4,7 @@
   "description": "Frontend for ASP Cranes CRM",
   "type": "module",
   "scripts": {
+    "test": "echo \"No tests yet\"",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview"
