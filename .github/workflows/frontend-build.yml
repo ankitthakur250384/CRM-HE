@@ -1,0 +1,35 @@
+name: Frontend Docker Build
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build-frontend:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Build frontend Docker image
+        run: |
+          docker build -t asp-cranes-frontend ./crm-app/frontend
+
+      - name: Run frontend container for preview
+        run: |
+          docker run -d -p 3000:3000 asp-cranes-frontend
+
+      - name: Health Check Frontend
+        run: |
+          curl --retry 10 --retry-delay 5 http://localhost:3000 || exit 1
+
+      - name: Shutdown Docker
+        run: |
+          docker ps -q | xargs -r docker stop
