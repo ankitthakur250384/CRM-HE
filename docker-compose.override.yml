@@ -1,0 +1,29 @@
+# Docker Compose override for development and CI/CD
+services:
+  backend:
+    build:
+      context: ./crm-app/backend
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: development
+      PORT: 3001
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    
+  frontend:
+    build:
+      context: ./crm-app/frontend
+      dockerfile: Dockerfile
+    environment:
+      NODE_ENV: development
+      VITE_API_URL: http://backend:3001/api
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
