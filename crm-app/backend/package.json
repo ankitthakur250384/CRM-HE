@@ -5,6 +5,7 @@
   "main": "src/index.js",
   "type": "module",
   "scripts": {
+    "build": "echo \"No build step yet\"",
     "start": "node src/server.mjs",
     "dev": "nodemon src/server.mjs",
     "test": "echo \"No tests yet\""
