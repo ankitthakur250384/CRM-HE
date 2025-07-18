@@ -3,7 +3,7 @@ WORKDIR /app
 
 # Copy package files
 COPY package*.json ./
-RUN npm install
+RUN npm install --unsafe-perm
 
 # Ensure node_modules/.bin is in PATH
 ENV PATH="/app/node_modules/.bin:${PATH}"
