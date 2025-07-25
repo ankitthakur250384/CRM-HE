@@ -180,7 +180,7 @@ async function ensureTables(client) {
 }
 
 // GET all customers
-router.get('/', authenticateToken, async (req, res) => {
+router.get('/', async (req, res) => {
   console.log('🔍 GET /api/customers endpoint hit - inside route handler');
   
   if (!pool) {
@@ -252,7 +252,7 @@ router.get('/', authenticateToken, async (req, res) => {
 });
 
 // GET customer by ID
-router.get('/:id', authenticateToken, async (req, res) => {
+router.get('/:id', async (req, res) => {
   if (!pool) {
     return res.status(500).json({ error: 'Database connection not available' });
   }
@@ -304,7 +304,7 @@ router.get('/:id', authenticateToken, async (req, res) => {
 });
 
 // POST create new customer
-router.post('/', authenticateToken, async (req, res) => {
+router.post('/', async (req, res) => {
   if (!pool) {
     return res.status(500).json({ error: 'Database connection not available' });
   }
@@ -420,7 +420,7 @@ router.post('/', authenticateToken, async (req, res) => {
 });
 
 // PUT update customer
-router.put('/:id', authenticateToken, async (req, res) => {
+router.put('/:id', async (req, res) => {
   if (!pool) {
     return res.status(500).json({ error: 'Database connection not available' });
   }
@@ -582,7 +582,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
 });
 
 // DELETE customer
-router.delete('/:id', authenticateToken, async (req, res) => {
+router.delete('/:id', async (req, res) => {
   if (!pool) {
     return res.status(500).json({ error: 'Database connection not available' });
   }
