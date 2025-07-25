@@ -39,15 +39,13 @@ try {
 }
 
 // Import authentication middleware from central file
-import { authenticateToken } from '../authMiddleware.mjs';
-
-// Use authenticateToken middleware for all routes except /debug
-router.use((req, res, next) => {
-  if (req.path === '/debug') {
-    return next();
-  }
-  authenticateToken(req, res, next);
-});
+// CORS support for all customer endpoints
+import cors from 'cors';
+router.use(cors({
+  origin: '*',
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+}));
 
 // Helper function to convert snake_case to camelCase
 function snakeToCamel(obj) {
