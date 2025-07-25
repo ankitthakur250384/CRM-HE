@@ -37,16 +37,7 @@ const asyncHandler = (fn) => (req, res, next) => {
 
 // GET all equipment (with optional category filter)
 router.get('/', asyncHandler(async (req, res, next) => {
-  if (req.headers['x-bypass-auth'] === 'development-only-123' || req.headers['x-bypass-auth'] === 'true') {
-    req.user = { id: 'dev-user', email: 'dev@example.com', role: 'admin' };
-  } else {
-    await new Promise((resolve, reject) => {
-      authenticateToken(req, res, (err) => {
-        if (err) return reject(err);
-        resolve();
-      });
-    });
-  }
+  // Public route: no authentication required
 
   const { category } = req.query;
   
@@ -65,16 +56,7 @@ router.get('/', asyncHandler(async (req, res, next) => {
 
 // GET equipment by ID
 router.get('/:id', asyncHandler(async (req, res, next) => {
-  if (req.headers['x-bypass-auth'] === 'development-only-123' || req.headers['x-bypass-auth'] === 'true') {
-    req.user = { id: 'dev-user', email: 'dev@example.com', role: 'admin' };
-  } else {
-    await new Promise((resolve, reject) => {
-      authenticateToken(req, res, (err) => {
-        if (err) return reject(err);
-        resolve();
-      });
-    });
-  }
+  // Public route: no authentication required
 
   const equipment = await equipmentRepository.getEquipmentById(req.params.id);
   
@@ -93,16 +75,7 @@ router.get('/:id', asyncHandler(async (req, res, next) => {
 
 // CREATE equipment
 router.post('/', asyncHandler(async (req, res, next) => {
-  if (req.headers['x-bypass-auth'] === 'development-only-123' || req.headers['x-bypass-auth'] === 'true') {
-    req.user = { id: 'dev-user', email: 'dev@example.com', role: 'admin' };
-  } else {
-    await new Promise((resolve, reject) => {
-      authenticateToken(req, res, (err) => {
-        if (err) return reject(err);
-        resolve();
-      });
-    });
-  }
+  // Public route: no authentication required
 
   // Validate required fields according to schema
   const requiredFields = [
@@ -181,16 +154,7 @@ router.post('/', asyncHandler(async (req, res, next) => {
 
 // UPDATE equipment
 router.put('/:id', asyncHandler(async (req, res, next) => {
-  if (req.headers['x-bypass-auth'] === 'development-only-123' || req.headers['x-bypass-auth'] === 'true') {
-    req.user = { id: 'dev-user', email: 'dev@example.com', role: 'admin' };
-  } else {
-    await new Promise((resolve, reject) => {
-      authenticateToken(req, res, (err) => {
-        if (err) return reject(err);
-        resolve();
-      });
-    });
-  }
+  // Public route: no authentication required
 
   const equipment = await equipmentRepository.updateEquipment(req.params.id, req.body);
   
@@ -209,16 +173,7 @@ router.put('/:id', asyncHandler(async (req, res, next) => {
 
 // DELETE equipment
 router.delete('/:id', asyncHandler(async (req, res, next) => {
-  if (req.headers['x-bypass-auth'] === 'development-only-123' || req.headers['x-bypass-auth'] === 'true') {
-    req.user = { id: 'dev-user', email: 'dev@example.com', role: 'admin' };
-  } else {
-    await new Promise((resolve, reject) => {
-      authenticateToken(req, res, (err) => {
-        if (err) return reject(err);
-        resolve();
-      });
-    });
-  }
+  // Public route: no authentication required
 
   const deleted = await equipmentRepository.deleteEquipment(req.params.id);
   
