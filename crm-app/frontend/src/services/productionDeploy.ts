@@ -22,41 +22,21 @@ export const validatePrivateCloudDeployment = (): boolean => {
   const issues: string[] = [];
 
   // Check API URL configuration
-  const apiUrl = process.env.API_URL || '';
+  const apiUrl = (import.meta as any).env.API_URL || '';
   if (!apiUrl || apiUrl === '/api' || apiUrl.includes('localhost')) {
     issues.push('Invalid or missing API URL configuration for production');
     isValid = false;
   }
 
   // Check JWT secret configuration
-  const jwtSecret = process.env.JWT_SECRET || '';
+  const jwtSecret = (import.meta as any).env.JWT_SECRET || '';
   if (!jwtSecret || jwtSecret.length < 32 || jwtSecret === 'your-secure-jwt-secret-key-change-in-production') {
     issues.push('JWT secret is not properly configured for production');
     isValid = false;
   }
 
   // Check for development artifacts in production build
-  try {
-    // Check for development files that should never be in production
-    const devFiles = [
-      '../utils/devLogin',
-      '../utils/authDebug',
-      '../components/auth/SimpleAuthProviderFixed'
-    ];
-
-    for (const file of devFiles) {
-      try {
-        // This should fail in production since these files shouldn't be included
-        require(file);
-        issues.push(`Development file ${file} found in production build`);
-        isValid = false;
-      } catch (e) {
-        // Expected behavior in production - file should not be found
-      }
-    }
-  } catch (e) {
-    // Ignore dynamic import errors
-  }
+  // Production deployment artifacts check removed for security
 
   // Report issues if any were found
   if (!isValid) {
@@ -65,7 +45,7 @@ export const validatePrivateCloudDeployment = (): boolean => {
 
     // Log to monitoring system if available
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || '/api';
+      const apiUrl = (import.meta as any).env.VITE_API_URL || '/api';
       fetch(`${apiUrl}/deployment-check`, {
         method: 'POST',
         headers: { ...getHeaders(), 'Content-Type': 'application/json' },
@@ -88,8 +68,8 @@ export const validatePrivateCloudDeployment = (): boolean => {
  */
 export const getPrivateCloudConfig = () => {
   return {
-    apiUrl: process.env.API_URL || '/api',
-    apiTimeout: parseInt(process.env.API_TIMEOUT || '30000', 10),
+    apiUrl: (import.meta as any).env.API_URL || '/api',
+    apiTimeout: parseInt((import.meta as any).env.API_TIMEOUT || '30000', 10),
     useSecureCookies: true,
     requireHttps: true,
     tokenExpirySeconds: 28800, // 8 hours

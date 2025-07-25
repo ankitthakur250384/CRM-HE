@@ -20,6 +20,8 @@ export const jobApiClient = {
   getJobs,
   getAllOperators,
   createJob,
+  getJobEquipment,
+  getJobOperators,
 };
 // Create a new job via backend API
 export async function createJob(job: Partial<Job>): Promise<Job> {
@@ -88,6 +90,30 @@ export async function getAllOperators(): Promise<Operator[]> {
     credentials: 'include',
   });
   if (!res.ok) throw new Error('Failed to fetch operators');
+  return await res.json();
+}
+
+// Fetch equipment for a specific job
+export async function getJobEquipment(jobId: string): Promise<Equipment[]> {
+  const apiUrl = import.meta.env.VITE_API_URL || '/api';
+  const res = await fetch(`${apiUrl}/jobs/${encodeURIComponent(jobId)}/equipment`, {
+    method: 'GET',
+    headers: getHeaders(),
+    credentials: 'include',
+  });
+  if (!res.ok) throw new Error('Failed to fetch job equipment');
+  return await res.json();
+}
+
+// Fetch operators for a specific job
+export async function getJobOperators(jobId: string): Promise<Operator[]> {
+  const apiUrl = import.meta.env.VITE_API_URL || '/api';
+  const res = await fetch(`${apiUrl}/jobs/${encodeURIComponent(jobId)}/operators`, {
+    method: 'GET',
+    headers: getHeaders(),
+    credentials: 'include',
+  });
+  if (!res.ok) throw new Error('Failed to fetch job operators');
   return await res.json();
 }
 export type JobStatus = 'pending' | 'scheduled' | 'in_progress' | 'completed' | 'cancelled';

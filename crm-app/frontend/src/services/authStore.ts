@@ -5,7 +5,7 @@
 import { create } from 'zustand';
 // import { persist } from 'zustand/middleware';
 import { AuthState } from '../types/auth';
-import { signIn, signOutUser, getCurrentUser } from '../services/authService.client';
+import { signIn, signOutUser, getCurrentUser } from '../services/authService';
 import { 
   saveAuthToStorage, 
   clearAuthFromStorage

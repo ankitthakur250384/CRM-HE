@@ -14,7 +14,7 @@ const dbConfig = {
   port: parseInt(process.env.PGPORT || '5432'),
   database: process.env.PGDATABASE || 'asp_crm',
   user: process.env.PGUSER || 'postgres',
-  password: process.env.PGPASSWORD || 'vedant21',
+  password: process.env.PGPASSWORD || 'crmdb@21',
   ssl: process.env.PGSSL === 'true' ? { rejectUnauthorized: false } : false
 };
 

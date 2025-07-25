@@ -13,7 +13,7 @@ const pool = new pg.Pool({
   port: parseInt(process.env.DB_PORT || '5432'),
   database: process.env.DB_NAME || 'asp_crm',
   user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'vedant21',
+  password: process.env.DB_PASSWORD || 'crmdb@21',
   ssl: process.env.DB_SSL === 'true' ? true : false
 });
 
@@ -200,4 +200,5 @@ export const createUser = async (uid, email, password_hash, role, display_name) 
 };
 
 // Initialize the users table on module load
-initializeUsersTable().catch(console.error);
+// Auto-initialize users table on module load - commented out for production deployment
+// initializeUsersTable().catch(console.error);

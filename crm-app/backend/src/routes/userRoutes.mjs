@@ -20,7 +20,7 @@ const pool = new pg.Pool({
   port: parseInt(process.env.DB_PORT || '5432'),
   database: process.env.DB_NAME || 'asp_crm',
   user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'vedant21',
+  password: process.env.DB_PASSWORD || 'crmdb@21',
   ssl: process.env.DB_SSL === 'true' ? true : false
 });
 

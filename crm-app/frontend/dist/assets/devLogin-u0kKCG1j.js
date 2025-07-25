@@ -1,1 +1,0 @@
-const r={enabled:!0,username:"admin",password:"admin123",autoLogin:async()=>{try{return{success:!1}}catch(e){return console.error("Development login error:",e),{success:!1}}}};function n(){return`dev-token-${Date.now()}`}export{n as createDevToken,r as default,r as devLogin};

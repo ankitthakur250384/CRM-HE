@@ -79,14 +79,35 @@ export function QuotationManagement() {
       // Import customer service
       const { getCustomers } = await import('../services/customerService');
       
-      const [quotationsData, dealsData, customersData] = await Promise.all([
-        getQuotations(),
-        getDeals(),
-        getCustomers()
-      ]);
-      console.log('QuotationManagement: Fetched quotations:', quotationsData?.length || 0);
-      console.log('QuotationManagement: Fetched deals:', dealsData?.length || 0);
-      console.log('QuotationManagement: Fetched customers:', customersData?.length || 0);
+      // Fetch data with error handling for each service
+      let quotationsData = [];
+      let dealsData = [];
+      let customersData = [];
+      
+      try {
+        quotationsData = await getQuotations();
+        console.log('QuotationManagement: Fetched quotations:', quotationsData?.length || 0);
+      } catch (error) {
+        console.error('Error fetching quotations:', error);
+        showToast('Warning: Could not load quotations', 'warning');
+      }
+      
+      try {
+        dealsData = await getDeals();
+        console.log('QuotationManagement: Fetched deals:', dealsData?.length || 0);
+      } catch (error) {
+        console.error('Error fetching deals:', error);
+        showToast('Warning: Could not load deals.', 'warning');
+        dealsData = [];
+      }
+      
+      try {
+        customersData = await getCustomers();
+        console.log('QuotationManagement: Fetched customers:', customersData?.length || 0);
+      } catch (error) {
+        console.error('Error fetching customers:', error);
+        showToast('Warning: Could not load customers', 'warning');
+      }
       
       // Build a map of customers by ID for efficient lookup
       const customerMap = new Map();
@@ -184,9 +205,8 @@ export function QuotationManagement() {
   const loadDefaultTemplate = async () => {
     try {
       const config = await getDefaultTemplateConfig();
-      
       // First try to get the default template from config
-      if (config.defaultTemplateId) {
+      if (config && config.defaultTemplateId) {
         const template = await getTemplateById(config.defaultTemplateId);
         if (template) {
           console.log("Loaded template from config:", template);
@@ -194,7 +214,6 @@ export function QuotationManagement() {
           return;
         }
       }
-      
       // If no template found, use the default template from templateService
       try {
         // Try to get all templates
@@ -297,10 +316,12 @@ export function QuotationManagement() {
       showToast('Please select a deal', 'warning');
       return;
     }
-
+    // Debug: Log navigation intent
+    console.log('[handleProceedWithDeal] Navigating to /quotations/create?dealId=' + selectedDealId);
     // Navigate to quotation creation with the selected deal
     navigate(`/quotations/create?dealId=${selectedDealId}`);
-    
+    // Close the modal after navigation
+    setIsCreateModalOpen(false);
     setSelectedDealId('');
   };
 

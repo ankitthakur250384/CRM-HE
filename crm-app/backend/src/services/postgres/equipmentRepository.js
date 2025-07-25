@@ -414,5 +414,5 @@ export const deleteEquipment = async (id) => {
 // Export aliases for compatibility
 export const getEquipment = getAllEquipment;
 
-// Initialize table on module load
-initializeEquipmentTable().catch(console.error);
+// Initialize table on module load - commented out for production deployment
+// initializeEquipmentTable().catch(console.error);

@@ -10,8 +10,8 @@ import {
 import { StatCard } from '../components/dashboard/StatCard';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/common/Card';
 import { StatusBadge } from '../components/common/StatusBadge';
-import { getLeads } from '../services/leadService';
-import { getQuotationsForLead } from '../services/quotationService';
+import { getLeads } from '../services/lead';
+import { getQuotationsForLead } from '../services/quotation';
 import { Lead } from '../types/lead';
 import { Quotation } from '../types/quotation';
 import { Link } from 'react-router-dom';

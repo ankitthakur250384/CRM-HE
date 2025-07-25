@@ -285,6 +285,31 @@ export const getDefaultTemplateConfig = async () => {
 };
 
 /**
+ * Update default template configuration
+ */
+export const updateDefaultTemplateConfig = async (templateId: string) => {
+  try {
+    const response = await fetch('/api/config/default-template', {
+      method: 'POST',
+      headers: {
+        ...getHeaders(),
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({ defaultTemplateId: templateId })
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Failed to update default template: ${response.status}`);
+    }
+    
+    return await response.json();
+  } catch (error) {
+    console.error('Error updating default template:', error);
+    throw error;
+  }
+};
+
+/**
  * Get template by ID
  */
 export const getTemplateById = async (templateId: string) => {

@@ -12,12 +12,12 @@ const router = express.Router();
 
 // Database configuration
 const pool = new pg.Pool({
-  host: 'localhost',
-  port: 5432,
-  database: 'asp_crm',
-  user: 'postgres',
-  password: 'vedant21',
-  ssl: false
+  host: process.env.DB_HOST || 'localhost',
+  port: parseInt(process.env.DB_PORT || '5432'),
+  database: process.env.DB_NAME || 'asp_crm',
+  user: process.env.DB_USER || 'postgres',
+  password: process.env.DB_PASSWORD || 'crmdb@21',
+  ssl: (process.env.DB_SSL === 'true') ? true : false
 });
 
 // Import authentication middleware from central file
@@ -48,8 +48,8 @@ const checkQuotationsTable = async () => {
   }
 };
 
-// Check the quotations table
-checkQuotationsTable().catch(console.error);
+// Check the quotations table - commented out for production deployment
+// checkQuotationsTable().catch(console.error);
 
 // Apply authentication middleware to all routes
 // Apply authentication to all routes except health check and test creation

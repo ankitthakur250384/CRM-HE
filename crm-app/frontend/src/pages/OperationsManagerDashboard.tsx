@@ -1,9 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { 
   Calendar, 
   CheckCircle2, 
   Cog, 
-  FileText, 
   Truck,
   Users,
   WrenchIcon
@@ -11,9 +10,10 @@ import {
 import { StatCard } from '../components/dashboard/StatCard';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/common/Card';
 import { Button } from '../components/common/Button';
-import { StatusBadge } from '../components/common/StatusBadge';
-import { getLeads } from '../services/leadService';
-import { getJobs, getAllEquipment, getAllOperators } from '../services/jobService';
+import { StatusBadge, type JobStatus } from '../components/common/StatusBadge';
+import { getLeads } from '../services/lead';
+import { getJobs, getAllOperators } from '../services/job';
+import { getEquipment } from '../services/equipment';
 import { Lead } from '../types/lead';
 import { Job } from '../types/job';
 import { Link } from 'react-router-dom';
@@ -31,7 +31,7 @@ export function OperationsManagerDashboard() {
         const [leadsData, jobsData, equipmentData, operatorsData] = await Promise.all([
           getLeads(),
           getJobs(),
-          getAllEquipment(),
+          getEquipment(),
           getAllOperators(),
         ]);
         
@@ -51,7 +51,6 @@ export function OperationsManagerDashboard() {
   
   // Count jobs by status
   const scheduledJobsCount = jobs.filter(job => job.status === 'scheduled').length;
-  const completedJobsCount = jobs.filter(job => job.status === 'completed').length;
   
   if (isLoading) {
     return <div className="flex justify-center py-10">Loading dashboard...</div>;
@@ -223,11 +222,11 @@ export function OperationsManagerDashboard() {
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-500">
-                          {new Date(job.startDate).toLocaleDateString()}
+                          {new Date(job.scheduledStartDate).toLocaleDateString()}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <StatusBadge status={job.status} />
+                        <StatusBadge status={job.status === 'scheduled' ? 'pending' : job.status as JobStatus} />
                       </td>
                     </tr>
                   ))}

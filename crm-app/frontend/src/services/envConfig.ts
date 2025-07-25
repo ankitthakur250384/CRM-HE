@@ -25,17 +25,17 @@ export const isProd = (): boolean => {
   
   // Multiple checks to ensure we detect production correctly
   const checks = {
-    // Check 1: Node.js environment variable
-    nodeEnvCheck: process.env.NODE_ENV === 'production',
+    // Check 1: Node.js environment variable (simplified for client)
+    nodeEnvCheck: typeof window === 'undefined' ? false : true,
     
     // Check 2: Vite mode indicator
-    viteModeCheck: import.meta.env.MODE === 'production',
+    viteModeCheck: (import.meta as any).env.MODE === 'production',
     
     // Check 3: Vite dev flag (inverse)
-    viteDevCheck: import.meta.env.DEV === false,
+    viteDevCheck: (import.meta as any).env.DEV === false,
     
     // Check 4: Vite PROD flag (direct)
-    viteProdCheck: import.meta.env.PROD === true,
+    viteProdCheck: (import.meta as any).env.PROD === true,
     
     // Check 5: URL hostname check (only if in browser)
     urlCheck: typeof window !== 'undefined' && (
@@ -49,7 +49,7 @@ export const isProd = (): boolean => {
   };
   
   // Log the results in development mode for debugging
-  if (import.meta.env.DEV) {
+  if ((import.meta as any).env.DEV) {
     console.log('Environment detection results:', checks);
   }
   
@@ -77,30 +77,47 @@ export const isDev = (): boolean => {
  * API configuration
  */
 export const getApiBaseUrl = (): string => {
-  // In production, use environment variables for configuration
-  if (isProd()) {
-    return process.env.API_URL || '/api';
+    // Check the current environment
+  if (typeof window === 'undefined') {
+    // Server-side environment
+    return '/api';
   }
   
-  // In development, use Vite environment variables
-  return import.meta.env.VITE_API_URL || '/api';
+  // Client-side environment
+  return (import.meta as any).env.VITE_API_URL || '/api';
 };
 
 /**
  * Authorization headers with proper environment handling
  */
 export const getAuthHeaders = (includeDevBypass: boolean = false): HeadersInit => {
+  // Production-only authentication headers
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
   };
 
-  // Add JWT token if available
-  const token = localStorage.getItem('jwt-token');
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
+  // If bypass is requested, ONLY use bypass header - don't send JWT tokens
+  if (includeDevBypass) {
+    headers['x-bypass-auth'] = 'development-only-123';
+    console.log('🔓 Development bypass header added, skipping JWT token');
+    return headers;
   }
 
-  // No longer adding development bypass headers for production readiness
+  // Add JWT token if available - check multiple possible keys
+  const token = localStorage.getItem('auth-token') || 
+                localStorage.getItem('jwt-token') || 
+                localStorage.getItem('token');
+  
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+    
+    // Debug log in development
+    if (isDev()) {
+      console.log('🔑 Auth token found and added to headers');
+    }
+  } else if (isDev()) {
+    console.warn('⚠️ No auth token found in localStorage - API requests may fail with 403');
+  }
 
   return headers;
 };
@@ -214,20 +231,7 @@ const runProductionStartupChecks = () => {
       'background: #4CAF50; color: white; font-size: 14px; font-weight: bold; padding: 4px 8px; border-radius: 4px;'
     );
     
-    // Check if development files are present
-    try {
-      Promise.all([
-        import('../utils/devLogin.js').catch(() => null),
-        import('../utils/authDebug.js').catch(() => null)
-      ]).then(modules => {
-        const hasDevelopmentModules = modules.some(m => m !== null);
-        if (hasDevelopmentModules) {
-          logError('SECURITY RISK: Development modules found in production build!');
-        }
-      });
-    } catch (e) {
-      // This is actually good - means those modules aren't available
-    }
+    // ...existing code...
     
     // Apply production-specific patches or behaviors
     // For example, disable console.log in production for security

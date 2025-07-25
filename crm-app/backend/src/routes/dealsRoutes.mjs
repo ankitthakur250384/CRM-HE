@@ -33,7 +33,7 @@ const asyncHandler = (fn) => (req, res, next) => {
 };
 
 /**
- * GET /deals - Get all deals
+ * GET /deals - Get all deals (AUTH with bypass support)
  */
 router.get('/', authenticateToken, asyncHandler(async (req, res) => {
   const deals = await dealRepository.getDeals();

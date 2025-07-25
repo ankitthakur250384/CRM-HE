@@ -19,10 +19,10 @@ import { RequiredFieldsInfo } from '../components/common/RequiredFieldsInfo';
 import MockDataWarning from '../components/common/MockDataWarning';
 import { useAuthStore } from '../store/authStore';
 import { Lead, LeadStatus, LeadSource, Customer } from '../types/lead';
-import { getLeads, createLead, updateLeadStatus, updateLeadAssignment, updateLead } from '../services/leadService';
-import { createDeal } from '../services/dealService';
+import { getLeads, createLead, updateLeadStatus, updateLeadAssignment, updateLead } from '../services/lead';
+import { createDeal } from '../services/deal';
 import { useNavigate } from 'react-router-dom';
-import { extractDataFromApiResponse, getCustomerIdentifier } from '../utils/customerUtils';
+import { extractDataFromApiResponse, getCustomerIdentifier } from '../services/customerUtils';
 
 const LEAD_STATUS_OPTIONS = [
   { value: 'new', label: 'New' },

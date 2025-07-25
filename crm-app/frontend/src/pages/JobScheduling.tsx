@@ -14,15 +14,15 @@ import { Modal } from '../components/common/Modal';
 import { StatusBadge } from '../components/common/StatusBadge';
 import { Toast } from '../components/common/Toast';
 import { useAuthStore } from '../store/authStore';
-import { getJobs, getAllEquipment, getAllOperators, createJob, getEquipmentById } from '../services/jobService';
-import { getLeads } from '../services/leadService';
-import { getDealById, getDeals } from '../services/dealService';
-import { getQuotationsForLead } from '../services/quotationService';
+import { getJobs, getAllEquipment, getAllOperators, createJob, getEquipmentById } from '../services/job';
+import { getLeads } from '../services/lead';
+import { getDealById, getDeals } from '../services/deal';
+import { getQuotationsForLead } from '../services/quotation';
 import { Job, Equipment, Operator } from '../types/job';
 import { Lead } from '../types/lead';
 import { Deal } from '../types/deal';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { jobApiClient } from '../services/jobApiClient';
+import { jobApiClient } from '../services/job';
 
 const TIME_SLOTS = Array.from({ length: 15 }, (_, i) => addHours(new Date().setHours(6, 0, 0, 0), i));
 
@@ -206,7 +206,7 @@ export function JobScheduling() {
               
               // Handle multiple machines if available
               if (quotation.selectedMachines && quotation.selectedMachines.length > 0) {
-                quotation.selectedMachines.forEach(machine => {
+                quotation.selectedMachines.forEach((machine: any) => {
                   if (machine.equipmentId) {
                     const existingEquipment = equipment.find(e => e.id === machine.equipmentId);
                     
@@ -663,7 +663,7 @@ export function JobScheduling() {
                         
                         // Handle multiple machines
                         if (quotation.selectedMachines && quotation.selectedMachines.length > 0) {
-                          quotation.selectedMachines.forEach(machine => {
+                          quotation.selectedMachines.forEach((machine: any) => {
                             if (machine.equipmentId) {
                               const existingEquipment = equipment.find(e => e.id === machine.equipmentId);
                               
@@ -904,8 +904,8 @@ function JobDetailsContent({ selectedJob }: { selectedJob: any }) {
         
         const names: string[] = [];
         for (const eq of jobEquipment) {
-          // eq.equipment_id is the equipment ID from job_equipment table
-          const eqData = await getEquipmentById(eq.equipment_id);
+          // eq.id is the equipment ID from job_equipment table
+          const eqData = await getEquipmentById(eq.id);
           if (eqData && eqData.name) {
             names.push(eqData.name);
           }
@@ -934,7 +934,7 @@ function JobDetailsContent({ selectedJob }: { selectedJob: any }) {
           // op.operator_id is the operator ID from job_operators table
           // Fetch all operators to get the name by ID
           const allOperators = await getAllOperators();
-          const operatorData = allOperators.find((o: any) => o.id === op.operator_id);
+          const operatorData = allOperators.find((o: any) => o.id === op.id);
           if (operatorData && operatorData.name) {
             names.push(operatorData.name);
           }

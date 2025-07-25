@@ -1,7 +1,7 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
-import { getCurrentUser } from '../../services/postgresAuthService';
+import { getCurrentUser } from '../../services/authService';
 import { UserRole } from '../../types/auth';
 
 interface ProtectedRouteProps {

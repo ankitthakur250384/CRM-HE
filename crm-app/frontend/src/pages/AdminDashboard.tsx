@@ -11,10 +11,10 @@ import {
 } from 'lucide-react';
 
 // Services
-import { getLeads } from '../services/leadService';
-import { getJobs, getAllOperators } from '../services/jobService';
-import { getEquipment as getAllEquipment } from '../services/equipmentService';
-import { getDeals } from '../services/dealService';
+import { getLeads } from '../services/lead';
+import { getJobs, getAllOperators } from '../services/job';
+import { getEquipment } from '../services/equipment';
+import { getDeals } from '../services/deal';
 
 // Types
 import { Lead } from '../types/lead';
@@ -67,11 +67,11 @@ export function AdminDashboard() {
         setError(null);
         
         const [leadsResponse, jobsResponse, equipmentResponse, operatorsResponse, dealsResponse] = await Promise.all([
-          getLeads().catch(err => { console.error('Leads error:', err); return []; }),
-          getJobs().catch(err => { console.error('Jobs error:', err); return []; }),
-          getAllEquipment().catch(err => { console.error('Equipment error:', err); return []; }),
-          getAllOperators().catch(err => { console.error('Operators error:', err); return []; }),
-          getDeals().catch(err => { console.error('Deals error:', err); return []; }),
+          getLeads().catch((err: any) => { console.error('Leads error:', err); return []; }),
+          getJobs().catch((err: any) => { console.error('Jobs error:', err); return []; }),
+          getEquipment().catch((err: any) => { console.error('Equipment error:', err); return []; }),
+          getAllOperators().catch((err: any) => { console.error('Operators error:', err); return []; }),
+          getDeals().catch((err: any) => { console.error('Deals error:', err); return []; }),
         ]);
         
         const extractData = (response: any) => {

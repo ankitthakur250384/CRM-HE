@@ -39,6 +39,10 @@ const PORT = process.env.PORT || 3001;
 const isProduction = process.env.NODE_ENV === 'production';
 
 console.log(`Environment check: NODE_ENV=${process.env.NODE_ENV || 'undefined'}, isProduction=${isProduction}`);
+console.log(`ALLOWED_ORIGINS env var: "${process.env.ALLOWED_ORIGINS}"`);
+
+// Set allowed origin for CORS
+const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || 'http://103.224.243.242:3000';
 
 // Security middleware
 if (isProduction) {
@@ -46,19 +50,27 @@ if (isProduction) {
   app.use(compression());
 }
 
-// CORS configuration - Allow all origins in development for easier testing
-const corsOptions = {
-  origin: isProduction 
-    ? (process.env.ALLOWED_ORIGINS?.split(',') || ['https://asp-cranes-crm.example.com'])
-    : true, // Allow all origins in development
+// CORS configuration - allow credentials and set origin to frontend
+app.use(cors({
+  origin: function (origin, callback) {
+    if (!origin || origin === FRONTEND_ORIGIN) {
+      callback(null, FRONTEND_ORIGIN);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-bypass-auth'],
-  optionsSuccessStatus: 200 // Some legacy browsers choke on 204
-};
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-bypass-auth', 'x-application-type'],
+  optionsSuccessStatus: 200
+}));
 
-console.log('CORS configuration:', corsOptions);
-app.use(cors(corsOptions));
+// Log all request headers for debugging
+app.use((req, res, next) => {
+  console.log('🔎 [REQUEST] Method:', req.method, 'URL:', req.originalUrl);
+  console.log('🔎 [REQUEST] Headers:', req.headers);
+  next();
+});
 
 // Logging
 if (isProduction) {

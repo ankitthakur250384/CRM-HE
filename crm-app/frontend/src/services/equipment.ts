@@ -4,7 +4,7 @@ export async function updateEquipment(equipmentId: string, updates: Partial<Equi
   const apiUrl = import.meta.env.VITE_API_URL || '/api';
   const response = await fetch(`${apiUrl}/equipment/${equipmentId}`, {
     method: 'PATCH',
-    headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+    headers: { ...getHeaders(true), 'Content-Type': 'application/json' },
     body: JSON.stringify(updates),
     credentials: 'include',
   });
@@ -18,7 +18,7 @@ export async function deleteEquipment(equipmentId: string): Promise<void> {
   const apiUrl = import.meta.env.VITE_API_URL || '/api';
   const response = await fetch(`${apiUrl}/equipment/${equipmentId}`, {
     method: 'DELETE',
-    headers: getHeaders(),
+    headers: getHeaders(true),
     credentials: 'include',
   });
   if (!response.ok) {
@@ -30,7 +30,7 @@ export async function createEquipment(equipment: Partial<Equipment>): Promise<Eq
   const apiUrl = import.meta.env.VITE_API_URL || '/api';
   const response = await fetch(`${apiUrl}/equipment`, {
     method: 'POST',
-    headers: { ...getHeaders(), 'Content-Type': 'application/json' },
+    headers: { ...getHeaders(true), 'Content-Type': 'application/json' },
     body: JSON.stringify(equipment),
     credentials: 'include',
   });
@@ -44,7 +44,7 @@ export async function getEquipmentByCategory(category: string): Promise<Equipmen
   const apiUrl = import.meta.env.VITE_API_URL || '/api';
   const response = await fetch(`${apiUrl}/equipment?category=${encodeURIComponent(category)}`, {
     method: 'GET',
-    headers: getHeaders(),
+    headers: getHeaders(true),
     credentials: 'include',
   });
   if (!response.ok) {

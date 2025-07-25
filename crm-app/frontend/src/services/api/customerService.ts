@@ -14,12 +14,15 @@ import { api } from '../../lib/apiService';
  */
 export const getCustomers = async (): Promise<Customer[]> => {
   try {
-    console.log('Fetching customers from API...');
-    const response = await api.get<Customer[]>('/customers');
-    console.log('Customers fetched successfully:', response);
+    console.log('🔍 DEBUG: customerService.getCustomers() called');
+    console.log('🔍 DEBUG: About to call api.get("/api/customers")');
+    const response = await api.get<Customer[]>('/api/customers');
+    console.log('🔍 DEBUG: api.get response received:', response);
+    console.log('🔍 DEBUG: Response type:', typeof response, 'Array?', Array.isArray(response));
     return response;
   } catch (error: any) {
-    console.error('Failed to fetch customers:', error);
+    console.error('❌ DEBUG: Failed to fetch customers:', error);
+    console.error('❌ DEBUG: Error details:', error.message, error.stack);
     return [];
   }
 };
@@ -29,7 +32,7 @@ export const getCustomers = async (): Promise<Customer[]> => {
  */
 export const getCustomerById = async (id: string): Promise<Customer | null> => {
   try {
-    const response = await api.get<Customer>(`/customers/${id}`);
+    const response = await api.get<Customer>(`/api/customers/${id}`);
     return response;
   } catch (error: any) {
     console.error(`Failed to fetch customer ${id}:`, error);
@@ -43,7 +46,7 @@ export const getCustomerById = async (id: string): Promise<Customer | null> => {
 export const createCustomer = async (customerData: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>): Promise<Customer> => {
   try {
     console.log('Creating customer via API:', customerData);
-    const response = await api.post<Customer>('/customers', customerData);
+    const response = await api.post<Customer>('/api/customers', customerData);
     console.log('Customer created successfully:', response);
     return response;
   } catch (error: any) {
@@ -57,7 +60,7 @@ export const createCustomer = async (customerData: Omit<Customer, 'id' | 'create
  */
 export const updateCustomer = async (id: string, customerData: Partial<Customer>): Promise<Customer | null> => {
   try {
-    const response = await api.put<Customer>(`/customers/${id}`, customerData);
+    const response = await api.put<Customer>(`/api/customers/${id}`, customerData);
     return response;
   } catch (error: any) {
     console.error(`Failed to update customer ${id}:`, error);
@@ -70,7 +73,7 @@ export const updateCustomer = async (id: string, customerData: Partial<Customer>
  */
 export const deleteCustomer = async (id: string): Promise<boolean> => {
   try {
-    await api.delete(`/customers/${id}`);
+    await api.delete(`/api/customers/${id}`);
     return true;
   } catch (error: any) {
     console.error(`Failed to delete customer ${id}:`, error);
@@ -83,7 +86,7 @@ export const deleteCustomer = async (id: string): Promise<boolean> => {
  */
 export const getContactsByCustomer = async (customerId: string): Promise<Contact[]> => {
   try {
-    const response = await api.get<Contact[]>(`/customers/${customerId}/contacts`);
+    const response = await api.get<Contact[]>(`/api/customers/${customerId}/contacts`);
     return response;
   } catch (error: any) {
     console.error(`Failed to fetch contacts for customer ${customerId}:`, error);

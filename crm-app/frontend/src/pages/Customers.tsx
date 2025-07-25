@@ -25,7 +25,7 @@ import {
   deleteCustomer,
   getContactsByCustomer,
   deleteContact
-} from '../services/customerService';
+} from '../services/api/customerService';
 
 export function Customers() {
   const { user } = useAuthStore();
@@ -55,11 +55,13 @@ export function Customers() {
   }, []);
   const fetchCustomers = async () => {
     try {
-      console.log('Fetching customers from service...');
+      console.log('🔍 DEBUG: Starting fetchCustomers function');
+      console.log('🔍 DEBUG: Calling getCustomers() from service...');
       const data = await getCustomers();
+      console.log('🔍 DEBUG: getCustomers() returned:', data);
       
       if (data && Array.isArray(data)) {
-        console.log(`Received ${data.length} customers from service`);
+        console.log(`✅ DEBUG: Received ${data.length} customers from service`);
         setCustomers(data);
         
         // Fetch contacts for each customer

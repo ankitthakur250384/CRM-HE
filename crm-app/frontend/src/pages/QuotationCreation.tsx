@@ -28,9 +28,9 @@ import { useAuthStore } from '../store/authStore';
 import { Deal } from '../types/deal';
 import { Equipment, OrderType, CraneCategory, BaseRates } from '../types/equipment';
 import { QuotationInputs } from '../types/quotation';
-import { getDealById } from '../services/dealService';
-import { getEquipment, getEquipmentByCategory } from '../services/equipmentService';
-import { createQuotation, updateQuotation, getQuotationById } from '../services/quotationService';
+import { getDealById } from '../services/deal';
+import { getEquipment, getEquipmentByCategory } from '../services/equipment';
+import { createQuotation, updateQuotation, getQuotationById } from '../services/quotation';
 import { getResourceRatesConfig } from '../services/configService';
 import { formatCurrency } from '../utils/formatters';
 import { useQuotationConfigStore } from '../store/quotationConfigStore';
@@ -119,6 +119,15 @@ export function QuotationCreation() {
   const dealId = searchParams.get('dealId') || '';
   const quotationId = searchParams.get('quotationId');
 
+  // Debug: Log dealId on mount and show warning if dealId is missing
+  useEffect(() => {
+    console.log('[QuotationCreation] Loaded with dealId:', dealId, 'quotationId:', quotationId);
+    // Don't redirect immediately - let the form load and show warning instead
+    if (!dealId) {
+      console.warn('[QuotationCreation] No dealId provided - creating new quotation');
+    }
+  }, [dealId, quotationId, navigate]);
+
   const { orderTypeLimits, fetchConfig } = useQuotationConfigStore();
   const [deal, setDeal] = useState<Deal | null>(null);
   const [availableEquipment, setAvailableEquipment] = useState<Equipment[]>([]);
@@ -206,7 +215,7 @@ export function QuotationCreation() {
   });
 
   useEffect(() => {
-    fetchData();
+    fetchData(); // Always fetch data, regardless of dealId
   }, [dealId, quotationId]);
 
   useEffect(() => {
@@ -284,24 +293,68 @@ export function QuotationCreation() {
   const fetchData = async () => {
     try {
       setIsLoading(true);
-      console.log('Fetching data with dealId:', dealId, 'quotationId:', quotationId);
+      console.log('[QuotationCreation] Fetching data with dealId:', dealId, 'quotationId:', quotationId);
 
-      // Fetch deal data
-      if (!dealId) {
-        showToast('Deal ID not found', 'error');
-        navigate('/quotations');
-        return;
+      // Fetch deal data only if dealId is provided
+      if (dealId) {
+        let dealData = null;
+        try {
+          dealData = await getDealById(dealId);
+          console.log('[QuotationCreation] Fetched deal data:', dealData);
+          setDeal(dealData);
+        } catch (err) {
+          console.error('[QuotationCreation] Error fetching deal by ID:', err);
+          // Don't redirect on deal fetch error - allow form to work without deal data
+          showToast('Warning: Could not load deal details. You can still create a quotation.', 'warning');
+          // Create a minimal deal object so form can work
+          setDeal({
+            id: dealId,
+            customer: {
+              name: 'Unknown Customer',
+              email: '',
+              phone: '',
+              company: 'Unknown Company',
+              address: '',
+              designation: ''
+            },
+            title: 'Unknown Deal',
+            description: '',
+            value: 0,
+            stage: 'qualification',
+            leadId: '',
+            customerId: '',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString(),
+            assignedTo: '',
+            probability: 0,
+            expectedCloseDate: new Date().toISOString()
+          } as Deal);
+        }
+      } else {
+        // If no dealId, create a minimal deal object for the form to work
+        setDeal({
+          id: 'new',
+          customer: {
+            name: 'New Customer',
+            email: '',
+            phone: '',
+            company: '',
+            address: '',
+            designation: ''
+          },
+          title: 'New Quotation',
+          description: '',
+          value: 0,
+          stage: 'qualification',
+          leadId: '',
+          customerId: '',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          assignedTo: '',
+          probability: 0,
+          expectedCloseDate: new Date().toISOString()
+        } as Deal);
       }
-
-      const dealData = await getDealById(dealId);
-      console.log('Fetched deal data:', dealData);
-      
-      if (!dealData) {
-        showToast('Deal not found', 'error');
-        navigate('/quotations');
-        return;
-      }
-      setDeal(dealData);
 
       // Fetch equipment data
       const equipmentData = await getEquipment();
@@ -341,9 +394,9 @@ export function QuotationCreation() {
           
           if (existingQuotation.selectedMachines && existingQuotation.selectedMachines.length > 0) {
             // Use the existing machines array directly
-            existingMachines = existingQuotation.selectedMachines.map(machine => {
+            existingMachines = existingQuotation.selectedMachines.map((machine: SelectedMachine) => {
               // Try to find the machine in available equipment to get the latest data
-              const equipmentDetails = machineEquipment.find(eq => eq.id === machine.id);
+              const equipmentDetails = machineEquipment.find((eq: Equipment) => eq.id === machine.id);
               
               return {
                 ...machine,
@@ -358,7 +411,7 @@ export function QuotationCreation() {
             console.log('Loaded machines from selectedMachines:', existingMachines);
           } else if (existingQuotation.selectedEquipment) {
             // Fallback to using selectedEquipment
-            const equipmentDetails = machineEquipment.find(eq => eq.id === existingQuotation.selectedEquipment.id);
+            const equipmentDetails = machineEquipment.find((eq: Equipment) => eq.id === existingQuotation.selectedEquipment.id);
             
             existingMachines = [
               {
@@ -668,9 +721,9 @@ export function QuotationCreation() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!deal) {
-      showToast('Deal not found', 'error');
-      return;
+    // Allow submission even without deal data (for new quotations)
+    if (!deal && dealId) {
+      showToast('Deal information is not available. Creating quotation with available data.', 'warning');
     }
 
     if (formData.selectedMachines.length === 0 && !formData.selectedEquipment.id) {
@@ -689,17 +742,17 @@ export function QuotationCreation() {
 
       const quotationData = {
         ...formData,
-        dealId: deal.id,  // Include the deal ID
-        leadId: deal.leadId,  // Include the original lead ID from the deal
-        customerId: deal.customerId,
-        customerName: deal.customer.name,
+        dealId: deal?.id || dealId || 'new',  // Include the deal ID or fallback
+        leadId: deal?.leadId || '',  // Include the original lead ID from the deal
+        customerId: deal?.customerId || '',
+        customerName: deal?.customer?.name || 'New Customer',
         customerContact: {
-          name: deal.customer.name,
-          email: deal.customer.email,
-          phone: deal.customer.phone,
-          company: deal.customer.company,
-          address: deal.customer.address,
-          designation: deal.customer.designation
+          name: deal?.customer?.name || 'New Customer',
+          email: deal?.customer?.email || '',
+          phone: deal?.customer?.phone || '',
+          company: deal?.customer?.company || '',
+          address: deal?.customer?.address || '',
+          designation: deal?.customer?.designation || ''
         },
         // Ensure both selectedEquipment and selectedMachines are included
         selectedEquipment: formData.selectedEquipment,
@@ -914,14 +967,7 @@ export function QuotationCreation() {
     );
   }
 
-  if (!deal) {
-    return (
-      <div className="p-4 text-center text-gray-500">
-        Deal not found.
-      </div>
-    );
-  }
-
+  // Always render the form - deal will be populated during fetchData
   return (
     <div className="space-y-4 sm:space-y-6">
       <style>
@@ -954,7 +1000,9 @@ export function QuotationCreation() {
             <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">
               {quotationId ? 'Edit Quotation' : 'Create Quotation'}
             </h1>
-            <p className="text-sm sm:text-base text-gray-600">For {deal.customer.name} - {deal.title}</p>
+            <p className="text-sm sm:text-base text-gray-600">
+              For {deal?.customer?.name || 'New Customer'} - {deal?.title || 'New Quotation'}
+            </p>
           </div>
         </div>
       </div>
@@ -972,27 +1020,27 @@ export function QuotationCreation() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
               <div className="space-y-1 sm:space-y-2">
                 <div className="text-xs sm:text-sm text-gray-500">Customer Name</div>
-                <div className="text-sm sm:text-base font-medium">{deal.customer.name}</div>
+                <div className="text-sm sm:text-base font-medium">{deal?.customer?.name || 'N/A'}</div>
               </div>
               <div className="space-y-1 sm:space-y-2">
                 <div className="text-xs sm:text-sm text-gray-500">Company</div>
-                <div className="text-sm sm:text-base font-medium">{deal.customer.company}</div>
+                <div className="text-sm sm:text-base font-medium">{deal?.customer?.company || 'N/A'}</div>
               </div>
               <div className="space-y-1 sm:space-y-2">
                 <div className="text-xs sm:text-sm text-gray-500">Designation</div>
-                <div className="text-sm sm:text-base font-medium">{deal.customer.designation || 'N/A'}</div>
+                <div className="text-sm sm:text-base font-medium">{deal?.customer?.designation || 'N/A'}</div>
               </div>
               <div className="space-y-1 sm:space-y-2">
                 <div className="text-xs sm:text-sm text-gray-500">Email</div>
-                <div className="text-sm sm:text-base font-medium break-all">{deal.customer.email}</div>
+                <div className="text-sm sm:text-base font-medium break-all">{deal?.customer?.email || 'N/A'}</div>
               </div>
               <div className="space-y-1 sm:space-y-2">
                 <div className="text-xs sm:text-sm text-gray-500">Phone</div>
-                <div className="text-sm sm:text-base font-medium">{deal.customer.phone}</div>
+                <div className="text-sm sm:text-base font-medium">{deal?.customer?.phone || 'N/A'}</div>
               </div>
               <div className="space-y-1 sm:space-y-2">
                 <div className="text-xs sm:text-sm text-gray-500">Address</div>
-                <div className="text-sm sm:text-base font-medium">{deal.customer.address}</div>
+                <div className="text-sm sm:text-base font-medium">{deal?.customer?.address || 'N/A'}</div>
               </div>
             </div>
           </CardContent>

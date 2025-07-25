@@ -28,11 +28,18 @@ const PORT = process.env.PORT || 3001;
 
 // Middleware
 app.use(cors({
-  origin: 'http://localhost:5173',
+  origin: '*', // Allow all origins temporarily
   credentials: true,
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-bypass-auth'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'x-bypass-auth', 'x-application-type'],
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS']
 }));
+
+// Log all request headers for debugging
+app.use((req, res, next) => {
+  console.log('🔎 [REQUEST] Method:', req.method, 'URL:', req.originalUrl);
+  console.log('🔎 [REQUEST] Headers:', req.headers);
+  next();
+});
 app.use(express.json());
 
 // API routes

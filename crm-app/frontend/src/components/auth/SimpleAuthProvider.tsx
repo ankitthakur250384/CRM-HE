@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { useAuthStore } from '../../store/authStore';
-import { getCurrentUser } from '../../services/postgresAuthService';
+import { getCurrentUser } from '../../services/authService';
 
 interface AuthProviderProps {
   children: React.ReactNode;

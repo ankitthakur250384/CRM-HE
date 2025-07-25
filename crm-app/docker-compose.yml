@@ -1,49 +1,25 @@
 version: '3.8'
 
 services:
-  postgres:
-    image: postgres:15
-    restart: always
-    environment:
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: vedant21
-      POSTGRES_DB: asp_crm
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-      - ./database/schema.sql:/docker-entrypoint-initdb.d/schema.sql
-    ports:
-      - "5432:5432"
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 30s
-      timeout: 10s
-      retries: 5
-
   backend:
     build: ./backend
     restart: always
+    network_mode: host
     environment:
       NODE_ENV: production
-      DB_HOST: postgres
+      DB_HOST: localhost
       DB_PORT: 5432
       DB_USER: postgres
-      DB_PASSWORD: vedant21
+      DB_PASSWORD: crmdb@21
       DB_NAME: asp_crm
       PORT: 3001
-    depends_on:
-      postgres:
-        condition: service_healthy
-    ports:
-      - "3001:3001"
-    volumes:
-      - ./backend:/app
-      - /app/node_modules
+      ALLOWED_ORIGINS: http://103.224.243.242:3000,http://localhost:3000
 
   frontend:
     build: ./frontend
     restart: always
     environment:
-      VITE_API_URL: http://localhost:3001
+      VITE_API_URL: http://103.224.243.242:3001
     depends_on:
       - backend
     ports:
@@ -51,6 +27,8 @@ services:
     volumes:
       - ./frontend:/app
       - /app/node_modules
-
-volumes:
-  postgres_data:
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 5

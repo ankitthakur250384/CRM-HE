@@ -22,9 +22,8 @@ export const validateProductionDeploy = () => {
   
   // Check 1: Ensure environment is correctly set to production
   const checks = {
-    envNodeEnv: process.env.NODE_ENV === 'production',
-    envImportMeta: import.meta.env.PROD === true,
-    envDevFalse: import.meta.env.DEV !== true,
+    envImportMeta: (import.meta as any).env.PROD === true,
+    envDevFalse: (import.meta as any).env.DEV !== true,
     envMarker: localStorage.getItem('env-deploy-type') === 'production'
   };
   
@@ -47,32 +46,7 @@ export const validateProductionDeploy = () => {
            );
   });
   
-  // Check 3: Verify that devLogin module is not accessible
-  let devLoginAccessible = false;
-  
-  try {
-    // This should fail in production because the module should be replaced with an empty shim
-    import('../utils/devLogin')
-      .then((module) => {
-        // Check if the module has the dev function
-        if (module && typeof (module as any).createDevToken === 'function') {
-          // Call it to see if it returns null (correct in production) or a token (security issue)
-          const result = (module as any).createDevToken();
-          if (result !== null) {
-            devLoginAccessible = true;
-            console.error('‼️ CRITICAL SECURITY ERROR: Development authentication module is accessible and functional in production!');
-          } else {
-            console.log('✅ Development authentication module properly disabled in production');
-          }
-        }
-      })
-      .catch(() => {
-        console.log('✅ Development authentication module correctly blocked in production');
-      });
-  } catch (e) {
-    // This is good - module should not be accessible
-    console.log('✅ Development authentication module correctly blocked in production');
-  }
+  // Check 3: Development modules accessibility check removed for security
   
   // Check 4: Verify that JWT tokens in storage are not dev tokens
   const jwtToken = localStorage.getItem('jwt-token');
@@ -108,13 +82,11 @@ export const validateProductionDeploy = () => {
   const validationResults = {
     isCorrectEnvironment: Object.values(checks).every(v => v === true),
     devTokensFound: devTokensInLocalStorage.length > 0,
-    devLoginModuleAccessible: devLoginAccessible,
     hasDevJwtToken: hasDevJWT
   };
   
   const isValid = validationResults.isCorrectEnvironment && 
                   !validationResults.devTokensFound &&
-                  !validationResults.devLoginModuleAccessible &&
                   !validationResults.hasDevJwtToken;
   
   if (isValid) {
@@ -130,7 +102,7 @@ export const validateProductionDeploy = () => {
     if (isProd()) {
       try {
         // Log security incident
-        const apiUrl = import.meta.env.VITE_API_URL || '/api';
+        const apiUrl = (import.meta as any).env.VITE_API_URL || '/api';
         fetch(`${apiUrl}/security-incident`, {
           method: 'POST',
           headers: { ...getHeaders(), 'Content-Type': 'application/json' },

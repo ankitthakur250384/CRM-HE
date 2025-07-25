@@ -4,7 +4,6 @@
  */
 
 import express from 'express';
-import jwt from 'jsonwebtoken';
 import pg from 'pg';
 import dotenv from 'dotenv';
 
@@ -30,7 +29,7 @@ try {
     port: parseInt(process.env.VITE_DB_PORT || '5432', 10),
     database: process.env.VITE_DB_NAME || 'asp_crm',
     user: process.env.VITE_DB_USER || 'postgres',
-    password: process.env.VITE_DB_PASSWORD || 'vedant21',
+    password: process.env.VITE_DB_PASSWORD || 'crmdb@21',
     ssl: process.env.VITE_DB_SSL === 'true' ? { rejectUnauthorized: false } : false
   });
   
@@ -39,25 +38,16 @@ try {
   console.error('Customer routes: Failed to create PostgreSQL connection pool:', error);
 }
 
-// Middleware to authenticate JWT token
-function authenticateToken(req, res, next) {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-  
-  if (token == null) {
-    console.log('No authentication token provided');
-    return res.status(401).json({ error: 'No authentication token provided' });
-  }
+// Import authentication middleware from central file
+import { authenticateToken } from '../authMiddleware.mjs';
 
-  try {
-    const user = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
-    req.user = user;
-    next();
-  } catch (error) {
-    console.error('Invalid JWT token:', error.message);
-    return res.status(403).json({ error: 'Invalid authentication token' });
+// Use authenticateToken middleware for all routes except /debug
+router.use((req, res, next) => {
+  if (req.path === '/debug') {
+    return next();
   }
-}
+  authenticateToken(req, res, next);
+});
 
 // Helper function to convert snake_case to camelCase
 function snakeToCamel(obj) {
@@ -191,7 +181,7 @@ async function ensureTables(client) {
 
 // GET all customers
 router.get('/', authenticateToken, async (req, res) => {
-  console.log('🔍 GET /api/customers endpoint hit');
+  console.log('🔍 GET /api/customers endpoint hit - inside route handler');
   
   if (!pool) {
     console.error('❌ Database pool not available');
@@ -682,7 +672,7 @@ router.get('/:customerId/contacts', authenticateToken, async (req, res) => {
 });
 
 // POST create contact for a customer
-router.post('/:customerId/contacts', authenticateToken, async (req, res) => {
+router.post('/:customerId/contacts', async (req, res) => {
   if (!pool) {
     return res.status(500).json({ error: 'Database connection not available' });
   }

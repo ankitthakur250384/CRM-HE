@@ -33,7 +33,7 @@ const DefaultTemplateConfig = () => {
       
       // Get current default template config
       const defaultConfig = await getDefaultTemplateConfig();
-      if (defaultConfig.defaultTemplateId) {
+      if (defaultConfig && defaultConfig.defaultTemplateId) {
         setSelectedTemplateId(defaultConfig.defaultTemplateId);
       } else if (allTemplates.length > 0) {
         // If no default is set but templates exist, select the first one
