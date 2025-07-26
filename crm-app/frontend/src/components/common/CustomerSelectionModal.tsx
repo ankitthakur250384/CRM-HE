@@ -3,8 +3,8 @@ import { Search } from 'lucide-react';
 import { Modal } from './Modal';
 import { Button } from './Button';
 import { FormInput } from './FormInput';
-import { Customer } from '../../types/lead';
-import { getCustomers, createCustomer } from '../../services/customerService';
+import { Customer } from '../../types/customer';
+import { getCustomers, createCustomer } from '../../services/api/customerService';
 
 type ModalMode = 'select' | 'create';
 
@@ -50,11 +50,14 @@ export function CustomerSelectionModal({
 
   const fetchCustomers = async () => {
     try {
+      console.log('🔍 Fetching customers for modal...');
       const data = await getCustomers();
+      console.log('✅ Received customers:', data);
       setCustomers(data);
-      setIsLoading(false);
     } catch (error) {
-      console.error('Error fetching customers:', error);
+      console.error('❌ Error fetching customers:', error);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -67,11 +70,14 @@ export function CustomerSelectionModal({
       const newCustomer = await createCustomer({
         ...formData,
         name: formData.name.trim(),
+        contactName: formData.name.trim(), // Add required contactName field
         companyName: formData.companyName.trim() || 'Korean.org',
         email: formData.email.trim(),
         phone: formData.phone.trim() || 'N/A',
         address: formData.address.trim() || 'N/A',
-        designation: formData.designation.trim() || 'N/A'
+        designation: formData.designation.trim() || 'N/A',
+        type: 'other', // Add required type field
+        notes: '', // Add notes field as empty string
       });
       console.log('Created new customer:', newCustomer);
       onSelect(newCustomer);
@@ -89,7 +95,7 @@ export function CustomerSelectionModal({
   const filteredCustomers = customers.filter(customer =>
     customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.customerId?.toLowerCase().includes(searchTerm.toLowerCase())
+    customer.id?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -186,7 +192,7 @@ export function CustomerSelectionModal({
                         )}
                       </div>
                       <div className="text-xs sm:text-sm text-gray-500 truncate">{customer.email}</div>
-                      <div className="text-xs sm:text-sm text-gray-500 mt-0.5">{customer.customerId}</div>
+                      <div className="text-xs sm:text-sm text-gray-500 mt-0.5">ID: {customer.id}</div>
                     </div>
                   </div>
                 ))
