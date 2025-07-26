@@ -3,18 +3,14 @@ import {
   Plus, 
   Search, 
   Edit2, 
-  Trash2, 
-  Mail, 
-  Phone, 
-  MapPin,
-  Building2
+  Trash2
 } from 'lucide-react';
 import { Card, CardContent } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { FormInput } from '../components/common/FormInput';
 import { Modal } from '../components/common/Modal';
 import { Toast } from '../components/common/Toast';
-import { Badge } from '../components/common/Badge';
+
 import { useAuthStore } from '../store/authStore';
 import { Customer } from '../types/customer';
 import { 

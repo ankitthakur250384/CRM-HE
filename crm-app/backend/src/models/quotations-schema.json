@@ -1,63 +1,12 @@
 {
   "timestamp": "2025-06-23T07:12:48.299Z",
-  "count": 3,
-  "quotations": [
-    {
-      "id": "1",
-      "customerId": "cust-123",
-      "customerName": "ABC Construction",
-      "customerContact": {
-        "name": "John Smith",
-        "email": "john@abcconstruction.com",
-        "phone": "555-987-6543",
-        "designation": "Project Manager"
-      },
-      "selectedEquipment": {
-        "id": "eq-456",
-        "name": "Mobile Crane 100T",
-        "type": "mobile-crane",
-        "specifications": {
-          "capacity": "100T",
-          "height": "120ft",
-          "reach": "90ft"
-        },
-        "rentalRate": 3500.00
-      },
-      "selectedMachines": [
-        {
-          "id": "mach-789",
-          "name": "Boom Lift 60ft",
-          "type": "boom-lift",
-          "rentalRate": 850.00
-        }
-      ],
-      "service": {
-        "description": "Crane rental with operator",
-        "type": "rental-with-operator",
-        "duration": 5,
-        "durationUnit": "days"
-      },
-      "status": "draft",
-      "totalAmount": 21500.00,
-      "validUntil": "2025-07-15T00:00:00.000Z",
-      "notes": "Includes weekend operation",
-      "createdAt": "2025-06-20T10:30:00.000Z",
-      "updatedAt": "2025-06-20T10:30:00.000Z"
-    },
-    {
-      "id": "2",
-      "customerId": "cust-456",
-      "customerName": "XYZ Development",
-      "customerContact": {
-        "name": "Sarah Jones",
-        "email": "sarah@xyzdevelopment.com",
-        "phone": "555-123-4567",
-        "designation": "Site Manager"
-      },
-      "selectedEquipment": {
-        "id": "eq-567",
-        "name": "Tower Crane 200ft",
-        "type": "tower-crane",
+  "count": 0,
+  "quotations": []
+}
+{
+  "timestamp": "2025-06-23T07:12:48.299Z",
+  "count": 0,
+  "quotations": []
         "specifications": {
           "capacity": "50T",
           "height": "200ft",

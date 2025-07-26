@@ -22,33 +22,7 @@ export const getQuotations = async (): Promise<Quotation[]> => {
   try {
     console.log('🔍 getQuotations: Requesting quotations from API...');
     
-    // DEVELOPMENT FALLBACK: Use local schema in development mode if API fails
-    // This provides sample data when the API is unavailable
-    if (import.meta.env.DEV) {
-      console.log('🔧 DEV MODE: Attempting to get quotations from API with fallback to local data');      try {
-        // Try the API first
-        const quotations = await api.get<Quotation[]>('/quotations');
-        console.log(`✅ Successfully retrieved ${quotations.length} quotations from API`);
-        return quotations;
-      } catch (error) {
-        const apiError = error as Error;
-        console.warn('⚠️ API request failed in dev mode, using local schema data instead:', apiError.message);
-        
-        try {
-          // Use local schema as fallback
-          console.log('Loading local schema data for quotations...');
-          const schema = await import('../../models/quotations-schema.json');
-          console.log(`✅ Loaded ${schema.quotations.length} quotations from local schema`);
-          // First convert to unknown then to Quotation[] to satisfy TypeScript
-          return schema.quotations as unknown as Quotation[];
-        } catch (schemaError) {
-          console.error('❌ Failed to load local quotations schema:', schemaError);
-          throw apiError; // Re-throw the original API error
-        }
-      }
-    }
-    
-    // Standard API call for production
+    // Only use API/database for quotations
     const response = await api.get<Quotation[]>('/quotations');
     console.log(`✅ getQuotations: Received ${response?.length || 0} quotations from API`);
     if (!response || response.length === 0) {
@@ -85,43 +59,7 @@ export const getQuotationById = async (id: string): Promise<Quotation | null> =>
   try {
     console.log(`Getting quotation ${id} via API`);
     
-    // DEVELOPMENT FALLBACK: Use local schema in development mode if API fails
-    if (import.meta.env.DEV) {
-      try {
-        // Try the API first
-        const quotation = await api.get<Quotation>(`/quotations/${id}`);
-        return quotation;
-      } catch (error) {
-        const apiError = error as Error;
-        // Only use fallback if we get a real error (not 404)
-        if (!apiError.message.includes('404')) {
-          console.warn(`⚠️ API request failed for quotation ${id}, trying local schema:`, apiError.message);
-          
-          try {
-            // Use local schema as fallback
-            console.log('Loading local schema data for quotations...');
-            const schema = await import('../../models/quotations-schema.json');
-            const foundQuotation = schema.quotations.find(q => q.id === id);
-            
-            if (foundQuotation) {
-              console.log(`✅ Found quotation ${id} in local schema`);
-              return foundQuotation as unknown as Quotation;
-            } else {
-              console.log(`❌ Quotation ${id} not found in local schema`);
-              return null;
-            }
-          } catch (schemaError) {
-            console.error('❌ Failed to load local quotations schema:', schemaError);
-            throw apiError; // Re-throw the original API error
-          }
-        } else {
-          // It's a 404, just return null
-          return null;
-        }
-      }
-    }
-    
-    // Standard API call for production
+    // Only use API/database for quotations
     const response = await api.get<Quotation>(`/quotations/${id}`);
     return response;
   } catch (error) {
