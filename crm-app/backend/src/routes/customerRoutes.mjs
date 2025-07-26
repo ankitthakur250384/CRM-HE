@@ -26,12 +26,12 @@ router.get('/debug', (req, res) => {
 let pool;
 try {
   pool = new pg.Pool({
-    host: process.env.VITE_DB_HOST || 'localhost',
-    port: parseInt(process.env.VITE_DB_PORT || '5432', 10),
-    database: process.env.VITE_DB_NAME || 'asp_crm',
-    user: process.env.VITE_DB_USER || 'postgres',
-    password: process.env.VITE_DB_PASSWORD || 'crmdb@21',
-    ssl: process.env.VITE_DB_SSL === 'true' ? { rejectUnauthorized: false } : false
+    host: process.env.DB_HOST || 'crm-db',
+    port: parseInt(process.env.DB_PORT || '5432', 10),
+    database: process.env.DB_NAME || 'asp_crm',
+    user: process.env.DB_USER || 'postgres',
+    password: process.env.DB_PASSWORD || 'crmdb@21',
+    ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false
   });
   
   console.log('Customer routes: PostgreSQL connection pool created');
