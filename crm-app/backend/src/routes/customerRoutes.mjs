@@ -181,23 +181,19 @@ async function ensureTables(client) {
 // GET all customers
 router.get('/', async (req, res) => {
   console.log('🔍 GET /api/customers endpoint hit - inside route handler');
-  
   if (!pool) {
     console.error('❌ Database pool not available');
     return res.status(500).json({ error: 'Database connection not available' });
   }
-  
   try {
     console.log('👉 Acquiring database client from pool...');
     const client = await pool.connect();
     console.log('✅ Database client acquired successfully');
-    
     try {
       // Ensure tables exist
       console.log('👉 Ensuring database tables exist...');
       const tablesResult = await ensureTables(client);
       console.log('✅ Tables check completed:', tablesResult);
-      
       // Get all customers
       console.log('👉 Querying for all customers...');
       const result = await client.query(`
@@ -222,23 +218,14 @@ router.get('/', async (req, res) => {
         FROM customers c
         ORDER BY c.name ASC
       `);
-      
       console.log(`✅ Query returned ${result.rowCount} customers`);
-      
-      // Convert snake_case to camelCase
-      const customers = result.rows.map(row => snakeToCamel(row));
-      console.log(`📤 Returning ${customers.length} customers to client`);
-      
-      // Sample of the first customer (if any)
-      if (customers.length > 0) {
-        console.log('📊 Sample customer data:', {
-          id: customers[0].id,
-          name: customers[0].name,
-          hasContacts: !!customers[0].contacts,
-          contactsCount: customers[0].contacts ? customers[0].contacts.length : 0
-        });
-      }
-      
+      // Convert snake_case to camelCase and ensure contacts is always an array
+      const customers = result.rows.map(row => {
+        const customer = snakeToCamel(row);
+        if (!Array.isArray(customer.contacts)) customer.contacts = [];
+        return customer;
+      });
+      console.log('� Full customer data:', JSON.stringify(customers, null, 2));
       res.status(200).json(customers);
     } finally {
       console.log('👉 Releasing database client back to pool');
