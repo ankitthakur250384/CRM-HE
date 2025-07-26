@@ -198,22 +198,32 @@ router.get('/', async (req, res) => {
       console.log('👉 Querying for all customers...');
       const result = await client.query(`
         SELECT 
-          c.*,
+          c.id,
+          c.name,
+          c.company_name,
+          c.contact_name,
+          c.email,
+          c.phone,
+          c.address,
+          c.type,
+          c.designation,
+          c.notes,
+          c.created_at,
+          c.updated_at,
           (
             SELECT json_agg(
               json_build_object(
-                'id', cc.id,
-                'name', cc.name,
-                'email', cc.email,
-                'phone', cc.phone,
-                'position', cc.position,
-                'isPrimary', cc.is_primary,
-                'createdAt', cc.created_at,
-                'updatedAt', cc.updated_at
+                'id', ct.id,
+                'name', ct.name,
+                'email', ct.email,
+                'phone', ct.phone,
+                'role', ct.role,
+                'createdAt', ct.created_at,
+                'updatedAt', ct.updated_at
               )
             )
-            FROM customer_contacts cc
-            WHERE cc.customer_id = c.id
+            FROM contacts ct
+            WHERE ct.customer_id = c.id
           ) as contacts
         FROM customers c
         ORDER BY c.name ASC

@@ -28,6 +28,7 @@ import {
 } from '../services/api/customerService';
 
 export function Customers() {
+  console.log('Customers page component is mounting');
   const { user } = useAuthStore();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [contacts, setContacts] = useState<Record<string, Contact[]>>({});
@@ -51,6 +52,7 @@ export function Customers() {
   });
 
   useEffect(() => {
+    console.log('Customers useEffect running, about to call fetchCustomers');
     fetchCustomers();
   }, []);
   const fetchCustomers = async () => {
