@@ -99,7 +99,7 @@ export function UserManagement() {
         setIsLoading(true);
         
         // Check if user is authenticated first
-        // Use authStore's isAuthenticated property
+        // Use authStore's user property
         if (!user) {
           showToast('Authentication Required', 'You need to log in to view users', 'warning');
           setIsLoading(false);
@@ -169,8 +169,11 @@ export function UserManagement() {
       const lowerSearch = searchTerm.toLowerCase();
       filtered = filtered.filter(
         user =>
-          user.name.toLowerCase().includes(lowerSearch) ||
-          user.email.toLowerCase().includes(lowerSearch)
+          user &&
+          typeof user.name === 'string' &&
+          typeof user.email === 'string' &&
+          (user.name.toLowerCase().includes(lowerSearch) ||
+            user.email.toLowerCase().includes(lowerSearch))
       );
     }
     

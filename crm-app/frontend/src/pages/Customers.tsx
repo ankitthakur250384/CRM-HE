@@ -132,9 +132,14 @@ export function Customers() {
   };
 
   const filteredCustomers = customers.filter(customer =>
-    customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    (customer.companyName && customer.companyName.toLowerCase().includes(searchTerm.toLowerCase()))
+    customer &&
+    typeof customer.name === 'string' &&
+    typeof customer.email === 'string' &&
+    (
+      customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      (customer.companyName && typeof customer.companyName === 'string' && customer.companyName.toLowerCase().includes(searchTerm.toLowerCase()))
+    )
   );
 
   if (!user || (user.role !== 'admin' && user.role !== 'sales_agent')) {
