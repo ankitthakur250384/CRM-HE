@@ -11,12 +11,12 @@ dotenv.config();
 
 // Database connection options
 const dbConfig = {
-  host: process.env.PGHOST || 'localhost',
-  port: parseInt(process.env.PGPORT || '5432'),
-  database: process.env.PGDATABASE || 'asp_crm',
-  user: process.env.PGUSER || 'postgres',
-  password: process.env.PGPASSWORD || 'crmdb@21',
-  ssl: process.env.PGSSL === 'true' ? { rejectUnauthorized: false } : false
+  host: process.env.DB_HOST || process.env.PGHOST || 'localhost',
+  port: parseInt(process.env.DB_PORT || process.env.PGPORT || '5432'),
+  database: process.env.DB_NAME || process.env.PGDATABASE || 'asp_crm',
+  user: process.env.DB_USER || process.env.PGUSER || 'postgres',
+  password: process.env.DB_PASSWORD || process.env.PGPASSWORD || 'crmdb@21',
+  ssl: (process.env.DB_SSL === 'true' || process.env.PGSSL === 'true') ? { rejectUnauthorized: false } : false
 };
 
 // Create a pool connection

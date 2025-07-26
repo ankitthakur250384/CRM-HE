@@ -378,7 +378,7 @@ router.delete('/:id', devBypass, requireAdmin, async (req, res) => {
 });
 
 // GET /api/users/profile/me - Get current user profile
-router.get('/profile/me', authenticateToken, async (req, res) => {
+router.get('/profile/me', devBypass, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT 
@@ -413,7 +413,7 @@ router.get('/profile/me', authenticateToken, async (req, res) => {
 });
 
 // GET /api/users/stats - Get user statistics (Admin only)
-router.get('/stats/overview', authenticateToken, requireAdmin, async (req, res) => {
+router.get('/stats/overview', devBypass, requireAdmin, async (req, res) => {
   try {
     const stats = await pool.query(`
       SELECT 
