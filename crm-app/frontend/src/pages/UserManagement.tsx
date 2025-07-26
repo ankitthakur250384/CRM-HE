@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import userService from '../services/userService';
+import * as userService from '../services/userService';
 import { 
   Search, 
   Edit2, 
@@ -99,7 +99,8 @@ export function UserManagement() {
         setIsLoading(true);
         
         // Check if user is authenticated first
-        if (!userService.isAuthenticated()) {
+        // Use authStore's isAuthenticated property
+        if (!user) {
           showToast('Authentication Required', 'You need to log in to view users', 'warning');
           setIsLoading(false);
           return;
@@ -110,7 +111,7 @@ export function UserManagement() {
           const usersList = response.users;
           
           // Convert PostgreSQL users to ExtendedUser format
-          const extendedUsers: ExtendedUser[] = usersList.map(user => ({
+          const extendedUsers: ExtendedUser[] = usersList.map((user: any) => ({
             id: user.id,
             name: user.name,
             email: user.email,
@@ -245,12 +246,12 @@ export function UserManagement() {
           role: formData.role,
           status: formData.status,
         };
-        
         // Update in database
         await userService.updateUser(selectedUser.id, {
           name: formData.name,
           email: formData.email,
-          role: formData.role
+          role: formData.role,
+          isActive: formData.status === 'active',
         });
         
         // Update local state
@@ -265,18 +266,17 @@ export function UserManagement() {
         try {
           const result = await userService.createUser({
             email: formData.email,
-            password: formData.password,
             name: formData.name,
-            role: formData.role
+            role: formData.role,
+            isActive: formData.status === 'active',
           });
-          
           // Add the new user to our local state with the status and generated avatar
           const extendedUser: ExtendedUser = {
-            id: result.user.id,
-            name: result.user.name,
-            email: result.user.email,
-            role: result.user.role,
-            status: formData.status,
+            id: result.id,
+            name: result.name,
+            email: result.email,
+            role: result.role,
+            status: result.isActive ? 'active' : 'inactive',
             avatar: generateAvatarUrl(formData.name),
           };
           

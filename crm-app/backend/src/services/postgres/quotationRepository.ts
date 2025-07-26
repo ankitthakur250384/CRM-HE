@@ -2,18 +2,13 @@
  * PostgreSQL Quotation Repository
  * Handles database operations for quotations using PostgreSQL API
  */
-import { Quotation, QuotationInputs } from '../../types/quotation';
+import { Quotation } from '../../types/quotation'; 
 import { api } from '../../lib/apiService'; 
 
 // Using the status values directly
 export type QuotationStatus = 'draft' | 'sent' | 'accepted' | 'rejected';
 
-// Type for the local schema file structure
-interface QuotationsSchema {
-  timestamp: string;
-  count: number;
-  quotations: any[];
-}
+
 
 /**
  * Get all quotations from the database
