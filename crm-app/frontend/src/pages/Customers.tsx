@@ -17,21 +17,16 @@ import { Toast } from '../components/common/Toast';
 import { Badge } from '../components/common/Badge';
 import { useAuthStore } from '../store/authStore';
 import { Customer } from '../types/customer';
-import { Contact } from '../types/lead';
 import { 
   getCustomers,
   createCustomer,
   updateCustomer,
-  deleteCustomer,
-  getContactsByCustomer,
-  deleteContact
+  deleteCustomer
 } from '../services/api/customerService';
 
 export function Customers() {
-  console.log('Customers page component is mounting');
   const { user } = useAuthStore();
   const [customers, setCustomers] = useState<Customer[]>([]);
-  const [contacts, setContacts] = useState<Record<string, Contact[]>>({});
   const [searchTerm, setSearchTerm] = useState('');
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
@@ -42,47 +37,33 @@ export function Customers() {
     title: string;
     description?: string;
     variant?: 'success' | 'error' | 'warning';
-  }>({ show: false, title: '' });  const [formData, setFormData] = useState<Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>>({
+  }>({ show: false, title: '' });
+  const [formData, setFormData] = useState<Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>>({
     name: '',
+    companyName: '',
     contactName: '',
     email: '',
     phone: '',
     address: '',
     type: 'other',
+    designation: '',
+    notes: ''
   });
 
   useEffect(() => {
-    console.log('Customers useEffect running, about to call fetchCustomers');
     fetchCustomers();
   }, []);
   const fetchCustomers = async () => {
     try {
-      console.log('🔍 DEBUG: Starting fetchCustomers function');
-      console.log('🔍 DEBUG: Calling getCustomers() from service...');
       const data = await getCustomers();
-      console.log('🔍 DEBUG: getCustomers() returned:', data);
-      
       if (data && Array.isArray(data)) {
-        console.log(`✅ DEBUG: Received ${data.length} customers from service`);
         setCustomers(data);
-        
-        // Fetch contacts for each customer
-        const contactsData: Record<string, Contact[]> = {};
-        for (const customer of data) {
-          console.log(`Fetching contacts for customer: ${customer.id} - ${customer.name}`);
-          const customerContacts = await getContactsByCustomer(customer.id);
-          contactsData[customer.id] = customerContacts;
-        }
-        setContacts(contactsData);
-        setIsLoading(false);
       } else {
-        console.error('Invalid customer data format:', data);
         showToast('Error fetching customers: Invalid data format', 'error');
-        setIsLoading(false);
       }
     } catch (error) {
-      console.error('Error fetching customers:', error);
       showToast('Error fetching customers', 'error');
+    } finally {
       setIsLoading(false);
     }
   };
@@ -90,7 +71,7 @@ export function Customers() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.name || !formData.email || !formData.phone) {
+    if (!formData.name || !formData.companyName || !formData.contactName || !formData.email || !formData.phone || !formData.address || !formData.type) {
       showToast('Please fill in all required fields', 'error');
       return;
     }
@@ -123,13 +104,6 @@ export function Customers() {
 
     try {
       await deleteCustomer(selectedCustomer.id);
-      
-      // Delete associated contacts
-      const customerContacts = contacts[selectedCustomer.id] || [];
-      for (const contact of customerContacts) {
-        await deleteContact(contact.id);
-      }
-      
       setCustomers(prev => prev.filter(c => c.id !== selectedCustomer.id));
       setIsDeleteModalOpen(false);
       setSelectedCustomer(null);
@@ -140,13 +114,16 @@ export function Customers() {
   };
 
   const resetForm = () => {    setFormData({
-      name: '',
-      contactName: '',
-      email: '',
-      phone: '',
-      address: '',
-      type: 'other' as const,
-    });
+    name: '',
+    companyName: '',
+    contactName: '',
+    email: '',
+    phone: '',
+    address: '',
+    type: 'other' as const,
+    designation: '',
+    notes: ''
+  });
     setSelectedCustomer(null);
   };
 
@@ -160,7 +137,8 @@ export function Customers() {
 
   const filteredCustomers = customers.filter(customer =>
     customer.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    customer.email.toLowerCase().includes(searchTerm.toLowerCase())
+    customer.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    (customer.companyName && customer.companyName.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
   if (!user || (user.role !== 'admin' && user.role !== 'sales_agent')) {
@@ -210,61 +188,28 @@ export function Customers() {
               <table className="min-w-full divide-y divide-gray-200">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Customer
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Contact
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Company
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Location
-                    </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Actions
-                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Customer</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Contact Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Company</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Designation</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Type</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Email</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Phone</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Address</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {filteredCustomers.map((customer) => (
                     <tr key={customer.id} className="hover:bg-gray-50">
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center gap-2">
-                          <div>
-                            <div className="text-sm font-medium text-gray-900">{customer.name}</div>
-                            <div className="text-sm text-gray-500">{customer.contactName || 'N/A'}</div>
-                          </div>
-                          <Badge variant="outline" className="text-xs">
-                            {customer.id}
-                          </Badge>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm">
-                          <div className="flex items-center text-gray-900">
-                            <Mail className="h-4 w-4 mr-2 flex-shrink-0" />
-                            {customer.email}
-                          </div>
-                          <div className="flex items-center text-gray-500 mt-1">
-                            <Phone className="h-4 w-4 mr-2 flex-shrink-0" />
-                            {customer.phone}
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center text-sm text-gray-900">
-                          <Building2 className="h-4 w-4 mr-2 flex-shrink-0" />
-                          {customer.name || 'N/A'}
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="flex items-center text-sm text-gray-500">
-                          <MapPin className="h-4 w-4 mr-2 flex-shrink-0" />
-                          {customer.address}
-                        </div>
-                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">{customer.name}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{customer.contactName}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{customer.companyName}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{customer.designation || 'N/A'}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{customer.type}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{customer.email}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{customer.phone}</td>
+                      <td className="px-6 py-4 whitespace-nowrap">{customer.address}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                         <div className="flex items-center gap-2">
                           <Button
@@ -274,10 +219,14 @@ export function Customers() {
                               setSelectedCustomer(customer);
                               setFormData({
                                 name: customer.name,
+                                companyName: customer.companyName,
+                                contactName: customer.contactName,
                                 email: customer.email,
                                 phone: customer.phone,
-                                address: customer.address,                                contactName: customer.contactName || '',
+                                address: customer.address,
                                 type: customer.type,
+                                designation: customer.designation || '',
+                                notes: customer.notes || ''
                               });
                               setIsModalOpen(true);
                             }}
@@ -319,25 +268,36 @@ export function Customers() {
         size="lg"
       >
         <form onSubmit={handleSubmit} className="space-y-6">
+
           <FormInput
             label="Customer Name"
             value={formData.name}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, name: e.target.value }))}
             required
-          />          <FormInput
+          />
+          <FormInput
+            label="Company Name"
+            value={formData.companyName}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, companyName: e.target.value }))}
+            required
+          />
+          <FormInput
             label="Contact Name"
             value={formData.contactName}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, contactName: e.target.value }))}
             required
           />
-
           <FormInput
-            label="Customer Type"
+            label="Designation"
+            value={formData.designation}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, designation: e.target.value }))}
+          />
+          <FormInput
+            label="Type"
             value={formData.type}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, type: e.target.value as any }))}
             required
           />
-
           <FormInput
             label="Email"
             type="email"
@@ -345,19 +305,22 @@ export function Customers() {
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, email: e.target.value }))}
             required
           />
-
           <FormInput
             label="Phone"
             value={formData.phone}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
             required
           />
-
           <FormInput
             label="Address"
             value={formData.address}
             onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, address: e.target.value }))}
             required
+          />
+          <FormInput
+            label="Notes"
+            value={formData.notes}
+            onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
           />
 
           <div className="flex justify-end gap-3">
