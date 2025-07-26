@@ -5,8 +5,9 @@
  * retry logic, and fallback mechanisms for development mode
  */
 
-const API_URL = import.meta.env.VITE_API_URL || '/api';
-const isProduction = import.meta.env.PROD || false;
+// Use process.env for backend, fallback to '/api' if not set
+const API_URL = process.env.VITE_API_URL || process.env.API_URL || '/api';
+const isProduction = process.env.NODE_ENV === 'production';
 const enableDebug = !isProduction;
 
 // Type definitions for API responses
