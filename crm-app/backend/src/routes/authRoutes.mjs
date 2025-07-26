@@ -180,8 +180,19 @@ router.post('/verify-token', async (req, res) => {
   }
 });
 
+// Dev bypass middleware
+const isDev = process.env.NODE_ENV !== 'production';
+const devBypass = (req, res, next) => {
+  if (isDev && (req.headers['x-bypass-auth'] === 'true' || req.headers['x-bypass-auth'] === 'development-only-123')) {
+    console.log('Authentication bypassed for sales agents with development header');
+    req.user = { uid: 'dev-user', email: 'dev@example.com', role: 'admin' };
+    return next();
+  }
+  next();
+};
+
 // Get sales agents (for lead assignment)
-router.get('/sales-agents', async (req, res) => {
+router.get('/sales-agents', devBypass, async (req, res) => {
   try {
     console.log('📋 Fetching sales agents...');
     
