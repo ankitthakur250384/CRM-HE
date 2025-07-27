@@ -48,7 +48,7 @@ export default defineConfig(({ mode }) => {
         '../services/jobService': isProduction ? '/src/shims/emptyModule.js' : '/src/services/job.ts',
         '../services/customerService': isProduction ? '/src/shims/emptyModule.js' : '/src/services/customer.ts',
         '../services/quotationService': isProduction ? '/src/shims/emptyModule.js' : '/src/services/quotation.ts',
-        '../services/userService': isProduction ? '/src/shims/emptyModule.js' : '/src/services/authService.ts',
+        '../services/userService': isProduction ? '/src/services/userService.ts' : '/src/services/userService.ts',
         '../../services/postgresAuthService': isProduction ? '/src/shims/emptyModule.js' : '/src/services/authService.ts',
         '../services/siteAssessmentService': isProduction ? '/src/shims/emptyModule.js' : '/src/shims/emptyModule.js',
         '../services/serviceManagementService': isProduction ? '/src/shims/emptyModule.js' : '/src/shims/emptyModule.js',
