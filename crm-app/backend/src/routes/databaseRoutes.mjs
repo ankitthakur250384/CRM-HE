@@ -9,16 +9,8 @@ import pg from 'pg';
 
 import { authenticateToken } from '../authMiddleware.mjs';
 
-// Dev bypass middleware
-const isDev = process.env.NODE_ENV !== 'production';
-const devBypass = (req, res, next) => {
-  if (isDev && (req.headers['x-bypass-auth'] === 'true' || req.headers['x-bypass-auth'] === 'development-only-123')) {
-    console.log('Authentication bypassed for database config with development header');
-    req.user = { uid: 'dev-user', email: 'dev@example.com', role: 'admin' };
-    return next();
-  }
-  authenticateToken(req, res, next);
-};
+// Use strict authentication everywhere
+import { authenticateToken } from '../authMiddleware.mjs';
 
 const router = express.Router();
 

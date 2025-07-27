@@ -20,30 +20,7 @@ import {
 
 const router = express.Router();
 
-// Authentication middleware
-const authenticateToken = (req, res, next) => {
-  // Skip auth in development mode if bypass header is present
-  if (req.headers['x-bypass-auth'] === 'true' || req.headers['x-bypass-auth'] === 'development-only-123') {
-    console.log('Authentication bypassed with development header');
-    req.user = { uid: 'dev-user', email: 'dev@example.com', role: 'admin' };
-    return next();
-  }
-
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1];
-  
-  if (!token) {
-    return res.status(401).json({ success: false, message: 'Authentication token required' });
-  }
-  
-  try {
-    const user = jwt.verify(token, process.env.JWT_SECRET || 'default_jwt_secret_for_development');
-    req.user = user;
-    next();
-  } catch (error) {
-    return res.status(403).json({ success: false, message: 'Invalid or expired token' });
-  }
-};
+import { authenticateToken } from '../authMiddleware.mjs';
 
 // Admin role check middleware
 const requireAdmin = (req, res, next) => {

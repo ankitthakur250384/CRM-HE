@@ -45,15 +45,8 @@ router.get('/public/count', async (req, res) => {
 // JWT Secret
 const JWT_SECRET = process.env.JWT_SECRET || 'default_jwt_secret_for_development';
 
-// Middleware to verify JWT token and extract user info
-// Dev bypass middleware
-const isDev = process.env.NODE_ENV !== 'production';
-const devBypass = (req, res, next) => {
-  if (isDev && (req.headers['x-bypass-auth'] === 'true' || req.headers['x-bypass-auth'] === 'development-only-123')) {
-    console.log('Authentication bypassed for user management with development header');
-    req.user = { id: 'dev-user', email: 'dev@example.com', role: 'admin', name: 'Dev User' };
-    return next();
-  }
+// Strict JWT authentication middleware
+const authenticateToken = (req, res, next) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
   if (!token) {
@@ -77,7 +70,7 @@ const requireAdmin = (req, res, next) => {
 };
 
 // GET /api/users - Get all users (Admin only)
-router.get('/', devBypass, requireAdmin, async (req, res) => {
+router.get('/', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { page = 1, limit = 50, search = '', role = '', status = '' } = req.query;
     const offset = (page - 1) * limit;
@@ -162,7 +155,7 @@ router.get('/', devBypass, requireAdmin, async (req, res) => {
 });
 
 // GET /api/users/:id - Get single user (Admin or self)
-router.get('/:id', devBypass, async (req, res) => {
+router.get('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -204,7 +197,7 @@ router.get('/:id', devBypass, async (req, res) => {
 });
 
 // POST /api/users - Create new user (Admin only)
-router.post('/', devBypass, requireAdmin, async (req, res) => {
+router.post('/', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { email, password, name, role = 'operator', phone, avatar } = req.body;
 
@@ -248,7 +241,7 @@ router.post('/', devBypass, requireAdmin, async (req, res) => {
 });
 
 // PUT /api/users/:id - Update user (Admin or self for limited fields)
-router.put('/:id', devBypass, async (req, res) => {
+router.put('/:id', authenticateToken, async (req, res) => {
   try {
     const { id } = req.params;
     const { email, name, role, avatar, password } = req.body;
@@ -347,7 +340,7 @@ router.put('/:id', devBypass, async (req, res) => {
 });
 
 // DELETE /api/users/:id - Delete user (Admin only, cannot delete self)
-router.delete('/:id', devBypass, requireAdmin, async (req, res) => {
+router.delete('/:id', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const { id } = req.params;
 
@@ -378,7 +371,7 @@ router.delete('/:id', devBypass, requireAdmin, async (req, res) => {
 });
 
 // GET /api/users/profile/me - Get current user profile
-router.get('/profile/me', devBypass, async (req, res) => {
+router.get('/profile/me', authenticateToken, async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT 
@@ -413,7 +406,7 @@ router.get('/profile/me', devBypass, async (req, res) => {
 });
 
 // GET /api/users/stats - Get user statistics (Admin only)
-router.get('/stats/overview', devBypass, requireAdmin, async (req, res) => {
+router.get('/stats/overview', authenticateToken, requireAdmin, async (req, res) => {
   try {
     const stats = await pool.query(`
       SELECT 
