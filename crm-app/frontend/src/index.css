@@ -1,6 +1,10 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+/* Make all table text darker for better readability */
+table, th, td {
+  color: #222 !important;
+}
 
 /* Enhanced CSS Variables for Futuristic Theme */
 :root {
