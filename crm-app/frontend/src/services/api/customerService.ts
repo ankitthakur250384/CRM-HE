@@ -15,8 +15,8 @@ import { api } from '../../lib/apiService';
 export const getCustomers = async (): Promise<Customer[]> => {
   try {
     console.log('🔍 DEBUG: customerService.getCustomers() called');
-    console.log('🔍 DEBUG: About to call api.get("/api/customers")');
-    const response = await api.get<Customer[]>('/api/customers');
+    console.log('🔍 DEBUG: About to call api.get("/customers")');
+    const response = await api.get<Customer[]>('/customers');
     console.log('🔍 DEBUG: api.get response received:', response);
     console.log('🔍 DEBUG: Response type:', typeof response, 'Array?', Array.isArray(response));
     return response;
@@ -32,7 +32,7 @@ export const getCustomers = async (): Promise<Customer[]> => {
  */
 export const getCustomerById = async (id: string): Promise<Customer | null> => {
   try {
-    const response = await api.get<Customer>(`/api/customers/${id}`);
+    const response = await api.get<Customer>(`/customers/${id}`);
     return response;
   } catch (error: any) {
     console.error(`Failed to fetch customer ${id}:`, error);
