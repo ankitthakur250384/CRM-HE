@@ -26,7 +26,7 @@ router.get('/debug', (req, res) => {
 let pool;
 try {
   pool = new pg.Pool({
-    host: process.env.DB_HOST || 'crm-db',
+    host: process.env.DB_HOST || 'postgres',
     port: parseInt(process.env.DB_PORT || '5432', 10),
     database: process.env.DB_NAME || 'asp_crm',
     user: process.env.DB_USER || 'postgres',

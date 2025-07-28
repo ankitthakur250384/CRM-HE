@@ -46,7 +46,7 @@ export const getCustomerById = async (id: string): Promise<Customer | null> => {
 export const createCustomer = async (customerData: Omit<Customer, 'id' | 'createdAt' | 'updatedAt'>): Promise<Customer> => {
   try {
     console.log('Creating customer via API:', customerData);
-    const response = await api.post<Customer>('/api/customers', customerData);
+    const response = await api.post<Customer>('/customers', customerData);
     console.log('Customer created successfully:', response);
     return response;
   } catch (error: any) {
@@ -60,7 +60,7 @@ export const createCustomer = async (customerData: Omit<Customer, 'id' | 'create
  */
 export const updateCustomer = async (id: string, customerData: Partial<Customer>): Promise<Customer | null> => {
   try {
-    const response = await api.put<Customer>(`/api/customers/${id}`, customerData);
+    const response = await api.put<Customer>(`/customers/${id}`, customerData);
     return response;
   } catch (error: any) {
     console.error(`Failed to update customer ${id}:`, error);
@@ -73,7 +73,7 @@ export const updateCustomer = async (id: string, customerData: Partial<Customer>
  */
 export const deleteCustomer = async (id: string): Promise<boolean> => {
   try {
-    await api.delete(`/api/customers/${id}`);
+    await api.delete(`/customers/${id}`);
     return true;
   } catch (error: any) {
     console.error(`Failed to delete customer ${id}:`, error);
@@ -86,7 +86,7 @@ export const deleteCustomer = async (id: string): Promise<boolean> => {
  */
 export const getContactsByCustomer = async (customerId: string): Promise<Contact[]> => {
   try {
-    const response = await api.get<Contact[]>(`/api/customers/${customerId}/contacts`);
+    const response = await api.get<Contact[]>(`/customers/${customerId}/contacts`);
     return response;
   } catch (error: any) {
     console.error(`Failed to fetch contacts for customer ${customerId}:`, error);
