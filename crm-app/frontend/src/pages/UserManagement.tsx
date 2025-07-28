@@ -107,9 +107,7 @@ export function UserManagement() {
         }
         
         try {
-          const response = await userService.getUsers();
-          const usersList = response.users;
-          
+          const usersList = await userService.getUsers();
           // Convert PostgreSQL users to ExtendedUser format
           const extendedUsers: ExtendedUser[] = usersList.map((user: any) => ({
             id: user.id,
@@ -118,7 +116,6 @@ export function UserManagement() {
             role: user.role,
             status: user.status === 'active' ? 'active' : 'inactive'
           }));
-          
           setUsers(extendedUsers);
           setFilteredUsers(extendedUsers);
         } catch (error: any) {
