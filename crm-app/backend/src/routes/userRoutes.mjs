@@ -139,15 +139,7 @@ router.get('/', authenticateToken, requireAdmin, async (req, res) => {
     const countResult = await pool.query(countQuery, countParams);
     const totalUsers = parseInt(countResult.rows[0].count);
 
-    res.json({
-      users: result.rows,
-      pagination: {
-        page: parseInt(page),
-        limit: parseInt(limit),
-        total: totalUsers,
-        pages: Math.ceil(totalUsers / limit)
-      }
-    });
+    res.json(result.rows);
   } catch (error) {
     console.error('Get users error:', error);
     res.status(500).json({ message: 'Internal server error' });
