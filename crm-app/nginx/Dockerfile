@@ -1,3 +1,6 @@
-FROM nginx:alpine
 COPY ../frontend/dist/ /usr/share/nginx/html/
 COPY nginx.conf /etc/nginx/nginx.conf
+
+FROM nginx:alpine
+COPY frontend/dist/ /usr/share/nginx/html/
+COPY nginx/nginx.conf /etc/nginx/nginx.conf
