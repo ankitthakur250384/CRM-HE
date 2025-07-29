@@ -18,7 +18,8 @@ import { CustomerSelectionModal } from '../components/common/CustomerSelectionMo
 import { RequiredFieldsInfo } from '../components/common/RequiredFieldsInfo';
 import MockDataWarning from '../components/common/MockDataWarning';
 import { useAuthStore } from '../store/authStore';
-import { Lead, LeadStatus, LeadSource, Customer } from '../types/lead';
+import { Lead, LeadStatus, LeadSource } from '../types/lead';
+import { Customer } from '../types/customer';
 import { getLeads, createLead, updateLeadStatus, updateLeadAssignment, updateLead } from '../services/lead';
 import { createDeal } from '../services/deal';
 import { useNavigate } from 'react-router-dom';
@@ -176,20 +177,12 @@ export function LeadManagement() {
       } else {
         console.error('Failed to fetch sales agents:', response.status);
         // Fallback to mock data if API fails
-        const mockAgents = [
-          { id: 'u_sal_386065nosk', name: 'John Sales' },
-          { id: 'usr_test001', name: 'Test User' },
-        ];
-        setSalesAgents(mockAgents);
+        setSalesAgents([]); // No agents if API fails
       }
     } catch (error) {
       console.error('Error fetching sales agents:', error);
       // Fallback to mock data using actual user IDs from database
-      const mockAgents = [
-        { id: 'u_sal_386065nosk', name: 'John Sales' },
-        { id: 'usr_test001', name: 'Test User' },
-      ];
-      setSalesAgents(mockAgents);
+      setSalesAgents([]); // No agents if API fails
     }
   };
   const filterLeads = () => {
@@ -314,12 +307,11 @@ export function LeadManagement() {
     }
   };
 
-  const handleCustomerSelect = async (customer: Customer) => {
+  const handleCustomerSelect = (customer: Customer) => {
     console.log('Selected customer:', customer);
     setSelectedCustomer(customer);
     setIsCustomerSelectionModalOpen(false);
-    // Small delay to ensure modal transitions smoothly
-    setTimeout(() => {
+    setTimeout(() => { 
       setIsDealValueModalOpen(true);
     }, 100);
   };
@@ -859,10 +851,11 @@ export function LeadManagement() {
         onSelect={handleCustomerSelect}
         initialCustomerData={selectedLead ? {
           name: selectedLead.customerName,
-          email: selectedLead.email,
-          phone: selectedLead.phone,
-          companyName: selectedLead.companyName,
-          designation: selectedLead.designation,
+          email: selectedLead.email || '',
+          phone: selectedLead.phone || '',
+          companyName: selectedLead.companyName || '',
+          address: '',
+          designation: selectedLead.designation || '',
         } : undefined}
       />
 
