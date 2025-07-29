@@ -1,4 +1,4 @@
-  # version field removed as it is obsolete
+version: '3.8'
 services:
   postgres:
     image: postgres:15
@@ -51,6 +51,17 @@ services:
       VITE_API_URL: http://103.224.243.242:3001/api
     depends_on:
       - backend
+    restart: unless-stopped
+
+  nginx:
+    build:
+      context: ./crm-app/nginx
+      dockerfile: Dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+      - frontend
     restart: unless-stopped
 
 networks:
