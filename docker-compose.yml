@@ -40,6 +40,7 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+
   frontend:
     build:
       context: ./crm-app/frontend
@@ -55,8 +56,8 @@ services:
 
   nginx:
     build:
-      context: ./crm-app/nginx
-      dockerfile: Dockerfile
+      context: ./crm-app
+      dockerfile: nginx/Dockerfile
     ports:
       - "80:80"
     depends_on:
