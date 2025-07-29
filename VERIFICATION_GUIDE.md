@@ -286,6 +286,13 @@ cat crm-app/frontend/.env
    - Docker container networking
    - Environment variable consistency
 
+
+## 🚩 Lead Assignment Rule
+
+- Leads can only be assigned to users with the **Sales Agent** role.
+- Verify in the UI that only Sales Agents appear in the 'Assigned To' dropdown for leads.
+- Verify via API that assigning a lead to a non-Sales Agent user is rejected.
+
 ## 🚀 Deployment Verification Checklist
 
 - [ ] All Docker containers are running and healthy

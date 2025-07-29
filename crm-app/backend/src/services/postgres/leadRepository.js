@@ -88,15 +88,15 @@ export const createLead = async (lead) => {
     // Find or create customer to ensure proper data consistency
     const customerData = await findOrCreateCustomerForLead(lead, client);
     
-    // Validate assigned_to field - ensure it's either null or a valid user ID
+    // Validate assigned_to field - ensure it's either null or a valid user ID with sales_agent role
     let validAssignedTo = null;
     if (lead.assignedTo && lead.assignedTo.trim() !== '') {
-      const userCheck = await client.query('SELECT uid FROM users WHERE uid = $1', [lead.assignedTo]);
-      if (userCheck.rows.length > 0) {
+      const userCheck = await client.query('SELECT uid, role FROM users WHERE uid = $1', [lead.assignedTo]);
+      if (userCheck.rows.length > 0 && userCheck.rows[0].role === 'sales_agent') {
         validAssignedTo = lead.assignedTo;
-        console.log(`✅ Valid assignedTo user found: ${lead.assignedTo}`);
+        console.log(`✅ Valid assignedTo sales_agent found: ${lead.assignedTo}`);
       } else {
-        console.warn(`⚠️ Invalid assignedTo user ID: ${lead.assignedTo}, setting to null`);
+        console.warn(`⚠️ Invalid assignedTo user ID or not a sales_agent: ${lead.assignedTo}, setting to null`);
         validAssignedTo = null;
       }
     }
@@ -439,15 +439,15 @@ export const updateLeadAssignment = async (leadId, salesAgentId, salesAgentName)
       throw new Error('Invalid lead ID provided');
     }
     
-    // Validate assigned_to field - ensure it's either null or a valid user ID
+    // Validate assigned_to field - ensure it's either null or a valid user ID with sales_agent role
     let validAssignedTo = null;
     if (salesAgentId && salesAgentId.trim() !== '') {
-      const userCheck = await query('SELECT uid FROM users WHERE uid = $1', [salesAgentId]);
-      if (userCheck.rows.length > 0) {
+      const userCheck = await query('SELECT uid, role FROM users WHERE uid = $1', [salesAgentId]);
+      if (userCheck.rows.length > 0 && userCheck.rows[0].role === 'sales_agent') {
         validAssignedTo = salesAgentId;
-        console.log(`✅ Valid assignedTo user found: ${salesAgentId}`);
+        console.log(`✅ Valid assignedTo sales_agent found: ${salesAgentId}`);
       } else {
-        console.warn(`⚠️ Invalid assignedTo user ID: ${salesAgentId}, setting to null`);
+        console.warn(`⚠️ Invalid assignedTo user ID or not a sales_agent: ${salesAgentId}, setting to null`);
         validAssignedTo = null;
       }
     }
