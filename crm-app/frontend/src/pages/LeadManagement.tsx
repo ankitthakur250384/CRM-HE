@@ -162,26 +162,25 @@ export function LeadManagement() {
   };
   const fetchSalesAgents = async () => {
     try {
-      console.log('Fetching sales agents from API...');
-      const response = await fetch('http://localhost:3001/api/auth/sales-agents', {
+      const apiUrl = import.meta.env.VITE_API_URL || process.env.VITE_API_URL || '';
+      const url = `${apiUrl.replace(/\/$/, '')}/auth/sales-agents`;
+      console.log('Fetching sales agents from API at:', url);
+      const response = await fetch(url, {
         headers: {
           'Content-Type': 'application/json',
           'X-Bypass-Auth': 'development-only-123'
         }
       });
-      
       if (response.ok) {
         const agents = await response.json();
         console.log('Sales agents fetched:', agents);
         setSalesAgents(agents);
       } else {
         console.error('Failed to fetch sales agents:', response.status);
-        // Fallback to mock data if API fails
         setSalesAgents([]); // No agents if API fails
       }
     } catch (error) {
       console.error('Error fetching sales agents:', error);
-      // Fallback to mock data using actual user IDs from database
       setSalesAgents([]); // No agents if API fails
     }
   };
