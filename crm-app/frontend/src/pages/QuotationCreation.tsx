@@ -1019,28 +1019,28 @@ export function QuotationCreation() {
           <CardContent>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
               <div className="space-y-1 sm:space-y-2">
-                <div className="text-xs sm:text-sm text-gray-500">Customer Name</div>
-                <div className="text-sm sm:text-base font-medium">{deal?.customer?.name || 'N/A'}</div>
+                <div className="text-xs sm:text-sm text-gray-700">Customer Name</div>
+                <div className="text-sm sm:text-base font-semibold text-gray-900">{deal?.customer?.name ? deal.customer.name : <span className='text-gray-500'>N/A</span>}</div>
               </div>
               <div className="space-y-1 sm:space-y-2">
-                <div className="text-xs sm:text-sm text-gray-500">Company</div>
-                <div className="text-sm sm:text-base font-medium">{deal?.customer?.company || 'N/A'}</div>
+                <div className="text-xs sm:text-sm text-gray-700">Company</div>
+                <div className="text-sm sm:text-base font-semibold text-gray-900">{deal?.customer?.company ? deal.customer.company : <span className='text-gray-500'>N/A</span>}</div>
               </div>
               <div className="space-y-1 sm:space-y-2">
-                <div className="text-xs sm:text-sm text-gray-500">Designation</div>
-                <div className="text-sm sm:text-base font-medium">{deal?.customer?.designation || 'N/A'}</div>
+                <div className="text-xs sm:text-sm text-gray-700">Designation</div>
+                <div className="text-sm sm:text-base font-semibold text-gray-900">{deal?.customer?.designation ? deal.customer.designation : <span className='text-gray-500'>N/A</span>}</div>
               </div>
               <div className="space-y-1 sm:space-y-2">
-                <div className="text-xs sm:text-sm text-gray-500">Email</div>
-                <div className="text-sm sm:text-base font-medium break-all">{deal?.customer?.email || 'N/A'}</div>
+                <div className="text-xs sm:text-sm text-gray-700">Email</div>
+                <div className="text-sm sm:text-base font-semibold text-gray-900 break-all">{deal?.customer?.email ? deal.customer.email : <span className='text-gray-500'>N/A</span>}</div>
               </div>
               <div className="space-y-1 sm:space-y-2">
-                <div className="text-xs sm:text-sm text-gray-500">Phone</div>
-                <div className="text-sm sm:text-base font-medium">{deal?.customer?.phone || 'N/A'}</div>
+                <div className="text-xs sm:text-sm text-gray-700">Phone</div>
+                <div className="text-sm sm:text-base font-semibold text-gray-900">{deal?.customer?.phone ? deal.customer.phone : <span className='text-gray-500'>N/A</span>}</div>
               </div>
               <div className="space-y-1 sm:space-y-2">
-                <div className="text-xs sm:text-sm text-gray-500">Address</div>
-                <div className="text-sm sm:text-base font-medium">{deal?.customer?.address || 'N/A'}</div>
+                <div className="text-xs sm:text-sm text-gray-700">Address</div>
+                <div className="text-sm sm:text-base font-semibold text-gray-900">{deal?.customer?.address ? deal.customer.address : <span className='text-gray-500'>N/A</span>}</div>
               </div>
             </div>
           </CardContent>

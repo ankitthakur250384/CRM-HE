@@ -179,20 +179,20 @@ export function CustomerSelectionModal({
                     onClick={() => handleSelectCustomer(customer)}
                   >
                     <div className="flex flex-col">
-                      <div className="font-medium text-sm sm:text-base">{customer.name}</div>
+                      <div className="font-semibold text-base text-gray-900">{customer.name}</div>
                       <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
                         {customer.companyName && (
-                          <div className="text-xs sm:text-sm text-gray-600">{customer.companyName}</div>
+                          <div className="text-xs sm:text-sm text-gray-800">{customer.companyName}</div>
                         )}
                         {customer.designation && customer.companyName && (
-                          <div className="hidden sm:inline-block text-gray-400">•</div>
+                          <div className="hidden sm:inline-block text-gray-700">&bull;</div>
                         )}
                         {customer.designation && (
-                          <div className="text-xs sm:text-sm text-gray-600">{customer.designation}</div>
+                          <div className="text-xs sm:text-sm text-gray-800">{customer.designation}</div>
                         )}
                       </div>
-                      <div className="text-xs sm:text-sm text-gray-500 truncate">{customer.email}</div>
-                      <div className="text-xs sm:text-sm text-gray-500 mt-0.5">ID: {customer.id}</div>
+                      <div className="text-xs sm:text-sm text-gray-700 truncate">{customer.email}</div>
+                      <div className="text-xs sm:text-sm text-gray-700 mt-0.5">ID: {customer.id}</div>
                     </div>
                   </div>
                 ))
