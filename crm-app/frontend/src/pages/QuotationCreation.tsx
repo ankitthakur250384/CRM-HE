@@ -590,11 +590,11 @@ export function QuotationCreation() {
     let foodAccomCost;
     if (isMonthly) {
       foodAccomCost = (
-        (Number(formData.foodResources) * resourceRates.foodRate) +
+        (Number(formData.foodResources) * (resourceRates?.foodRate ?? 0)) +
         (Number(formData.accomResources) * resourceRates.accommodationRate)
       );
     } else {
-      const foodDailyRate = resourceRates.foodRate / 26;
+      const foodDailyRate = (resourceRates?.foodRate ?? 0) / 26;
       const accomDailyRate = resourceRates.accommodationRate / 26;
       foodAccomCost = (
         (Number(formData.foodResources) * foodDailyRate +
