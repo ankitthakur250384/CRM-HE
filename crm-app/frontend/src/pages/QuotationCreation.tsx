@@ -1203,14 +1203,14 @@ export function QuotationCreation() {
                 {expandedCards.machineSelection && (
                   <CardContent className="pt-4 space-y-4">
                     {/* Selected Machines List */}
-                    {formData.selectedMachines.length > 0 && (
+                    {Array.isArray(formData.selectedMachines) && formData.selectedMachines.length > 0 && (
                       <div className="mb-6">
                         <div className="flex items-center justify-between">
                           <h3 className="text-sm font-semibold mb-2 text-gray-700">Selected Machines ({formData.selectedMachines.length})</h3>
                           <span className="text-xs text-gray-500 mb-2">You can edit the base rate and quantity for each machine</span>
                         </div>
                         <div className="space-y-3 bg-gray-50 p-3 rounded-md border border-gray-200">
-                          {formData.selectedMachines.map(machine => (
+                          {(Array.isArray(formData.selectedMachines) ? formData.selectedMachines : []).map(machine => (
                             <div 
                               key={machine.id} 
                               className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-md shadow-sm hover:shadow-md transition-shadow duration-200"
