@@ -591,11 +591,11 @@ export function QuotationCreation() {
     if (isMonthly) {
       foodAccomCost = (
         (Number(formData.foodResources) * (resourceRates?.foodRate ?? 0)) +
-        (Number(formData.accomResources) * resourceRates.accommodationRate)
+        (Number(formData.accomResources) * (resourceRates?.accommodationRate ?? 0))
       );
     } else {
       const foodDailyRate = (resourceRates?.foodRate ?? 0) / 26;
-      const accomDailyRate = resourceRates.accommodationRate / 26;
+      const accomDailyRate = (resourceRates?.accommodationRate ?? 0) / 26;
       foodAccomCost = (
         (Number(formData.foodResources) * foodDailyRate +
         Number(formData.accomResources) * accomDailyRate) *
@@ -685,7 +685,7 @@ export function QuotationCreation() {
         if (runningCostPerKm === 0 && Array.isArray(availableEquipment)) {
           const matchedEquipment = availableEquipment.find(eq => eq.id === machine.id);
           if (matchedEquipment) {
-            runningCostPerKm = matchedEquipment.runningCostPerKm || 0;
+            runningCostPerKm = matchedEquipment?.runningCostPerKm ?? 0;
           }
         }
         
@@ -703,7 +703,7 @@ export function QuotationCreation() {
     } else {
       // Fall back to original calculation for a single machine
       const selectedEquip = Array.isArray(availableEquipment) ? availableEquipment.find(eq => eq.id === formData.selectedEquipment.id) : null;
-      const runningCostPerKm = selectedEquip?.runningCostPerKm || 0;
+      const runningCostPerKm = selectedEquip?.runningCostPerKm ?? 0;
       
       const distToSiteCost = distance * runningCostPerKm * 2;
       const mobRelaxationAmount = (distToSiteCost * mobRelaxationPercent) / 100;
