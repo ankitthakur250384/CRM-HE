@@ -48,10 +48,8 @@ router.get('/', asyncHandler(async (req, res, next) => {
     equipment = await equipmentRepository.getAllEquipment();
   }
   
-  res.json({
-    success: true,
-    data: equipment
-  });
+  // Return a plain array for frontend compatibility
+  res.json(equipment);
 }));
 
 // GET equipment by ID
