@@ -231,7 +231,7 @@ export function QuotationCreation() {
   
   // Effect to update the selected equipment base rate when order type changes
   useEffect(() => {
-    if (formData.orderType && formData.selectedEquipment?.id && availableEquipment.length > 0) {
+    if (formData.orderType && formData.selectedEquipment?.id && Array.isArray(availableEquipment) && availableEquipment.length > 0) {
       const selected = availableEquipment.find(eq => eq.id === formData.selectedEquipment.id);
       if (selected?.baseRates) {
         const baseRate = selected.baseRates[formData.orderType];
@@ -240,7 +240,7 @@ export function QuotationCreation() {
     }
     
     // Also update base rates for all machines when order type changes
-    if (formData.selectedMachines.length > 0 && availableEquipment.length > 0) {
+    if (formData.selectedMachines.length > 0 && Array.isArray(availableEquipment) && availableEquipment.length > 0) {
       setFormData(prev => ({
         ...prev,
         selectedMachines: prev.selectedMachines.map(machine => {
@@ -264,9 +264,11 @@ export function QuotationCreation() {
       const fetchEquipment = async () => {
         try {
           const equipment = await getEquipmentByCategory(formData.machineType as CraneCategory);
-          setAvailableEquipment(equipment);
+          // Ensure we always set an array
+          setAvailableEquipment(Array.isArray(equipment) ? equipment : []);
         } catch (error) {
           console.error('Error fetching equipment:', error);
+          setAvailableEquipment([]);
         }
       };
       fetchEquipment();
@@ -276,7 +278,7 @@ export function QuotationCreation() {
   }, [formData.machineType]);
 
   useEffect(() => {
-    if (formData.selectedEquipment && availableEquipment.length > 0) {
+    if (formData.selectedEquipment && Array.isArray(availableEquipment) && availableEquipment.length > 0) {
       const selected = availableEquipment.find(eq => eq.id === formData.selectedEquipment.id);
       if (selected?.baseRates) {
         const baseRate = selected.baseRates[formData.orderType];
@@ -680,7 +682,7 @@ export function QuotationCreation() {
         let runningCostPerKm = machine.runningCostPerKm || 0;
         
         // If machine doesn't have running cost yet, try to find it in available equipment
-        if (runningCostPerKm === 0) {
+        if (runningCostPerKm === 0 && Array.isArray(availableEquipment)) {
           const matchedEquipment = availableEquipment.find(eq => eq.id === machine.id);
           if (matchedEquipment) {
             runningCostPerKm = matchedEquipment.runningCostPerKm || 0;
@@ -700,7 +702,7 @@ export function QuotationCreation() {
       return totalMobDemobCost;
     } else {
       // Fall back to original calculation for a single machine
-      const selectedEquip = availableEquipment.find(eq => eq.id === formData.selectedEquipment.id);
+      const selectedEquip = Array.isArray(availableEquipment) ? availableEquipment.find(eq => eq.id === formData.selectedEquipment.id) : null;
       const runningCostPerKm = selectedEquip?.runningCostPerKm || 0;
       
       const distToSiteCost = distance * runningCostPerKm * 2;
@@ -819,7 +821,7 @@ export function QuotationCreation() {
   };
 
   const handleEquipmentSelect = (equipmentId: string) => {
-    const selected = availableEquipment.find(eq => eq.id === equipmentId);
+    const selected = Array.isArray(availableEquipment) ? availableEquipment.find(eq => eq.id === equipmentId) : null;
     if (selected && selected.baseRates) {
       const baseRate = selected.baseRates[formData.orderType];
       setSelectedEquipmentBaseRate(baseRate);
@@ -873,7 +875,7 @@ export function QuotationCreation() {
       return;
     }
 
-    const selected = availableEquipment.find(eq => eq.id === formData.selectedEquipment.id);
+    const selected = Array.isArray(availableEquipment) ? availableEquipment.find(eq => eq.id === formData.selectedEquipment.id) : null;
     if (!selected) {
       showToast('Selected equipment not found', 'error');
       return;
@@ -1297,7 +1299,7 @@ export function QuotationCreation() {
                             label="Select Equipment"
                             options={[
                               { value: '', label: 'Select equipment...' },
-                              ...availableEquipment.map(eq => ({
+                              ...(Array.isArray(availableEquipment) ? availableEquipment : []).map(eq => ({
                                 value: eq.id,
                                 label: `${eq.equipmentId} - ${eq.name} (${formatCurrency(eq.baseRates?.[formData.orderType] || 0)}${formData.orderType === 'monthly' ? '/month' : '/hr'})`,
                               }))
@@ -1311,7 +1313,7 @@ export function QuotationCreation() {
                         </div>
                       )}
                       
-                      {!availableEquipment.length && formData.machineType && (
+                      {!(Array.isArray(availableEquipment) && availableEquipment.length) && formData.machineType && (
                         <div className="text-sm text-amber-600 mt-2">
                           No available equipment found for this machine type
                         </div>
