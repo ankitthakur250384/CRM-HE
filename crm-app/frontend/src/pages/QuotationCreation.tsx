@@ -1218,14 +1218,14 @@ export function QuotationCreation() {
                               className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-md shadow-sm hover:shadow-md transition-shadow duration-200"
                             >
                               <div className="flex-grow">
-                                <div className="font-semibold">{machine.name}</div>
-                                <div className="text-sm text-gray-500 mb-2">ID: {machine.equipmentId}</div>
+                                <div className="font-semibold text-gray-900">{machine.name}</div>
+                                <div className="text-sm text-gray-700 mb-2">ID: {machine.equipmentId}</div>
                                 {/* Base Rate Input */}
                                 <div className="flex items-center gap-2 mt-2 bg-gray-50 p-2 rounded-md border border-gray-100">
-                                  <label className="text-xs font-medium text-gray-700">Base Rate:</label>
+                                  <label className="text-xs font-medium text-gray-900">Base Rate:</label>
                                   <input
                                     type="number"
-                                    className="border rounded px-2 py-1 w-24 text-sm"
+                                    className="border rounded px-2 py-1 w-24 text-sm text-gray-900"
                                     value={machine.baseRate}
                                     onChange={(e) => {
                                       const value = Number(e.target.value);
@@ -1234,7 +1234,7 @@ export function QuotationCreation() {
                                       }
                                     }}
                                   />
-                                  <span className="text-xs text-gray-500">
+                                  <span className="text-xs text-gray-700">
                                     {formData.orderType === 'monthly' ? '/month' : '/hr'}
                                   </span>
                                 </div>
