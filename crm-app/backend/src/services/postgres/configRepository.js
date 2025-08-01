@@ -42,11 +42,30 @@ export const DEFAULT_CONFIGS = {
     ssl: false
   },
   resourceRates: {
-    foodRate: 500,
-    accommodationRate: 1000,
-    transportRate: 25
+    foodRate: 2500,
+    accommodationRate: 4000,
+    transportRate: 0
   },
   additionalParams: {
+    riggerAmount: 40000,
+    helperAmount: 12000,
+    incidentalOptions: [
+      {
+        value: "incident1",
+        label: "Incident 1 - ₹5,000",
+        amount: 5000
+      },
+      {
+        value: "incident2", 
+        label: "Incident 2 - ₹10,000",
+        amount: 10000
+      },
+      {
+        value: "incident3",
+        label: "Incident 3 - ₹15,000", 
+        amount: 15000
+      }
+    ],
     usageFactors: {
       normal: 1.0,
       medium: 1.2,

@@ -157,14 +157,41 @@ export const schema = {  users: `
     );
     
     INSERT INTO config (name, value)
-    VALUES ('quotation', '{
-      "orderTypeLimits": {
-        "micro": { "minDays": 1, "maxDays": 10 },
-        "small": { "minDays": 11, "maxDays": 25 },
-        "monthly": { "minDays": 26, "maxDays": 365 },
-        "yearly": { "minDays": 366, "maxDays": 3650 }
-      }
-    }')
+    VALUES 
+      ('quotation', '{
+        "orderTypeLimits": {
+          "micro": { "minDays": 1, "maxDays": 10 },
+          "small": { "minDays": 11, "maxDays": 25 },
+          "monthly": { "minDays": 26, "maxDays": 365 },
+          "yearly": { "minDays": 366, "maxDays": 3650 }
+        }
+      }'),
+      ('resourceRates', '{
+        "foodRate": 2500,
+        "accommodationRate": 4000,
+        "transportRate": 0
+      }'),
+      ('additionalParams', '{
+        "riggerAmount": 40000,
+        "helperAmount": 12000,
+        "incidentalOptions": [
+          {
+            "value": "incident1",
+            "label": "Incident 1 - ₹5,000",
+            "amount": 5000
+          },
+          {
+            "value": "incident2", 
+            "label": "Incident 2 - ₹10,000",
+            "amount": 10000
+          },
+          {
+            "value": "incident3",
+            "label": "Incident 3 - ₹15,000", 
+            "amount": 15000
+          }
+        ]
+      }')
     ON CONFLICT (name) DO NOTHING;
   `
 };
