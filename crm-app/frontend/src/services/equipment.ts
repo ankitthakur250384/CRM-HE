@@ -39,10 +39,10 @@ export async function createEquipment(equipment: Partial<Equipment>): Promise<Eq
   }
   return response.json();
 }
-// Get equipment by category from backend API
+// Get equipment by type from backend API
 export async function getEquipmentByCategory(category: string): Promise<Equipment[]> {
   const apiUrl = import.meta.env.VITE_API_URL || '/api';
-  const response = await fetch(`${apiUrl}/equipment?category=${encodeURIComponent(category)}`, {
+  const response = await fetch(`${apiUrl}/equipment?type=${encodeURIComponent(category)}`, {
     method: 'GET',
     headers: getHeaders(true),
     credentials: 'include',
