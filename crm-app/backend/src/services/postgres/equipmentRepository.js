@@ -215,7 +215,7 @@ export const getEquipmentByType = async (type) => {
     console.log(`Getting equipment by category: ${type}`);
     
     const result = await query(
-      'SELECT * FROM equipment WHERE type = $1 ORDER BY name ASC',
+      'SELECT * FROM equipment WHERE category = $1 ORDER BY name ASC',
       [type]
     );
     

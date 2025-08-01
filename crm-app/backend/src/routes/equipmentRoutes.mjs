@@ -39,13 +39,15 @@ const asyncHandler = (fn) => (req, res, next) => {
 router.get('/', asyncHandler(async (req, res, next) => {
   // Public route: no authentication required
 
-  const { type } = req.query;
+  const { category } = req.query;
+  
   let equipment;
-  if (type) {
-    equipment = await equipmentRepository.getEquipmentByType(type);
+  if (category) {
+    equipment = await equipmentRepository.getEquipmentByType(category);
   } else {
     equipment = await equipmentRepository.getAllEquipment();
   }
+  
   res.json({
     success: true,
     data: equipment

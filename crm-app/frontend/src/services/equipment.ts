@@ -39,18 +39,32 @@ export async function createEquipment(equipment: Partial<Equipment>): Promise<Eq
   }
   return response.json();
 }
-// Get equipment by type from backend API
+// Get equipment by category from backend API
 export async function getEquipmentByCategory(category: string): Promise<Equipment[]> {
   const apiUrl = import.meta.env.VITE_API_URL || '/api';
-  const response = await fetch(`${apiUrl}/equipment?type=${encodeURIComponent(category)}`, {
+  const url = `${apiUrl}/equipment?category=${encodeURIComponent(category)}`;
+  
+  console.log('🔍 Fetching equipment by category:', category);
+  console.log('🔗 API URL:', url);
+  
+  const response = await fetch(url, {
     method: 'GET',
     headers: getHeaders(true),
     credentials: 'include',
   });
+  
+  console.log('📡 Response status:', response.status);
+  console.log('📡 Response ok:', response.ok);
+  
   if (!response.ok) {
+    console.error('❌ Failed to fetch equipment:', response.status, response.statusText);
     throw new Error('Failed to fetch equipment by category');
   }
-  return response.json();
+  
+  const data = await response.json();
+  console.log('📦 Equipment data received:', data);
+  
+  return data;
 }
 // Stub/mock for frontend: getEquipment
 export async function getEquipment(): Promise<Equipment[]> {

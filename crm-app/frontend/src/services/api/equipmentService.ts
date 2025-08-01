@@ -22,11 +22,11 @@ export const getEquipment = async (): Promise<Equipment[]> => {
 };
 
 /**
- * Get equipment by type from the API
+ * Get equipment by category from the API
  */
 export const getEquipmentByCategory = async (category: CraneCategory): Promise<Equipment[]> => {
   try {
-    const response = await api.get<Equipment[]>(`/equipment?type=${category}`);
+    const response = await api.get<Equipment[]>(`/equipment?category=${category}`);
     return response;
   } catch (error: any) {
     console.error(`Failed to fetch equipment for category ${category}:`, error);
