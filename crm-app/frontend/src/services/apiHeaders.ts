@@ -14,8 +14,10 @@ import { isProd, isDev, logDebug, getAuthHeaders, logError, logWarning } from '.
  * @param includeDevBypass Whether to include development bypass headers (use with caution)
  */
 export const getHeaders = (includeDevBypass: boolean = true): HeadersInit => {
-  // TEMPORARY: Always include dev bypass for testing authentication issues
-  includeDevBypass = true;
+  // Only include dev bypass if explicitly requested and not in production
+  if (isProd()) {
+    includeDevBypass = false;
+  }
   
   const headers = getAuthHeaders(includeDevBypass);
   const typedHeaders = headers as Record<string, string>;
