@@ -153,7 +153,16 @@ const getConfig = async (configName) => {
     );
     
     if (result.rows.length > 0) {
-      const configData = result.rows[0].value;
+      let configData = result.rows[0].value;
+      // If value is a string, parse it as JSON
+      if (typeof configData === 'string') {
+        try {
+          configData = JSON.parse(configData);
+        } catch (e) {
+          console.error(`❌ Error parsing config value for ${configName}:`, e);
+          configData = {};
+        }
+      }
       return {
         ...configData,
         updatedAt: result.rows[0].updated_at
@@ -186,8 +195,17 @@ const updateConfig = async (configName, configData) => {
     `, [configName, JSON.stringify(configData)]);
     
     if (result.rows.length > 0) {
+      let updatedValue = result.rows[0].value;
+      if (typeof updatedValue === 'string') {
+        try {
+          updatedValue = JSON.parse(updatedValue);
+        } catch (e) {
+          console.error(`❌ Error parsing updated config value for ${configName}:`, e);
+          updatedValue = {};
+        }
+      }
       return {
-        ...result.rows[0].value,
+        ...updatedValue,
         updatedAt: result.rows[0].updated_at
       };
     }
