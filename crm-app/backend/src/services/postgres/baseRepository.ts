@@ -11,6 +11,7 @@ const collections = {
   equipment: 'equipment',
   operators: 'operators',
   templates: 'templates',
+  quotation_templates: 'quotation_templates',
   site_assessments: 'site_assessments',
   services: 'services',
   configs: 'configs'
