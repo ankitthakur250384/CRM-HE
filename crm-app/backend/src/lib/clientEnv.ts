@@ -7,8 +7,8 @@
 
 // Default values for client-side use
 const defaultValues: Record<string, string> = {
-  NODE_ENV: import.meta.env.MODE || 'development',
-  VITE_API_URL: import.meta.env.VITE_API_URL || '/api',
+  NODE_ENV: process.env.NODE_ENV || 'development',
+  VITE_API_URL: process.env.VITE_API_URL || '/api',
   JWT_SECRET: 'default_client_side_secret_not_for_actual_use',
 };
 
@@ -17,21 +17,18 @@ const defaultValues: Record<string, string> = {
  */
 export const env = new Proxy({} as Record<string, any>, {
   get: (_target, prop: string) => {
-    // First try import.meta.env
-    if (typeof import.meta.env[prop] !== 'undefined') {
-      return import.meta.env[prop];
+    // First try process.env
+    if (typeof process.env[prop] !== 'undefined') {
+      return process.env[prop];
     }
-    
-    // For NODE_ENV, use import.meta.env.MODE
+    // For NODE_ENV, use process.env.NODE_ENV
     if (prop === 'NODE_ENV') {
-      return import.meta.env.MODE;
+      return process.env.NODE_ENV;
     }
-    
     // Fall back to our default values
     if (prop in defaultValues) {
       return defaultValues[prop];
     }
-    
     // For any other props, return undefined instead of throwing
     console.warn(`Environment variable ${String(prop)} is not defined in client environment`);
     return undefined;

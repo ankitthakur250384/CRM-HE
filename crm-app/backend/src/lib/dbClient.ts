@@ -23,7 +23,7 @@ if (typeof window !== 'undefined') {
   // Mock pg-promise modules needed by other imported libraries
   (window as any).pgPromise = {
     as: {
-      format: (query: string, values: any[]) => query
+      format: (query: string, _values: any[]) => query
     }
   };
   
@@ -46,7 +46,6 @@ if (typeof window !== 'undefined') {
   }
 }
 
-import { UserRole } from '../types/auth';
 
 // Generic interface to match pg-promise's query method signature
 interface QueryResult<T> {
@@ -55,17 +54,11 @@ interface QueryResult<T> {
 }
 
 // Interface for database user
-interface DbUser {
-  uid: string;
-  email: string;
-  display_name?: string;
-  role: UserRole;
-  password_hash?: string;
-}
+// Removed unused interface DbUser
 
 // Define API base URL
-const API_BASE_URL = import.meta.env.VITE_API_URL || '/api';
-const USE_MOCKS = import.meta.env.VITE_USE_MOCKS === 'true';
+const API_BASE_URL = process.env.VITE_API_URL || '/api';
+const USE_MOCKS = process.env.VITE_USE_MOCKS === 'true';
 
 // Type definition for the database client
 interface DbClient {
