@@ -228,7 +228,7 @@ router.get('/:configType', devBypass, asyncHandler(async (req, res) => {
   console.log(`🔍 API Request: GET /api/config/${configType}`);
   const config = await getConfig(configType);
   console.log(`✅ Successfully fetched ${configType} config`);
-  res.json(config);
+  res.json({ data: config });
 }));
 
 // PUT /config/:configType - Update config by type
@@ -249,7 +249,7 @@ router.put('/:configType', devBypass, asyncHandler(async (req, res) => {
   }
   const updatedConfig = await updateConfig(configType, dataToUpdate);
   console.log(`✅ Successfully updated ${configType} config`);
-  res.json(updatedConfig);
+  res.json({ data: updatedConfig });
 }));
 
 // GET all configs - /api/config (for debugging)
@@ -258,20 +258,23 @@ router.get('/', devBypass, async (req, res) => {
     console.log(`🔍 API Request: GET /api/config (all configs)`);
     
     const result = await pool.query('SELECT name, value, updated_at FROM config ORDER BY name');
-    
     const configs = {};
     result.rows.forEach(row => {
+      let value = row.value;
+      if (typeof value === 'string') {
+        try {
+          value = JSON.parse(value);
+        } catch (e) {
+          value = {};
+        }
+      }
       configs[row.name] = {
-        ...row.value,
+        ...value,
         updatedAt: row.updated_at
       };
     });
-    
     console.log(`✅ Successfully fetched all configs`);
-    res.json({ 
-      success: true, 
-      data: configs
-    });
+    res.json({ success: true, data: configs });
   } catch (error) {
     console.error(`❌ Error fetching all configs:`, error);
     res.status(500).json({ 
