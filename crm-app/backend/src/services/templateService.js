@@ -1,5 +1,5 @@
 import templateRepository from './postgres/templateRepository.js';
-import templateRepository from './postgres/templateRepository.ts';
+
 /**
  * Get all quotation templates
  */
