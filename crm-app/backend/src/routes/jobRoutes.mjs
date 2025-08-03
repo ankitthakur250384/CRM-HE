@@ -4,7 +4,7 @@
 import express from 'express';
 import { getJobs, getJobById, createJob, updateJob, deleteJob, getJobEquipment, addJobEquipment, removeJobEquipment, getJobOperators, addJobOperator, removeJobOperator } from '../services/postgres/jobRepository.js';
 import { createJobActivity } from '../services/activityService.js';
-import { createNotification } from '../services/notificationService.ts';
+import { createNotification } from '../services/notificationService.js';
 
 const router = express.Router();
 
