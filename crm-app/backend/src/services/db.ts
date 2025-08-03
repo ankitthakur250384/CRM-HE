@@ -14,7 +14,7 @@ if (!isBrowser) {
       capSQL: true, // capitalize SQL queries
       
       // Global event notification;
-      error: (error, e) => {
+      error: (error: any, e: any) => {
         if (e.cn) {
           // A connection-related error;
           console.error('DB Connection Error:', error);
@@ -43,7 +43,7 @@ const requiredEnvVars = [
 
 // Log missing environment variables
 const missingEnvVars = requiredEnvVars.filter(
-  varName => !import.meta.env[varName]
+  varName => !process.env[varName]
 );
 if (missingEnvVars.length > 0) {
   console.error(`❌ Missing required environment variables: ${missingEnvVars.join(', ')}`);
@@ -52,13 +52,13 @@ if (missingEnvVars.length > 0) {
 
 // Database connection config
 const config = {
-  host: import.meta.env.VITE_DB_HOST || 'localhost',
-  port: parseInt(import.meta.env.VITE_DB_PORT || '5432', 10),
-  database: import.meta.env.VITE_DB_NAME || 'asp_crm',
-  user: import.meta.env.VITE_DB_USER || 'postgres',
-  password: import.meta.env.VITE_DB_PASSWORD || '',
+  host: process.env.VITE_DB_HOST || 'localhost',
+  port: parseInt(process.env.VITE_DB_PORT || '5432', 10),
+  database: process.env.VITE_DB_NAME || 'asp_crm',
+  user: process.env.VITE_DB_USER || 'postgres',
+  password: process.env.VITE_DB_PASSWORD || '',
   max: 30, // use up to 30 connections
-  ssl: import.meta.env.VITE_DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+  ssl: process.env.VITE_DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
   // Increase timeout for network latency
   query_timeout: 10000,
   connectionTimeoutMillis: 10000,
@@ -99,9 +99,10 @@ if (!isBrowser && pgp) {
   
   pgpExport = {
     as: {
-      format: (text: string, values: any) => text
+      format: (text: string, _values: any) => text
     }
   };
 }
 
 export { db, pgpExport as pgp };
+

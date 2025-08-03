@@ -20,7 +20,7 @@ export const handleProductionApiError = (error: any, operation: string, entityTy
   console.error(`[API ERROR] ${operation} ${entityType} failed:`, error);
   
   // If we're in production, ensure detailed errors aren't leaked to the client
-  const errorMessage = import.meta.env.PROD
+  const errorMessage = process.env.NODE_ENV === 'production'
     ? `Unable to ${operation} ${entityType}. Please contact support.`
     : `Unable to ${operation} ${entityType}: ${error.message || 'Unknown error'}`;
   
@@ -50,7 +50,7 @@ export const verifyDatabaseConnection = async (): Promise<boolean> => {
 export const ensureDatabaseOperation = async (): Promise<void> => {
   const isConnected = await verifyDatabaseConnection();
   
-  if (!isConnected && import.meta.env.PROD) {
+  if (!isConnected && process.env.NODE_ENV === 'production') {
     throw new Error(
       'Database connection could not be established in production mode. ' + 
       'Please check your environment configuration and ensure the database is running.'
@@ -64,3 +64,4 @@ export const ensureDatabaseOperation = async (): Promise<void> => {
     );
   }
 };
+

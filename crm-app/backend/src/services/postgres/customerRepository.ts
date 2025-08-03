@@ -24,7 +24,7 @@ export const getCustomers = async (): Promise<Customer[]> => {
     console.log(`Retrieved ${result.rows.length} customers from database`);
     
     // Map database fields to frontend model
-    const customers = result.rows.map(row => {
+    const customers = result.rows.map((row: any) => {
       return {
         id: row.id,
         customerId: row.id, // Business identifier
@@ -291,7 +291,7 @@ export const getContactsByCustomer = async (customerId: string): Promise<Contact
     `, [customerId]);
     
     // Map database fields to frontend model
-    const contacts = result.rows.map(row => ({
+    const contacts = result.rows.map((row: any) => ({
       id: row.id,
       customerId: row.customer_id,
       name: row.name,

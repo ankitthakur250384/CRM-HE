@@ -169,15 +169,7 @@ export const getJobById = async (id: string) => {
   return jobsRepo.getById(id);
 };
 
-export const getJobsByDateRange = async (startDate: Date, endDate: Date) => {
-  return jobsRepo.getJobsByDateRange(startDate, endDate);
-};
-
 // Config Service
 export const getQuotationConfig = async () => {
   return configRepo.getQuotationConfig();
-};
-
-export const updateQuotationConfig = async (configData: any) => {
-  return configRepo.updateQuotationConfig(configData);
 };

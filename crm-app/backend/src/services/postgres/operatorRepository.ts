@@ -2,7 +2,7 @@
  * PostgreSQL Operator Repository
  * Handles database operations for operators using PostgreSQL
  */
-import { Operator } from '../../types/job';
+import { Operator, OperatorAvailability } from '../../types/job';
 import { db } from '../../lib/dbClient';
 import { v4 as uuidv4 } from 'uuid';
 
@@ -13,7 +13,6 @@ interface OperatorRow {
   email: string;
   phone: string;
   specialization: string;
-  experience: number;
   certifications: string[];
   availability: OperatorAvailability;
   created_at: string;
@@ -34,7 +33,6 @@ export const getOperators = async (): Promise<Operator[]> => {
         email, 
         phone, 
         specialization, 
-        experience, 
         certifications, 
         availability,
         created_at,
@@ -42,7 +40,7 @@ export const getOperators = async (): Promise<Operator[]> => {
       FROM operators
       ORDER BY name ASC
     `);
-    
+
     // Convert to application model
     return operators.map(op => ({
       id: op.id,
@@ -50,7 +48,6 @@ export const getOperators = async (): Promise<Operator[]> => {
       email: op.email,
       phone: op.phone,
       specialization: op.specialization,
-      experience: op.experience,
       certifications: Array.isArray(op.certifications) ? op.certifications : [],
       availability: op.availability,
       createdAt: op.created_at,
@@ -76,7 +73,6 @@ export const getOperatorById = async (id: string): Promise<Operator | null> => {
         email, 
         phone, 
         specialization, 
-        experience, 
         certifications, 
         availability,
         created_at,
@@ -95,7 +91,6 @@ export const getOperatorById = async (id: string): Promise<Operator | null> => {
       email: operator.email,
       phone: operator.phone,
       specialization: operator.specialization,
-      experience: operator.experience,
       certifications: Array.isArray(operator.certifications) ? operator.certifications : [],
       availability: operator.availability,
       createdAt: operator.created_at,
@@ -108,133 +103,46 @@ export const getOperatorById = async (id: string): Promise<Operator | null> => {
 };
 
 /**
- * Get operators by specialization
- */
-export const getOperatorsBySpecialization = async (specialization: string): Promise<Operator[]> => {
-  try {
-    console.log(`Getting operators by specialization ${specialization} from PostgreSQL`);
-    
-    const operators = await db.any<OperatorRow>(`
-      SELECT 
-        id, 
-        name, 
-        email, 
-        phone, 
-        specialization, 
-        experience, 
-        certifications, 
-        availability,
-        created_at,
-        updated_at
-      FROM operators
-      WHERE specialization = $1
-      ORDER BY name ASC
-    `, [specialization]);
-    
-    return operators.map(op => ({
-      id: op.id,
-      name: op.name,
-      email: op.email,
-      phone: op.phone,
-      specialization: op.specialization,
-      experience: op.experience,
-      certifications: Array.isArray(op.certifications) ? op.certifications : [],
-      availability: op.availability,
-      createdAt: op.created_at,
-      updatedAt: op.updated_at
-    }));
-  } catch (error) {
-    console.error(`Error fetching operators by specialization ${specialization}:`, error);
-    throw new Error(`Database error: ${(error as Error).message}`);
-  }
-};
-
-/**
- * Get available operators
- */
-export const getAvailableOperators = async (): Promise<Operator[]> => {
-  try {
-    console.log('Getting available operators from PostgreSQL');
-    
-    const operators = await db.any<OperatorRow>(`
-      SELECT 
-        id, 
-        name, 
-        email, 
-        phone, 
-        specialization, 
-        experience, 
-        certifications, 
-        availability,
-        created_at,
-        updated_at
-      FROM operators
-      WHERE availability = 'available'
-      ORDER BY name ASC
-    `);
-    
-    return operators.map(op => ({
-      id: op.id,
-      name: op.name,
-      email: op.email,
-      phone: op.phone,
-      specialization: op.specialization,
-      experience: op.experience,
-      certifications: Array.isArray(op.certifications) ? op.certifications : [],
-      availability: op.availability,
-      createdAt: op.created_at,
-      updatedAt: op.updated_at
-    }));
-  } catch (error) {
-    console.error('Error fetching available operators:', error);
-    throw new Error(`Database error: ${(error as Error).message}`);
-  }
-};
-
-/**
  * Create a new operator
  */
 export const createOperator = async (operatorData: Omit<Operator, 'id' | 'createdAt' | 'updatedAt'>): Promise<Operator> => {
   try {
-    console.log('Creating operator in PostgreSQL:', operatorData);
+    console.log('Creating new operator in PostgreSQL');
     
-    const newId = uuidv4();
-    const timestamp = new Date();
+    const id = uuidv4();
+    const now = new Date().toISOString();
     
     const result = await db.one<OperatorRow>(`
-      INSERT INTO operators(
-        id,
-        name,
-        email,
-        phone,
-        specialization,
-        experience,
-        certifications,
+      INSERT INTO operators (
+        id, 
+        name, 
+        email, 
+        phone, 
+        specialization, 
+        certifications, 
         availability,
         created_at,
         updated_at
-      ) VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
       RETURNING *
     `, [
-      newId,
+      id,
       operatorData.name,
       operatorData.email,
       operatorData.phone,
       operatorData.specialization,
-      operatorData.experience,
-      operatorData.certifications,
-      operatorData.availability,
-      timestamp,
-      timestamp
+      operatorData.certifications || [],
+      operatorData.availability || 'available',
+      now,
+      now
     ]);
-    
+
     return {
       id: result.id,
       name: result.name,
       email: result.email,
       phone: result.phone,
       specialization: result.specialization,
-      experience: result.experience,
       certifications: Array.isArray(result.certifications) ? result.certifications : [],
       availability: result.availability,
       createdAt: result.created_at,
@@ -247,82 +155,66 @@ export const createOperator = async (operatorData: Omit<Operator, 'id' | 'create
 };
 
 /**
- * Update an operator
+ * Update an existing operator
  */
 export const updateOperator = async (id: string, operatorData: Partial<Operator>): Promise<Operator | null> => {
   try {
     console.log(`Updating operator ${id} in PostgreSQL`);
     
-    // First check if the operator exists
-    const existingOperator = await getOperatorById(id);
-    if (!existingOperator) {
-      return null;
-    }
-    
-    // Build the update query dynamically
     const updateFields: string[] = [];
     const updateValues: any[] = [];
-    let paramCounter = 1;
-    
+    let paramCount = 1;
+
     if (operatorData.name !== undefined) {
-      updateFields.push(`name = $${paramCounter++}`);
+      updateFields.push(`name = $${paramCount++}`);
       updateValues.push(operatorData.name);
     }
-    
     if (operatorData.email !== undefined) {
-      updateFields.push(`email = $${paramCounter++}`);
+      updateFields.push(`email = $${paramCount++}`);
       updateValues.push(operatorData.email);
     }
-    
     if (operatorData.phone !== undefined) {
-      updateFields.push(`phone = $${paramCounter++}`);
+      updateFields.push(`phone = $${paramCount++}`);
       updateValues.push(operatorData.phone);
     }
-    
     if (operatorData.specialization !== undefined) {
-      updateFields.push(`specialization = $${paramCounter++}`);
+      updateFields.push(`specialization = $${paramCount++}`);
       updateValues.push(operatorData.specialization);
     }
-    
-    if (operatorData.experience !== undefined) {
-      updateFields.push(`experience = $${paramCounter++}`);
-      updateValues.push(operatorData.experience);
-    }
-    
     if (operatorData.certifications !== undefined) {
-      updateFields.push(`certifications = $${paramCounter++}`);
+      updateFields.push(`certifications = $${paramCount++}`);
       updateValues.push(operatorData.certifications);
     }
-    
     if (operatorData.availability !== undefined) {
-      updateFields.push(`availability = $${paramCounter++}`);
+      updateFields.push(`availability = $${paramCount++}`);
       updateValues.push(operatorData.availability);
     }
-    
-    updateFields.push(`updated_at = $${paramCounter++}`);
-    updateValues.push(new Date());
-    
-    // Add ID as the last parameter
+
+    if (updateFields.length === 0) {
+      throw new Error('No fields to update');
+    }
+
+    updateFields.push(`updated_at = $${paramCount++}`);
+    updateValues.push(new Date().toISOString());
     updateValues.push(id);
-    
+
     const result = await db.oneOrNone<OperatorRow>(`
-      UPDATE operators
+      UPDATE operators 
       SET ${updateFields.join(', ')}
-      WHERE id = $${paramCounter}
+      WHERE id = $${paramCount}
       RETURNING *
     `, updateValues);
-    
+
     if (!result) {
       return null;
     }
-    
+
     return {
       id: result.id,
       name: result.name,
       email: result.email,
       phone: result.phone,
       specialization: result.specialization,
-      experience: result.experience,
       certifications: Array.isArray(result.certifications) ? result.certifications : [],
       availability: result.availability,
       createdAt: result.created_at,
@@ -341,12 +233,12 @@ export const deleteOperator = async (id: string): Promise<boolean> => {
   try {
     console.log(`Deleting operator ${id} from PostgreSQL`);
     
-    const result = await db.result(`
-      DELETE FROM operators
+    const result = await db.any(`
+      DELETE FROM operators 
       WHERE id = $1
     `, [id]);
-    
-    return result.rowCount > 0;
+
+    return result.length > 0;
   } catch (error) {
     console.error(`Error deleting operator ${id}:`, error);
     throw new Error(`Database error: ${(error as Error).message}`);

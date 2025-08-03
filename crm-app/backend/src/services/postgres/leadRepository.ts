@@ -24,7 +24,7 @@ export const getLeads = async (): Promise<Lead[]> => {
     `);
     
     // Map database fields to frontend model
-    const leads = result.rows.map(row => ({
+    const leads = result.rows.map((row: any) => ({
       id: row.id,
       customerId: row.customer_id,
       customerName: row.customer_name,

@@ -99,7 +99,7 @@ export const updateService = async (id: string, updates: Partial<Service>): Prom
   };
 };
 
-export const deleteService = async (id: string): Promise<boolean> => {
+export const deleteService = async (_id: string): Promise<boolean> => {
   // Simulate network delay
   await new Promise(resolve => setTimeout(resolve, 300));
   return true;

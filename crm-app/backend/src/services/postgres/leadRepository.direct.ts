@@ -4,7 +4,7 @@
  */
 import { Lead, LeadStatus } from '../../types/lead';
 import { query, getClient } from '../../lib/dbConnection';
-import { PoolClient } from 'pg';
+// Removed unused import
 
 /**
  * Get all leads from the database
@@ -24,7 +24,7 @@ export const getLeads = async (): Promise<Lead[]> => {
     `);
     
     // Map database fields to frontend model
-    const leads = result.rows.map(row => ({
+    const leads = result.rows.map((row: any) => ({
       id: row.id,
       customerId: row.customer_id,
       customerName: row.customer_name,

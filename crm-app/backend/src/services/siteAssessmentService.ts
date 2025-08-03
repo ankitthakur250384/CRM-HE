@@ -39,7 +39,7 @@ export const createSiteAssessment = async (assessment: Omit<SiteAssessment, 'id'
 /**
  * Update site assessment details
  */
-export const updateSiteAssessment = async (id: string, data: Partial<SiteAssessment>): Promise<SiteAssessment> => {
+export const updateSiteAssessment = async (id: string, data: Partial<SiteAssessment>): Promise<SiteAssessment | null> => {
   try {
     return await siteAssessmentRepository.updateSiteAssessment(id, data);
   } catch (error) {

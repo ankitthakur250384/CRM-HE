@@ -5,7 +5,7 @@
  * Production-ready implementation with proper environment handling for private cloud deployment
  */
 
-import { isProd, isDev, logDebug, getAuthHeaders, logError, logWarning } from './envConfig';
+import { isProd, isDev, logDebug, logError, logWarning } from './envConfig';
 
 /**
  * Get auth headers for API requests
@@ -20,24 +20,36 @@ export const getHeaders = (includeDevBypass: boolean = false): HeadersInit => {
     includeDevBypass = false;
   }
   
-  const headers = getAuthHeaders(includeDevBypass);
-  const typedHeaders = headers as Record<string, string>;
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+  };
+  
+  // Add authorization header if available
+  const token = process.env.JWT_SECRET || '';
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+  
+  // Add development bypass headers only in dev mode
+  if (isDev() && includeDevBypass) {
+    headers['X-Dev-Bypass'] = 'true';
+  }
   
   // Add production-specific security headers
   if (isProd()) {
-    typedHeaders['X-Requested-With'] = 'XMLHttpRequest'; // CSRF protection
-    typedHeaders['X-Application-Type'] = 'asp-cranes-crm';
+    headers['X-Requested-With'] = 'XMLHttpRequest'; // CSRF protection
+    headers['X-Application-Type'] = 'asp-cranes-crm';
   }
   
   // Log header usage in development only
   if (isDev()) {
-    const hasToken = !!typedHeaders['Authorization'];
+    const hasToken = !!headers['Authorization'];
     logDebug(`API headers prepared: Auth token ${hasToken ? 'present' : 'missing'}${
       includeDevBypass ? ', dev bypass enabled' : ''
     }`);
   }
   
-  return typedHeaders;
+  return headers;
 };
 
 /**

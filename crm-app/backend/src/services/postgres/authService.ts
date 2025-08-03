@@ -48,7 +48,7 @@ const initBcrypt = async () => {
 })();
 
 // Get JWT secret from environment variables
-const JWT_SECRET = import.meta.env.VITE_JWT_SECRET || 'your-secure-jwt-secret-key-change-in-production';
+const JWT_SECRET = process.env.VITE_JWT_SECRET || 'your-secure-jwt-secret-key-change-in-production';
 
 // Import UserRole type
 import { UserRole } from '../../types/auth';
@@ -270,3 +270,4 @@ export async function logoutUser(): Promise<void> {
   // Not much to do for logout with JWT, but we can log it
   console.log('User logged out');
 }
+

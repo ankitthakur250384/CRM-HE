@@ -6,7 +6,7 @@
  */
 
 // Check if we're in development mode
-const isDev = !import.meta.env.PROD && process.env.NODE_ENV !== 'production';
+const isDev = process.env.NODE_ENV !== 'production';
 
 /**
  * Debug auth bypass check - ONLY enabled in development
@@ -53,3 +53,4 @@ export default {
   logAuthDebug,
   resetAuthDebugState
 };
+

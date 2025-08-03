@@ -35,7 +35,7 @@ export const getDeals = async (): Promise<Deal[]> => {
     console.log(`Successfully fetched ${result.rows.length} deals from database`);
     
     // Map database fields to frontend model
-    const deals = result.rows.map(row => ({
+    const deals = result.rows.map((row: any) => ({
       id: row.id,
       title: row.title,
       description: row.description || '',

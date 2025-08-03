@@ -1,7 +1,7 @@
 export type LeadStatus = 'new' | 'in_process' | 'qualified' | 'unqualified' | 'lost' | 'converted';
 export type LeadSource = 'website' | 'referral' | 'direct' | 'social' | 'email' | 'phone' | 'other';
 
-type DealStatus = 'qualification' | 'proposal' | 'negotiation' | 'won' | 'lost';
+// type DealStatus = 'qualification' | 'proposal' | 'negotiation' | 'won' | 'lost'; // Removed unused type
 
 export interface Customer {
   id: string;
@@ -25,6 +25,8 @@ export interface Contact {
   role: string;
 }
 
+// Removed unused Deal interface and DealStatus type
+/*
 interface Deal {
   id: string;
   leadId: string;
@@ -37,6 +39,7 @@ interface Deal {
   createdAt: string;
   updatedAt: string;
 }
+*/
 
 export interface Lead {
   id: string;

@@ -156,7 +156,7 @@ export const updateTemplate = async (id: string, updates: Partial<Template>): Pr
   };
 };
 
-export const deleteTemplate = async (id: string): Promise<boolean> => {
+export const deleteTemplate = async (_id: string): Promise<boolean> => {
   // Simulate network delay
   await new Promise(resolve => setTimeout(resolve, 300));
   return true;

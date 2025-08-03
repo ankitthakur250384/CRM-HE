@@ -30,7 +30,7 @@ export const signIn = async (email: string, password: string): Promise<User> => 
     console.log('🔑 Starting sign in process for:', email);
     
     // Use environment variable API URL or fall back to relative URL
-    const apiUrl = import.meta.env.VITE_API_URL || '';
+    const apiUrl = process.env.VITE_API_URL || '';
     const loginUrl = `${apiUrl}/auth/login`;
     
     console.log('Login URL:', loginUrl);
@@ -167,3 +167,4 @@ export const updateUserPassword = async (userId: string, newPassword: string): P
     throw error;
   }
 };
+

@@ -5,8 +5,8 @@
  * retry logic, and fallback mechanisms for development mode
  */
 
-const API_URL = import.meta.env.VITE_API_URL || '/api';
-const isProduction = import.meta.env.PROD || false;
+const API_URL = process.env.VITE_API_URL || '/api';
+const isProduction = process.env.NODE_ENV === 'production' || false;
 const enableDebug = !isProduction;
 
 // Type definitions for API responses
@@ -261,3 +261,4 @@ export const authApi = {
 
 // Export api object as default
 export default api;
+

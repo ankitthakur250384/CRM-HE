@@ -29,13 +29,13 @@ export const isProd = (): boolean => {
     nodeEnvCheck: process.env.NODE_ENV === 'production',
     
     // Check 2: Vite mode indicator
-    viteModeCheck: import.meta.env.MODE === 'production',
+    viteModeCheck: process.env.NODE_ENV === 'production',
     
     // Check 3: Vite dev flag (inverse)
-    viteDevCheck: import.meta.env.DEV === false,
+    viteDevCheck: process.env.NODE_ENV === 'development' === false,
     
     // Check 4: Vite PROD flag (direct)
-    viteProdCheck: import.meta.env.PROD === true,
+    viteProdCheck: process.env.NODE_ENV === 'production' === true,
     
     // Check 5: URL hostname check (only if in browser)
     urlCheck: typeof window !== 'undefined' && (
@@ -49,7 +49,7 @@ export const isProd = (): boolean => {
   };
   
   // Log the results in development mode for debugging
-  if (import.meta.env.DEV) {
+  if (process.env.NODE_ENV === 'development') {
     console.log('Environment detection results:', checks);
   }
   
@@ -83,13 +83,13 @@ export const getApiBaseUrl = (): string => {
   }
   
   // In development, use Vite environment variables
-  return import.meta.env.VITE_API_URL || '/api';
+  return process.env.VITE_API_URL || '/api';
 };
 
 /**
  * Authorization headers with proper environment handling
  */
-export const getAuthHeaders = (includeDevBypass: boolean = false): HeadersInit => {
+export const getAuthHeaders = (): HeadersInit => {
   const headers: HeadersInit = {
     'Content-Type': 'application/json',
   };
@@ -252,3 +252,4 @@ const runProductionStartupChecks = () => {
 runInProdOnly(() => {
   runProductionStartupChecks();
 });
+

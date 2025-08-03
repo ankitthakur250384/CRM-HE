@@ -18,7 +18,7 @@ router.post('/merge', authenticateToken, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Template not found' });
     }
     // Use backend merger logic
-    const mergedContent = mergeTemplate(template, data);
+    const mergedContent = mergeTemplate(template.content, data);
     res.json({ success: true, mergedContent });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Failed to merge template' });

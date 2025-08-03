@@ -6,7 +6,7 @@
  */
 
 // API base URL from environment variable
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3001/api';
+const API_BASE_URL = process.env.VITE_API_URL || 'http://localhost:3001/api';
 
 /**
  * API request options interface
@@ -38,7 +38,7 @@ const getToken = (): string => {
   
   // DEVELOPMENT ONLY: If we're in development mode and no token is found,
   // return a test token for easier debugging
-  if (!token && import.meta.env.DEV) {
+  if (!token && process.env.NODE_ENV === 'development') {
     console.warn('⚠️ DEV MODE: Using test token since no authentication found');
     // This is a fake token that will be acceptable for bypass auth in development
     return 'dev-token-for-testing';
@@ -65,7 +65,7 @@ export const apiCall = async <T = any>(endpoint: string, options: ApiOptions = {
       token = getToken();
     } catch (tokenError) {
       // In development mode, continue without token using bypass auth
-      if (import.meta.env.DEV) {
+      if (process.env.NODE_ENV === 'development') {
         console.warn('⚠️ No token found, using development bypass auth');
       } else {
         throw tokenError;
@@ -78,7 +78,7 @@ export const apiCall = async <T = any>(endpoint: string, options: ApiOptions = {
       // Only add Authorization if we have a token
       ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
       // Add development bypass auth header when no token is available in dev mode
-      ...(import.meta.env.DEV && !token ? { 'X-Bypass-Auth': 'development-only-123' } : {}),
+      ...(process.env.NODE_ENV === 'development' && !token ? { 'X-Bypass-Auth': 'development-only-123' } : {}),
       ...(options.headers || {})
     };
     
@@ -165,13 +165,13 @@ export const apiCall = async <T = any>(endpoint: string, options: ApiOptions = {
             authorization: options.headers?.['Authorization'] ? 'Present (Token masked)' : 'Missing',
             'x-bypass-auth': options.headers?.['X-Bypass-Auth'] || 'Not present'
           },
-          environment: import.meta.env.MODE,
-          devMode: import.meta.env.DEV,
+          environment: process.env.NODE_ENV,
+          devMode: process.env.NODE_ENV === 'development',
           timestamp: new Date().toISOString()
         });
         
         // In development mode, try to continue without redirecting
-        if (import.meta.env.DEV) {
+        if (process.env.NODE_ENV === 'development') {
           console.warn('⚠️ DEV MODE: Authentication error occurred. Not redirecting to login.');
           throw new Error(`Authentication required for ${endpoint} - Bypassed redirect in development mode`);
         }
@@ -245,3 +245,4 @@ export const api = {
   delete: <T = any>(endpoint: string) => 
     apiCall<T>(endpoint, { method: 'DELETE' })
 };
+

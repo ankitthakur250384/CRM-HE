@@ -3,7 +3,7 @@
  * This file is kept for reference only and is not used in the application
  */
 
-import { db as pgDb } from '../lib/db.js';
+// import { db as pgDb } from '../lib/db.js'; // Removed unused import
 import { runMigrations } from './schema.js';
 
 /**
@@ -12,7 +12,7 @@ import { runMigrations } from './schema.js';
 export const setupDatabase = async () => {
   try {
     console.log('Setting up PostgreSQL database...');
-    await runMigrations(pgDb);
+    await runMigrations();
     console.log('Database migration completed successfully');
     return true;
   } catch (error) {

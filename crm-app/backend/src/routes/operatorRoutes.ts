@@ -12,7 +12,7 @@ const getErrorMessage = (error: unknown) => {
 };
 
 // Get all operators
-router.get('/', async (req, res) => {
+router.get('/', async (_req, res) => {
   try {
     const operators = await getOperators();
     res.json(operators);
