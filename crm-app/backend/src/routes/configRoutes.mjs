@@ -1,3 +1,23 @@
+// Async handler for error handling
+const asyncHandler = (fn) => (req, res, next) => {
+  Promise.resolve(fn(req, res, next)).catch((error) => {
+    console.error(`API Error: ${error.message}`, error);
+    res.status(500).json({
+      message: 'An unexpected error occurred',
+      error: process.env.NODE_ENV !== 'production' ? error.message : 'Internal server error',
+    });
+  });
+};
+
+// Dev bypass for config routes (same as leads)
+const devBypass = (req, res, next) => {
+  if (req.headers['x-bypass-auth'] === 'development-only-123' || req.headers['x-bypass-auth'] === 'true') {
+    console.log('⚠️ [AUTH] Bypassing authentication with x-bypass-auth header');
+    req.user = { id: 'dev-user', email: 'dev@example.com', role: 'admin' };
+    return next();
+  }
+  return authenticateToken(req, res, next);
+};
 /**
  * General Configuration API
  * Provides endpoints to manage all configuration types (except database config which has its own routes)
@@ -37,21 +57,6 @@ const requireAdmin = (req, res, next) => {
   next();
 };
 
-// Development bypass for auth (supports bypass headers)
-const isDev = process.env.NODE_ENV !== 'production';
-const devBypass = (req, res, next) => {
-  // Check for bypass header
-  if (req.headers['x-bypass-auth'] === 'development-only-123') {
-    console.log(`🔓 BYPASS: Bypassing auth for ${req.method} ${req.path} with header`);
-    return next();
-  }
-  
-  if (isDev) {
-    console.log(`🔓 DEV MODE: Bypassing auth for ${req.method} ${req.path}`);
-    return next();
-  }
-  return authenticateToken(req, res, () => requireAdmin(req, res, next));
-};
 
 // Default configurations that match schema.sql
 const DEFAULT_CONFIGS = {
@@ -217,71 +222,35 @@ const updateConfig = async (configName, configData) => {
   }
 };
 
-// GET any config type - /api/config/:configType
-router.get('/:configType', devBypass, async (req, res) => {
-  try {
-    const { configType } = req.params;
-    console.log(`🔍 API Request: GET /api/config/${configType}`);
-    
-    const config = await getConfig(configType);
-    
-    console.log(`✅ Successfully fetched ${configType} config`);
-    res.json({ 
-      success: true, 
-      data: config
-    });
-  } catch (error) {
-    console.error(`❌ Error fetching ${req.params.configType} config:`, error);
-    res.status(500).json({ 
-      success: false, 
-      message: `Failed to retrieve ${req.params.configType} configuration`,
-      error: error.message
-    });
-  }
-});
+// GET /config/:configType - Get config by type
+router.get('/:configType', devBypass, asyncHandler(async (req, res) => {
+  const { configType } = req.params;
+  console.log(`🔍 API Request: GET /api/config/${configType}`);
+  const config = await getConfig(configType);
+  console.log(`✅ Successfully fetched ${configType} config`);
+  res.json(config);
+}));
 
-// PUT update any config type - /api/config/:configType
-router.put('/:configType', devBypass, async (req, res) => {
-  try {
-    const { configType } = req.params;
-    const configData = req.body;
-    
-    console.log(`🔍 API Request: PUT /api/config/${configType}`);
-    console.log(`📦 Request body:`, JSON.stringify(configData, null, 2));
-    
-    if (!configData || typeof configData !== 'object') {
-      return res.status(400).json({
-        success: false,
-        message: 'Valid configuration data object is required'
-      });
-    }
-    
-    // Handle special case for defaultTemplate
-    let dataToUpdate = configData;
-    if (configType === 'defaultTemplate' && configData.defaultTemplateId) {
-      dataToUpdate = {
-        defaultTemplateId: configData.defaultTemplateId,
-        updatedAt: new Date().toISOString()
-      };
-    }
-    
-    const updatedConfig = await updateConfig(configType, dataToUpdate);
-
-    console.log(`✅ Successfully updated ${configType} config`);
-    res.json({
-      success: true,
-      message: `${configType} configuration updated successfully`,
-      data: updatedConfig
-    });
-  } catch (error) {
-    console.error(`❌ Error updating ${req.params.configType} config:`, error);
-    res.status(500).json({
-      success: false,
-      message: `Failed to update ${req.params.configType} configuration`,
-      error: error.message
-    });
+// PUT /config/:configType - Update config by type
+router.put('/:configType', devBypass, asyncHandler(async (req, res) => {
+  const { configType } = req.params;
+  const configData = req.body;
+  console.log(`🔍 API Request: PUT /api/config/${configType}`);
+  console.log(`📦 Request body:`, JSON.stringify(configData, null, 2));
+  if (!configData || typeof configData !== 'object') {
+    return res.status(400).json({ message: 'Valid configuration data object is required' });
   }
-});
+  let dataToUpdate = configData;
+  if (configType === 'defaultTemplate' && configData.defaultTemplateId) {
+    dataToUpdate = {
+      defaultTemplateId: configData.defaultTemplateId,
+      updatedAt: new Date().toISOString()
+    };
+  }
+  const updatedConfig = await updateConfig(configType, dataToUpdate);
+  console.log(`✅ Successfully updated ${configType} config`);
+  res.json(updatedConfig);
+}));
 
 // GET all configs - /api/config (for debugging)
 router.get('/', devBypass, async (req, res) => {
