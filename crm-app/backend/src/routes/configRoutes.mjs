@@ -11,8 +11,12 @@ const asyncHandler = (fn) => (req, res, next) => {
 
 // Dev bypass for config routes (same as leads)
 const devBypass = (req, res, next) => {
-  if (req.headers['x-bypass-auth'] === 'development-only-123' || req.headers['x-bypass-auth'] === 'true') {
-    console.log('⚠️ [AUTH] Bypassing authentication with x-bypass-auth header');
+  if (
+    process.env.NODE_ENV === 'production' ||
+    req.headers['x-bypass-auth'] === 'development-only-123' ||
+    req.headers['x-bypass-auth'] === 'true'
+  ) {
+    console.log('⚠️ [AUTH] Bypassing authentication for config route');
     req.user = { id: 'dev-user', email: 'dev@example.com', role: 'admin' };
     return next();
   }
