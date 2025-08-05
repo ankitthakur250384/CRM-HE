@@ -1,33 +1,49 @@
-import { BaseRepository } from './baseRepository';
-import { Template } from '../../types/template';
-import { db } from '../../lib/dbClient'; // Use browser-compatible client
+import { db } from '../../lib/dbClient.js';
 
-export class TemplateRepository extends BaseRepository<Template> {
-  constructor() {
-    super('quotation_templates');
-  }
-
-  async getTemplates(): Promise<Template[]> {
+export class TemplateRepository {
+  async getTemplates() {
     try {
       const templates = await db.any('SELECT * FROM quotation_templates ORDER BY is_default DESC');
-      return templates.map(template => this.convertRowToCamelCase(template));
+      return templates.map(template => ({
+        id: template.id,
+        name: template.name,
+        description: template.description,
+        content: template.content,
+        styles: template.styles,
+        isDefault: template.is_default,
+        createdAt: template.created_at,
+        updatedAt: template.updated_at,
+        createdBy: template.created_by
+      }));
     } catch (error) {
       console.error('Error fetching templates:', error);
-      throw error;
+      return [];
     }
   }
   
-  async getTemplateById(id: string): Promise<Template | null> {
+  async getTemplateById(id) {
     try {
       const template = await db.oneOrNone('SELECT * FROM quotation_templates WHERE id = $1', [id]);
-      return template ? this.convertRowToCamelCase(template) : null;
+      if (!template) return null;
+      
+      return {
+        id: template.id,
+        name: template.name,
+        description: template.description,
+        content: template.content,
+        styles: template.styles,
+        isDefault: template.is_default,
+        createdAt: template.created_at,
+        updatedAt: template.updated_at,
+        createdBy: template.created_by
+      };
     } catch (error) {
       console.error('Error fetching template by ID:', error);
-      throw error;
+      return null;
     }
   }
   
-  async createTemplate(template: Omit<Template, 'id'>): Promise<Template> {
+  async createTemplate(template) {
     try {
       const { name, description, content, styles, isDefault, createdBy } = template;
       const result = await db.one(
@@ -36,14 +52,24 @@ export class TemplateRepository extends BaseRepository<Template> {
          RETURNING *`,
         [name, description, content, styles, isDefault || false, createdBy]
       );
-      return this.convertRowToCamelCase(result);
+      return {
+        id: result.id,
+        name: result.name,
+        description: result.description,
+        content: result.content,
+        styles: result.styles,
+        isDefault: result.is_default,
+        createdAt: result.created_at,
+        updatedAt: result.updated_at,
+        createdBy: result.created_by
+      };
     } catch (error) {
       console.error('Error creating template:', error);
       throw error;
     }
   }
   
-  async updateTemplate(id: string, template: Partial<Template>): Promise<Template> {
+  async updateTemplate(id, template) {
     try {
       const { name, description, content, styles, isDefault } = template;
       const result = await db.one(
@@ -58,14 +84,24 @@ export class TemplateRepository extends BaseRepository<Template> {
          RETURNING *`,
         [name, description, content, styles, isDefault, id]
       );
-      return this.convertRowToCamelCase(result);
+      return {
+        id: result.id,
+        name: result.name,
+        description: result.description,
+        content: result.content,
+        styles: result.styles,
+        isDefault: result.is_default,
+        createdAt: result.created_at,
+        updatedAt: result.updated_at,
+        createdBy: result.created_by
+      };
     } catch (error) {
       console.error('Error updating template:', error);
       throw error;
     }
   }
   
-  async deleteTemplate(id: string): Promise<void> {
+  async deleteTemplate(id) {
     try {
       await db.none('DELETE FROM quotation_templates WHERE id = $1', [id]);
     } catch (error) {
@@ -73,21 +109,7 @@ export class TemplateRepository extends BaseRepository<Template> {
       throw error;
     }
   }
-  
-  private convertRowToCamelCase(row: any): Template {
-    return {
-      id: row.id,
-      name: row.name,
-      description: row.description,
-      content: row.content,
-      styles: row.styles,
-      isDefault: row.is_default,
-      createdAt: row.created_at ? new Date(row.created_at).toISOString() : new Date().toISOString(),
-      updatedAt: row.updated_at ? new Date(row.updated_at).toISOString() : new Date().toISOString(),
-      createdBy: row.created_by
-    };
-  }
-  
 }
 
 export default new TemplateRepository();
+

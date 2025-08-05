@@ -59,3 +59,12 @@ export const deleteTemplate = async (id) => {
     throw error;
   }
 };
+
+// Default export object with all functions
+export default {
+  getTemplates,
+  getTemplate,
+  createTemplate,
+  updateTemplate,
+  deleteTemplate
+};
