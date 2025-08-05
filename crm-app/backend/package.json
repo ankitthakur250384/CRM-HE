@@ -6,8 +6,8 @@
   "type": "module",
   "scripts": {
     "build": "tsc",
-    "start": "npm run build && node src/server.mjs",
-    "dev": "nodemon src/server.mjs",
+    "start": "npm run build && node dist/server.mjs",
+    "dev": "nodemon dist/server.mjs",
     "test": "echo \"No tests yet\""
   },
   "dependencies": {
