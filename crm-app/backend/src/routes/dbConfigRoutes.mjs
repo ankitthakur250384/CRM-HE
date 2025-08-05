@@ -97,7 +97,13 @@ const ensureDefaultDatabaseConfig = async () => {
 };
 
 // Initialize default database config on startup
-ensureDefaultDatabaseConfig();
+(async () => {
+  try {
+    await ensureDefaultDatabaseConfig();
+  } catch (error) {
+    console.log('⚠️  Database config initialization skipped:', error.message);
+  }
+})();
 
 // GET /api/dbconfig - Get current database configuration
 router.get('/', devBypass, asyncHandler(async (req, res) => {

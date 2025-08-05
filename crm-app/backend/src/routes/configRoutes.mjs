@@ -149,7 +149,13 @@ const ensureDefaultConfigs = async () => {
 };
 
 // Initialize default configs on startup
-ensureDefaultConfigs();
+(async () => {
+  try {
+    await ensureDefaultConfigs();
+  } catch (error) {
+    console.log('⚠️  Database initialization skipped:', error.message);
+  }
+})();
 
 // Generic function to get configuration by name
 const getConfig = async (configName) => {
