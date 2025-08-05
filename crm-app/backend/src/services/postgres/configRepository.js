@@ -1,4 +1,4 @@
-// Stub configRepository to prevent import errors
+// Enhanced PostgreSQL Config Repository using centralized db client
 import { db } from '../../lib/dbClient.js';
 
 export const DEFAULT_CONFIGS = {
@@ -14,23 +14,31 @@ export const DEFAULT_CONFIGS = {
 
 export const getConfig = async (configName) => {
   try {
+    console.log(`🔍 Getting ${configName} config from database...`);
     const result = await db.oneOrNone('SELECT value FROM config WHERE name = $1', [configName]);
-    return result ? result.value : DEFAULT_CONFIGS[configName] || {};
+    if (result) {
+      console.log(`✅ Config found: ${configName}`);
+      return result.value;
+    }
+    console.log(`📝 Using default config for: ${configName}`);
+    return DEFAULT_CONFIGS[configName] || {};
   } catch (error) {
-    console.error(`Error fetching ${configName} config:`, error);
+    console.error(`❌ Error fetching ${configName} config:`, error);
     return DEFAULT_CONFIGS[configName] || {};
   }
 };
 
 export const updateConfig = async (configName, configData) => {
   try {
+    console.log(`📝 Updating ${configName} config in database...`);
     await db.none(
-      'INSERT INTO config(name, value) VALUES($1, $2) ON CONFLICT (name) DO UPDATE SET value = $2',
+      'INSERT INTO config(name, value) VALUES($1, $2) ON CONFLICT (name) DO UPDATE SET value = $2, updated_at = NOW()',
       [configName, configData]
     );
+    console.log(`✅ Config updated: ${configName}`);
     return await getConfig(configName);
   } catch (error) {
-    console.error(`Error updating ${configName} config:`, error);
+    console.error(`❌ Error updating ${configName} config:`, error);
     throw error;
   }
 };

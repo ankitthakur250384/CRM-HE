@@ -1,10 +1,11 @@
-// Stub leadRepository to prevent import errors
+// Enhanced leadRepository using centralized db client
 import { db } from '../../lib/dbClient.js';
 
 export const getLeads = async () => {
   try {
+    console.log('📋 Fetching all leads...');
     const leads = await db.any('SELECT * FROM leads ORDER BY created_at DESC');
-    return leads.map(row => ({
+    const formattedLeads = leads.map(row => ({
       id: row.id,
       customerName: row.customer_name,
       email: row.email,
@@ -17,18 +18,24 @@ export const getLeads = async () => {
       files: row.files ? JSON.parse(row.files) : [],
       notes: row.notes
     }));
+    console.log(`✅ Found ${formattedLeads.length} leads`);
+    return formattedLeads;
   } catch (error) {
-    console.error('Error fetching leads:', error);
+    console.error('❌ Error fetching leads:', error);
     return [];
   }
 };
 
 export const getLeadById = async (id) => {
   try {
+    console.log(`🔍 Fetching lead by ID: ${id}`);
     const lead = await db.oneOrNone('SELECT * FROM leads WHERE id = $1', [id]);
-    if (!lead) return null;
+    if (!lead) {
+      console.log('📝 Lead not found');
+      return null;
+    }
     
-    return {
+    const formattedLead = {
       id: lead.id,
       customerName: lead.customer_name,
       email: lead.email,
@@ -41,8 +48,124 @@ export const getLeadById = async (id) => {
       files: lead.files ? JSON.parse(lead.files) : [],
       notes: lead.notes
     };
+    console.log('✅ Lead found and formatted');
+    return formattedLead;
   } catch (error) {
-    console.error('Error fetching lead by ID:', error);
+    console.error('❌ Error fetching lead by ID:', error);
     return null;
+  }
+};
+
+export const createLead = async (leadData) => {
+  try {
+    console.log('🆕 Creating new lead...');
+    const result = await db.one(
+      `INSERT INTO leads (customer_name, email, phone, address, source, assigned_to, files, notes, created_at, updated_at) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW()) RETURNING *`,
+      [
+        leadData.customerName,
+        leadData.email,
+        leadData.phone,
+        leadData.address,
+        leadData.source,
+        leadData.assignedTo,
+        leadData.files ? JSON.stringify(leadData.files) : null,
+        leadData.notes
+      ]
+    );
+    console.log(`✅ Lead created successfully: ${result.id}`);
+    return {
+      id: result.id,
+      customerName: result.customer_name,
+      email: result.email,
+      phone: result.phone,
+      address: result.address,
+      source: result.source,
+      assignedTo: result.assigned_to,
+      createdAt: result.created_at,
+      updatedAt: result.updated_at,
+      files: result.files ? JSON.parse(result.files) : [],
+      notes: result.notes
+    };
+  } catch (error) {
+    console.error('❌ Error creating lead:', error);
+    throw error;
+  }
+};
+
+export const updateLead = async (id, leadData) => {
+  try {
+    console.log(`📝 Updating lead: ${id}`);
+    const updates = [];
+    const values = [];
+    let paramIndex = 1;
+
+    if (leadData.customerName) {
+      updates.push(`customer_name = $${paramIndex++}`);
+      values.push(leadData.customerName);
+    }
+    if (leadData.email) {
+      updates.push(`email = $${paramIndex++}`);
+      values.push(leadData.email);
+    }
+    if (leadData.phone) {
+      updates.push(`phone = $${paramIndex++}`);
+      values.push(leadData.phone);
+    }
+    if (leadData.address) {
+      updates.push(`address = $${paramIndex++}`);
+      values.push(leadData.address);
+    }
+    if (leadData.source) {
+      updates.push(`source = $${paramIndex++}`);
+      values.push(leadData.source);
+    }
+    if (leadData.assignedTo) {
+      updates.push(`assigned_to = $${paramIndex++}`);
+      values.push(leadData.assignedTo);
+    }
+    if (leadData.files) {
+      updates.push(`files = $${paramIndex++}`);
+      values.push(JSON.stringify(leadData.files));
+    }
+    if (leadData.notes) {
+      updates.push(`notes = $${paramIndex++}`);
+      values.push(leadData.notes);
+    }
+
+    updates.push(`updated_at = NOW()`);
+    values.push(id);
+
+    const query = `UPDATE leads SET ${updates.join(', ')} WHERE id = $${paramIndex} RETURNING *`;
+    const result = await db.one(query, values);
+    console.log(`✅ Lead updated successfully: ${result.id}`);
+    
+    return {
+      id: result.id,
+      customerName: result.customer_name,
+      email: result.email,
+      phone: result.phone,
+      address: result.address,
+      source: result.source,
+      assignedTo: result.assigned_to,
+      createdAt: result.created_at,
+      updatedAt: result.updated_at,
+      files: result.files ? JSON.parse(result.files) : [],
+      notes: result.notes
+    };
+  } catch (error) {
+    console.error('❌ Error updating lead:', error);
+    throw error;
+  }
+};
+
+export const deleteLead = async (id) => {
+  try {
+    console.log(`🗑️ Deleting lead: ${id}`);
+    await db.none('DELETE FROM leads WHERE id = $1', [id]);
+    console.log(`✅ Lead deleted successfully: ${id}`);
+  } catch (error) {
+    console.error('❌ Error deleting lead:', error);
+    throw error;
   }
 };
