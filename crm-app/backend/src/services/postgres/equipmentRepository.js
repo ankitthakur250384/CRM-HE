@@ -1,7 +1,7 @@
 // Enhanced equipmentRepository using centralized db client
 import { db } from '../../lib/dbClient.js';
 
-export const getEquipment = async () => {
+export const getAllEquipment = async () => {
   try {
     console.log('📋 Fetching all equipment...');
     const equipment = await db.any('SELECT * FROM equipment ORDER BY name');
