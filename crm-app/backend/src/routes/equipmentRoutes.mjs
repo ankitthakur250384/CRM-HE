@@ -11,6 +11,10 @@ import dotenv from 'dotenv';
 import { authenticateToken } from '../authMiddleware.mjs';
 import * as equipmentRepository from '../services/postgres/equipmentRepository.js';
 
+// Debug: Log what we're importing
+console.log('🔍 Equipment Repository imports:', Object.keys(equipmentRepository));
+console.log('🔍 getAllEquipment function:', typeof equipmentRepository.getAllEquipment);
+
 // Load environment variables
 dotenv.config();
 
