@@ -108,10 +108,13 @@ export const deleteEquipment = asyncNull;
 export const getConfig = asyncNull;
 export const updateConfig = asyncNull;
 export const getQuotationConfig = asyncNull;
+export const updateQuotationConfig = asyncNull;
+export const getResourceRatesConfig = asyncNull;
+export const updateResourceRatesConfig = asyncNull;
+export const getAdditionalParamsConfig = asyncNull;
+export const updateAdditionalParamsConfig = asyncNull;
 export const getDefaultTemplateConfig = asyncNull;
 export const updateDefaultTemplateConfig = asyncNull;
-export const getResourceRatesConfig = asyncNull;
-export const updateQuotationConfig = asyncNull;
 
 // Notification service functions
 export const getUserNotifications = asyncEmptyArray;
