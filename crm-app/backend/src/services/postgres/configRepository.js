@@ -1,5 +1,30 @@
 import { db } from '../../lib/dbClient.js';
 
+// Track database connection status
+let dbConnectionAvailable = true;
+let lastConnectionCheck = 0;
+const CONNECTION_CHECK_INTERVAL = 30000; // 30 seconds
+
+// Test database connection
+const testDbConnection = async () => {
+  const now = Date.now();
+  if (now - lastConnectionCheck < CONNECTION_CHECK_INTERVAL) {
+    return dbConnectionAvailable;
+  }
+  
+  try {
+    await db.one('SELECT 1');
+    dbConnectionAvailable = true;
+    lastConnectionCheck = now;
+    return true;
+  } catch (error) {
+    dbConnectionAvailable = false;
+    lastConnectionCheck = now;
+    console.log('📵 Database connection not available, using default configs');
+    return false;
+  }
+};
+
 export const DEFAULT_CONFIGS = {
   quotation: {
     orderTypeLimits: {
@@ -41,8 +66,17 @@ export const DEFAULT_CONFIGS = {
 };
 
 export const getConfig = async (configName) => {
+  console.log(`🔍 Getting ${configName} config`);
+  
+  // Check database connection first
+  const isDbAvailable = await testDbConnection();
+  
+  if (!isDbAvailable) {
+    console.log(`� Using default config for ${configName} (DB unavailable)`);
+    return DEFAULT_CONFIGS[configName] || {};
+  }
+  
   try {
-    console.log(`🔍 Getting ${configName} config`);
     const result = await db.oneOrNone('SELECT value, updated_at FROM config WHERE name = $1', [configName]);
     
     if (result) {
@@ -60,13 +94,22 @@ export const getConfig = async (configName) => {
     return DEFAULT_CONFIGS[configName] || {};
   } catch (error) {
     console.error(`Error fetching ${configName}:`, error);
+    dbConnectionAvailable = false; // Mark DB as unavailable
     return DEFAULT_CONFIGS[configName] || {};
   }
 };
 
 export const updateConfig = async (configName, configData) => {
+  console.log(`📝 Updating ${configName} config`);
+  
+  // Check database connection first
+  const isDbAvailable = await testDbConnection();
+  
+  if (!isDbAvailable) {
+    throw new Error('Database connection not available for config updates');
+  }
+  
   try {
-    console.log(`📝 Updating ${configName} config`);
     const result = await db.one(`
       INSERT INTO config (name, value) VALUES ($1, $2)
       ON CONFLICT (name) DO UPDATE SET value = $2, updated_at = CURRENT_TIMESTAMP
@@ -85,11 +128,20 @@ export const updateConfig = async (configName, configData) => {
     return { ...updatedValue, updatedAt: result.updated_at };
   } catch (error) {
     console.error(`Error updating ${configName}:`, error);
+    dbConnectionAvailable = false; // Mark DB as unavailable
     throw error;
   }
 };
 
 export const getAllConfigs = async () => {
+  // Check database connection first
+  const isDbAvailable = await testDbConnection();
+  
+  if (!isDbAvailable) {
+    console.log('📝 Using default configs (DB unavailable)');
+    return DEFAULT_CONFIGS;
+  }
+  
   try {
     const result = await db.any('SELECT name, value, updated_at FROM config ORDER BY name');
     const configs = {};
@@ -109,6 +161,7 @@ export const getAllConfigs = async () => {
     return configs;
   } catch (error) {
     console.error('Error fetching all configs:', error);
+    dbConnectionAvailable = false; // Mark DB as unavailable
     return DEFAULT_CONFIGS;
   }
 };
