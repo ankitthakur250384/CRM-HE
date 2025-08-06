@@ -33,7 +33,7 @@ import { getEquipment, getEquipmentByCategory } from '../services/equipment';
 import { createQuotation, updateQuotation, getQuotationById } from '../services/quotation';
 import { getResourceRatesConfig } from '../services/configService';
 import { formatCurrency } from '../utils/formatters';
-import { useQuotationConfigStore } from '../store/quotationConfigStore';
+import { useQuotationConfig, useConfigChangeListener } from '../hooks/useQuotationConfig';
 
 const ORDER_TYPES = [
   { value: 'micro', label: 'Micro' },
@@ -91,8 +91,9 @@ const INCIDENTAL_OPTIONS = [
   { value: 'incident3', label: 'Incident 3 - ₹15,000', amount: 15000 },
 ];
 
-const RIGGER_AMOUNT = 40000;
-const HELPER_AMOUNT = 12000;
+// These constants are now dynamically fetched from configuration
+// const RIGGER_AMOUNT = 40000;
+// const HELPER_AMOUNT = 12000;
 
 interface SelectedMachine {
   id: string;
@@ -128,21 +129,29 @@ export function QuotationCreation() {
     }
   }, [dealId, quotationId, navigate]);
 
-  const { orderTypeLimits, fetchConfig } = useQuotationConfigStore();
+  // Configuration management with auto-refresh
+  const {
+    quotationConfig,
+    resourceRates,
+    additionalParams,
+    isLoading: isConfigLoading,
+    refreshConfigurations
+  } = useQuotationConfig();
   const [deal, setDeal] = useState<Deal | null>(null);
   const [availableEquipment, setAvailableEquipment] = useState<Equipment[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedEquipmentBaseRate, setSelectedEquipmentBaseRate] = useState<number>(0);
-  const [resourceRates, setResourceRates] = useState<{
-    foodRate: number;
-    accommodationRate: number;
-    transportRate?: number;
-  }>({
-    foodRate: 0,
-    accommodationRate: 0,
-    transportRate: 0
-  });
+  // Remove this state since we're getting it from the hook now
+  // const [resourceRates, setResourceRates] = useState<{
+  //   foodRate: number;
+  //   accommodationRate: number;
+  //   transportRate?: number;
+  // }>({
+  //   foodRate: 0,
+  //   accommodationRate: 0,
+  //   transportRate: 0
+  // });
 
   const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({
     duration: true,
@@ -212,6 +221,29 @@ export function QuotationCreation() {
     riskAdjustment: 0,
     gstAmount: 0,
     totalAmount: 0,
+  });
+
+  // Listen for configuration changes and recalculate quotations
+  useConfigChangeListener('resourceRatesUpdated', () => {
+    console.log('Resource rates updated, recalculating quotation...');
+    calculateQuotation();
+  });
+
+  useConfigChangeListener('additionalParamsUpdated', () => {
+    console.log('Additional parameters updated, recalculating quotation...');
+    calculateQuotation();
+  });
+
+  useConfigChangeListener('quotationConfigUpdated', (detail) => {
+    console.log('Quotation configuration updated, checking order type...', detail);
+    // Recalculate order type if needed
+    if (formData.numberOfDays > 0) {
+      const newOrderType = determineOrderType(formData.numberOfDays);
+      if (newOrderType !== formData.orderType) {
+        setFormData(prev => ({ ...prev, orderType: newOrderType }));
+      }
+    }
+    calculateQuotation();
   });
 
   useEffect(() => {
@@ -362,10 +394,10 @@ export function QuotationCreation() {
       const equipmentData = await getEquipment();
       console.log('Fetched equipment data:', equipmentData);
 
-      // Fetch resource rates
-      const rates = await getResourceRatesConfig();
-      console.log('Fetched resource rates:', rates);
-      setResourceRates(rates);
+      // Fetch resource rates are now handled by useQuotationConfig hook
+      // const rates = await getResourceRatesConfig();
+      // console.log('Fetched resource rates:', rates);
+      // setResourceRates(rates);
 
       // If editing an existing quotation, load its data
       if (quotationId) {
@@ -492,9 +524,9 @@ export function QuotationCreation() {
         }
       }
 
-      // Fetch quotation config
-      await fetchConfig();
-      console.log('Quotation config fetched');
+      // Quotation config is now fetched by useQuotationConfig hook
+      // await fetchConfig();
+      console.log('Quotation config managed by centralized store');
     } catch (error) {
       console.error('Error fetching data:', error);
       showToast('Error fetching data', 'error');
@@ -504,10 +536,13 @@ export function QuotationCreation() {
   };
 
   const determineOrderType = (days: number): OrderType => {
+    if (!quotationConfig?.orderTypeLimits) return 'micro';
+    
+    const limits = quotationConfig.orderTypeLimits;
     if (days <= 0) return 'micro'; // Default for no days entered
-    if (days >= orderTypeLimits.yearly.minDays) return 'yearly';
-    if (days >= orderTypeLimits.monthly.minDays) return 'monthly';
-    if (days >= orderTypeLimits.small.minDays) return 'small';
+    if (days >= limits.yearly.minDays) return 'yearly';
+    if (days >= limits.monthly.minDays) return 'monthly';
+    if (days >= limits.small.minDays) return 'small';
     return 'micro';
   };
 
@@ -626,8 +661,8 @@ export function QuotationCreation() {
     }, 0);
     
     let otherFactorsTotal = 0;
-    if (formData.otherFactors.includes('rigger')) otherFactorsTotal += RIGGER_AMOUNT;
-    if (formData.otherFactors.includes('helper')) otherFactorsTotal += HELPER_AMOUNT;
+    if (formData.otherFactors.includes('rigger')) otherFactorsTotal += additionalParams?.riggerAmount || 40000;
+    if (formData.otherFactors.includes('helper')) otherFactorsTotal += additionalParams?.helperAmount || 12000;
     
     const extraCharges = (
       Number(formData.extraCharge) +
@@ -1116,9 +1151,9 @@ export function QuotationCreation() {
                           </div>
                         )}
                         <div className="text-sm font-medium text-primary-600">
-                          {Number(formData.numberOfDays) >= orderTypeLimits.yearly.minDays ? 'Yearly rate' :
-                           Number(formData.numberOfDays) >= orderTypeLimits.monthly.minDays ? 'Monthly rate' :
-                           Number(formData.numberOfDays) >= orderTypeLimits.small.minDays ? 'Small order rate' :
+                          {quotationConfig?.orderTypeLimits && Number(formData.numberOfDays) >= quotationConfig.orderTypeLimits.yearly.minDays ? 'Yearly rate' :
+                           quotationConfig?.orderTypeLimits && Number(formData.numberOfDays) >= quotationConfig.orderTypeLimits.monthly.minDays ? 'Monthly rate' :
+                           quotationConfig?.orderTypeLimits && Number(formData.numberOfDays) >= quotationConfig.orderTypeLimits.small.minDays ? 'Small order rate' :
                            'Micro order rate'}
                         </div>
                       </div>
@@ -1161,10 +1196,10 @@ export function QuotationCreation() {
                     />
                     {Number(formData.numberOfDays) > 0 ? (
                       <div className="mt-2 text-sm text-amber-600">
-                        {Number(formData.numberOfDays) >= orderTypeLimits.yearly.minDays ? 'Order type is set to Yearly as duration exceeds ' + (orderTypeLimits.yearly.minDays - 1) + ' days' :
-                         Number(formData.numberOfDays) >= orderTypeLimits.monthly.minDays ? 'Order type is set to Monthly as duration exceeds ' + (orderTypeLimits.monthly.minDays - 1) + ' days' :
-                         Number(formData.numberOfDays) >= orderTypeLimits.small.minDays ? 'Order type is set to Small as duration is between ' + orderTypeLimits.small.minDays + '-' + orderTypeLimits.small.maxDays + ' days' :
-                         'Order type is set to Micro as duration is ' + orderTypeLimits.micro.maxDays + ' days or less'}
+                        {quotationConfig?.orderTypeLimits && Number(formData.numberOfDays) >= quotationConfig.orderTypeLimits.yearly.minDays ? 'Order type is set to Yearly as duration exceeds ' + (quotationConfig.orderTypeLimits.yearly.minDays - 1) + ' days' :
+                         quotationConfig?.orderTypeLimits && Number(formData.numberOfDays) >= quotationConfig.orderTypeLimits.monthly.minDays ? 'Order type is set to Monthly as duration exceeds ' + (quotationConfig.orderTypeLimits.monthly.minDays - 1) + ' days' :
+                         quotationConfig?.orderTypeLimits && Number(formData.numberOfDays) >= quotationConfig.orderTypeLimits.small.minDays ? 'Order type is set to Small as duration is between ' + quotationConfig.orderTypeLimits.small.minDays + '-' + quotationConfig.orderTypeLimits.small.maxDays + ' days' :
+                         quotationConfig?.orderTypeLimits ? 'Order type is set to Micro as duration is ' + quotationConfig.orderTypeLimits.micro.maxDays + ' days or less' : 'Loading configuration...'}
                       </div>
                     ) : (
                       <div className="mt-2 text-sm text-gray-500 flex items-center">
@@ -1863,8 +1898,8 @@ export function QuotationCreation() {
                           </div>
                           <span className="font-semibold">
                             {formatCurrency(
-                              (formData.otherFactors.includes('rigger') ? RIGGER_AMOUNT : 0) + 
-                              (formData.otherFactors.includes('helper') ? HELPER_AMOUNT : 0)
+                              (formData.otherFactors.includes('rigger') ? (additionalParams?.riggerAmount || 40000) : 0) + 
+                              (formData.otherFactors.includes('helper') ? (additionalParams?.helperAmount || 12000) : 0)
                             )}
                           </span>
                         </div>
@@ -1873,8 +1908,8 @@ export function QuotationCreation() {
                             className="h-full bg-cyan-500 rounded-full transition-all duration-300"
                             style={{ 
                               width: `${calculations.totalAmount > 0 ? 
-                                (((formData.otherFactors.includes('rigger') ? RIGGER_AMOUNT : 0) + 
-                                (formData.otherFactors.includes('helper') ? HELPER_AMOUNT : 0)) / 
+                                (((formData.otherFactors.includes('rigger') ? (additionalParams?.riggerAmount || 40000) : 0) + 
+                                (formData.otherFactors.includes('helper') ? (additionalParams?.helperAmount || 12000) : 0)) / 
                                 calculations.totalAmount) * 100 : 0.5}%` 
                             }}
                           />

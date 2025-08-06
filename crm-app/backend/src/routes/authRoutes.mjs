@@ -36,8 +36,14 @@ router.post('/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
     
+    // Guard: Ensure user.password exists
+    if (!user.password) {
+      console.error('Login error: User record missing password hash');
+      return res.status(500).json({ message: 'User record is corrupted: missing password hash' });
+    }
+
     const isPasswordValid = await bcrypt.compare(password, user.password);
-    
+
     if (!isPasswordValid) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
