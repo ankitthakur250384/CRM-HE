@@ -95,7 +95,7 @@ export default defineConfig(({ mode }) => {
       historyApiFallback: true,
       proxy: {
         '/api': {
-          target: 'http://localhost:3001',
+          target: 'http://backend:3001',
           changeOrigin: true,
           secure: false,
           configure: (proxy) => {
