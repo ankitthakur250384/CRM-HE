@@ -1,4 +1,4 @@
-import db from '../lib/dbClient.js';
+import { db } from '../lib/dbClient.js';
 
 const modernTemplateService = {
   async getTemplates() {
