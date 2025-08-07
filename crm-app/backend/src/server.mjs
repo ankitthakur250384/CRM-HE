@@ -29,7 +29,9 @@ import notificationRoutes from './routes/notificationRoutes.mjs';
 
 import dbConfigRoutes from './routes/dbConfigRoutes.mjs';
 import templateRoutes from './routes/templateRoutes.mjs';
+
 import modernTemplateRoutes from './routes/modernTemplateRoutes.mjs';
+console.log('DEBUG: modernTemplateRoutes import:', modernTemplateRoutes);
 
 // Load environment variables
 dotenv.config();
