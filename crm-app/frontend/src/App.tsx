@@ -28,6 +28,7 @@ import { Deals } from './pages/Deals';
 import { DealDetails } from './pages/DealDetails';
 import { useAuthStore } from './store/authStore';
 import { TemplateManagement } from './pages/TemplateManagement';
+import { QuotationTemplates } from './pages/QuotationTemplates';
 import { QuotationTemplateEditor } from './pages/QuotationTemplateEditor';
 import { AuthProvider } from './components/auth/SimpleAuthProvider';
 import { ProtectedRoute } from './components/auth/SimpleProtectedRoute';
@@ -167,6 +168,12 @@ function AppContent() {
             } />
             
             <Route path="admin/quotation-templates" element={
+              <ProtectedRoute allowedRoles={['admin', 'sales_agent']}>
+                <QuotationTemplates />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="admin/templates" element={
               <ProtectedRoute allowedRoles={['admin', 'sales_agent']}>
                 <TemplateManagement />
               </ProtectedRoute>

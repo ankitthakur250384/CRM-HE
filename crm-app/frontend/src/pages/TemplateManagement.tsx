@@ -24,26 +24,19 @@ import { Input } from '../components/common/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/common/Card';
 import { TemplateBuilder } from '../components/templates/TemplateBuilder';
 import { Toast } from '../components/common/Toast';
-
-interface Template {
-  id: string;
-  name: string;
-  description?: string;
-  elements: any[];
-  thumbnail?: string;
-  createdAt: string;
-  updatedAt: string;
-  createdBy: string;
-  isDefault?: boolean;
-  usage_count?: number;
-  tags?: string[];
-}
+import { 
+  getModernTemplates, 
+  createModernTemplate, 
+  updateModernTemplate, 
+  deleteModernTemplate,
+  ModernTemplate 
+} from '../services/modernTemplateService';
 
 export const TemplateManagement: React.FC = () => {
-  const [templates, setTemplates] = useState<Template[]>([]);
+  const [templates, setTemplates] = useState<ModernTemplate[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<ModernTemplate | null>(null);
   const [showBuilder, setShowBuilder] = useState(false);
   const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [filterTag, setFilterTag] = useState<string>('all');
@@ -59,44 +52,8 @@ export const TemplateManagement: React.FC = () => {
   const fetchTemplates = async () => {
     try {
       setIsLoading(true);
-      // TODO: Replace with actual API call
-      const mockTemplates: Template[] = [
-        {
-          id: '1',
-          name: 'Standard Quotation',
-          description: 'Default template for equipment quotations',
-          elements: [],
-          createdAt: '2024-01-15T10:00:00Z',
-          updatedAt: '2024-01-15T10:00:00Z',
-          createdBy: 'Admin',
-          isDefault: true,
-          usage_count: 45,
-          tags: ['standard', 'equipment']
-        },
-        {
-          id: '2',
-          name: 'Premium Service Quote',
-          description: 'Template for premium service quotations',
-          elements: [],
-          createdAt: '2024-01-20T14:30:00Z',
-          updatedAt: '2024-01-22T09:15:00Z',
-          createdBy: 'John Doe',
-          usage_count: 23,
-          tags: ['premium', 'service']
-        },
-        {
-          id: '3',
-          name: 'Maintenance Contract',
-          description: 'Template for maintenance service contracts',
-          elements: [],
-          createdAt: '2024-02-01T16:45:00Z',
-          updatedAt: '2024-02-01T16:45:00Z',
-          createdBy: 'Jane Smith',
-          usage_count: 12,
-          tags: ['maintenance', 'contract']
-        }
-      ];
-      setTemplates(mockTemplates);
+      const fetchedTemplates = await getModernTemplates();
+      setTemplates(fetchedTemplates);
     } catch (error) {
       console.error('Error fetching templates:', error);
       showToast('Error loading templates', 'error');
@@ -110,7 +67,7 @@ export const TemplateManagement: React.FC = () => {
     setShowBuilder(true);
   };
 
-  const handleEditTemplate = (template: Template) => {
+  const handleEditTemplate = (template: ModernTemplate) => {
     setSelectedTemplate(template);
     setShowBuilder(true);
   };
@@ -119,26 +76,25 @@ export const TemplateManagement: React.FC = () => {
     try {
       if (selectedTemplate) {
         // Update existing template
+        const updatedTemplate = await updateModernTemplate(selectedTemplate.id, {
+          ...templateData,
+          updatedAt: new Date().toISOString()
+        });
         setTemplates(prev => 
           prev.map(t => 
-            t.id === selectedTemplate.id 
-              ? { ...t, ...templateData, updatedAt: new Date().toISOString() }
-              : t
+            t.id === selectedTemplate.id ? updatedTemplate : t
           )
         );
         showToast('Template updated successfully', 'success');
       } else {
         // Create new template
-        const newTemplate: Template = {
-          id: Date.now().toString(),
+        const newTemplate = await createModernTemplate({
           ...templateData,
           description: '',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
           createdBy: 'Current User',
           usage_count: 0,
           tags: []
-        };
+        });
         setTemplates(prev => [newTemplate, ...prev]);
         showToast('Template created successfully', 'success');
       }
@@ -152,6 +108,7 @@ export const TemplateManagement: React.FC = () => {
   const handleDeleteTemplate = async (templateId: string) => {
     if (window.confirm('Are you sure you want to delete this template?')) {
       try {
+        await deleteModernTemplate(templateId);
         setTemplates(prev => prev.filter(t => t.id !== templateId));
         showToast('Template deleted successfully', 'success');
       } catch (error) {
@@ -161,18 +118,15 @@ export const TemplateManagement: React.FC = () => {
     }
   };
 
-  const handleDuplicateTemplate = async (template: Template) => {
+  const handleDuplicateTemplate = async (template: ModernTemplate) => {
     try {
-      const duplicatedTemplate: Template = {
+      const duplicatedTemplate = await createModernTemplate({
         ...template,
-        id: Date.now().toString(),
         name: `${template.name} (Copy)`,
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
         createdBy: 'Current User',
         usage_count: 0,
         isDefault: false
-      };
+      });
       setTemplates(prev => [duplicatedTemplate, ...prev]);
       showToast('Template duplicated successfully', 'success');
     } catch (error) {
@@ -181,7 +135,7 @@ export const TemplateManagement: React.FC = () => {
     }
   };
 
-  const handlePreviewTemplate = (template: Template) => {
+  const handlePreviewTemplate = (template: ModernTemplate) => {
     // TODO: Implement template preview modal
     console.log('Preview template:', template);
   };

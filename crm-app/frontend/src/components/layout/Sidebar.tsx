@@ -120,6 +120,12 @@ const navItems: NavItem[] = [
     href: '/admin/quotation-templates',
     roles: ['admin', 'sales_agent'],
   },
+  {
+    label: 'Template Builder',
+    icon: <FileText size={18} />,
+    href: '/admin/templates',
+    roles: ['admin', 'sales_agent'],
+  },
 ];
 
 export function Sidebar({ isMobileOpen = false, onMobileClose, isCollapsed: controlledCollapsed, onCollapseToggle }: SidebarProps) {
