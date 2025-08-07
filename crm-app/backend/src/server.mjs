@@ -152,7 +152,7 @@ app.use('/api/notifications', notificationRoutes);
 
 // Mount template routes
 app.use('/api/templates', templateRoutes);
-app.use('/api/templates', modernTemplateRoutes);
+app.use('/api/templates/modern', modernTemplateRoutes);
 
 // Mount database config routes
 app.use('/api/dbconfig', dbConfigRoutes);

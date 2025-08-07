@@ -5,7 +5,7 @@ import modernTemplateService from '../services/modernTemplateService.js';
 const router = express.Router();
 
 // GET /api/templates/modern - Get all modern templates
-router.get('/modern', authenticateToken, async (req, res) => {
+router.get('/', authenticateToken, async (req, res) => {
   try {
     const templates = await modernTemplateService.getTemplates();
     res.json({ data: templates });
@@ -16,7 +16,7 @@ router.get('/modern', authenticateToken, async (req, res) => {
 });
 
 // POST /api/templates/modern - Create a new modern template
-router.post('/modern', authenticateToken, async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   try {
     const newTemplate = await modernTemplateService.createTemplate(req.body);
     res.status(201).json({ data: newTemplate });
@@ -27,7 +27,7 @@ router.post('/modern', authenticateToken, async (req, res) => {
 });
 
 // PATCH /api/templates/modern/:id - Update a modern template
-router.patch('/modern/:id', authenticateToken, async (req, res) => {
+router.patch('/:id', authenticateToken, async (req, res) => {
   try {
     const updatedTemplate = await modernTemplateService.updateTemplate(req.params.id, req.body);
     res.json({ data: updatedTemplate });
@@ -38,7 +38,7 @@ router.patch('/modern/:id', authenticateToken, async (req, res) => {
 });
 
 // DELETE /api/templates/modern/:id - Delete a modern template
-router.delete('/modern/:id', authenticateToken, async (req, res) => {
+router.delete('/:id', authenticateToken, async (req, res) => {
   try {
     await modernTemplateService.deleteTemplate(req.params.id);
     res.json({ success: true });
