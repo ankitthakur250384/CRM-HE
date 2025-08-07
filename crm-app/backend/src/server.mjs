@@ -151,7 +151,9 @@ app.use('/api/activities', activityRoutes);
 app.use('/api/notifications', notificationRoutes);
 
 // Mount template routes - ORDER MATTERS: more specific routes first
+console.log('🔧 Mounting /api/templates/modern route...');
 app.use('/api/templates/modern', modernTemplateRoutes);
+console.log('🔧 Mounting /api/templates route...');
 app.use('/api/templates', templateRoutes);
 
 // Mount database config routes

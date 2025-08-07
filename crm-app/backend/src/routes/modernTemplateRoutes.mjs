@@ -4,10 +4,14 @@ import modernTemplateService from '../services/modernTemplateService.js';
 
 const router = express.Router();
 
+console.log('🚀 Modern template routes loaded');
+
 // GET /api/templates/modern - Get all modern templates
 router.get('/', authenticateToken, async (req, res) => {
+  console.log('📋 Modern templates GET route hit');
   try {
     const templates = await modernTemplateService.getTemplates();
+    console.log('📋 Found templates:', templates.length);
     res.json({ data: templates });
   } catch (error) {
     console.error('Error fetching modern templates:', error);
