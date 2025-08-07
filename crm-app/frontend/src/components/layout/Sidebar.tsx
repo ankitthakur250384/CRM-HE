@@ -114,12 +114,7 @@ const navItems: NavItem[] = [
     href: '/job-summary',
     roles: ['admin', 'operations_manager', 'operator'],
   },
-  {
-    label: 'Templates',
-    icon: <FileText size={18} />,
-    href: '/admin/quotation-templates',
-    roles: ['admin', 'sales_agent'],
-  },
+  // Removed old 'Templates' entry for legacy quotation templates
   {
     label: 'Template Builder',
     icon: <FileText size={18} />,

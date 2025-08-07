@@ -29,6 +29,7 @@ import notificationRoutes from './routes/notificationRoutes.mjs';
 
 import dbConfigRoutes from './routes/dbConfigRoutes.mjs';
 import templateRoutes from './routes/templateRoutes.mjs';
+import modernTemplateRoutes from './routes/modernTemplateRoutes.mjs';
 
 // Load environment variables
 dotenv.config();
@@ -151,6 +152,7 @@ app.use('/api/notifications', notificationRoutes);
 
 // Mount template routes
 app.use('/api/templates', templateRoutes);
+app.use('/api/templates', modernTemplateRoutes);
 
 // Mount database config routes
 app.use('/api/dbconfig', dbConfigRoutes);
