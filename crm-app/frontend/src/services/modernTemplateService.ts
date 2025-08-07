@@ -45,9 +45,7 @@ export async function getModernTemplates(): Promise<ModernTemplate[]> {
   });
   
   if (!response.ok) {
-    // If the modern endpoint doesn't exist, fall back to mock data
-    console.warn('Modern templates endpoint not available, using mock data');
-    return getMockTemplates();
+    throw new Error(`Failed to fetch modern templates: ${response.status} ${response.statusText}`);
   }
   
   const result = await response.json();
@@ -122,110 +120,4 @@ export async function getModernTemplateById(templateId: string): Promise<ModernT
   return result.data || result;
 }
 
-// Mock data for testing until backend is updated
-function getMockTemplates(): ModernTemplate[] {
-  return [
-    {
-      id: '1',
-      name: 'Standard Quotation',
-      description: 'Default template for equipment quotations',
-      elements: [
-        {
-          id: 'element_1',
-          type: 'text',
-          content: 'ASP CRANES - QUOTATION',
-          styles: {
-            fontSize: 24,
-            fontWeight: 'bold',
-            textAlign: 'center',
-            color: '#0052CC'
-          }
-        },
-        {
-          id: 'element_2',
-          type: 'field',
-          fieldType: 'customer.name',
-          styles: {
-            fontSize: 16,
-            textAlign: 'left'
-          }
-        },
-        {
-          id: 'element_3',
-          type: 'table',
-          styles: {
-            fontSize: 14
-          }
-        }
-      ],
-      createdAt: '2024-01-15T10:00:00Z',
-      updatedAt: '2024-01-15T10:00:00Z',
-      createdBy: 'Admin',
-      isDefault: true,
-      usage_count: 45,
-      tags: ['standard', 'equipment']
-    },
-    {
-      id: '2',
-      name: 'Premium Service Quote',
-      description: 'Template for premium service quotations',
-      elements: [
-        {
-          id: 'element_1',
-          type: 'text',
-          content: 'Premium Service Quotation',
-          styles: {
-            fontSize: 20,
-            fontWeight: 'bold',
-            textAlign: 'center'
-          }
-        },
-        {
-          id: 'element_2',
-          type: 'field',
-          fieldType: 'quotation.totalAmount',
-          styles: {
-            fontSize: 18,
-            fontWeight: 'bold',
-            color: '#FF6B35'
-          }
-        }
-      ],
-      createdAt: '2024-01-20T14:30:00Z',
-      updatedAt: '2024-01-22T09:15:00Z',
-      createdBy: 'John Doe',
-      usage_count: 23,
-      tags: ['premium', 'service']
-    },
-    {
-      id: '3',
-      name: 'Maintenance Contract',
-      description: 'Template for maintenance service contracts',
-      elements: [
-        {
-          id: 'element_1',
-          type: 'text',
-          content: 'Maintenance Service Contract',
-          styles: {
-            fontSize: 18,
-            fontWeight: 'bold',
-            textAlign: 'center'
-          }
-        },
-        {
-          id: 'element_2',
-          type: 'field',
-          fieldType: 'quotation.workingCost',
-          styles: {
-            fontSize: 14
-          }
-        }
-      ],
-      createdAt: '2024-02-01T16:45:00Z',
-      updatedAt: '2024-02-01T16:45:00Z',
-      createdBy: 'Jane Smith',
-      usage_count: 12,
-      tags: ['maintenance', 'contract']
-    }
-  ];
-}
+

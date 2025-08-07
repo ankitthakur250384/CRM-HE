@@ -15,10 +15,30 @@ router.get('/', authenticateToken, async (req, res) => {
   }
 });
 
+// GET /api/templates/modern/:id - Get a specific modern template
+router.get('/:id', authenticateToken, async (req, res) => {
+  try {
+    const template = await modernTemplateService.getTemplateById(req.params.id);
+    res.json({ data: template });
+  } catch (error) {
+    console.error('Error fetching modern template:', error);
+    if (error.message === 'Template not found') {
+      res.status(404).json({ message: 'Template not found' });
+    } else {
+      res.status(500).json({ message: 'Failed to fetch modern template', error: error.message });
+    }
+  }
+});
+
 // POST /api/templates/modern - Create a new modern template
 router.post('/', authenticateToken, async (req, res) => {
   try {
-    const newTemplate = await modernTemplateService.createTemplate(req.body);
+    // Add the authenticated user as the creator
+    const templateData = {
+      ...req.body,
+      createdBy: req.user?.id || 'system'
+    };
+    const newTemplate = await modernTemplateService.createTemplate(templateData);
     res.status(201).json({ data: newTemplate });
   } catch (error) {
     console.error('Error creating modern template:', error);
