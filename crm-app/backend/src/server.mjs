@@ -150,9 +150,9 @@ app.use('/api/operators', operatorRoutes);
 app.use('/api/activities', activityRoutes);
 app.use('/api/notifications', notificationRoutes);
 
-// Mount template routes
-app.use('/api/templates', templateRoutes);
+// Mount template routes - ORDER MATTERS: more specific routes first
 app.use('/api/templates/modern', modernTemplateRoutes);
+app.use('/api/templates', templateRoutes);
 
 // Mount database config routes
 app.use('/api/dbconfig', dbConfigRoutes);
