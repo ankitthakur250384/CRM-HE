@@ -22,7 +22,7 @@ import {
 import { Button } from '../components/common/Button';
 import { Input } from '../components/common/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/common/Card';
-import { TemplateBuilder } from '../components/templates/TemplateBuilder';
+import TemplateBuilder from './TemplateBuilder';
 import { Toast } from '../components/common/Toast';
 import { 
   getModernTemplates, 
@@ -72,38 +72,6 @@ export const TemplateManagement: React.FC = () => {
     setShowBuilder(true);
   };
 
-  const handleSaveTemplate = async (templateData: { name: string; elements: any[] }) => {
-    try {
-      if (selectedTemplate) {
-        // Update existing template
-        const updatedTemplate = await updateModernTemplate(selectedTemplate.id, {
-          ...templateData,
-          updatedAt: new Date().toISOString()
-        });
-        setTemplates(prev => 
-          prev.map(t => 
-            t.id === selectedTemplate.id ? updatedTemplate : t
-          )
-        );
-        showToast('Template updated successfully', 'success');
-      } else {
-        // Create new template
-        const newTemplate = await createModernTemplate({
-          ...templateData,
-          description: '',
-          createdBy: 'Current User',
-          usage_count: 0,
-          tags: []
-        });
-        setTemplates(prev => [newTemplate, ...prev]);
-        showToast('Template created successfully', 'success');
-      }
-      setShowBuilder(false);
-    } catch (error) {
-      console.error('Error saving template:', error);
-      showToast('Error saving template', 'error');
-    }
-  };
 
   const handleDeleteTemplate = async (templateId: string) => {
     if (window.confirm('Are you sure you want to delete this template?')) {
@@ -156,13 +124,7 @@ export const TemplateManagement: React.FC = () => {
 
   if (showBuilder) {
     return (
-      <TemplateBuilder
-        onSave={handleSaveTemplate}
-        initialTemplate={selectedTemplate ? {
-          name: selectedTemplate.name,
-          elements: selectedTemplate.elements
-        } : undefined}
-      />
+      <TemplateBuilder />
     );
   }
 

@@ -432,13 +432,13 @@ export function QuotationCreation() {
         }
         
         if (quotationToLoad) {
-          console.log('[QuotationCreation] Loading quotation data:', quotationToLoad);
+          console.log('[QuotationCreation] Loading quotation data for ID:', quotationToLoad.id);
           
           // Prefill form with existing quotation data
-          setFormData(prev => ({
-            ...prev,
+          const updatedFormData = {
+            ...formData,
             machineType: quotationToLoad.machineType || '',
-            selectedEquipment: quotationToLoad.selectedEquipment || prev.selectedEquipment,
+            selectedEquipment: quotationToLoad.selectedEquipment || formData.selectedEquipment,
             selectedMachines: quotationToLoad.selectedMachines || [],
             orderType: quotationToLoad.orderType || 'micro',
             numberOfDays: quotationToLoad.numberOfDays || 0,
@@ -472,7 +472,10 @@ export function QuotationCreation() {
               address: dealData?.customer?.address || '',
               designation: dealData?.customer?.designation || ''
             }
-          }));
+          };
+          
+          console.log('[QuotationCreation] Form data populated with', Object.keys(updatedFormData).length, 'fields');
+          setFormData(updatedFormData);
 
           // If there's selected equipment, set the base rate
           if (quotationToLoad.selectedEquipment?.id && equipmentData) {
