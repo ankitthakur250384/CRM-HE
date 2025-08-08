@@ -471,7 +471,7 @@ export const TemplateBuilder: React.FC<{
         <div className="bg-white border-b border-gray-200 px-6 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <h1 className="text-2xl font-bold text-gray-900">Template Builder</h1>
+              <h1 className="text-2xl font-bold text-gray-900">Modern Template Builder</h1>
               <Input
                 value={templateName}
                 onChange={(e) => setTemplateName(e.target.value)}
