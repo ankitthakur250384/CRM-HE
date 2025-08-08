@@ -336,22 +336,26 @@ export function QuotationCreation() {
       setIsLoading(true);
       console.log('[QuotationCreation] Fetching data with dealId:', dealId, 'quotationId:', quotationId);
 
-      // Prefill from navigation state if available
+      // Check for navigation state
       const navState = location.state as any;
-      if (navState && navState.quotation) {
-        const existingQuotation = navState.quotation;
-        console.log('[QuotationCreation] Prefilling from navigation state:', existingQuotation);
-        setFormData({
-          ...formData,
-          ...existingQuotation
-        });
-        setIsLoading(false);
-        return;
+      let existingQuotation = null;
+      let dealData = null;
+
+      // Handle navigation state if available
+      if (navState) {
+        if (navState.quotation) {
+          existingQuotation = navState.quotation;
+          console.log('[QuotationCreation] Found quotation in navigation state:', existingQuotation);
+        }
+        if (navState.deal) {
+          dealData = navState.deal;
+          console.log('[QuotationCreation] Found deal in navigation state:', dealData);
+          setDeal(dealData);
+        }
       }
 
-      // Fetch deal data only if dealId is provided
-      if (dealId) {
-        let dealData = null;
+      // Fetch deal data if not in navigation state and dealId is provided
+      if (!dealData && dealId) {
         try {
           dealData = await getDealById(dealId);
           console.log('[QuotationCreation] Fetched deal data:', dealData);
@@ -382,7 +386,7 @@ export function QuotationCreation() {
             expectedCloseDate: new Date().toISOString()
           } as Deal);
         }
-      } else {
+      } else if (!dealData) {
         setDeal({
           id: 'new',
           customer: {
@@ -410,78 +414,94 @@ export function QuotationCreation() {
       // Fetch equipment data
       const equipmentData = await getEquipment();
       console.log('Fetched equipment data:', equipmentData);
+      setAvailableEquipment(equipmentData);
 
-      // If editing an existing quotation, load its data
+      // If editing an existing quotation, use navigation state data first, then fetch if needed
       if (quotationId) {
-        try {
-          console.log('[QuotationCreation] Fetching existing quotation:', quotationId);
-          const existingQuotation = await getQuotationById(quotationId);
-          
-          if (existingQuotation) {
-            console.log('[QuotationCreation] Loaded existing quotation:', existingQuotation);
-            
-            // Prefill form with existing quotation data
-            setFormData(prev => ({
-              ...prev,
-              machineType: existingQuotation.machineType || '',
-              selectedEquipment: existingQuotation.selectedEquipment || prev.selectedEquipment,
-              selectedMachines: existingQuotation.selectedMachines || [],
-              orderType: existingQuotation.orderType || 'micro',
-              numberOfDays: existingQuotation.numberOfDays || 0,
-              workingHours: existingQuotation.workingHours || 8,
-              foodResources: existingQuotation.foodResources || 0,
-              accomResources: existingQuotation.accomResources || 0,
-              siteDistance: existingQuotation.siteDistance || 0,
-              usage: existingQuotation.usage || 'normal',
-              riskFactor: existingQuotation.riskFactor || 'low',
-              extraCharge: existingQuotation.extraCharge || 0,
-              incidentalCharges: existingQuotation.incidentalCharges || [],
-              otherFactorsCharge: existingQuotation.otherFactorsCharge || 0,
-              billing: existingQuotation.billing || 'gst',
-              includeGst: existingQuotation.includeGst !== undefined ? existingQuotation.includeGst : true,
-              shift: existingQuotation.shift || 'single',
-              dayNight: existingQuotation.dayNight || 'day',
-              mobDemob: existingQuotation.mobDemob || 0,
-              mobRelaxation: existingQuotation.mobRelaxation || 0,
-              runningCostPerKm: existingQuotation.runningCostPerKm || 0,
-              otherFactors: existingQuotation.otherFactors || [],
-              dealType: existingQuotation.dealType || DEAL_TYPES[0].value,
-              sundayWorking: existingQuotation.sundayWorking || 'no',
-              version: existingQuotation.version || 1,
-              status: existingQuotation.status || 'draft',
-              customerName: existingQuotation.customerName || '',
-              customerContact: existingQuotation.customerContact || {}
-            }));
-
-            // If there's selected equipment, set the base rate
-            if (existingQuotation.selectedEquipment?.id && equipmentData) {
-              const selected = equipmentData.find((eq: any) => eq.id === existingQuotation.selectedEquipment.id);
-              if (selected?.baseRates) {
-                const baseRate = selected.baseRates[existingQuotation.orderType || 'micro'];
-                setSelectedEquipmentBaseRate(baseRate);
-              }
-            }
-
-            // Try to fetch deal data for the quotation if not already loaded
-            if (!deal && existingQuotation.dealId) {
-              try {
-                const quotationDeal = await getDealById(existingQuotation.dealId);
-                if (quotationDeal) {
-                  console.log('[QuotationCreation] Loaded deal from quotation:', quotationDeal);
-                  setDeal(quotationDeal);
-                }
-              } catch (dealError) {
-                console.warn('[QuotationCreation] Could not load deal for quotation:', dealError);
-              }
-            }
-          } else {
-            console.warn('[QuotationCreation] No quotation found with ID:', quotationId);
-            showToast('Quotation not found', 'warning');
+        let quotationToLoad = existingQuotation;
+        
+        // If no quotation in navigation state, fetch from API
+        if (!quotationToLoad) {
+          try {
+            console.log('[QuotationCreation] Fetching existing quotation from API:', quotationId);
+            quotationToLoad = await getQuotationById(quotationId);
+          } catch (err) {
+            console.error('[QuotationCreation] Error fetching quotation:', err);
+            showToast('Error loading quotation data', 'error');
           }
-        } catch (error) {
-          console.error('[QuotationCreation] Error fetching quotation:', error);
-          showToast('Error loading quotation data', 'error');
         }
+        
+        if (quotationToLoad) {
+          console.log('[QuotationCreation] Loading quotation data:', quotationToLoad);
+          
+          // Prefill form with existing quotation data
+          setFormData(prev => ({
+            ...prev,
+            machineType: quotationToLoad.machineType || '',
+            selectedEquipment: quotationToLoad.selectedEquipment || prev.selectedEquipment,
+            selectedMachines: quotationToLoad.selectedMachines || [],
+            orderType: quotationToLoad.orderType || 'micro',
+            numberOfDays: quotationToLoad.numberOfDays || 0,
+            workingHours: quotationToLoad.workingHours || 8,
+            foodResources: quotationToLoad.foodResources || 0,
+            accomResources: quotationToLoad.accomResources || 0,
+            siteDistance: quotationToLoad.siteDistance || 0,
+            usage: quotationToLoad.usage || 'normal',
+            riskFactor: quotationToLoad.riskFactor || 'low',
+            extraCharge: quotationToLoad.extraCharge || 0,
+            incidentalCharges: quotationToLoad.incidentalCharges || [],
+            otherFactorsCharge: quotationToLoad.otherFactorsCharge || 0,
+            billing: quotationToLoad.billing || 'gst',
+            includeGst: quotationToLoad.includeGst !== undefined ? quotationToLoad.includeGst : true,
+            shift: quotationToLoad.shift || 'single',
+            dayNight: quotationToLoad.dayNight || 'day',
+            mobDemob: quotationToLoad.mobDemob || 0,
+            mobRelaxation: quotationToLoad.mobRelaxation || 0,
+            runningCostPerKm: quotationToLoad.runningCostPerKm || 0,
+            otherFactors: quotationToLoad.otherFactors || [],
+            dealType: quotationToLoad.dealType || DEAL_TYPES[0].value,
+            sundayWorking: quotationToLoad.sundayWorking || 'no',
+            version: quotationToLoad.version || 1,
+            status: quotationToLoad.status || 'draft',
+            customerName: quotationToLoad.customerName || (dealData?.customer?.name || ''),
+            customerContact: quotationToLoad.customerContact || {
+              name: dealData?.customer?.name || '',
+              email: dealData?.customer?.email || '',
+              phone: dealData?.customer?.phone || '',
+              company: dealData?.customer?.company || '',
+              address: dealData?.customer?.address || '',
+              designation: dealData?.customer?.designation || ''
+            }
+          }));
+
+          // If there's selected equipment, set the base rate
+          if (quotationToLoad.selectedEquipment?.id && equipmentData) {
+            const selected = equipmentData.find((eq: any) => eq.id === quotationToLoad.selectedEquipment.id);
+            if (selected?.baseRates) {
+              const baseRate = selected.baseRates[quotationToLoad.orderType as keyof typeof selected.baseRates || 'micro'];
+              setSelectedEquipmentBaseRate(baseRate);
+            }
+          }
+
+          // Try to fetch deal data for the quotation if not already loaded
+          if (!dealData && quotationToLoad.dealId) {
+            try {
+              const quotationDeal = await getDealById(quotationToLoad.dealId);
+              if (quotationDeal) {
+                console.log('[QuotationCreation] Loaded deal from quotation:', quotationDeal);
+                setDeal(quotationDeal);
+              }
+            } catch (dealError) {
+              console.warn('[QuotationCreation] Could not load deal for quotation:', dealError);
+            }
+          }
+        } else {
+          console.warn('[QuotationCreation] No quotation found with ID:', quotationId);
+          showToast('Quotation not found', 'warning');
+        }
+      } else {
+        // Set available equipment for new quotations
+        setAvailableEquipment(equipmentData);
       }
 
       console.log('Quotation config managed by centralized store');
