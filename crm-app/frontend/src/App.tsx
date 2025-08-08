@@ -5,6 +5,7 @@ import {
   Navigate
 } from 'react-router-dom';
 import { Suspense } from 'react';
+import { FloatingChatWidget } from './components/chat/FloatingChatWidget';
 import { AuthErrorBoundary } from './components/auth/AuthErrorBoundary';
 import { LoginPage } from './pages/LoginPage';
 import { AppShell } from './components/layout/AppShell';
@@ -246,7 +247,10 @@ function App() {
     <Router future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AuthProvider>
         <AuthErrorBoundary>
-          <AppContent />
+          <>
+            <AppContent />
+            <FloatingChatWidget />
+          </>
         </AuthErrorBoundary>
       </AuthProvider>
     </Router>
