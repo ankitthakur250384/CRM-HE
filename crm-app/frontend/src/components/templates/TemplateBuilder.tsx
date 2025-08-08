@@ -65,9 +65,9 @@ const ElementEditor: React.FC<{
     <div className="border border-gray-200 rounded-lg p-4 mb-2 group hover:border-blue-300 transition-colors">
       <div className="flex items-center justify-between mb-3">
         <div className="flex items-center gap-2">
-          <span className="text-sm font-medium capitalize">{element.type}</span>
+          <span className="text-sm font-medium capitalize text-gray-800">{element.type}</span>
           {element.type === 'field' && element.fieldType && (
-            <span className="text-xs bg-blue-100 text-blue-700 px-2 py-1 rounded">
+            <span className="text-xs bg-blue-200 text-blue-900 px-2 py-1 rounded">
               {FIELD_TYPES.find(f => f.type === element.fieldType)?.label}
             </span>
           )}
@@ -116,7 +116,7 @@ const TemplatePreview: React.FC<{ elements: TemplateElement[] }> = ({ elements }
     switch (element.type) {
       case 'text':
         return (
-          <div className="mb-2">
+          <div className="mb-2 text-gray-900">
             {element.content || 'Sample text content'}
           </div>
         );
@@ -124,7 +124,7 @@ const TemplatePreview: React.FC<{ elements: TemplateElement[] }> = ({ elements }
       case 'field':
         const fieldInfo = FIELD_TYPES.find(f => f.type === element.fieldType);
         return (
-          <div className="mb-2 bg-blue-50 border border-blue-200 px-2 py-1 rounded inline-block">
+          <div className="mb-2 bg-blue-100 border border-blue-300 px-2 py-1 rounded inline-block text-blue-900">
             {fieldInfo ? `{${fieldInfo.label}}` : '{Select Field}'}
           </div>
         );
@@ -156,8 +156,8 @@ const TemplatePreview: React.FC<{ elements: TemplateElement[] }> = ({ elements }
       case 'image':
         return (
           <div className="mb-4 border-2 border-dashed border-gray-300 p-8 text-center">
-            <ImageIcon className="h-12 w-12 text-gray-400 mx-auto mb-2" />
-            <p className="text-gray-500">Company Logo / Image</p>
+            <ImageIcon className="h-12 w-12 text-gray-500 mx-auto mb-2" />
+            <p className="text-gray-700">Company Logo / Image</p>
           </div>
         );
 
@@ -173,8 +173,8 @@ const TemplatePreview: React.FC<{ elements: TemplateElement[] }> = ({ elements }
     <div className="bg-white p-8 border border-gray-200 rounded-lg min-h-[600px]">
       <div className="max-w-4xl mx-auto">
         {elements.length === 0 ? (
-          <div className="text-center text-gray-500 py-12">
-            <FileText className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+          <div className="text-center text-gray-700 py-12">
+            <FileText className="h-16 w-16 text-gray-400 mx-auto mb-4" />
             <p>Start building your template by adding components</p>
           </div>
         ) : (
@@ -279,9 +279,9 @@ export const TemplateBuilder: React.FC<{
                   >
                     <div className="flex items-center gap-2 mb-2">
                       <IconComponent className="h-4 w-4 text-blue-600" />
-                      <span className="font-medium text-sm">{component.label}</span>
+                      <span className="font-medium text-sm text-gray-900">{component.label}</span>
                     </div>
-                    <p className="text-xs text-gray-500">{component.description}</p>
+                    <p className="text-xs text-gray-700">{component.description}</p>
                   </div>
                 );
               })}
@@ -304,8 +304,8 @@ export const TemplateBuilder: React.FC<{
                   </CardHeader>
                   <CardContent>
                     {elements.length === 0 ? (
-                      <div className="text-center py-12 text-gray-500">
-                        <Plus className="h-16 w-16 text-gray-300 mx-auto mb-4" />
+                      <div className="text-center py-12 text-gray-700">
+                        <Plus className="h-16 w-16 text-gray-400 mx-auto mb-4" />
                         <p>Click on components from the left panel to add them to your template</p>
                       </div>
                     ) : (
