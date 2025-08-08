@@ -342,6 +342,7 @@ export function QuotationManagement() {
         return;
       }
 
+      // Use dealId instead of leadId to avoid 404 error
       console.log('Navigating to:', `/quotations/create?dealId=${quotation.dealId}&quotationId=${quotation.id}`);
       navigate(`/quotations/create?dealId=${quotation.dealId}&quotationId=${quotation.id}`);
     } catch (error) {
