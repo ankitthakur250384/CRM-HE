@@ -1,3 +1,17 @@
+export const findUsersByRole = async (role) => {
+  try {
+    console.log(`🔍 Looking for users with role: ${role}`);
+    const users = await db.any(
+      'SELECT id as uid, name as display_name, email FROM users WHERE role = $1 ORDER BY name ASC',
+      [role]
+    );
+    console.log(`✅ Found ${users.length} users with role ${role}`);
+    return users;
+  } catch (error) {
+    console.error('❌ Error finding users by role:', error);
+    throw error;
+  }
+};
 // Auth repository using centralized database client
 import { db } from '../../lib/dbClient.js';
 import bcrypt from 'bcrypt';
