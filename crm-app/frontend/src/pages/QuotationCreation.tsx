@@ -30,7 +30,7 @@ import { Equipment, OrderType, CraneCategory, BaseRates } from '../types/equipme
 import { QuotationInputs } from '../types/quotation';
 import { getDealById } from '../services/deal';
 import { getEquipment, getEquipmentByCategory } from '../services/equipment';
-import { createQuotation, updateQuotation } from '../services/quotation';
+import { createQuotation, updateQuotation, getQuotationById } from '../services/quotation';
 import { formatCurrency } from '../utils/formatters';
 import { useQuotationConfig, useConfigChangeListener } from '../hooks/useQuotationConfig';
 
@@ -110,6 +110,15 @@ interface QuotationFormState extends QuotationInputs {
   createdBy: string;
   status: 'draft' | 'sent' | 'accepted' | 'rejected';
   selectedMachines: SelectedMachine[];
+  customerName?: string;
+  customerContact?: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    company?: string;
+    address?: string;
+    designation?: string;
+  };
 }
 
 export function QuotationCreation() {
@@ -404,8 +413,75 @@ export function QuotationCreation() {
 
       // If editing an existing quotation, load its data
       if (quotationId) {
-        // ...existing code for fetching and setting quotation by ID...
-        // (Unchanged, as above)
+        try {
+          console.log('[QuotationCreation] Fetching existing quotation:', quotationId);
+          const existingQuotation = await getQuotationById(quotationId);
+          
+          if (existingQuotation) {
+            console.log('[QuotationCreation] Loaded existing quotation:', existingQuotation);
+            
+            // Prefill form with existing quotation data
+            setFormData(prev => ({
+              ...prev,
+              machineType: existingQuotation.machineType || '',
+              selectedEquipment: existingQuotation.selectedEquipment || prev.selectedEquipment,
+              selectedMachines: existingQuotation.selectedMachines || [],
+              orderType: existingQuotation.orderType || 'micro',
+              numberOfDays: existingQuotation.numberOfDays || 0,
+              workingHours: existingQuotation.workingHours || 8,
+              foodResources: existingQuotation.foodResources || 0,
+              accomResources: existingQuotation.accomResources || 0,
+              siteDistance: existingQuotation.siteDistance || 0,
+              usage: existingQuotation.usage || 'normal',
+              riskFactor: existingQuotation.riskFactor || 'low',
+              extraCharge: existingQuotation.extraCharge || 0,
+              incidentalCharges: existingQuotation.incidentalCharges || [],
+              otherFactorsCharge: existingQuotation.otherFactorsCharge || 0,
+              billing: existingQuotation.billing || 'gst',
+              includeGst: existingQuotation.includeGst !== undefined ? existingQuotation.includeGst : true,
+              shift: existingQuotation.shift || 'single',
+              dayNight: existingQuotation.dayNight || 'day',
+              mobDemob: existingQuotation.mobDemob || 0,
+              mobRelaxation: existingQuotation.mobRelaxation || 0,
+              runningCostPerKm: existingQuotation.runningCostPerKm || 0,
+              otherFactors: existingQuotation.otherFactors || [],
+              dealType: existingQuotation.dealType || DEAL_TYPES[0].value,
+              sundayWorking: existingQuotation.sundayWorking || 'no',
+              version: existingQuotation.version || 1,
+              status: existingQuotation.status || 'draft',
+              customerName: existingQuotation.customerName || '',
+              customerContact: existingQuotation.customerContact || {}
+            }));
+
+            // If there's selected equipment, set the base rate
+            if (existingQuotation.selectedEquipment?.id && equipmentData) {
+              const selected = equipmentData.find((eq: any) => eq.id === existingQuotation.selectedEquipment.id);
+              if (selected?.baseRates) {
+                const baseRate = selected.baseRates[existingQuotation.orderType || 'micro'];
+                setSelectedEquipmentBaseRate(baseRate);
+              }
+            }
+
+            // Try to fetch deal data for the quotation if not already loaded
+            if (!deal && existingQuotation.dealId) {
+              try {
+                const quotationDeal = await getDealById(existingQuotation.dealId);
+                if (quotationDeal) {
+                  console.log('[QuotationCreation] Loaded deal from quotation:', quotationDeal);
+                  setDeal(quotationDeal);
+                }
+              } catch (dealError) {
+                console.warn('[QuotationCreation] Could not load deal for quotation:', dealError);
+              }
+            }
+          } else {
+            console.warn('[QuotationCreation] No quotation found with ID:', quotationId);
+            showToast('Quotation not found', 'warning');
+          }
+        } catch (error) {
+          console.error('[QuotationCreation] Error fetching quotation:', error);
+          showToast('Error loading quotation data', 'error');
+        }
       }
 
       console.log('Quotation config managed by centralized store');
@@ -939,27 +1015,39 @@ export function QuotationCreation() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
               <div className="space-y-1 sm:space-y-2">
                 <div className="text-xs sm:text-sm text-gray-700">Customer Name</div>
-                <div className="text-sm sm:text-base font-semibold text-gray-900">{deal?.customer?.name ? deal.customer.name : <span className='text-gray-500'>N/A</span>}</div>
+                <div className="text-sm sm:text-base font-semibold text-gray-900">
+                  {formData.customerName || deal?.customer?.name || <span className='text-gray-500'>N/A</span>}
+                </div>
               </div>
               <div className="space-y-1 sm:space-y-2">
                 <div className="text-xs sm:text-sm text-gray-700">Company</div>
-                <div className="text-sm sm:text-base font-semibold text-gray-900">{deal?.customer?.company ? deal.customer.company : <span className='text-gray-500'>N/A</span>}</div>
+                <div className="text-sm sm:text-base font-semibold text-gray-900">
+                  {formData.customerContact?.company || deal?.customer?.company || <span className='text-gray-500'>N/A</span>}
+                </div>
               </div>
               <div className="space-y-1 sm:space-y-2">
                 <div className="text-xs sm:text-sm text-gray-700">Designation</div>
-                <div className="text-sm sm:text-base font-semibold text-gray-900">{deal?.customer?.designation ? deal.customer.designation : <span className='text-gray-500'>N/A</span>}</div>
+                <div className="text-sm sm:text-base font-semibold text-gray-900">
+                  {formData.customerContact?.designation || deal?.customer?.designation || <span className='text-gray-500'>N/A</span>}
+                </div>
               </div>
               <div className="space-y-1 sm:space-y-2">
                 <div className="text-xs sm:text-sm text-gray-700">Email</div>
-                <div className="text-sm sm:text-base font-semibold text-gray-900 break-all">{deal?.customer?.email ? deal.customer.email : <span className='text-gray-500'>N/A</span>}</div>
+                <div className="text-sm sm:text-base font-semibold text-gray-900 break-all">
+                  {formData.customerContact?.email || deal?.customer?.email || <span className='text-gray-500'>N/A</span>}
+                </div>
               </div>
               <div className="space-y-1 sm:space-y-2">
                 <div className="text-xs sm:text-sm text-gray-700">Phone</div>
-                <div className="text-sm sm:text-base font-semibold text-gray-900">{deal?.customer?.phone ? deal.customer.phone : <span className='text-gray-500'>N/A</span>}</div>
+                <div className="text-sm sm:text-base font-semibold text-gray-900">
+                  {formData.customerContact?.phone || deal?.customer?.phone || <span className='text-gray-500'>N/A</span>}
+                </div>
               </div>
               <div className="space-y-1 sm:space-y-2">
                 <div className="text-xs sm:text-sm text-gray-700">Address</div>
-                <div className="text-sm sm:text-base font-semibold text-gray-900">{deal?.customer?.address ? deal.customer.address : <span className='text-gray-500'>N/A</span>}</div>
+                <div className="text-sm sm:text-base font-semibold text-gray-900">
+                  {formData.customerContact?.address || deal?.customer?.address || <span className='text-gray-500'>N/A</span>}
+                </div>
               </div>
             </div>
           </CardContent>
