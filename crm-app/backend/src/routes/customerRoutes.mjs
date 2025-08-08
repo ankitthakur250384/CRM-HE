@@ -330,14 +330,15 @@ router.post('/', async (req, res) => {
       // Insert customer
       await client.query(`
         INSERT INTO customers (
-          id, name, contact_name, email, phone, address, type, notes, created_at, updated_at
+          id, name, company_name, contact_name, email, phone, address, type, notes, created_at, updated_at
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11
         )
       `, [
         customerId,
         customerData.name,
-        customerData.contactName || null,
+        customerData.company_name || customerData.companyName || customerData.name, // Default to name if no company name
+        customerData.contactName || customerData.contact_name || customerData.name,
         customerData.email || null,
         customerData.phone || null,
         customerData.address || null,
