@@ -278,10 +278,10 @@ export const TemplateBuilder: React.FC<{
                     onClick={() => addElement(component.type)}
                   >
                     <div className="flex items-center gap-2 mb-2">
-                      <IconComponent className="h-4 w-4 text-blue-600" />
-                      <span className="font-medium text-sm text-gray-900">{component.label}</span>
+                      <IconComponent className="h-4 w-4 text-blue-700" />
+                      <span className="font-semibold text-base text-gray-900">{component.label}</span>
                     </div>
-                    <p className="text-xs text-gray-700">{component.description}</p>
+                    <p className="text-xs text-gray-900 font-medium">{component.description}</p>
                   </div>
                 );
               })}
@@ -304,9 +304,9 @@ export const TemplateBuilder: React.FC<{
                   </CardHeader>
                   <CardContent>
                     {elements.length === 0 ? (
-                      <div className="text-center py-12 text-gray-700">
-                        <Plus className="h-16 w-16 text-gray-400 mx-auto mb-4" />
-                        <p>Click on components from the left panel to add them to your template</p>
+                      <div className="text-center py-12">
+                        <Plus className="h-16 w-16 text-blue-400 mx-auto mb-4" />
+                        <p className="text-lg text-gray-900 font-semibold">Click on components from the left panel to add them to your template</p>
                       </div>
                     ) : (
                       <div className="space-y-2">
