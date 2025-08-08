@@ -4,7 +4,32 @@ export const getEquipmentByCategory = async (category) => {
     console.log(`📋 Fetching equipment by category: ${category}`);
     const equipment = await db.any('SELECT * FROM equipment WHERE category = $1 ORDER BY name', [category]);
     console.log(`✅ Found ${equipment.length} equipment items for category ${category}`);
-    return equipment;
+    
+    // Transform the data to match frontend expectations
+    const transformedEquipment = equipment.map(item => ({
+      id: item.id,
+      equipmentId: item.equipment_id,
+      name: item.name,
+      category: item.category,
+      manufacturingDate: item.manufacturing_date,
+      registrationDate: item.registration_date,
+      maxLiftingCapacity: item.max_lifting_capacity,
+      unladenWeight: item.unladen_weight,
+      baseRates: {
+        micro: parseFloat(item.base_rate_micro) || 0,
+        small: parseFloat(item.base_rate_small) || 0,
+        monthly: parseFloat(item.base_rate_monthly) || 0,
+        yearly: parseFloat(item.base_rate_yearly) || 0
+      },
+      runningCostPerKm: parseFloat(item.running_cost_per_km) || 0,
+      description: item.description,
+      status: item.status,
+      createdAt: item.created_at,
+      updatedAt: item.updated_at
+    }));
+    
+    console.log(`🔄 Transformed equipment data:`, transformedEquipment[0]);
+    return transformedEquipment;
   } catch (error) {
     console.error('❌ Error fetching equipment by category:', error);
     return [];
@@ -18,7 +43,31 @@ export const getAllEquipment = async () => {
     console.log('📋 Fetching all equipment...');
     const equipment = await db.any('SELECT * FROM equipment ORDER BY name');
     console.log(`✅ Found ${equipment.length} equipment items`);
-    return equipment;
+    
+    // Transform the data to match frontend expectations
+    const transformedEquipment = equipment.map(item => ({
+      id: item.id,
+      equipmentId: item.equipment_id,
+      name: item.name,
+      category: item.category,
+      manufacturingDate: item.manufacturing_date,
+      registrationDate: item.registration_date,
+      maxLiftingCapacity: item.max_lifting_capacity,
+      unladenWeight: item.unladen_weight,
+      baseRates: {
+        micro: parseFloat(item.base_rate_micro) || 0,
+        small: parseFloat(item.base_rate_small) || 0,
+        monthly: parseFloat(item.base_rate_monthly) || 0,
+        yearly: parseFloat(item.base_rate_yearly) || 0
+      },
+      runningCostPerKm: parseFloat(item.running_cost_per_km) || 0,
+      description: item.description,
+      status: item.status,
+      createdAt: item.created_at,
+      updatedAt: item.updated_at
+    }));
+    
+    return transformedEquipment;
   } catch (error) {
     console.error('❌ Error fetching equipment:', error);
     return [];
@@ -30,7 +79,33 @@ export const getEquipmentById = async (id) => {
     console.log(`🔍 Fetching equipment by ID: ${id}`);
     const equipment = await db.oneOrNone('SELECT * FROM equipment WHERE id = $1', [id]);
     console.log(`📝 Equipment found: ${equipment ? 'Yes' : 'No'}`);
-    return equipment;
+    
+    if (!equipment) return null;
+    
+    // Transform the data to match frontend expectations
+    const transformedEquipment = {
+      id: equipment.id,
+      equipmentId: equipment.equipment_id,
+      name: equipment.name,
+      category: equipment.category,
+      manufacturingDate: equipment.manufacturing_date,
+      registrationDate: equipment.registration_date,
+      maxLiftingCapacity: equipment.max_lifting_capacity,
+      unladenWeight: equipment.unladen_weight,
+      baseRates: {
+        micro: parseFloat(equipment.base_rate_micro) || 0,
+        small: parseFloat(equipment.base_rate_small) || 0,
+        monthly: parseFloat(equipment.base_rate_monthly) || 0,
+        yearly: parseFloat(equipment.base_rate_yearly) || 0
+      },
+      runningCostPerKm: parseFloat(equipment.running_cost_per_km) || 0,
+      description: equipment.description,
+      status: equipment.status,
+      createdAt: equipment.created_at,
+      updatedAt: equipment.updated_at
+    };
+    
+    return transformedEquipment;
   } catch (error) {
     console.error('❌ Error fetching equipment by ID:', error);
     return null;
