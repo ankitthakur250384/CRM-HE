@@ -27,6 +27,7 @@ import { Deal } from '../types/deal';
 import { getQuotations } from '../services/quotation';
 import { getDeals, getDealById } from '../services/deal';
 import { getDefaultTemplateConfig, getTemplateById } from '../services/configService';
+import { getQuotationById } from '../services/quotation';
 // import { mergeQuotationWithTemplate } from '../utils/templateMerger';
 import { formatCurrency } from '../utils/formatters';
 
@@ -337,15 +338,29 @@ export function QuotationManagement() {
         return;
       }
 
-      // Verify that the deal still exists
-      const deal = await getDealById(dealId);
+      // Fetch latest quotation and deal from backend
+      const [latestQuotation, deal] = await Promise.all([
+        getQuotationById(quotation.id),
+        getDealById(dealId)
+      ]);
+
       if (!deal) {
         showToast('Associated deal not found', 'error', 'The deal associated with this quotation no longer exists');
         return;
       }
+      if (!latestQuotation) {
+        showToast('Quotation not found', 'error', 'The quotation could not be found');
+        return;
+      }
 
+      // Pass latest data in navigation state for prefill
       console.log('Navigating to:', `/quotations/create?dealId=${dealId}&quotationId=${quotation.id}`);
-      navigate(`/quotations/create?dealId=${dealId}&quotationId=${quotation.id}`);
+      navigate(`/quotations/create?dealId=${dealId}&quotationId=${quotation.id}`, {
+        state: {
+          quotation: latestQuotation,
+          deal
+        }
+      });
     } catch (error) {
       console.error('Error preparing quotation edit:', error);
       showToast('Error preparing quotation edit', 'error');
@@ -806,12 +821,66 @@ ASP Cranes Team`;
           size="full"
         >
           {selectedQuotation && defaultTemplate && (
-            <TemplatePreview
-              quotation={selectedQuotation}
-              template={defaultTemplate}
-              onDownloadPDF={() => handleDownloadPDF(selectedQuotation)}
-              onSendEmail={() => handleSendToCustomer(selectedQuotation)}
-            />
+            <div className="flex flex-col md:flex-row gap-8">
+              <div className="flex-1">
+                <TemplatePreview
+                  quotation={selectedQuotation}
+                  template={defaultTemplate}
+                  onDownloadPDF={() => handleDownloadPDF(selectedQuotation)}
+                  onSendEmail={() => handleSendToCustomer(selectedQuotation)}
+                />
+              </div>
+              <div className="w-full md:w-80 bg-white rounded-lg shadow p-6 mt-6 md:mt-0">
+                <h3 className="text-lg font-semibold mb-4 text-gray-900">Quotation Summary</h3>
+                <div className="space-y-2">
+                  <div className="flex justify-between text-gray-700">
+                    <span>Working Cost</span>
+                    <span className="font-medium text-gray-900">₹0</span>
+                  </div>
+                  <div className="flex justify-between text-gray-700">
+                    <span>Food & Accommodation</span>
+                    <span className="font-medium text-gray-900">₹0</span>
+                  </div>
+                  <div className="flex justify-between text-gray-700">
+                    <span>Mob/Demob Cost</span>
+                    <span className="font-medium text-gray-900">₹0</span>
+                  </div>
+                  <div className="flex justify-between text-gray-700">
+                    <span>Risk & Usage</span>
+                    <span className="font-medium text-gray-900">₹0</span>
+                  </div>
+                  <div className="flex justify-between text-gray-700">
+                    <span>Extra Commercial Charges</span>
+                    <span className="font-medium text-gray-900">₹0</span>
+                  </div>
+                  <div className="flex justify-between text-gray-700">
+                    <span>Incidental Charges</span>
+                    <span className="font-medium text-gray-900">₹0</span>
+                  </div>
+                  <div className="flex justify-between text-gray-700">
+                    <span>Other Factors</span>
+                    <span className="font-medium text-gray-900">₹0</span>
+                  </div>
+                  <hr className="my-2" />
+                  <div className="flex justify-between text-gray-900 font-semibold">
+                    <span>Subtotal</span>
+                    <span>₹0</span>
+                  </div>
+                  <div className="flex justify-between text-gray-900">
+                    <span>GST (18%)</span>
+                    <span>₹0</span>
+                  </div>
+                  <div className="flex justify-between text-xl font-bold text-primary-700 mt-4">
+                    <span>Total Amount</span>
+                    <span>₹0</span>
+                  </div>
+                  <div className="flex items-center mt-2">
+                    <input type="checkbox" checked readOnly className="mr-2" />
+                    <span className="text-gray-700">Include GST</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           )}
         </Modal>
 
