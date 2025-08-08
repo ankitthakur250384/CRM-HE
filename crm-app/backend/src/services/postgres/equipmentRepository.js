@@ -116,13 +116,26 @@ export const createEquipment = async (equipmentData) => {
   try {
     console.log('🆕 Creating new equipment...');
     const result = await db.one(
-      `INSERT INTO equipment (name, type, description, daily_rate, status, created_at, updated_at) 
-       VALUES ($1, $2, $3, $4, $5, NOW(), NOW()) RETURNING *`,
+      `INSERT INTO equipment (
+        equipment_id, name, category, manufacturing_date, registration_date, max_lifting_capacity, unladen_weight,
+        base_rate_micro, base_rate_small, base_rate_monthly, base_rate_yearly, running_cost_per_km, description, status, created_at, updated_at
+      ) VALUES (
+        $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, NOW(), NOW()
+      ) RETURNING *`,
       [
+        equipmentData.equipmentId,
         equipmentData.name,
-        equipmentData.type,
+        equipmentData.category,
+        equipmentData.manufacturingDate,
+        equipmentData.registrationDate,
+        equipmentData.maxLiftingCapacity,
+        equipmentData.unladenWeight,
+        equipmentData.baseRates?.micro,
+        equipmentData.baseRates?.small,
+        equipmentData.baseRates?.monthly,
+        equipmentData.baseRates?.yearly,
+        equipmentData.runningCostPerKm,
         equipmentData.description,
-        equipmentData.dailyRate,
         equipmentData.status || 'available'
       ]
     );
@@ -141,21 +154,57 @@ export const updateEquipment = async (id, equipmentData) => {
     const values = [];
     let paramIndex = 1;
 
+    if (equipmentData.equipmentId) {
+      updates.push(`equipment_id = $${paramIndex++}`);
+      values.push(equipmentData.equipmentId);
+    }
     if (equipmentData.name) {
       updates.push(`name = $${paramIndex++}`);
       values.push(equipmentData.name);
     }
-    if (equipmentData.type) {
-      updates.push(`type = $${paramIndex++}`);
-      values.push(equipmentData.type);
+    if (equipmentData.category) {
+      updates.push(`category = $${paramIndex++}`);
+      values.push(equipmentData.category);
+    }
+    if (equipmentData.manufacturingDate) {
+      updates.push(`manufacturing_date = $${paramIndex++}`);
+      values.push(equipmentData.manufacturingDate);
+    }
+    if (equipmentData.registrationDate) {
+      updates.push(`registration_date = $${paramIndex++}`);
+      values.push(equipmentData.registrationDate);
+    }
+    if (equipmentData.maxLiftingCapacity !== undefined) {
+      updates.push(`max_lifting_capacity = $${paramIndex++}`);
+      values.push(equipmentData.maxLiftingCapacity);
+    }
+    if (equipmentData.unladenWeight !== undefined) {
+      updates.push(`unladen_weight = $${paramIndex++}`);
+      values.push(equipmentData.unladenWeight);
+    }
+    if (equipmentData.baseRates?.micro !== undefined) {
+      updates.push(`base_rate_micro = $${paramIndex++}`);
+      values.push(equipmentData.baseRates.micro);
+    }
+    if (equipmentData.baseRates?.small !== undefined) {
+      updates.push(`base_rate_small = $${paramIndex++}`);
+      values.push(equipmentData.baseRates.small);
+    }
+    if (equipmentData.baseRates?.monthly !== undefined) {
+      updates.push(`base_rate_monthly = $${paramIndex++}`);
+      values.push(equipmentData.baseRates.monthly);
+    }
+    if (equipmentData.baseRates?.yearly !== undefined) {
+      updates.push(`base_rate_yearly = $${paramIndex++}`);
+      values.push(equipmentData.baseRates.yearly);
+    }
+    if (equipmentData.runningCostPerKm !== undefined) {
+      updates.push(`running_cost_per_km = $${paramIndex++}`);
+      values.push(equipmentData.runningCostPerKm);
     }
     if (equipmentData.description) {
       updates.push(`description = $${paramIndex++}`);
       values.push(equipmentData.description);
-    }
-    if (equipmentData.dailyRate !== undefined) {
-      updates.push(`daily_rate = $${paramIndex++}`);
-      values.push(equipmentData.dailyRate);
     }
     if (equipmentData.status) {
       updates.push(`status = $${paramIndex++}`);
