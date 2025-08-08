@@ -29,8 +29,21 @@ export const createDeal = async (dealData) => {
   try {
     console.log('🆕 Creating new deal...');
     const result = await db.one(
-      'INSERT INTO deals (customer_id, equipment_id, status, created_at, updated_at) VALUES ($1, $2, $3, NOW(), NOW()) RETURNING *',
-      [dealData.customerId, dealData.equipmentId, dealData.status || 'draft']
+      `INSERT INTO deals (lead_id, customer_id, title, description, value, stage, created_by, assigned_to, probability, expected_close_date, notes, created_at, updated_at) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW()) RETURNING *`,
+      [
+        dealData.leadId || null,
+        dealData.customerId,
+        dealData.title || 'New Deal',
+        dealData.description || 'Deal created from lead',
+        dealData.value || 0,
+        dealData.stage || 'qualification',
+        dealData.createdBy || dealData.assignedTo,
+        dealData.assignedTo,
+        dealData.probability || 50,
+        dealData.expectedCloseDate || null,
+        dealData.notes || ''
+      ]
     );
     console.log(`✅ Deal created successfully: ${result.id}`);
     return result;
@@ -47,17 +60,45 @@ export const updateDeal = async (id, dealData) => {
     const values = [];
     let paramIndex = 1;
 
+    if (dealData.leadId !== undefined) {
+      updates.push(`lead_id = $${paramIndex++}`);
+      values.push(dealData.leadId);
+    }
     if (dealData.customerId) {
       updates.push(`customer_id = $${paramIndex++}`);
       values.push(dealData.customerId);
     }
-    if (dealData.equipmentId) {
-      updates.push(`equipment_id = $${paramIndex++}`);
-      values.push(dealData.equipmentId);
+    if (dealData.title) {
+      updates.push(`title = $${paramIndex++}`);
+      values.push(dealData.title);
     }
-    if (dealData.status) {
-      updates.push(`status = $${paramIndex++}`);
-      values.push(dealData.status);
+    if (dealData.description) {
+      updates.push(`description = $${paramIndex++}`);
+      values.push(dealData.description);
+    }
+    if (dealData.value !== undefined) {
+      updates.push(`value = $${paramIndex++}`);
+      values.push(dealData.value);
+    }
+    if (dealData.stage) {
+      updates.push(`stage = $${paramIndex++}`);
+      values.push(dealData.stage);
+    }
+    if (dealData.assignedTo) {
+      updates.push(`assigned_to = $${paramIndex++}`);
+      values.push(dealData.assignedTo);
+    }
+    if (dealData.probability !== undefined) {
+      updates.push(`probability = $${paramIndex++}`);
+      values.push(dealData.probability);
+    }
+    if (dealData.expectedCloseDate) {
+      updates.push(`expected_close_date = $${paramIndex++}`);
+      values.push(dealData.expectedCloseDate);
+    }
+    if (dealData.notes) {
+      updates.push(`notes = $${paramIndex++}`);
+      values.push(dealData.notes);
     }
 
     updates.push(`updated_at = NOW()`);
