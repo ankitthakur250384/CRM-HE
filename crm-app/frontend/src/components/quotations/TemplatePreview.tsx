@@ -4,7 +4,7 @@ import { Button } from '../common/Button';
 import { Toast } from '../common/Toast';
 import { Template } from '../../types/template';
 import { Quotation } from '../../types/quotation';
-import { mergeQuotationWithTemplate, getAvailablePlaceholders } from '../../utils/templateMerger';
+import { mergeQuotationWithTemplate } from '../../utils/templateMerger';
 import { FileText, Info, Download, Send, RefreshCw } from 'lucide-react';
 
 // Sample quotation data for preview when no quotation is provided
@@ -152,9 +152,14 @@ export function TemplatePreview({
     mergedContent = '<div style="padding: 20px; color: red;">Error generating preview</div>';
   }
 
-  // Get available placeholders grouped by category
-  const placeholders = getAvailablePlaceholders();
-  const placeholdersByCategory = placeholders.reduce((acc, placeholder) => {
+  // Define available placeholders
+  const placeholders = [
+    { key: 'customer_name', label: 'Customer Name', category: 'Customer' },
+    { key: 'equipment_name', label: 'Equipment Name', category: 'Equipment' },
+    { key: 'project_duration', label: 'Project Duration', category: 'Project' },
+    { key: 'total_amount', label: 'Total Amount', category: 'Financial' },
+  ];
+  const placeholdersByCategory = placeholders.reduce((acc: any, placeholder: any) => {
     if (!acc[placeholder.category]) {
       acc[placeholder.category] = [];
     }
@@ -193,7 +198,59 @@ export function TemplatePreview({
             : 'Showing preview with sample data. Actual values will be used when generating the quotation.'}
         </p>
       </div>
-      
+
+      {/* Quotation Summary - always dark text */}
+      <div className="w-full md:w-96 bg-white rounded-lg shadow p-6 mt-2">
+        <h3 className="text-lg font-semibold mb-4 text-gray-900">Quotation Summary</h3>
+        <div className="space-y-2">
+          <div className="flex justify-between text-gray-700">
+            <span>Working Cost</span>
+            <span className="font-medium text-gray-900">₹{previewQuotation.workingCost || 0}</span>
+          </div>
+          <div className="flex justify-between text-gray-700">
+            <span>Food & Accommodation</span>
+            <span className="font-medium text-gray-900">₹{(previewQuotation.foodResources || 0) + (previewQuotation.accomResources || 0)}</span>
+          </div>
+          <div className="flex justify-between text-gray-700">
+            <span>Mob/Demob Cost</span>
+            <span className="font-medium text-gray-900">₹{previewQuotation.mobDemob || 0}</span>
+          </div>
+          <div className="flex justify-between text-gray-700">
+            <span>Risk & Usage</span>
+            <span className="font-medium text-gray-900">₹{previewQuotation.riskFactor === 'high' ? 10000 : previewQuotation.riskFactor === 'medium' ? 5000 : 0}</span>
+          </div>
+          <div className="flex justify-between text-gray-700">
+            <span>Extra Commercial Charges</span>
+            <span className="font-medium text-gray-900">₹{previewQuotation.extraCharge || 0}</span>
+          </div>
+          <div className="flex justify-between text-gray-700">
+            <span>Incidental Charges</span>
+            <span className="font-medium text-gray-900">₹{Array.isArray(previewQuotation.incidentalCharges) ? previewQuotation.incidentalCharges.length * 5000 : 0}</span>
+          </div>
+          <div className="flex justify-between text-gray-700">
+            <span>Other Factors</span>
+            <span className="font-medium text-gray-900">₹{previewQuotation.otherFactorsCharge || 0}</span>
+          </div>
+          <hr className="my-2" />
+          <div className="flex justify-between text-gray-900 font-semibold">
+            <span>Subtotal</span>
+            <span>₹{previewQuotation.totalRent || 0}</span>
+          </div>
+          <div className="flex justify-between text-gray-900">
+            <span>GST (18%)</span>
+            <span>₹{previewQuotation.includeGst ? Math.round((previewQuotation.totalRent || 0) * 0.18) : 0}</span>
+          </div>
+          <div className="flex justify-between text-xl font-bold text-primary-700 mt-4">
+            <span>Total Amount</span>
+            <span>₹{previewQuotation.includeGst ? Math.round((previewQuotation.totalRent || 0) * 1.18) : (previewQuotation.totalRent || 0)}</span>
+          </div>
+          <div className="flex items-center mt-2">
+            <input type="checkbox" checked={!!previewQuotation.includeGst} readOnly className="mr-2" />
+            <span className="text-gray-700">Include GST</span>
+          </div>
+        </div>
+      </div>
+
       {/* Template Info */}
       <Card>
         <CardHeader className="p-3 sm:p-6">
@@ -243,7 +300,7 @@ export function TemplatePreview({
                 <div key={category}>
                   <h4 className="font-medium text-gray-900 mb-2 text-sm sm:text-base">{category}</h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
-                    {items.map((placeholder) => (
+                    {(items as any[]).map((placeholder: any) => (
                       <div
                         key={placeholder.key}
                         className="text-xs font-mono bg-gray-100 px-2 py-1 rounded cursor-pointer hover:bg-gray-200 transition-colors truncate"
