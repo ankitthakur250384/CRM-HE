@@ -124,3 +124,20 @@ export const deleteDeal = async (id) => {
     throw error;
   }
 };
+
+
+// Update the stage of a deal by ID
+export const updateDealStage = async (id, stage) => {
+  try {
+    console.log(`📝 Updating deal stage: ${id} to ${stage}`);
+    const result = await db.one(
+      'UPDATE deals SET stage = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
+      [stage, id]
+    );
+    console.log(`✅ Deal stage updated successfully: ${result.id}`);
+    return result;
+  } catch (error) {
+    console.error('❌ Error updating deal stage:', error);
+    throw error;
+  }
+};
