@@ -11,6 +11,8 @@ export const getLeads = async () => {
       email: row.email,
       phone: row.phone,
       address: row.address,
+      serviceNeeded: row.service_needed,
+      siteLocation: row.site_location,
       source: row.source,
       assignedTo: row.assigned_to,
       createdAt: row.created_at,
@@ -41,6 +43,8 @@ export const getLeadById = async (id) => {
       email: lead.email,
       phone: lead.phone,
       address: lead.address,
+      serviceNeeded: lead.service_needed,
+      siteLocation: lead.site_location,
       source: lead.source,
       assignedTo: lead.assigned_to,
       createdAt: lead.created_at,
@@ -63,14 +67,15 @@ export const createLead = async (leadData) => {
     }
     console.log('🆕 Creating new lead...');
     const result = await db.one(
-      `INSERT INTO leads (customer_name, email, phone, address, service_needed, source, assigned_to, files, notes, created_at, updated_at) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW()) RETURNING *`,
+      `INSERT INTO leads (customer_name, email, phone, address, service_needed, site_location, source, assigned_to, files, notes, created_at, updated_at) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW()) RETURNING *`,
       [
         leadData.customerName,
         leadData.email,
         leadData.phone,
         leadData.address,
         leadData.serviceNeeded,
+        leadData.siteLocation || leadData.location || 'Not specified',
         leadData.source,
         leadData.assignedTo,
         leadData.files ? JSON.stringify(leadData.files) : null,
@@ -85,6 +90,7 @@ export const createLead = async (leadData) => {
       phone: result.phone,
       address: result.address,
       serviceNeeded: result.service_needed,
+      siteLocation: result.site_location,
       source: result.source,
       assignedTo: result.assigned_to,
       createdAt: result.created_at,
