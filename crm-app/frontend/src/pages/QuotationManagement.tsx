@@ -80,9 +80,9 @@ export function QuotationManagement() {
       const { getCustomers } = await import('../services/customerService');
       
       // Fetch data with error handling for each service
-      let quotationsData = [];
-      let dealsData = [];
-      let customersData = [];
+      let quotationsData: any[] = [];
+      let dealsData: any[] = [];
+      let customersData: any[] = [];
       
       try {
         quotationsData = await getQuotations();
@@ -342,8 +342,8 @@ export function QuotationManagement() {
         return;
       }
 
-      console.log('Navigating to:', `/quotations/create?dealId=${quotation.leadId}&quotationId=${quotation.id}`);
-      navigate(`/quotations/create?dealId=${quotation.leadId}&quotationId=${quotation.id}`);
+      console.log('Navigating to:', `/quotations/create?dealId=${quotation.dealId}&quotationId=${quotation.id}`);
+      navigate(`/quotations/create?dealId=${quotation.dealId}&quotationId=${quotation.id}`);
     } catch (error) {
       console.error('Error preparing quotation edit:', error);
       showToast('Error preparing quotation edit', 'error');
