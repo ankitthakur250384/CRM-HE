@@ -1,24 +1,62 @@
 // Enhanced dealRepository using centralized db client
 import { db } from '../../lib/dbClient.js';
 
+
 export const getDeals = async () => {
   try {
-    console.log('📋 Fetching all deals...');
-    const deals = await db.any('SELECT * FROM deals ORDER BY created_at DESC');
-    console.log(`✅ Found ${deals.length} deals`);
-    return deals;
+    console.log('📋 Fetching all deals with customer info...');
+    const deals = await db.any(`
+      SELECT d.*, 
+             c.name AS customer_name, c.email AS customer_email, c.phone AS customer_phone, c.company_name AS customer_company, c.address AS customer_address, c.designation AS customer_designation
+      FROM deals d
+      LEFT JOIN customers c ON d.customer_id = c.id
+      ORDER BY d.created_at DESC
+    `);
+    // Map customer fields into a customer object for each deal
+    const dealsWithCustomer = deals.map(deal => ({
+      ...deal,
+      customer: {
+        name: deal.customer_name || '',
+        email: deal.customer_email || '',
+        phone: deal.customer_phone || '',
+        company: deal.customer_company || '',
+        address: deal.customer_address || '',
+        designation: deal.customer_designation || ''
+      }
+    }));
+    console.log(`✅ Found ${dealsWithCustomer.length} deals (with customer)`);
+    return dealsWithCustomer;
   } catch (error) {
     console.error('❌ Error fetching deals:', error);
     return [];
   }
 };
 
+
 export const getDealById = async (id) => {
   try {
-    console.log(`🔍 Fetching deal by ID: ${id}`);
-    const deal = await db.oneOrNone('SELECT * FROM deals WHERE id = $1', [id]);
-    console.log(`📝 Deal found: ${deal ? 'Yes' : 'No'}`);
-    return deal;
+    console.log(`🔍 Fetching deal by ID (with customer): ${id}`);
+    const deal = await db.oneOrNone(`
+      SELECT d.*, 
+             c.name AS customer_name, c.email AS customer_email, c.phone AS customer_phone, c.company_name AS customer_company, c.address AS customer_address, c.designation AS customer_designation
+      FROM deals d
+      LEFT JOIN customers c ON d.customer_id = c.id
+      WHERE d.id = $1
+    `, [id]);
+    if (!deal) return null;
+    const dealWithCustomer = {
+      ...deal,
+      customer: {
+        name: deal.customer_name || '',
+        email: deal.customer_email || '',
+        phone: deal.customer_phone || '',
+        company: deal.customer_company || '',
+        address: deal.customer_address || '',
+        designation: deal.customer_designation || ''
+      }
+    };
+    console.log(`📝 Deal found: Yes (with customer)`);
+    return dealWithCustomer;
   } catch (error) {
     console.error('❌ Error fetching deal by ID:', error);
     return null;
