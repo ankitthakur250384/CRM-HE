@@ -27,7 +27,10 @@ export async function getDealById(dealId: string): Promise<Deal> {
   if (!response.ok) {
     throw new Error('Failed to fetch deal by ID');
   }
-  return response.json();
+  const data = await response.json();
+  // Unwrap { data: deal } or return deal directly
+  if (data && data.data) return data.data;
+  return data;
 }
 
 // Create a deal via backend API
