@@ -329,22 +329,23 @@ export function QuotationManagement() {
     try {
       setIsEditingQuotation(quotation.id);
       console.log('Editing quotation:', quotation);
-      
-      if (!quotation.leadId) {
-        showToast('Invalid quotation data', 'error', 'Missing lead ID');
+
+      // Prefer dealId, fallback to leadId for legacy data
+      const dealId = quotation.dealId || quotation.leadId;
+      if (!dealId) {
+        showToast('Invalid quotation data', 'error', 'Missing deal ID');
         return;
       }
 
       // Verify that the deal still exists
-      const deal = await getDealById(quotation.leadId);
+      const deal = await getDealById(dealId);
       if (!deal) {
         showToast('Associated deal not found', 'error', 'The deal associated with this quotation no longer exists');
         return;
       }
 
-      // Use dealId instead of leadId to avoid 404 error
-      console.log('Navigating to:', `/quotations/create?dealId=${quotation.dealId}&quotationId=${quotation.id}`);
-      navigate(`/quotations/create?dealId=${quotation.dealId}&quotationId=${quotation.id}`);
+      console.log('Navigating to:', `/quotations/create?dealId=${dealId}&quotationId=${quotation.id}`);
+      navigate(`/quotations/create?dealId=${dealId}&quotationId=${quotation.id}`);
     } catch (error) {
       console.error('Error preparing quotation edit:', error);
       showToast('Error preparing quotation edit', 'error');
