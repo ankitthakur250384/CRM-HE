@@ -13,6 +13,9 @@ export const getLeads = async () => {
       address: row.address,
       serviceNeeded: row.service_needed,
       siteLocation: row.site_location,
+      startDate: row.start_date,
+      rentalDays: row.rental_days,
+      status: row.status,
       source: row.source,
       assignedTo: row.assigned_to,
       createdAt: row.created_at,
@@ -45,6 +48,9 @@ export const getLeadById = async (id) => {
       address: lead.address,
       serviceNeeded: lead.service_needed,
       siteLocation: lead.site_location,
+      startDate: lead.start_date,
+      rentalDays: lead.rental_days,
+      status: lead.status,
       source: lead.source,
       assignedTo: lead.assigned_to,
       createdAt: lead.created_at,
@@ -67,8 +73,8 @@ export const createLead = async (leadData) => {
     }
     console.log('🆕 Creating new lead...');
     const result = await db.one(
-      `INSERT INTO leads (customer_name, email, phone, address, service_needed, site_location, source, assigned_to, files, notes, created_at, updated_at) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW(), NOW()) RETURNING *`,
+      `INSERT INTO leads (customer_name, email, phone, address, service_needed, site_location, start_date, rental_days, status, source, assigned_to, files, notes, created_at, updated_at) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, NOW(), NOW()) RETURNING *`,
       [
         leadData.customerName,
         leadData.email,
@@ -76,10 +82,13 @@ export const createLead = async (leadData) => {
         leadData.address,
         leadData.serviceNeeded,
         leadData.siteLocation || leadData.location || 'Not specified',
+        leadData.startDate || new Date().toISOString().split('T')[0], // Default to today if not provided
+        leadData.rentalDays || 1, // Default to 1 day if not provided
+        'new', // Default status for new leads
         leadData.source,
         leadData.assignedTo,
         leadData.files ? JSON.stringify(leadData.files) : null,
-        leadData.notes
+        leadData.notes || ''
       ]
     );
     console.log(`✅ Lead created successfully: ${result.id}`);
@@ -91,6 +100,9 @@ export const createLead = async (leadData) => {
       address: result.address,
       serviceNeeded: result.service_needed,
       siteLocation: result.site_location,
+      startDate: result.start_date,
+      rentalDays: result.rental_days,
+      status: result.status,
       source: result.source,
       assignedTo: result.assigned_to,
       createdAt: result.created_at,
@@ -127,6 +139,26 @@ export const updateLead = async (id, leadData) => {
       updates.push(`address = $${paramIndex++}`);
       values.push(leadData.address);
     }
+    if (leadData.serviceNeeded) {
+      updates.push(`service_needed = $${paramIndex++}`);
+      values.push(leadData.serviceNeeded);
+    }
+    if (leadData.siteLocation) {
+      updates.push(`site_location = $${paramIndex++}`);
+      values.push(leadData.siteLocation);
+    }
+    if (leadData.startDate) {
+      updates.push(`start_date = $${paramIndex++}`);
+      values.push(leadData.startDate);
+    }
+    if (leadData.rentalDays) {
+      updates.push(`rental_days = $${paramIndex++}`);
+      values.push(leadData.rentalDays);
+    }
+    if (leadData.status) {
+      updates.push(`status = $${paramIndex++}`);
+      values.push(leadData.status);
+    }
     if (leadData.source) {
       updates.push(`source = $${paramIndex++}`);
       values.push(leadData.source);
@@ -157,6 +189,11 @@ export const updateLead = async (id, leadData) => {
       email: result.email,
       phone: result.phone,
       address: result.address,
+      serviceNeeded: result.service_needed,
+      siteLocation: result.site_location,
+      startDate: result.start_date,
+      rentalDays: result.rental_days,
+      status: result.status,
       source: result.source,
       assignedTo: result.assigned_to,
       createdAt: result.created_at,
