@@ -33,9 +33,18 @@ const FIELD_TYPES = [
   { type: 'customer.company', label: 'Company' },
   { type: 'customer.email', label: 'Email' },
   { type: 'customer.phone', label: 'Phone' },
+  { type: 'customer.address', label: 'Address' },
   { type: 'quotation.id', label: 'Quotation ID' },
   { type: 'quotation.date', label: 'Date' },
+  { type: 'quotation.validUntil', label: 'Valid Until' },
   { type: 'quotation.totalAmount', label: 'Total Amount' },
+  { type: 'quotation.workingCost', label: 'Working Cost' },
+  { type: 'quotation.mobDemobCost', label: 'Mob/Demob Cost' },
+  { type: 'quotation.foodAccomCost', label: 'Food & Accommodation' },
+  { type: 'quotation.gstAmount', label: 'GST Amount' },
+  { type: 'quotation.machineType', label: 'Machine Type' },
+  { type: 'quotation.numberOfDays', label: 'Number of Days' },
+  { type: 'quotation.workingHours', label: 'Working Hours' },
 ];
 
 // Component types
@@ -96,11 +105,11 @@ const ElementEditor: React.FC<{
         <select
           value={element.fieldType || ''}
           onChange={(e) => updateFieldType(e.target.value)}
-          className="w-full p-2 border border-gray-300 rounded-md mb-3"
+          className="w-full p-2 border border-gray-300 rounded-md mb-3 text-gray-900 font-medium bg-white"
         >
-          <option value="">Select a field...</option>
+          <option value="" className="text-gray-900 font-medium bg-blue-100">Select a field...</option>
           {FIELD_TYPES.map(field => (
-            <option key={field.type} value={field.type}>
+            <option key={field.type} value={field.type} className="text-gray-900 font-medium bg-white">
               {field.label}
             </option>
           ))}
