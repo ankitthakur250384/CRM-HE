@@ -58,15 +58,19 @@ export const getLeadById = async (id) => {
 
 export const createLead = async (leadData) => {
   try {
+    if (!leadData.serviceNeeded) {
+      throw new Error('serviceNeeded is required');
+    }
     console.log('🆕 Creating new lead...');
     const result = await db.one(
-      `INSERT INTO leads (customer_name, email, phone, address, source, assigned_to, files, notes, created_at, updated_at) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW()) RETURNING *`,
+      `INSERT INTO leads (customer_name, email, phone, address, service_needed, source, assigned_to, files, notes, created_at, updated_at) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, NOW(), NOW()) RETURNING *`,
       [
         leadData.customerName,
         leadData.email,
         leadData.phone,
         leadData.address,
+        leadData.serviceNeeded,
         leadData.source,
         leadData.assignedTo,
         leadData.files ? JSON.stringify(leadData.files) : null,
@@ -80,6 +84,7 @@ export const createLead = async (leadData) => {
       email: result.email,
       phone: result.phone,
       address: result.address,
+      serviceNeeded: result.service_needed,
       source: result.source,
       assignedTo: result.assigned_to,
       createdAt: result.created_at,
