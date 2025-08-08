@@ -2,7 +2,7 @@ export const findUsersByRole = async (role) => {
   try {
     console.log(`🔍 Looking for users with role: ${role}`);
     const users = await db.any(
-      'SELECT uid, name as display_name, email FROM users WHERE role = $1 ORDER BY name ASC',
+      'SELECT uid, display_name, email FROM users WHERE role = $1 ORDER BY display_name ASC',
       [role]
     );
     console.log(`✅ Found ${users.length} users with role ${role}`);
