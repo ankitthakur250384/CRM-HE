@@ -51,9 +51,11 @@ router.get('/', asyncHandler(async (req, res, next) => {
   } else {
     equipment = await equipmentRepository.getAllEquipment();
   }
-  
-  // Return a plain array for frontend compatibility
-  res.json(equipment);
+  // Return a consistent object for frontend compatibility
+  res.json({
+    success: true,
+    data: equipment
+  });
 }));
 
 // GET equipment by ID
