@@ -48,17 +48,29 @@ export const FloatingChatWidget: React.FC = () => {
     };
   }, [resizing]);
 
-  const handleSend = () => {
+  const handleSend = async () => {
     if (!input.trim()) return;
-    setMessages((msgs) => [...msgs, { sender: 'user', text: input }]);
+    const userMessage = { sender: 'user', text: input };
+    setMessages((msgs) => [...msgs, userMessage]);
     setInput('');
-    // Simulate AI response
-    setTimeout(() => {
+    try {
+      const res = await fetch('/agent/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: input }),
+      });
+      if (!res.ok) throw new Error('Network error');
+      const data = await res.json();
       setMessages((msgs) => [
         ...msgs,
-        { sender: 'ai', text: "I'm here to help! (This is a demo AI response.)" },
+        { sender: 'ai', text: data.reply || 'No response from agent.' },
       ]);
-    }, 800);
+    } catch (err) {
+      setMessages((msgs) => [
+        ...msgs,
+        { sender: 'ai', text: 'Sorry, there was a problem connecting to the agent.' },
+      ]);
+    }
   };
 
   return (
@@ -86,6 +98,7 @@ export const FloatingChatWidget: React.FC = () => {
             <div className="flex items-center gap-2">
               <MessageCircle className="h-5 w-5 text-white" />
               <span className="text-white font-semibold text-lg">Sales Agent AI</span>
+              <span className="ml-2 px-2 py-0.5 text-xs rounded bg-yellow-400 text-gray-900 font-semibold" title="This module is in development">In development</span>
             </div>
             <button onClick={() => setOpen(false)} className="text-white hover:text-gray-200 p-1 rounded-full">
               <X className="h-5 w-5" />
