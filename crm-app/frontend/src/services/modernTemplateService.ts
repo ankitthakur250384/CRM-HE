@@ -18,21 +18,9 @@ export interface ModernTemplate {
 // Template element interface for drag-and-drop builder
 export interface TemplateElement {
   id: string;
-  type: 'text' | 'field' | 'table' | 'image' | 'spacer' | 'line' | 'signature';
+  type: 'text' | 'field' | 'table' | 'image' | 'spacer';
   content?: string;
   fieldType?: string;
-  styles?: {
-    fontSize?: number;
-    fontWeight?: 'normal' | 'bold';
-    fontStyle?: 'normal' | 'italic';
-    textDecoration?: 'none' | 'underline';
-    textAlign?: 'left' | 'center' | 'right';
-    color?: string;
-    backgroundColor?: string;
-    padding?: number;
-    margin?: number;
-  };
-  props?: Record<string, any>;
 }
 
 // Fetch all modern templates from backend API
