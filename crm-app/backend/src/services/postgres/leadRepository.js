@@ -217,3 +217,36 @@ export const deleteLead = async (id) => {
     throw error;
   }
 };
+
+export const updateLeadStatus = async (id, status) => {
+  try {
+    console.log(`📝 Updating lead status: ${id} to ${status}`);
+    const result = await db.one(
+      'UPDATE leads SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
+      [status, id]
+    );
+    console.log(`✅ Lead status updated successfully: ${result.id}`);
+    
+    return {
+      id: result.id,
+      customerName: result.customer_name,
+      email: result.email,
+      phone: result.phone,
+      address: result.address,
+      serviceNeeded: result.service_needed,
+      siteLocation: result.site_location,
+      startDate: result.start_date,
+      rentalDays: result.rental_days,
+      status: result.status,
+      source: result.source,
+      assignedTo: result.assigned_to,
+      createdAt: result.created_at,
+      updatedAt: result.updated_at,
+      files: result.files ? JSON.parse(result.files) : [],
+      notes: result.notes
+    };
+  } catch (error) {
+    console.error('❌ Error updating lead status:', error);
+    throw error;
+  }
+};
