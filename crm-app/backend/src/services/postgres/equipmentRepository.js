@@ -1,3 +1,15 @@
+// Get equipment by category
+export const getEquipmentByCategory = async (category) => {
+  try {
+    console.log(`📋 Fetching equipment by category: ${category}`);
+    const equipment = await db.any('SELECT * FROM equipment WHERE category = $1 ORDER BY name', [category]);
+    console.log(`✅ Found ${equipment.length} equipment items for category ${category}`);
+    return equipment;
+  } catch (error) {
+    console.error('❌ Error fetching equipment by category:', error);
+    return [];
+  }
+};
 // Enhanced equipmentRepository using centralized db client
 import { db } from '../../lib/dbClient.js';
 

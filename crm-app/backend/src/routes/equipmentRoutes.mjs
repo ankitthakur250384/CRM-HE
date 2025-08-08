@@ -47,7 +47,7 @@ router.get('/', asyncHandler(async (req, res, next) => {
   
   let equipment;
   if (category) {
-    equipment = await equipmentRepository.getEquipmentByType(category);
+    equipment = await equipmentRepository.getEquipmentByCategory(category);
   } else {
     equipment = await equipmentRepository.getAllEquipment();
   }
