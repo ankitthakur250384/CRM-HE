@@ -831,31 +831,7 @@ ASP Cranes Team`;
                   onSendEmail={() => handleSendToCustomer(selectedQuotation)}
                 />
               </div>
-              <div className="w-full md:w-80 bg-white rounded-lg shadow p-6 mt-6 md:mt-0">
-                <h3 className="text-lg font-semibold mb-4 text-gray-900">Quotation Summary</h3>
-                <QuotationSummary 
-                  calculations={{
-                    workingCost: selectedQuotation.workingCost || 0,
-                    foodAccomCost: selectedQuotation.foodAccomCost || 0,
-                    mobDemobCost: selectedQuotation.mobDemobCost || 0,
-                    riskAdjustment: selectedQuotation.riskAdjustment || 0,
-                    usageLoadFactor: selectedQuotation.usageLoadFactor || 0,
-                    extraCharges: selectedQuotation.extraCharges || 0,
-                    gstAmount: selectedQuotation.gstAmount || 0,
-                    totalAmount: selectedQuotation.totalRent || 0
-                  }}
-                  formData={{
-                    extraCharge: selectedQuotation.extraCharge || 0,
-                    incidentalCharges: selectedQuotation.incidentalCharges || [],
-                    otherFactors: selectedQuotation.otherFactors || [],
-                    includeGst: selectedQuotation.includeGst
-                  }}
-                  additionalParams={{
-                    riggerAmount: 40000,
-                    helperAmount: 12000
-                  }}
-                />
-              </div>
+              {/* QuotationSummary is now inside TemplatePreview */}
             </div>
           )}
         </Modal>

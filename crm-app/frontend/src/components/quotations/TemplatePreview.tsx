@@ -5,6 +5,7 @@ import { Toast } from '../common/Toast';
 import { Template } from '../../types/template';
 import { Quotation } from '../../types/quotation';
 import { mergeQuotationWithTemplate } from '../../utils/templateMerger';
+import { QuotationSummary } from '../../pages/QuotationSummary';
 import { FileText, Info, Download, Send, RefreshCw } from 'lucide-react';
 
 // Sample quotation data for preview when no quotation is provided
@@ -199,55 +200,91 @@ export function TemplatePreview({
         </p>
       </div>
 
-      {/* Quotation Summary - always dark text */}
-      <div className="w-full md:w-96 bg-white rounded-lg shadow p-6 mt-2">
-        <h3 className="text-lg font-semibold mb-4 text-gray-900">Quotation Summary</h3>
-        <div className="space-y-2">
-          <div className="flex justify-between text-gray-700">
-            <span>Working Cost</span>
-            <span className="font-medium text-gray-900">₹{previewQuotation.workingCost || 0}</span>
-          </div>
-          <div className="flex justify-between text-gray-700">
-            <span>Food & Accommodation</span>
-            <span className="font-medium text-gray-900">₹{(previewQuotation.foodResources || 0) + (previewQuotation.accomResources || 0)}</span>
-          </div>
-          <div className="flex justify-between text-gray-700">
-            <span>Mob/Demob Cost</span>
-            <span className="font-medium text-gray-900">₹{previewQuotation.mobDemob || 0}</span>
-          </div>
-          <div className="flex justify-between text-gray-700">
-            <span>Risk & Usage</span>
-            <span className="font-medium text-gray-900">₹{previewQuotation.riskFactor === 'high' ? 10000 : previewQuotation.riskFactor === 'medium' ? 5000 : 0}</span>
-          </div>
-          <div className="flex justify-between text-gray-700">
-            <span>Extra Commercial Charges</span>
-            <span className="font-medium text-gray-900">₹{previewQuotation.extraCharge || 0}</span>
-          </div>
-          <div className="flex justify-between text-gray-700">
-            <span>Incidental Charges</span>
-            <span className="font-medium text-gray-900">₹{Array.isArray(previewQuotation.incidentalCharges) ? previewQuotation.incidentalCharges.length * 5000 : 0}</span>
-          </div>
-          <div className="flex justify-between text-gray-700">
-            <span>Other Factors</span>
-            <span className="font-medium text-gray-900">₹{previewQuotation.otherFactorsCharge || 0}</span>
-          </div>
-          <hr className="my-2" />
-          <div className="flex justify-between text-gray-900 font-semibold">
-            <span>Subtotal</span>
-            <span>₹{previewQuotation.totalRent || 0}</span>
-          </div>
-          <div className="flex justify-between text-gray-900">
-            <span>GST (18%)</span>
-            <span>₹{previewQuotation.includeGst ? Math.round((previewQuotation.totalRent || 0) * 0.18) : 0}</span>
-          </div>
-          <div className="flex justify-between text-xl font-bold text-primary-700 mt-4">
-            <span>Total Amount</span>
-            <span>₹{previewQuotation.includeGst ? Math.round((previewQuotation.totalRent || 0) * 1.18) : (previewQuotation.totalRent || 0)}</span>
-          </div>
-          <div className="flex items-center mt-2">
-            <input type="checkbox" checked={!!previewQuotation.includeGst} readOnly className="mr-2" />
-            <span className="text-gray-700">Include GST</span>
-          </div>
+      <div className="flex flex-col md:flex-row gap-8">
+        {/* Template Preview */}
+        <div className="flex-1">
+          <Card>
+            <CardHeader className="p-3 sm:p-6">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
+                <CardTitle className="text-base sm:text-lg">Quotation Preview</CardTitle>
+                <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+                  {onDownloadPDF && (
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      onClick={onDownloadPDF}
+                      className="flex items-center gap-1 w-full sm:w-auto"
+                    >
+                      <Download className="w-3 h-3 sm:w-4 sm:h-4" />
+                      Download PDF
+                    </Button>
+                  )}
+                  {onSendEmail && (
+                    <Button
+                      variant="outline"
+                      size="xs"
+                      onClick={onSendEmail}
+                      className="flex items-center gap-1 w-full sm:w-auto"
+                    >
+                      <Send className="w-3 h-3 sm:w-4 sm:h-4" />
+                      Send Email
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-3 sm:p-6">
+              {error ? (
+                <div className="bg-red-50 border border-red-100 rounded-md p-3 sm:p-4 text-red-800 text-xs sm:text-sm mb-3 sm:mb-4">
+                  <p className="font-medium">Error: {error}</p>
+                  <p className="mt-1">Please try refreshing the page or select a different template.</p>
+                </div>
+              ) : null}
+              {mergedContent ? (
+                <div 
+                  className="prose max-w-none border rounded-md p-3 sm:p-4 text-xs sm:text-sm overflow-x-auto"
+                  dangerouslySetInnerHTML={{ __html: mergedContent }} 
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center text-gray-500 py-8 sm:py-16 border border-dashed rounded-md">
+                  <RefreshCw className="w-6 sm:w-8 h-6 sm:h-8 animate-spin mb-3 sm:mb-4" />
+                  <p className="text-xs sm:text-sm">Preparing preview...</p>
+                </div>
+              )}
+              {template && !template.content && (
+                <div className="mt-3 sm:mt-4 bg-yellow-50 border border-yellow-100 rounded-md p-3 sm:p-4 text-yellow-800 text-xs sm:text-sm">
+                  <p className="font-medium">Warning: Template has no content</p>
+                  <p className="mt-1">This template appears to be empty. Please edit the template to add content.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+        {/* Quotation Summary */}
+        <div className="w-full md:w-80 bg-white rounded-lg shadow p-6 mt-6 md:mt-0">
+          <h3 className="text-lg font-semibold mb-4 text-gray-900">Quotation Summary</h3>
+          <QuotationSummary 
+            calculations={{
+              workingCost: previewQuotation.workingCost || 0,
+              foodAccomCost: previewQuotation.foodAccomCost || 0,
+              mobDemobCost: previewQuotation.mobDemobCost || 0,
+              riskAdjustment: previewQuotation.riskAdjustment || 0,
+              usageLoadFactor: previewQuotation.usageLoadFactor || 0,
+              extraCharges: previewQuotation.extraCharges || 0,
+              gstAmount: previewQuotation.gstAmount || 0,
+              totalAmount: previewQuotation.totalRent || 0
+            }}
+            formData={{
+              extraCharge: previewQuotation.extraCharge || 0,
+              incidentalCharges: previewQuotation.incidentalCharges || [],
+              otherFactors: previewQuotation.otherFactors || [],
+              includeGst: previewQuotation.includeGst
+            }}
+            additionalParams={{
+              riggerAmount: 40000,
+              helperAmount: 12000
+            }}
+          />
         </div>
       </div>
 
@@ -323,66 +360,6 @@ export function TemplatePreview({
           </CardContent>
         </Card>
       )}
-
-      {/* Merged Content Preview */}
-      <Card>
-        <CardHeader className="p-3 sm:p-6">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
-            <CardTitle className="text-base sm:text-lg">Quotation Preview</CardTitle>
-            <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-              {onDownloadPDF && (
-                <Button
-                  variant="outline"
-                  size="xs"
-                  onClick={onDownloadPDF}
-                  className="flex items-center gap-1 w-full sm:w-auto"
-                >
-                  <Download className="w-3 h-3 sm:w-4 sm:h-4" />
-                  Download PDF
-                </Button>
-              )}
-              {onSendEmail && (
-                <Button
-                  variant="outline"
-                  size="xs"
-                  onClick={onSendEmail}
-                  className="flex items-center gap-1 w-full sm:w-auto"
-                >
-                  <Send className="w-3 h-3 sm:w-4 sm:h-4" />
-                  Send Email
-                </Button>
-              )}
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="p-3 sm:p-6">
-          {error ? (
-            <div className="bg-red-50 border border-red-100 rounded-md p-3 sm:p-4 text-red-800 text-xs sm:text-sm mb-3 sm:mb-4">
-              <p className="font-medium">Error: {error}</p>
-              <p className="mt-1">Please try refreshing the page or select a different template.</p>
-            </div>
-          ) : null}
-          
-          {mergedContent ? (
-            <div 
-              className="prose max-w-none border rounded-md p-3 sm:p-4 text-xs sm:text-sm overflow-x-auto"
-              dangerouslySetInnerHTML={{ __html: mergedContent }} 
-            />
-          ) : (
-            <div className="flex flex-col items-center justify-center text-gray-500 py-8 sm:py-16 border border-dashed rounded-md">
-              <RefreshCw className="w-6 sm:w-8 h-6 sm:h-8 animate-spin mb-3 sm:mb-4" />
-              <p className="text-xs sm:text-sm">Preparing preview...</p>
-            </div>
-          )}
-          
-          {template && !template.content && (
-            <div className="mt-3 sm:mt-4 bg-yellow-50 border border-yellow-100 rounded-md p-3 sm:p-4 text-yellow-800 text-xs sm:text-sm">
-              <p className="font-medium">Warning: Template has no content</p>
-              <p className="mt-1">This template appears to be empty. Please edit the template to add content.</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
       {/* Toast */}
       {toast.show && (
