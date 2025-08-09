@@ -11,7 +11,12 @@ import {
   IndianRupee,
   AlertTriangle,
   Settings,
-  Calendar
+  Calendar,
+  FileText,
+  Building2,
+  ChevronDown,
+  ChevronUp,
+  Info
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/common/Card';
 import { Button } from '../components/common/Button';
@@ -19,7 +24,6 @@ import { FormInput } from '../components/common/FormInput';
 import { Select } from '../components/common/Select';
 import { Toast } from '../components/common/Toast';
 import { RequiredFieldsInfo } from '../components/common/RequiredFieldsInfo';
-import { QuotationSummary } from './QuotationSummary';
 import { useAuthStore } from '../store/authStore';
 import { Deal } from '../types/deal';
 import { Equipment, OrderType, CraneCategory, BaseRates } from '../types/equipment';
@@ -30,7 +34,12 @@ import { createQuotation, updateQuotation, getQuotationById } from '../services/
 import { formatCurrency } from '../utils/formatters';
 import { useQuotationConfig, useConfigChangeListener } from '../hooks/useQuotationConfig';
 
-
+const ORDER_TYPES = [
+  { value: 'micro', label: 'Micro' },
+  { value: 'small', label: 'Small' },
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'yearly', label: 'Yearly' },
+];
 
 const MACHINE_TYPES = [
   { value: '', label: 'Select machine type...' },
@@ -514,13 +523,13 @@ export function QuotationCreation() {
         mobDemobCost = formData.selectedMachines.reduce((total, machine) => {
           const distance = formData.siteDistance || 0;
           const runningCostPerKm = machine.runningCostPerKm || 0;
-          const machineCost = (distance * 2 * runningCostPerKm) + 5000; // Default trailer cost
+          const machineCost = (distance * 2 * runningCostPerKm) + (quotationConfig?.trailerCost || 0);
           return total + (machineCost * machine.quantity);
         }, 0);
       } else {
         const distance = formData.siteDistance || 0;
         const runningCostPerKm = formData.runningCostPerKm || 0;
-        mobDemobCost = (distance * 2 * runningCostPerKm) + 5000; // Default trailer cost
+        mobDemobCost = (distance * 2 * runningCostPerKm) + (quotationConfig?.trailerCost || 0);
       }
       
       if (formData.mobRelaxation > 0) {
@@ -600,13 +609,13 @@ export function QuotationCreation() {
         ...formData,
         dealId: dealId || 'new',
         customerName: formData.customerName || deal?.customer?.name || '',
-        customerContact: {
-          name: formData.customerContact?.name || deal?.customer?.name || '',
-          email: formData.customerContact?.email || deal?.customer?.email || '',
-          phone: formData.customerContact?.phone || deal?.customer?.phone || '',
-          company: formData.customerContact?.company || deal?.customer?.company || '',
-          address: formData.customerContact?.address || deal?.customer?.address || '',
-          designation: formData.customerContact?.designation || deal?.customer?.designation || ''
+        customerContact: formData.customerContact || {
+          name: deal?.customer?.name || '',
+          email: deal?.customer?.email || '',
+          phone: deal?.customer?.phone || '',
+          company: deal?.customer?.company || '',
+          address: deal?.customer?.address || '',
+          designation: deal?.customer?.designation || ''
         },
         calculations,
         totalAmount: calculations.totalAmount,
@@ -809,6 +818,7 @@ export function QuotationCreation() {
                       selectedMachines: []
                     }))}
                     options={MACHINE_TYPES}
+                    placeholder="Select machine type"
                     required
                   />
                   
@@ -838,6 +848,7 @@ export function QuotationCreation() {
                         { value: '', label: 'Select equipment...' },
                         ...availableEquipment.map(eq => ({ value: eq.id, label: `${eq.name} (${eq.equipmentId})` }))
                       ]}
+                      placeholder="Select equipment"
                       required={formData.selectedMachines.length === 0}
                     />
                   )}
@@ -855,13 +866,13 @@ export function QuotationCreation() {
                   <Select
                     label="Shift Type"
                     value={formData.shift}
-                    onChange={(value: string) => setFormData(prev => ({ ...prev, shift: value as 'single' | 'double' }))}
+                    onChange={(value: string) => setFormData(prev => ({ ...prev, shift: value }))}
                     options={SHIFT_OPTIONS}
                   />
                   <Select
                     label="Time"
                     value={formData.dayNight}
-                    onChange={(value: string) => setFormData(prev => ({ ...prev, dayNight: value as 'day' | 'night' }))}
+                    onChange={(value: string) => setFormData(prev => ({ ...prev, dayNight: value }))}
                     options={TIME_OPTIONS}
                   />
                 </CardContent>
@@ -923,13 +934,13 @@ export function QuotationCreation() {
                     <Select
                       label="Usage"
                       value={formData.usage}
-                      onChange={(value: string) => setFormData(prev => ({ ...prev, usage: value as 'normal' | 'heavy' }))}
+                      onChange={(value: string) => setFormData(prev => ({ ...prev, usage: value }))}
                       options={USAGE_OPTIONS}
                     />
                     <Select
                       label="Risk Level"
                       value={formData.riskFactor}
-                      onChange={(value: string) => setFormData(prev => ({ ...prev, riskFactor: value as 'low' | 'medium' | 'high' }))}
+                      onChange={(value: string) => setFormData(prev => ({ ...prev, riskFactor: value }))}
                       options={RISK_LEVELS}
                     />
                   </div>
@@ -1061,25 +1072,115 @@ export function QuotationCreation() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-4">
-                  <QuotationSummary calculations={calculations} formData={formData} additionalParams={additionalParams} />
-                  <div className="mt-4">
-                    <label className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors duration-200">
-                      <input
-                        type="checkbox"
-                        checked={formData.includeGst}
-                        onChange={(e) => setFormData(prev => ({ 
-                          ...prev, 
-                          includeGst: e.target.checked 
-                        }))}
-                        className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                      />
-                      <div>
-                        <div className="font-medium text-gray-900">Include GST</div>
-                        <div className="text-sm text-gray-600">
-                          GST will be calculated at 18% of the total amount
-                        </div>
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-blue-600" />
+                        <span className="text-sm font-medium text-gray-900">Working Cost</span>
                       </div>
-                    </label>
+                      <span className="font-bold text-blue-900">{formatCurrency(calculations.workingCost)}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <Users className="w-4 h-4 text-green-600" />
+                        <span className="text-sm font-medium text-gray-900">Food & Accommodation</span>
+                      </div>
+                      <span className="font-bold text-green-900">{formatCurrency(calculations.foodAccomCost)}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <Truck className="w-4 h-4 text-orange-600" />
+                        <span className="text-sm font-medium text-gray-900">Mob/Demob Cost</span>
+                      </div>
+                      <span className="font-bold text-orange-900">{formatCurrency(calculations.mobDemobCost)}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 text-red-600" />
+                        <span className="text-sm font-medium text-gray-900">Risk & Usage</span>
+                      </div>
+                      <span className="font-bold text-red-900">{formatCurrency(calculations.riskAdjustment + calculations.usageLoadFactor)}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <IndianRupee className="w-4 h-4 text-purple-600" />
+                        <span className="text-sm font-medium text-gray-900">Extra Commercial Charges</span>
+                      </div>
+                      <span className="font-bold text-purple-900">{formatCurrency(Number(formData.extraCharge))}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 text-indigo-600" />
+                        <span className="text-sm font-medium text-gray-900">Incidental Charges</span>
+                      </div>
+                      <span className="font-bold text-indigo-900">
+                        {formatCurrency(formData.incidentalCharges.reduce((sum, val) => {
+                          const found = INCIDENTAL_OPTIONS.find(opt => opt.value === val);
+                          return sum + (found ? found.amount : 0);
+                        }, 0))}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <Users className="w-4 h-4 text-cyan-600" />
+                        <span className="text-sm font-medium text-gray-900">Other Factors</span>
+                      </div>
+                      <span className="font-bold text-cyan-900">
+                        {formatCurrency(
+                          (formData.otherFactors.includes('rigger') ? (additionalParams?.riggerAmount || 40000) : 0) + 
+                          (formData.otherFactors.includes('helper') ? (additionalParams?.helperAmount || 12000) : 0)
+                        )}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 pt-4 border-t border-gray-200">
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-sm text-gray-700">
+                        <span>Subtotal</span>
+                        <span className="font-semibold text-gray-900">{formatCurrency(calculations.totalAmount - calculations.gstAmount)}</span>
+                      </div>
+                      
+                      {formData.includeGst && (
+                        <div className="flex justify-between text-sm text-gray-700">
+                          <span>GST (18%)</span>
+                          <span className="font-semibold text-gray-900">{formatCurrency(calculations.gstAmount)}</span>
+                        </div>
+                      )}
+                      
+                      <div className="flex justify-between items-center pt-3 border-t border-gray-300">
+                        <span className="text-lg font-bold text-gray-900">Total Amount</span>
+                        <span className="text-2xl font-bold text-blue-600">
+                          {formatCurrency(calculations.totalAmount)}
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="mt-4">
+                      <label className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors duration-200">
+                        <input
+                          type="checkbox"
+                          checked={formData.includeGst}
+                          onChange={(e) => setFormData(prev => ({ 
+                            ...prev, 
+                            includeGst: e.target.checked 
+                          }))}
+                          className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                        />
+                        <div>
+                          <div className="font-medium text-gray-900">Include GST</div>
+                          <div className="text-sm text-gray-600">
+                            GST will be calculated at 18% of the total amount
+                          </div>
+                        </div>
+                      </label>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
