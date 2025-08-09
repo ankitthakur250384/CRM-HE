@@ -20,6 +20,7 @@ import { Modal } from '../components/common/Modal';
 import { Toast } from '../components/common/Toast';
 import { StatusBadge } from '../components/common/StatusBadge';
 import { TemplatePreview } from '../components/quotations/TemplatePreview';
+import { QuotationSummary } from './QuotationSummary';
 import { useAuthStore } from '../store/authStore';
 import { Quotation } from '../types/quotation';
 import { Template } from '../types/template';
@@ -832,53 +833,28 @@ ASP Cranes Team`;
               </div>
               <div className="w-full md:w-80 bg-white rounded-lg shadow p-6 mt-6 md:mt-0">
                 <h3 className="text-lg font-semibold mb-4 text-gray-900">Quotation Summary</h3>
-                <div className="space-y-2">
-                  <div className="flex justify-between text-gray-700">
-                    <span>Working Cost</span>
-                    <span className="font-medium text-gray-900">₹0</span>
-                  </div>
-                  <div className="flex justify-between text-gray-700">
-                    <span>Food & Accommodation</span>
-                    <span className="font-medium text-gray-900">₹0</span>
-                  </div>
-                  <div className="flex justify-between text-gray-700">
-                    <span>Mob/Demob Cost</span>
-                    <span className="font-medium text-gray-900">₹0</span>
-                  </div>
-                  <div className="flex justify-between text-gray-700">
-                    <span>Risk & Usage</span>
-                    <span className="font-medium text-gray-900">₹0</span>
-                  </div>
-                  <div className="flex justify-between text-gray-700">
-                    <span>Extra Commercial Charges</span>
-                    <span className="font-medium text-gray-900">₹0</span>
-                  </div>
-                  <div className="flex justify-between text-gray-700">
-                    <span>Incidental Charges</span>
-                    <span className="font-medium text-gray-900">₹0</span>
-                  </div>
-                  <div className="flex justify-between text-gray-700">
-                    <span>Other Factors</span>
-                    <span className="font-medium text-gray-900">₹0</span>
-                  </div>
-                  <hr className="my-2" />
-                  <div className="flex justify-between text-gray-900 font-semibold">
-                    <span>Subtotal</span>
-                    <span>₹0</span>
-                  </div>
-                  <div className="flex justify-between text-gray-900">
-                    <span>GST (18%)</span>
-                    <span>₹0</span>
-                  </div>
-                  <div className="flex justify-between text-xl font-bold text-primary-700 mt-4">
-                    <span>Total Amount</span>
-                    <span>₹0</span>
-                  </div>
-                  <div className="flex items-center mt-2">
-                    <input type="checkbox" checked readOnly className="mr-2" />
-                    <span className="text-gray-700">Include GST</span>
-                  </div>
-                </div>
+                <QuotationSummary 
+                  calculations={{
+                    workingCost: selectedQuotation.workingCost || 0,
+                    foodAccomCost: selectedQuotation.foodAccomCost || 0,
+                    mobDemobCost: selectedQuotation.mobDemobCost || 0,
+                    riskAdjustment: selectedQuotation.riskAdjustment || 0,
+                    usageLoadFactor: selectedQuotation.usageLoadFactor || 0,
+                    extraCharges: selectedQuotation.extraCharges || 0,
+                    gstAmount: selectedQuotation.gstAmount || 0,
+                    totalAmount: selectedQuotation.totalRent || 0
+                  }}
+                  formData={{
+                    extraCharge: selectedQuotation.extraCharge || 0,
+                    incidentalCharges: selectedQuotation.incidentalCharges || [],
+                    otherFactors: selectedQuotation.otherFactors || [],
+                    includeGst: selectedQuotation.includeGst
+                  }}
+                  additionalParams={{
+                    riggerAmount: 40000,
+                    helperAmount: 12000
+                  }}
+                />
               </div>
             </div>
           )}

@@ -9,6 +9,12 @@ interface QuotationSummaryProps {
   showGst?: boolean;
 }
 
+const INCIDENTAL_OPTIONS = [
+  { value: 'incident1', label: 'Incident 1 - ₹5,000', amount: 5000 },
+  { value: 'incident2', label: 'Incident 2 - ₹10,000', amount: 10000 },
+  { value: 'incident3', label: 'Incident 3 - ₹15,000', amount: 15000 },
+];
+
 export const QuotationSummary: React.FC<QuotationSummaryProps> = ({ calculations, formData, additionalParams, showGst = true }) => (
   <div className="space-y-4">
     <div className="flex justify-between items-center">
@@ -53,7 +59,7 @@ export const QuotationSummary: React.FC<QuotationSummaryProps> = ({ calculations
       </div>
       <span className="font-bold text-indigo-900">
         {formatCurrency(formData.incidentalCharges.reduce((sum: number, val: string) => {
-          const found = (window as any).INCIDENTAL_OPTIONS?.find((opt: any) => opt.value === val);
+          const found = INCIDENTAL_OPTIONS.find((opt: any) => opt.value === val);
           return sum + (found ? found.amount : 0);
         }, 0))}
       </span>
