@@ -1078,8 +1078,9 @@ export function QuotationCreation() {
 
         <form onSubmit={handleSubmit}>
           <RequiredFieldsInfo />
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
-            <div className="col-span-7 space-y-6">
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+            {/* Left Column - Form Fields */}
+            <div className="space-y-6">
               {/* Duration Card */}
               <Card className="shadow-sm hover:shadow-md transition-shadow duration-200">
                 <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors duration-200" onClick={() => toggleCard('duration')}>
@@ -1658,26 +1659,26 @@ export function QuotationCreation() {
               </Card>
             </div>
 
-            {/* Summary Sidebar */}
-            <div className="col-span-5 space-y-6 sticky top-6">
-              <Card className="shadow-lg border-0 bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/80">
+            {/* Right Column - Summary */}
+            <div className="space-y-6">
+              <Card className="shadow-lg border-0 bg-white sticky top-6">
                 <CardHeader className="border-b border-gray-100 pb-6">
-                  <CardTitle className="text-xl font-semibold flex items-center gap-2">
-                    <Calculator className="w-5 h-5 text-primary-500" />
-                    Quotation Summary
+                  <CardTitle className="text-xl font-semibold flex items-center gap-2 text-gray-900">
+                    <Calculator className="w-5 h-5 text-blue-600" />
+                    <span className="text-gray-900">Quotation Summary</span>
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-6">
                   {selectedEquipmentBaseRate > 0 && !formData.selectedMachines.length && (
-                    <div className="mb-6 p-4 bg-primary-50/50 rounded-xl border border-primary-100">
-                      <div className="text-sm font-medium text-primary-900 mb-2">Equipment Details</div>
-                      <div className="text-2xl font-bold text-primary-700">
+                    <div className="mb-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
+                      <div className="text-sm font-medium text-gray-900 mb-2">Equipment Details</div>
+                      <div className="text-2xl font-bold text-gray-900">
                         ₹{formatCurrency(selectedEquipmentBaseRate).replace('₹', '')}
-                        <span className="text-base font-medium text-primary-600 ml-1">
+                        <span className="text-base font-medium text-gray-700 ml-1">
                           {formData.orderType === 'monthly' ? '/month' : '/hr'}
                         </span>
                       </div>
-                      <div className="text-sm text-primary-600 mt-1">
+                      <div className="text-sm text-gray-700 mt-1">
                         {formData.orderType.charAt(0).toUpperCase() + formData.orderType.slice(1)} Rate
                       </div>
                       {formData.orderType === 'monthly' && (
@@ -1721,29 +1722,29 @@ export function QuotationCreation() {
                     {/* Selected Machines Summary */}
                     {formData.selectedMachines.length > 0 && (
                       <div className="mb-6">
-                        <h3 className="text-sm font-semibold mb-2 text-gray-700">Selected Machines ({formData.selectedMachines.length})</h3>
-                        <div className="space-y-2 bg-primary-50 p-3 rounded-md border border-primary-100">
+                        <h3 className="text-sm font-semibold mb-2 text-gray-900">Selected Machines ({formData.selectedMachines.length})</h3>
+                        <div className="space-y-2 bg-gray-50 p-3 rounded-md border border-gray-200">
                           {formData.selectedMachines.map(machine => (
                             <div key={machine.id} className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-md shadow-sm">
                               <div>
-                                <div className="font-medium">{machine.name}</div>
-                                <div className="text-sm text-gray-500">
+                                <div className="font-medium text-gray-900">{machine.name}</div>
+                                <div className="text-sm text-gray-600">
                                   {machine.quantity} unit{machine.quantity > 1 ? 's' : ''} × {formatCurrency(machine.baseRate)}{formData.orderType === 'monthly' ? '/month' : '/hr'}
                                 </div>
                               </div>
                               <div className="text-right">
-                                <div className="font-semibold text-primary-700">
+                                <div className="font-semibold text-gray-900">
                                   {formatCurrency(machine.baseRate * machine.quantity)}
-                                  <span className="text-xs ml-1">{formData.orderType === 'monthly' ? '/month' : '/hr'}</span>
+                                  <span className="text-xs ml-1 text-gray-600">{formData.orderType === 'monthly' ? '/month' : '/hr'}</span>
                                 </div>
                               </div>
                             </div>
                           ))}
-                          <div className="flex justify-between items-center p-2 mt-2 border-t border-primary-200">
-                            <div className="text-sm text-gray-600">Total machines value</div>
-                            <div className="font-semibold text-primary-700">
+                          <div className="flex justify-between items-center p-2 mt-2 border-t border-gray-300">
+                            <div className="text-sm text-gray-700">Total machines value</div>
+                            <div className="font-semibold text-gray-900">
                               {formatCurrency(formData.selectedMachines.reduce((total, m) => total + (m.baseRate * m.quantity), 0))}
-                              <span className="text-xs ml-1">{formData.orderType === 'monthly' ? '/month' : '/hr'}</span>
+                              <span className="text-xs ml-1 text-gray-600">{formData.orderType === 'monthly' ? '/month' : '/hr'}</span>
                             </div>
                           </div>
                         </div>
@@ -1754,14 +1755,14 @@ export function QuotationCreation() {
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
                           <div className="flex items-center gap-2">
-                            <Clock className="w-4 h-4 text-primary-500" />
-                            <span className="text-sm font-medium">Working Cost</span>
+                            <Clock className="w-4 h-4 text-blue-600" />
+                            <span className="text-sm font-medium text-gray-900">Working Cost</span>
                           </div>
-                          <span className="font-semibold">{formatCurrency(calculations.workingCost)}</span>
+                          <span className="font-semibold text-gray-900">{formatCurrency(calculations.workingCost)}</span>
                         </div>
                         <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                           <div 
-                            className="h-full bg-primary-500 rounded-full transition-all duration-300"
+                            className="h-full bg-blue-600 rounded-full transition-all duration-300"
                             style={{ 
                               width: `${calculations.totalAmount > 0 ? (calculations.workingCost / calculations.totalAmount) * 100 : 0.5}%` 
                             }}
@@ -1772,14 +1773,14 @@ export function QuotationCreation() {
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
                           <div className="flex items-center gap-2">
-                            <Users className="w-4 h-4 text-success-500" />
-                            <span className="text-sm font-medium">Food & Accommodation</span>
+                            <Users className="w-4 h-4 text-green-600" />
+                            <span className="text-sm font-medium text-gray-900">Food & Accommodation</span>
                           </div>
-                          <span className="font-semibold">{formatCurrency(calculations.foodAccomCost)}</span>
+                          <span className="font-semibold text-gray-900">{formatCurrency(calculations.foodAccomCost)}</span>
                         </div>
                         <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                           <div 
-                            className="h-full bg-success-500 rounded-full transition-all duration-300"
+                            className="h-full bg-green-600 rounded-full transition-all duration-300"
                             style={{ 
                               width: `${calculations.totalAmount > 0 ? (calculations.foodAccomCost / calculations.totalAmount) * 100 : 0.5}%` 
                             }}
@@ -1790,8 +1791,8 @@ export function QuotationCreation() {
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
                           <div className="flex items-center gap-2">
-                            <Truck className="w-4 h-4 text-warning-500" />
-                            <span className="text-sm font-medium">Mob/Demob Cost</span>
+                            <Truck className="w-4 h-4 text-orange-600" />
+                            <span className="text-sm font-medium text-gray-900">Mob/Demob Cost</span>
                             <div className="group relative inline-block">
                               <Info className="h-3.5 w-3.5 text-gray-400 cursor-help" />
                               <div className="opacity-0 bg-gray-800 text-white text-xs rounded p-2 absolute z-10 group-hover:opacity-100 bottom-full left-1/2 transform -translate-x-1/2 w-48">
@@ -1799,11 +1800,11 @@ export function QuotationCreation() {
                               </div>
                             </div>
                           </div>
-                          <span className="font-semibold">{formatCurrency(calculations.mobDemobCost)}</span>
+                          <span className="font-semibold text-gray-900">{formatCurrency(calculations.mobDemobCost)}</span>
                         </div>
                         <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                           <div 
-                            className="h-full bg-warning-500 rounded-full transition-all duration-300"
+                            className="h-full bg-orange-600 rounded-full transition-all duration-300"
                             style={{ 
                               width: `${calculations.totalAmount > 0 ? (calculations.mobDemobCost / calculations.totalAmount) * 100 : 0.5}%` 
                             }}
@@ -1814,8 +1815,8 @@ export function QuotationCreation() {
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
                           <div className="flex items-center gap-2">
-                            <AlertTriangle className="w-4 h-4 text-error-500" />
-                            <span className="text-sm font-medium">Risk & Usage</span>
+                            <AlertTriangle className="w-4 h-4 text-red-600" />
+                            <span className="text-sm font-medium text-gray-900">Risk & Usage</span>
                             <div className="group relative inline-block">
                               <Info className="h-3.5 w-3.5 text-gray-400 cursor-help" />
                               <div className="opacity-0 bg-gray-800 text-white text-xs rounded p-2 absolute z-10 group-hover:opacity-100 bottom-full left-1/2 transform -translate-x-1/2 w-48">
@@ -1823,11 +1824,11 @@ export function QuotationCreation() {
                               </div>
                             </div>
                           </div>
-                          <span className="font-semibold">{formatCurrency(calculations.riskAdjustment + calculations.usageLoadFactor)}</span>
+                          <span className="font-semibold text-gray-900">{formatCurrency(calculations.riskAdjustment + calculations.usageLoadFactor)}</span>
                         </div>
                         <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                           <div 
-                            className="h-full bg-error-500 rounded-full transition-all duration-300"
+                            className="h-full bg-red-600 rounded-full transition-all duration-300"
                             style={{ 
                               width: `${calculations.totalAmount > 0 ? ((calculations.riskAdjustment + calculations.usageLoadFactor) / calculations.totalAmount) * 100 : 0.5}%` 
                             }}
@@ -1839,14 +1840,14 @@ export function QuotationCreation() {
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
                           <div className="flex items-center gap-2">
-                            <IndianRupee className="w-4 h-4 text-purple-500" />
-                            <span className="text-sm font-medium">Extra Commercial Charges</span>
+                            <IndianRupee className="w-4 h-4 text-purple-600" />
+                            <span className="text-sm font-medium text-gray-900">Extra Commercial Charges</span>
                           </div>
-                          <span className="font-semibold">{formatCurrency(Number(formData.extraCharge))}</span>
+                          <span className="font-semibold text-gray-900">{formatCurrency(Number(formData.extraCharge))}</span>
                         </div>
                         <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                           <div 
-                            className="h-full bg-purple-500 rounded-full transition-all duration-300"
+                            className="h-full bg-purple-600 rounded-full transition-all duration-300"
                             style={{ 
                               width: `${calculations.totalAmount > 0 ? (Number(formData.extraCharge) / calculations.totalAmount) * 100 : 0.5}%` 
                             }}
@@ -1858,10 +1859,10 @@ export function QuotationCreation() {
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
                           <div className="flex items-center gap-2">
-                            <AlertCircle className="w-4 h-4 text-indigo-500" />
-                            <span className="text-sm font-medium">Incidental Charges</span>
+                            <AlertCircle className="w-4 h-4 text-indigo-600" />
+                            <span className="text-sm font-medium text-gray-900">Incidental Charges</span>
                           </div>
-                          <span className="font-semibold">
+                          <span className="font-semibold text-gray-900">
                             {formatCurrency(formData.incidentalCharges.reduce((sum, val) => {
                               const found = INCIDENTAL_OPTIONS.find(opt => opt.value === val);
                               return sum + (found ? found.amount : 0);
@@ -1870,7 +1871,7 @@ export function QuotationCreation() {
                         </div>
                         <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                           <div 
-                            className="h-full bg-indigo-500 rounded-full transition-all duration-300"
+                            className="h-full bg-indigo-600 rounded-full transition-all duration-300"
                             style={{ 
                               width: `${calculations.totalAmount > 0 ? 
                                 (formData.incidentalCharges.reduce((sum, val) => {
@@ -1886,10 +1887,10 @@ export function QuotationCreation() {
                       <div className="space-y-2">
                         <div className="flex justify-between items-center">
                           <div className="flex items-center gap-2">
-                            <Users className="w-4 h-4 text-cyan-500" />
-                            <span className="text-sm font-medium">Other Factors</span>
+                            <Users className="w-4 h-4 text-cyan-600" />
+                            <span className="text-sm font-medium text-gray-900">Other Factors</span>
                           </div>
-                          <span className="font-semibold">
+                          <span className="font-semibold text-gray-900">
                             {formatCurrency(
                               (formData.otherFactors.includes('rigger') ? (additionalParams?.riggerAmount || 40000) : 0) + 
                               (formData.otherFactors.includes('helper') ? (additionalParams?.helperAmount || 12000) : 0)
@@ -1898,7 +1899,7 @@ export function QuotationCreation() {
                         </div>
                         <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
                           <div 
-                            className="h-full bg-cyan-500 rounded-full transition-all duration-300"
+                            className="h-full bg-cyan-600 rounded-full transition-all duration-300"
                             style={{ 
                               width: `${calculations.totalAmount > 0 ? 
                                 (((formData.otherFactors.includes('rigger') ? (additionalParams?.riggerAmount || 40000) : 0) + 
@@ -1910,23 +1911,23 @@ export function QuotationCreation() {
                       </div>
                     </div>
 
-                    <div className="mt-8 pt-6 border-t border-gray-100">
+                    <div className="mt-8 pt-6 border-t border-gray-200">
                       <div className="space-y-3">
-                        <div className="flex justify-between text-sm text-gray-600">
+                        <div className="flex justify-between text-sm text-gray-700">
                           <span>Subtotal</span>
-                          <span className="font-medium">{formatCurrency(calculations.totalAmount - calculations.gstAmount)}</span>
+                          <span className="font-medium text-gray-900">{formatCurrency(calculations.totalAmount - calculations.gstAmount)}</span>
                         </div>
                         
                         {formData.includeGst && (
-                          <div className="flex justify-between text-sm text-gray-600">
+                          <div className="flex justify-between text-sm text-gray-700">
                             <span>GST (18%)</span>
-                            <span className="font-medium">{formatCurrency(calculations.gstAmount)}</span>
+                            <span className="font-medium text-gray-900">{formatCurrency(calculations.gstAmount)}</span>
                           </div>
                         )}
                         
-                        <div className="flex justify-between items-center pt-3 border-t border-gray-200">
-                          <span className="text-lg font-semibold">Total Amount</span>
-                          <span className="text-2xl font-bold text-primary-600">
+                        <div className="flex justify-between items-center pt-3 border-t border-gray-300">
+                          <span className="text-lg font-semibold text-gray-900">Total Amount</span>
+                          <span className="text-2xl font-bold text-blue-600">
                             {formatCurrency(calculations.totalAmount)}
                           </span>
                         </div>
@@ -1942,11 +1943,11 @@ export function QuotationCreation() {
                             ...prev, 
                             includeGst: e.target.checked 
                           }))}
-                          className="mt-1 h-4 w-4 rounded border-gray-300 text-primary-600 focus:ring-primary-500"
+                          className="mt-1 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                         />
                         <div>
                           <div className="font-medium text-gray-900">Include GST</div>
-                          <div className="text-sm text-gray-500">
+                          <div className="text-sm text-gray-600">
                             GST will be calculated at 18% of the total amount
                           </div>
                         </div>
