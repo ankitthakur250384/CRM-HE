@@ -11,12 +11,7 @@ import {
   IndianRupee,
   AlertTriangle,
   Settings,
-  Calendar,
-  FileText,
-  Building2,
-  ChevronDown,
-  ChevronUp,
-  Info
+  Calendar
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/common/Card';
 import { Button } from '../components/common/Button';
@@ -34,12 +29,7 @@ import { createQuotation, updateQuotation, getQuotationById } from '../services/
 import { formatCurrency } from '../utils/formatters';
 import { useQuotationConfig, useConfigChangeListener } from '../hooks/useQuotationConfig';
 
-const ORDER_TYPES = [
-  { value: 'micro', label: 'Micro' },
-  { value: 'small', label: 'Small' },
-  { value: 'monthly', label: 'Monthly' },
-  { value: 'yearly', label: 'Yearly' },
-];
+
 
 const MACHINE_TYPES = [
   { value: '', label: 'Select machine type...' },
@@ -90,10 +80,6 @@ const INCIDENTAL_OPTIONS = [
   { value: 'incident3', label: 'Incident 3 - ₹15,000', amount: 15000 },
 ];
 
-// These constants are now dynamically fetched from configuration
-// const RIGGER_AMOUNT = 40000;
-// const HELPER_AMOUNT = 12000;
-
 interface SelectedMachine {
   id: string;
   machineType: string;
@@ -129,15 +115,6 @@ export function QuotationCreation() {
   const dealId = searchParams.get('dealId') || '';
   const quotationId = searchParams.get('quotationId');
 
-  // Debug: Log dealId on mount and show warning if dealId is missing
-  useEffect(() => {
-    console.log('[QuotationCreation] Loaded with dealId:', dealId, 'quotationId:', quotationId);
-    // Don't redirect immediately - let the form load and show warning instead
-    if (!dealId) {
-      console.warn('[QuotationCreation] No dealId provided - creating new quotation');
-    }
-  }, [dealId, quotationId, navigate]);
-
   // Configuration management with auto-refresh
   const {
     quotationConfig,
@@ -149,26 +126,6 @@ export function QuotationCreation() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedEquipmentBaseRate, setSelectedEquipmentBaseRate] = useState<number>(0);
-  // Remove this state since we're getting it from the hook now
-  // const [resourceRates, setResourceRates] = useState<{
-  //   foodRate: number;
-  //   accommodationRate: number;
-  //   transportRate?: number;
-  // }>({
-  //   foodRate: 0,
-  //   accommodationRate: 0,
-  //   transportRate: 0
-  // });
-
-  const [expandedCards, setExpandedCards] = useState<Record<string, boolean>>({
-    duration: true,
-    orderType: true,
-    machineSelection: true,
-    workingHours: true,
-    accommodation: true,
-    mobDemob: true,
-    additional: true
-  });
 
   const [toast, setToast] = useState<{
     show: boolean;
@@ -190,7 +147,7 @@ export function QuotationCreation() {
         yearly: 0
       }
     },
-    selectedMachines: [], // Initialize empty array for multiple machines
+    selectedMachines: [],
     orderType: 'micro',
     numberOfDays: 0,
     workingHours: 8,
@@ -243,7 +200,6 @@ export function QuotationCreation() {
 
   useConfigChangeListener('quotationConfigUpdated', (detail) => {
     console.log('Quotation configuration updated, checking order type...', detail);
-    // Recalculate order type if needed
     if (formData.numberOfDays > 0) {
       const newOrderType = determineOrderType(formData.numberOfDays);
       if (newOrderType !== formData.orderType) {
@@ -254,21 +210,19 @@ export function QuotationCreation() {
   });
 
   useEffect(() => {
-    fetchData(); // Always fetch data, regardless of dealId
+    fetchData();
   }, [dealId, quotationId]);
 
   useEffect(() => {
     calculateQuotation();
   }, [formData, selectedEquipmentBaseRate]);
 
-  // Specific effect to ensure immediate recalculation when working hours change
   useEffect(() => {
     if (formData.workingHours !== undefined) {
       calculateQuotation();
     }
   }, [formData.workingHours]);
   
-  // Effect to update the selected equipment base rate when order type changes
   useEffect(() => {
     if (formData.orderType && formData.selectedEquipment?.id && Array.isArray(availableEquipment) && availableEquipment.length > 0) {
       const selected = availableEquipment.find(eq => eq.id === formData.selectedEquipment.id);
@@ -278,15 +232,12 @@ export function QuotationCreation() {
       }
     }
     
-    // Also update base rates for all machines when order type changes
     if (formData.selectedMachines.length > 0 && Array.isArray(availableEquipment) && availableEquipment.length > 0) {
       setFormData(prev => ({
         ...prev,
         selectedMachines: prev.selectedMachines.map(machine => {
-          // Try to find the machine in available equipment
           const equipmentDetails = availableEquipment.find(eq => eq.id === machine.id);
           if (equipmentDetails?.baseRates) {
-            // Update the base rate for the new order type
             return {
               ...machine,
               baseRate: equipmentDetails.baseRates[formData.orderType] || machine.baseRate
@@ -303,7 +254,6 @@ export function QuotationCreation() {
       const fetchEquipment = async () => {
         try {
           const equipment = await getEquipmentByCategory(formData.machineType as CraneCategory);
-          // Ensure we always set an array
           setAvailableEquipment(Array.isArray(equipment) ? equipment : []);
         } catch (error) {
           console.error('Error fetching equipment:', error);
@@ -316,32 +266,15 @@ export function QuotationCreation() {
     }
   }, [formData.machineType]);
 
-  useEffect(() => {
-    if (formData.selectedEquipment && Array.isArray(availableEquipment) && availableEquipment.length > 0) {
-      const selected = availableEquipment.find(eq => eq.id === formData.selectedEquipment.id);
-      if (selected?.baseRates) {
-        const baseRate = selected.baseRates[formData.orderType];
-        setSelectedEquipmentBaseRate(baseRate);
-        setFormData(prev => ({
-          ...prev,
-          baseRate,
-          runningCostPerKm: selected.runningCostPerKm || 0
-        }));
-      }
-    }
-  }, [formData.orderType, formData.selectedEquipment, availableEquipment]);
-
   const fetchData = async () => {
     try {
       setIsLoading(true);
       console.log('[QuotationCreation] Fetching data with dealId:', dealId, 'quotationId:', quotationId);
 
-      // Check for navigation state
       const navState = location.state as any;
       let existingQuotation = null;
       let dealData = null;
 
-      // Handle navigation state if available
       if (navState) {
         if (navState.quotation) {
           existingQuotation = navState.quotation;
@@ -354,7 +287,6 @@ export function QuotationCreation() {
         }
       }
 
-      // Fetch deal data if not in navigation state and dealId is provided
       if (!dealData && dealId) {
         try {
           dealData = await getDealById(dealId);
@@ -411,16 +343,13 @@ export function QuotationCreation() {
         } as Deal);
       }
 
-      // Fetch equipment data
       const equipmentData = await getEquipment();
       console.log('Fetched equipment data:', equipmentData);
       setAvailableEquipment(equipmentData);
 
-      // If editing an existing quotation, use navigation state data first, then fetch if needed
       if (quotationId) {
         let quotationToLoad = existingQuotation;
         
-        // If no quotation in navigation state, fetch from API
         if (!quotationToLoad) {
           try {
             console.log('[QuotationCreation] Fetching existing quotation from API:', quotationId);
@@ -434,7 +363,6 @@ export function QuotationCreation() {
         if (quotationToLoad) {
           console.log('[QuotationCreation] Loading quotation data for ID:', quotationToLoad.id);
           
-          // Prefill form with existing quotation data
           const updatedFormData = {
             ...formData,
             machineType: quotationToLoad.machineType || '',
@@ -477,7 +405,6 @@ export function QuotationCreation() {
           console.log('[QuotationCreation] Form data populated with', Object.keys(updatedFormData).length, 'fields');
           setFormData(updatedFormData);
 
-          // If there's selected equipment, set the base rate
           if (quotationToLoad.selectedEquipment?.id && equipmentData) {
             const selected = equipmentData.find((eq: any) => eq.id === quotationToLoad.selectedEquipment.id);
             if (selected?.baseRates) {
@@ -486,7 +413,6 @@ export function QuotationCreation() {
             }
           }
 
-          // Try to fetch deal data for the quotation if not already loaded
           if (!dealData && quotationToLoad.dealId) {
             try {
               const quotationDeal = await getDealById(quotationToLoad.dealId);
@@ -503,7 +429,6 @@ export function QuotationCreation() {
           showToast('Quotation not found', 'warning');
         }
       } else {
-        // Set available equipment for new quotations
         setAvailableEquipment(equipmentData);
       }
 
@@ -520,7 +445,7 @@ export function QuotationCreation() {
     if (!quotationConfig?.orderTypeLimits) return 'micro';
     
     const limits = quotationConfig.orderTypeLimits;
-    if (days <= 0) return 'micro'; // Default for no days entered
+    if (days <= 0) return 'micro';
     if (days >= limits.yearly.minDays) return 'yearly';
     if (days >= limits.monthly.minDays) return 'monthly';
     if (days >= limits.small.minDays) return 'small';
@@ -530,10 +455,7 @@ export function QuotationCreation() {
   const calculateQuotation = () => {
     console.log("Calculating quotation with working hours:", formData.workingHours);
     
-    // Check if we have multiple machines or need to use the single machine
     const hasMachines = formData.selectedMachines.length > 0;
-    
-    // Use the selectedEquipmentBaseRate for single machine mode
     const effectiveBaseRate = selectedEquipmentBaseRate;
     
     if (!formData.numberOfDays || (!hasMachines && !effectiveBaseRate)) {
@@ -552,120 +474,95 @@ export function QuotationCreation() {
       return;
     }
 
-    const days = Number(formData.numberOfDays);
-    const isMonthly = days > 25;
-    const effectiveDays = isMonthly ? 26 : days;
-    const workingHours = calculateWorkingHours(effectiveDays);
-    const shiftMultiplier = formData.shift === 'double' ? 2 : 1;
-    
+    const numberOfDays = Number(formData.numberOfDays);
+    const workingHours = Number(formData.workingHours) || 8;
+    const totalHours = numberOfDays * workingHours;
+
+    // Calculate working cost based on whether we have machines or single equipment
     let workingCost = 0;
-    // Use 8 hours as default if workingHours is 0 or undefined
-    const actualHours = formData.workingHours === 0 ? 8 : Number(formData.workingHours) || 8;
-    
     if (hasMachines) {
-      // Calculate working cost for all machines
-      formData.selectedMachines.forEach(machine => {
-        const machineBaseRate = machine.baseRate;
-        const machineQuantity = machine.quantity;
-        let machineCost = 0;
-        
-        if (isMonthly) {
-          const hourlyRate = (machineBaseRate / 26) / actualHours;
-          machineCost = hourlyRate * actualHours * effectiveDays * shiftMultiplier * machineQuantity;
+      workingCost = formData.selectedMachines.reduce((total, machine) => {
+        const baseRate = machine.baseRate * machine.quantity;
+        if (formData.orderType === 'monthly') {
+          return total + baseRate * Math.ceil(numberOfDays / 26);
         } else {
-          machineCost = machineBaseRate * actualHours * effectiveDays * shiftMultiplier * machineQuantity;
+          return total + (baseRate * totalHours);
         }
-        
-        workingCost += machineCost;
-      });
+      }, 0);
     } else {
-      // Use original single machine calculation
-      if (isMonthly) {
-        const hourlyRate = (effectiveBaseRate / 26) / actualHours;
-        workingCost = hourlyRate * actualHours * effectiveDays * shiftMultiplier;
+      if (formData.orderType === 'monthly') {
+        workingCost = effectiveBaseRate * Math.ceil(numberOfDays / 26);
       } else {
-        // Make sure we're using actualHours here, not the calculated workingHours
-        workingCost = effectiveBaseRate * actualHours * effectiveDays * shiftMultiplier;
+        workingCost = effectiveBaseRate * totalHours;
       }
     }
 
-    // Calculate usage load factor by summing it for each machine
-    const usagePercentage = formData.usage === 'heavy' ? 0.10 : 0.05;
-    let usageLoadFactor = 0;
-    
-    if (hasMachines) {
-      // Calculate usage load factor for all machines
-      formData.selectedMachines.forEach(machine => {
-        usageLoadFactor += machine.baseRate * machine.quantity * usagePercentage;
-      });
-    } else {
-      // Fallback to single machine
-      usageLoadFactor = effectiveBaseRate * usagePercentage;
-    }
-    
-    let foodAccomCost;
-    if (isMonthly) {
-      foodAccomCost = (
-        (Number(formData.foodResources) * (resourceRates?.foodRate ?? 0)) +
-        (Number(formData.accomResources) * (resourceRates?.accommodationRate ?? 0))
-      );
-    } else {
-      const foodDailyRate = (resourceRates?.foodRate ?? 0) / 26;
-      const accomDailyRate = (resourceRates?.accommodationRate ?? 0) / 26;
-      foodAccomCost = (
-        (Number(formData.foodResources) * foodDailyRate +
-        Number(formData.accomResources) * accomDailyRate) *
-        effectiveDays
-      );
+    // Food & Accommodation costs
+    const foodRate = resourceRates?.foodRate || 0;
+    const accomRate = resourceRates?.accommodationRate || 0;
+    const foodCost = (formData.foodResources || 0) * foodRate * numberOfDays;
+    const accomCost = (formData.accomResources || 0) * accomRate * numberOfDays;
+    const foodAccomCost = foodCost + accomCost;
+
+    // Mobilization/Demobilization costs
+    let mobDemobCost = 0;
+    if (formData.mobDemob > 0) {
+      mobDemobCost = formData.mobDemob;
+    } else if (formData.siteDistance > 0) {
+      if (hasMachines) {
+        mobDemobCost = formData.selectedMachines.reduce((total, machine) => {
+          const distance = formData.siteDistance || 0;
+          const runningCostPerKm = machine.runningCostPerKm || 0;
+          const machineCost = (distance * 2 * runningCostPerKm) + 5000; // Default trailer cost
+          return total + (machineCost * machine.quantity);
+        }, 0);
+      } else {
+        const distance = formData.siteDistance || 0;
+        const runningCostPerKm = formData.runningCostPerKm || 0;
+        mobDemobCost = (distance * 2 * runningCostPerKm) + 5000; // Default trailer cost
+      }
+      
+      if (formData.mobRelaxation > 0) {
+        mobDemobCost = mobDemobCost * (1 - (formData.mobRelaxation / 100));
+      }
     }
 
-    const mobDemobCost = calculateMobDemobCost();
-    
-    // Calculate risk adjustment considering each machine's base rate
-    let riskAdjustment = 0;
-    const riskPercentage = formData.riskFactor === 'high' ? 0.15 : 
-                           formData.riskFactor === 'medium' ? 0.10 : 0.05;
-    
-    if (hasMachines) {
-      // Calculate risk adjustment for all machines
-      formData.selectedMachines.forEach(machine => {
-        riskAdjustment += machine.baseRate * machine.quantity * riskPercentage;
-      });
-    } else {
-      // Fallback to single machine
-      riskAdjustment = effectiveBaseRate * riskPercentage;
-    }
+    // Risk & Usage adjustments
+    const baseForRiskCalc = workingCost;
+    let riskPercentage = 0;
+    let usagePercentage = 0;
 
-    const incidentalChargesTotal = formData.incidentalCharges.reduce((sum, val) => {
+    if (formData.riskFactor === 'high') riskPercentage = 0.15;
+    else if (formData.riskFactor === 'medium') riskPercentage = 0.10;
+    else riskPercentage = 0.05;
+
+    if (formData.usage === 'heavy') usagePercentage = 0.10;
+    else usagePercentage = 0.05;
+
+    const riskAdjustment = baseForRiskCalc * riskPercentage;
+    const usageLoadFactor = baseForRiskCalc * usagePercentage;
+
+    // Additional charges
+    const extraCharges = Number(formData.extraCharge) || 0;
+    
+    const incidentalTotal = formData.incidentalCharges.reduce((sum, val) => {
       const found = INCIDENTAL_OPTIONS.find(opt => opt.value === val);
       return sum + (found ? found.amount : 0);
     }, 0);
-    
-    let otherFactorsTotal = 0;
-    if (formData.otherFactors.includes('rigger')) otherFactorsTotal += additionalParams?.riggerAmount || 40000;
-    if (formData.otherFactors.includes('helper')) otherFactorsTotal += additionalParams?.helperAmount || 12000;
-    
-    const extraCharges = (
-      Number(formData.extraCharge) +
-      incidentalChargesTotal +
-      otherFactorsTotal
-    );
-    
-    const subtotal = (
-      workingCost +
-      foodAccomCost +
-      mobDemobCost +
-      riskAdjustment +
-      usageLoadFactor +
-      extraCharges
-    );
-    
+
+    const otherFactorsTotal = (formData.otherFactors.includes('rigger') ? (additionalParams?.riggerAmount || 40000) : 0) + 
+                            (formData.otherFactors.includes('helper') ? (additionalParams?.helperAmount || 12000) : 0);
+
+    // Calculate subtotal
+    const subtotal = workingCost + foodAccomCost + mobDemobCost + riskAdjustment + usageLoadFactor + extraCharges + incidentalTotal + otherFactorsTotal;
+
+    // GST calculation
     const gstAmount = formData.includeGst ? subtotal * 0.18 : 0;
     const totalAmount = subtotal + gstAmount;
-    
+
     setCalculations({
       baseRate: effectiveBaseRate,
-      totalHours: isMonthly ? 0 : workingHours,
+      totalHours,
       workingCost,
       mobDemobCost,
       foodAccomCost,
@@ -677,71 +574,17 @@ export function QuotationCreation() {
     });
   };
 
-  const calculateWorkingHours = (days: number): number => {
-    // Use 8 as default only when workingHours is 0 or undefined
-    const baseHours = formData.workingHours === 0 ? 8 : Number(formData.workingHours) || 8;
-    const shiftMultiplier = formData.shift === 'double' ? 2 : 1;
-    return baseHours * days * shiftMultiplier;
-  };
-
-  const calculateMobDemobCost = (): number => {
-    const distance = Number(formData.siteDistance);
-    const trailerCost = Number(formData.mobDemob) || 0;
-    const mobRelaxationPercent = Number(formData.mobRelaxation) || 0;
-    
-    // If we have multiple machines, calculate mob/demob for each
-    if (formData.selectedMachines.length > 0) {
-      let totalMobDemobCost = 0;
-      
-      formData.selectedMachines.forEach(machine => {
-        // Get running cost from the machine or look it up in available equipment
-        let runningCostPerKm = machine.runningCostPerKm || 0;
-        
-        // If machine doesn't have running cost yet, try to find it in available equipment
-        if (runningCostPerKm === 0 && Array.isArray(availableEquipment)) {
-          const matchedEquipment = availableEquipment.find(eq => eq.id === machine.id);
-          if (matchedEquipment) {
-            runningCostPerKm = matchedEquipment?.runningCostPerKm ?? 0;
-          }
-        }
-        
-        // Calculate mobilization and demobilization costs for this machine
-        const distToSiteCost = distance * runningCostPerKm * 2 * machine.quantity;
-        const mobRelaxationAmount = (distToSiteCost * mobRelaxationPercent) / 100;
-        
-        // Calculate final cost including trailer cost per machine quantity
-        const machineMobDemobCost = (distToSiteCost - mobRelaxationAmount) + (trailerCost * machine.quantity);
-        
-        totalMobDemobCost += machineMobDemobCost;
-      });
-      
-      return totalMobDemobCost;
-    } else {
-      // Fall back to original calculation for a single machine
-      const selectedEquip = Array.isArray(availableEquipment) ? availableEquipment.find(eq => eq.id === formData.selectedEquipment.id) : null;
-      const runningCostPerKm = selectedEquip?.runningCostPerKm ?? 0;
-      
-      const distToSiteCost = distance * runningCostPerKm * 2;
-      const mobRelaxationAmount = (distToSiteCost * mobRelaxationPercent) / 100;
-      const finalMobDemobCost = (distToSiteCost - mobRelaxationAmount) + trailerCost;
-      
-      return finalMobDemobCost;
-    }
-  };
-
-  const toggleCard = (cardName: string) => {
-    setExpandedCards(prev => ({
-      ...prev,
-      [cardName]: !prev[cardName]
-    }));
+  const showToast = (title: string, variant: 'success' | 'error' | 'warning' = 'success', description?: string) => {
+    setToast({ show: true, title, description, variant });
+    setTimeout(() => setToast({ show: false, title: '' }), 5000);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Allow submission even without deal data (for new quotations)
-    if (!deal && dealId) {
-      showToast('Deal information is not available. Creating quotation with available data.', 'warning');
+    if (!formData.numberOfDays || formData.numberOfDays === 0) {
+      showToast('Please enter the number of days', 'error');
+      return;
     }
 
     if (formData.selectedMachines.length === 0 && !formData.selectedEquipment.id) {
@@ -749,234 +592,47 @@ export function QuotationCreation() {
       return;
     }
 
-    if (formData.numberOfDays <= 0) {
-      showToast('Please enter valid number of days', 'error');
-      return;
-    }
-
     try {
       setIsSaving(true);
-      console.log('Current calculations:', calculations);
-
+      
       const quotationData = {
         ...formData,
-        dealId: deal?.id || dealId || 'new',  // Include the deal ID or fallback
-        leadId: deal?.leadId || '',  // Include the original lead ID from the deal
-        customerId: deal?.customerId || '',
-        customerName: deal?.customer?.name || 'New Customer',
+        dealId: dealId || 'new',
+        customerName: formData.customerName || deal?.customer?.name || '',
         customerContact: {
-          name: deal?.customer?.name || 'New Customer',
-          email: deal?.customer?.email || '',
-          phone: deal?.customer?.phone || '',
-          company: deal?.customer?.company || '',
-          address: deal?.customer?.address || '',
-          designation: deal?.customer?.designation || ''
+          name: formData.customerContact?.name || deal?.customer?.name || '',
+          email: formData.customerContact?.email || deal?.customer?.email || '',
+          phone: formData.customerContact?.phone || deal?.customer?.phone || '',
+          company: formData.customerContact?.company || deal?.customer?.company || '',
+          address: formData.customerContact?.address || deal?.customer?.address || '',
+          designation: formData.customerContact?.designation || deal?.customer?.designation || ''
         },
-        // Ensure both selectedEquipment and selectedMachines are included
-        selectedEquipment: formData.selectedEquipment,
-        selectedMachines: formData.selectedMachines,
-        totalRent: calculations.totalAmount,
-        baseRate: calculations.baseRate,
-        workingCost: calculations.workingCost,
-        mobDemobCost: calculations.mobDemobCost,
-        foodAccomCost: calculations.foodAccomCost,
-        usageLoadFactor: calculations.usageLoadFactor,
-        extraCharges: calculations.extraCharges,
-        riskAdjustment: calculations.riskAdjustment,
-        gstAmount: calculations.gstAmount,
-        sundayWorking: formData.sundayWorking || 'no'
+        calculations,
+        totalAmount: calculations.totalAmount,
+        createdBy: user?.id || '',
+        updatedAt: new Date().toISOString()
       };
 
-      console.log('Submitting quotation data:', quotationData);
-
-      let savedQuotation;
       if (quotationId) {
-        // Update existing quotation
-        savedQuotation = await updateQuotation(quotationId, {
-          ...quotationData,
-          version: formData.version + 1
-        });
+        await updateQuotation(quotationId, quotationData);
         showToast('Quotation updated successfully', 'success');
       } else {
-        // Create new quotation
-        console.log('🔍 Creating quotation with data:', {
-          ...quotationData,
-          selectedMachines: quotationData.selectedMachines?.map(m => ({
-            id: m.id,
-            name: m.name,
-            quantity: m.quantity,
-            baseRate: m.baseRate
-          })) || []
-        });
-        savedQuotation = await createQuotation(quotationData);
+        await createQuotation(quotationData);
         showToast('Quotation created successfully', 'success');
       }
-
-      console.log('Saved quotation:', savedQuotation);
+      
       navigate('/quotations');
     } catch (error) {
-      console.error('❌ Error saving quotation:', error);
-      console.error('❌ Error details:', {
-        message: (error as any)?.message,
-        response: (error as any)?.response?.data || (error as any)?.response,
-        status: (error as any)?.response?.status
-      });
+      console.error('Error saving quotation:', error);
       showToast('Error saving quotation', 'error');
     } finally {
       setIsSaving(false);
     }
   };
 
-  const showToast = (
-    title: string,
-    variant: 'success' | 'error' | 'warning' = 'success',
-    description?: string
-  ) => {
-    setToast({ show: true, title, variant, description });
-    setTimeout(() => setToast({ show: false, title: '' }), 3000);
-  };
-
-  const handleEquipmentSelect = (equipmentId: string) => {
-    const selected = Array.isArray(availableEquipment) ? availableEquipment.find(eq => eq.id === equipmentId) : null;
-    if (selected && selected.baseRates) {
-      const baseRate = selected.baseRates[formData.orderType];
-      setSelectedEquipmentBaseRate(baseRate);
-      
-      setFormData(prev => ({
-        ...prev,
-        selectedEquipment: {
-          id: selected.id,
-          equipmentId: selected.equipmentId,
-          name: selected.name,
-          baseRates: selected.baseRates
-        },
-        runningCostPerKm: selected.runningCostPerKm || 0
-      }));
-    }
-  };
-
-  const handleMachineTypeChange = (value: string) => {
-    setFormData(prev => ({
-      ...prev,
-      machineType: value,
-      selectedEquipment: {
-        id: '',
-        equipmentId: '',
-        name: '',
-        baseRates: {
-          micro: 0,
-          small: 0,
-          monthly: 0,
-          yearly: 0
-        }
-      }
-    }));
-    setSelectedEquipmentBaseRate(0);
-  };
-
-  const addMachine = () => {
-    if (!formData.machineType || !formData.selectedEquipment.id) {
-      showToast('Please select a machine type and equipment first', 'warning');
-      return;
-    }
-
-    // Check if this machine is already added
-    const machineExists = formData.selectedMachines.some(
-      m => m.id === formData.selectedEquipment.id
-    );
-
-    if (machineExists) {
-      // If machine already exists, increment quantity instead of adding a new one
-      updateMachineQuantity(formData.selectedEquipment.id, 1);
-      return;
-    }
-
-    const selected = Array.isArray(availableEquipment) ? availableEquipment.find(eq => eq.id === formData.selectedEquipment.id) : null;
-    if (!selected) {
-      showToast('Selected equipment not found', 'error');
-      return;
-    }
-
-    const newMachine: SelectedMachine = {
-      id: selected.id,
-      machineType: formData.machineType,
-      equipmentId: selected.equipmentId,
-      name: selected.name,
-      baseRates: selected.baseRates || {},
-      baseRate: selected.baseRates?.[formData.orderType] || 0,
-      runningCostPerKm: selected.runningCostPerKm || 0,
-      quantity: 1
-    };
-
-    setFormData(prev => ({
-      ...prev,
-      selectedMachines: [...prev.selectedMachines, newMachine]
-    }));
-
-    // Reset the machine selection fields
-    setFormData(prev => ({
-      ...prev,
-      machineType: '',
-      selectedEquipment: {
-        id: '',
-        equipmentId: '',
-        name: '',
-        baseRates: {
-          micro: 0,
-          small: 0,
-          monthly: 0,
-          yearly: 0
-        }
-      },
-      baseRate: 0
-    }));
-    
-    setSelectedEquipmentBaseRate(0);
-  };
-
-  const removeMachine = (machineId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      selectedMachines: prev.selectedMachines.filter(m => m.id !== machineId)
-    }));
-  };
-
-  const updateMachineQuantity = (machineId: string, change: number) => {
-    setFormData(prev => ({
-      ...prev,
-      selectedMachines: prev.selectedMachines.map(m => {
-        if (m.id === machineId) {
-          const newQuantity = Math.max(1, m.quantity + change); // Ensure quantity is at least 1
-          return { ...m, quantity: newQuantity };
-        }
-        return m;
-      })
-    }));
-  };
-
-  const updateMachineBaseRate = (machineId: string, baseRate: number) => {
-    setFormData(prev => ({
-      ...prev,
-      selectedMachines: prev.selectedMachines.map(m => {
-        if (m.id === machineId) {
-          return { ...m, baseRate };
-        }
-        return m;
-      })
-    }));
-  };
-
-  if (!user || (user.role !== 'sales_agent' && user.role !== 'admin')) {
-    return (
-      <div className="p-4 text-center text-gray-500">
-        You don't have permission to access this page.
-      </div>
-    );
-  }
-
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center h-64">
+      <div className="container mx-auto px-4 py-8 max-w-7xl">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary-600 mx-auto"></div>
           <p className="mt-2 text-gray-600">Loading quotation form...</p>
@@ -985,12 +641,10 @@ export function QuotationCreation() {
     );
   }
 
-  // Always render the form - deal will be populated during fetchData
   return (
     <div className="space-y-4 sm:space-y-6">
       <style>
         {`
-          /* Remove number input spinners */
           input[type="number"]::-webkit-inner-spin-button,
           input[type="number"]::-webkit-outer-spin-button {
             -webkit-appearance: none;
@@ -1025,917 +679,479 @@ export function QuotationCreation() {
         </div>
       </div>
 
-      <div className="max-w-full md:max-w-7xl mx-auto px-2 sm:px-4">
-        {/* Customer Information Card */}
-        <Card className="mb-4 sm:mb-6 shadow-sm hover:shadow-md transition-shadow duration-200">
-          <CardHeader>
+      <form onSubmit={handleSubmit} className="max-w-full mx-auto px-2 sm:px-4">
+        <RequiredFieldsInfo />
+        
+        {/* Customer Information Card - Compact */}
+        <Card className="mb-6 shadow-sm hover:shadow-md transition-shadow duration-200">
+          <CardHeader className="pb-4">
             <div className="flex items-center space-x-2">
-              <Users className="w-4 h-4 sm:w-5 sm:h-5 text-gray-500" />
-              <CardTitle className="text-base sm:text-lg font-medium">Customer Information</CardTitle>
+              <Users className="w-5 h-5 text-gray-500" />
+              <CardTitle className="text-lg font-medium">Customer Information</CardTitle>
             </div>
           </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-6">
-              <div className="space-y-1 sm:space-y-2">
-                <div className="text-xs sm:text-sm text-gray-700">Customer Name</div>
-                <div className="text-sm sm:text-base font-semibold text-gray-900">
-                  {formData.customerName || deal?.customer?.name || <span className='text-gray-500'>N/A</span>}
+          <CardContent className="pt-0">
+            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 text-sm">
+              <div>
+                <div className="text-gray-600 mb-1">Customer</div>
+                <div className="font-semibold text-gray-900">
+                  {formData.customerName || deal?.customer?.name || 'N/A'}
                 </div>
               </div>
-              <div className="space-y-1 sm:space-y-2">
-                <div className="text-xs sm:text-sm text-gray-700">Company</div>
-                <div className="text-sm sm:text-base font-semibold text-gray-900">
-                  {formData.customerContact?.company || deal?.customer?.company || <span className='text-gray-500'>N/A</span>}
+              <div>
+                <div className="text-gray-600 mb-1">Company</div>
+                <div className="font-semibold text-gray-900">
+                  {formData.customerContact?.company || deal?.customer?.company || 'N/A'}
                 </div>
               </div>
-              <div className="space-y-1 sm:space-y-2">
-                <div className="text-xs sm:text-sm text-gray-700">Designation</div>
-                <div className="text-sm sm:text-base font-semibold text-gray-900">
-                  {formData.customerContact?.designation || deal?.customer?.designation || <span className='text-gray-500'>N/A</span>}
+              <div>
+                <div className="text-gray-600 mb-1">Email</div>
+                <div className="font-semibold text-gray-900 break-all">
+                  {formData.customerContact?.email || deal?.customer?.email || 'N/A'}
                 </div>
               </div>
-              <div className="space-y-1 sm:space-y-2">
-                <div className="text-xs sm:text-sm text-gray-700">Email</div>
-                <div className="text-sm sm:text-base font-semibold text-gray-900 break-all">
-                  {formData.customerContact?.email || deal?.customer?.email || <span className='text-gray-500'>N/A</span>}
+              <div>
+                <div className="text-gray-600 mb-1">Phone</div>
+                <div className="font-semibold text-gray-900">
+                  {formData.customerContact?.phone || deal?.customer?.phone || 'N/A'}
                 </div>
               </div>
-              <div className="space-y-1 sm:space-y-2">
-                <div className="text-xs sm:text-sm text-gray-700">Phone</div>
-                <div className="text-sm sm:text-base font-semibold text-gray-900">
-                  {formData.customerContact?.phone || deal?.customer?.phone || <span className='text-gray-500'>N/A</span>}
+              <div>
+                <div className="text-gray-600 mb-1">Designation</div>
+                <div className="font-semibold text-gray-900">
+                  {formData.customerContact?.designation || deal?.customer?.designation || 'N/A'}
                 </div>
               </div>
-              <div className="space-y-1 sm:space-y-2">
-                <div className="text-xs sm:text-sm text-gray-700">Address</div>
-                <div className="text-sm sm:text-base font-semibold text-gray-900">
-                  {formData.customerContact?.address || deal?.customer?.address || <span className='text-gray-500'>N/A</span>}
+              <div>
+                <div className="text-gray-600 mb-1">Address</div>
+                <div className="font-semibold text-gray-900">
+                  {formData.customerContact?.address || deal?.customer?.address || 'N/A'}
                 </div>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <form onSubmit={handleSubmit}>
-          <RequiredFieldsInfo />
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-            {/* Left Column - Form Fields */}
-            <div className="space-y-6">
-              {/* Duration Card */}
-              <Card className="shadow-sm hover:shadow-md transition-shadow duration-200">
-                <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors duration-200" onClick={() => toggleCard('duration')}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <Calendar className="w-5 h-5 text-gray-500" />
-                      <CardTitle className="text-lg font-medium">Duration</CardTitle>
-                    </div>
-                    {expandedCards.duration ? (
-                      <ChevronUp className="h-5 w-5 text-gray-400" />
-                    ) : (
-                      <ChevronDown className="h-5 w-5 text-gray-400" />
-                    )}
-                  </div>
+        <div className="flex flex-col xl:flex-row gap-6">
+          {/* Left Column - Form Fields */}
+          <div className="flex-1 space-y-4">
+            {/* Basic Information Row */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+              <Card className="shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base font-medium flex items-center gap-2">
+                    <Calendar className="w-4 h-4 text-gray-500" />
+                    Duration
+                  </CardTitle>
                 </CardHeader>
-                {expandedCards.duration && (
-                  <CardContent className="pt-4 space-y-4">
-                    <FormInput
-                      type="number"
-                      label="Number of Days"
-                      value={formData.numberOfDays || ''}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                        const days = e.target.value === '' ? 0 : Number(e.target.value);
-                        // Always determine the order type based on the number of days
-                        const newOrderType = determineOrderType(days);
-                        console.log(`Days: ${days}, Order Type: ${newOrderType}`);
+                <CardContent className="pt-0 space-y-3">
+                  <FormInput
+                    type="number"
+                    label="Number of Days"
+                    value={formData.numberOfDays || ''}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      const days = e.target.value === '' ? 0 : Number(e.target.value);
+                      const newOrderType = determineOrderType(days);
+                      
+                      setFormData(prev => {
+                        const orderTypeChanged = days > 0 && newOrderType !== prev.orderType;
+                        let updatedMachines = [...prev.selectedMachines];
+                        if (orderTypeChanged) {
+                          updatedMachines = prev.selectedMachines.map(machine => ({
+                            ...machine,
+                            baseRate: machine.baseRates?.[newOrderType] || machine.baseRate
+                          }));
+                        }
                         
-                        setFormData(prev => {
-                          // If order type changes due to day change, update base rates for machines
-                          const orderTypeChanged = days > 0 && newOrderType !== prev.orderType;
-                          
-                          // If order type changed, update base rates for all machines
-                          let updatedMachines = [...prev.selectedMachines];
-                          if (orderTypeChanged) {
-                            updatedMachines = prev.selectedMachines.map(machine => ({
-                              ...machine,
-                              baseRate: machine.baseRates?.[newOrderType] || machine.baseRate
-                            }));
-                          }
-                          
-                          return {
-                            ...prev,
-                            numberOfDays: days,
-                            orderType: days > 0 ? newOrderType : prev.orderType,
-                            selectedMachines: updatedMachines
-                          };
-                        });
-                      }}
-                      required
-                      min="1"
-                      placeholder="Enter number of days"
-                    />
-                    {formData.numberOfDays > 0 && selectedEquipmentBaseRate > 0 && (
-                      <div className="mt-2 space-y-1">
-                        {formData.orderType !== 'monthly' ? (
-                          <div className="text-sm text-gray-600">
-                            Daily Rate: {formatCurrency(selectedEquipmentBaseRate * (formData.workingHours === 0 ? 8 : Number(formData.workingHours) || 8))}/day
-                          </div>
-                        ) : (
-                          <div className="text-sm text-gray-600">
-                            Monthly Rate: {formatCurrency(selectedEquipmentBaseRate)}/month
-                          </div>
-                        )}
-                        <div className="text-sm font-medium text-primary-600">
-                          {quotationConfig?.orderTypeLimits && Number(formData.numberOfDays) >= quotationConfig.orderTypeLimits.yearly.minDays ? 'Yearly rate' :
-                           quotationConfig?.orderTypeLimits && Number(formData.numberOfDays) >= quotationConfig.orderTypeLimits.monthly.minDays ? 'Monthly rate' :
-                           quotationConfig?.orderTypeLimits && Number(formData.numberOfDays) >= quotationConfig.orderTypeLimits.small.minDays ? 'Small order rate' :
-                           'Micro order rate'}
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                )}
+                        return {
+                          ...prev,
+                          numberOfDays: days,
+                          orderType: days > 0 ? newOrderType : prev.orderType,
+                          selectedMachines: updatedMachines
+                        };
+                      });
+                    }}
+                    required
+                    min="1"
+                    placeholder="Enter days"
+                  />
+                  <FormInput
+                    type="number"
+                    label="Working Hours/Day"
+                    value={formData.workingHours || ''}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      const hours = Number(e.target.value) || 8;
+                      setFormData(prev => ({ ...prev, workingHours: hours }));
+                    }}
+                    min="1"
+                    max="24"
+                    placeholder="8"
+                  />
+                </CardContent>
               </Card>
 
-              {/* Order Type Card */}
-              <Card className="shadow-sm hover:shadow-md transition-shadow duration-200">
-                <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors duration-200" onClick={() => toggleCard('orderType')}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <FileText className="w-5 h-5 text-gray-500" />
-                      <CardTitle className="text-lg font-medium">Order Type</CardTitle>
-                    </div>
-                    {expandedCards.orderType ? (
-                      <ChevronUp className="h-5 w-5 text-gray-400" />
-                    ) : (
-                      <ChevronDown className="h-5 w-5 text-gray-400" />
-                    )}
-                  </div>
+              <Card className="shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base font-medium flex items-center gap-2">
+                    <Truck className="w-4 h-4 text-gray-500" />
+                    Machine Selection
+                  </CardTitle>
                 </CardHeader>
-                {expandedCards.orderType && (
-                  <CardContent className="pt-4 space-y-4">
+                <CardContent className="pt-0 space-y-3">
+                  <Select
+                    label="Machine Type"
+                    value={formData.machineType}
+                    onChange={(value: string) => setFormData(prev => ({ 
+                      ...prev, 
+                      machineType: value,
+                      selectedEquipment: { id: '', equipmentId: '', name: '', baseRates: { micro: 0, small: 0, monthly: 0, yearly: 0 } },
+                      selectedMachines: []
+                    }))}
+                    options={MACHINE_TYPES}
+                    required
+                  />
+                  
+                  {formData.machineType && (
                     <Select
-                      label="Order Type"
-                      options={ORDER_TYPES}
-                      value={formData.orderType}
-                      onChange={(value) => {
-                        // Only allow changing order type when number of days is 0
-                        if (Number(formData.numberOfDays) === 0) {
+                      label="Equipment"
+                      value={formData.selectedEquipment.id}
+                      onChange={(value: string) => {
+                        const selected = availableEquipment.find(eq => eq.id === value);
+                        if (selected) {
+                          const baseRate = selected.baseRates[formData.orderType];
+                          setSelectedEquipmentBaseRate(baseRate);
                           setFormData(prev => ({
                             ...prev,
-                            orderType: value as OrderType
+                            selectedEquipment: {
+                              id: selected.id,
+                              equipmentId: selected.equipmentId,
+                              name: selected.name,
+                              baseRates: selected.baseRates
+                            },
+                            baseRate,
+                            runningCostPerKm: selected.runningCostPerKm || 0
                           }));
                         }
                       }}
-                      disabled={Number(formData.numberOfDays) > 0}
+                      options={[
+                        { value: '', label: 'Select equipment...' },
+                        ...availableEquipment.map(eq => ({ value: eq.id, label: `${eq.name} (${eq.equipmentId})` }))
+                      ]}
+                      required={formData.selectedMachines.length === 0}
                     />
-                    {Number(formData.numberOfDays) > 0 ? (
-                      <div className="mt-2 text-sm text-amber-600">
-                        {quotationConfig?.orderTypeLimits && Number(formData.numberOfDays) >= quotationConfig.orderTypeLimits.yearly.minDays ? 'Order type is set to Yearly as duration exceeds ' + (quotationConfig.orderTypeLimits.yearly.minDays - 1) + ' days' :
-                         quotationConfig?.orderTypeLimits && Number(formData.numberOfDays) >= quotationConfig.orderTypeLimits.monthly.minDays ? 'Order type is set to Monthly as duration exceeds ' + (quotationConfig.orderTypeLimits.monthly.minDays - 1) + ' days' :
-                         quotationConfig?.orderTypeLimits && Number(formData.numberOfDays) >= quotationConfig.orderTypeLimits.small.minDays ? 'Order type is set to Small as duration is between ' + quotationConfig.orderTypeLimits.small.minDays + '-' + quotationConfig.orderTypeLimits.small.maxDays + ' days' :
-                         quotationConfig?.orderTypeLimits ? 'Order type is set to Micro as duration is ' + quotationConfig.orderTypeLimits.micro.maxDays + ' days or less' : 'Loading configuration...'}
-                      </div>
-                    ) : (
-                      <div className="mt-2 text-sm text-gray-500 flex items-center">
-                        <Info className="w-4 h-4 mr-1.5" />
-                        <span>Order type will be automatically set based on the number of days</span>
-                      </div>
-                    )}
-                  </CardContent>
-                )}
+                  )}
+                </CardContent>
               </Card>
 
-              {/* Machine Selection Card */}
-              <Card className="shadow-sm hover:shadow-md transition-shadow duration-200">
-                <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors duration-200" onClick={() => toggleCard('machineSelection')}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <Truck className="w-5 h-5 text-gray-500" />
-                      <div>
-                        <CardTitle className="text-lg font-medium">Machine Selection</CardTitle>
-                        <p className="text-sm text-gray-500 flex items-center">
-                          You can add multiple machines to this quotation 
-                          <span className="ml-1 cursor-help text-gray-400 hover:text-gray-600 relative group">
-                            <Info className="h-4 w-4" />
-                            <span className="hidden group-hover:block absolute left-full ml-2 top-0 bg-gray-800 text-white text-xs rounded p-2 w-48">
-                              Add different types of machines or multiple units of the same machine using the Add Machine button
-                            </span>
-                          </span>
-                        </p>
-                      </div>
-                    </div>
-                    {expandedCards.machineSelection ? (
-                      <ChevronUp className="h-5 w-5 text-gray-400" />
-                    ) : (
-                      <ChevronDown className="h-5 w-5 text-gray-400" />
-                    )}
-                  </div>
+              <Card className="shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base font-medium flex items-center gap-2">
+                    <Settings className="w-4 h-4 text-gray-500" />
+                    Configuration
+                  </CardTitle>
                 </CardHeader>
-                {expandedCards.machineSelection && (
-                  <CardContent className="pt-4 space-y-4">
-                    {/* Selected Machines List */}
-                    {Array.isArray(formData.selectedMachines) && formData.selectedMachines.length > 0 && (
-                      <div className="mb-6">
-                        <div className="flex items-center justify-between">
-                          <h3 className="text-sm font-semibold mb-2 text-gray-700">Selected Machines ({formData.selectedMachines.length})</h3>
-                          <span className="text-xs text-gray-500 mb-2">You can edit the base rate and quantity for each machine</span>
-                        </div>
-                        <div className="space-y-3 bg-gray-50 p-3 rounded-md border border-gray-200">
-                          {(Array.isArray(formData.selectedMachines) ? formData.selectedMachines : []).map(machine => (
-                            <div 
-                              key={machine.id} 
-                              className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-md shadow-sm hover:shadow-md transition-shadow duration-200"
-                            >
-                              <div className="flex-grow">
-                                <div className="font-semibold text-gray-900">{machine.name}</div>
-                                <div className="text-sm text-gray-700 mb-2">ID: {machine.equipmentId}</div>
-                                {/* Base Rate Input */}
-                                <div className="flex items-center gap-2 mt-2 bg-gray-50 p-2 rounded-md border border-gray-100">
-                                  <label className="text-xs font-medium text-gray-900">Base Rate:</label>
-                                  <input
-                                    type="number"
-                                    className="border rounded px-2 py-1 w-24 text-sm text-gray-900"
-                                    value={machine.baseRate}
-                                    onChange={(e) => {
-                                      const value = Number(e.target.value);
-                                      if (!isNaN(value)) {
-                                        updateMachineBaseRate(machine.id, value);
-                                      }
-                                    }}
-                                  />
-                                  <span className="text-xs text-gray-700">
-                                    {formData.orderType === 'monthly' ? '/month' : '/hr'}
-                                  </span>
-                                </div>
-                              </div>
-
-                              <div className="flex flex-col items-end gap-3">
-                                <button
-                                  type="button"
-                                  className="p-1 text-gray-400 hover:text-error-500 transition-colors duration-150"
-                                  onClick={() => removeMachine(machine.id)}
-                                  title="Remove machine"
-                                >
-                                  <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                  </svg>
-                                </button>
-                                
-                                <div className="flex flex-col items-center">
-                                  <span className="text-xs text-gray-500 mb-1">Quantity</span>
-                                  <div className="flex items-center border rounded-md overflow-hidden">
-                                    <button
-                                      type="button"
-                                      className="px-2 py-1 bg-gray-100 hover:bg-gray-200 transition-colors duration-150"
-                                      onClick={() => updateMachineQuantity(machine.id, -1)}
-                                      disabled={machine.quantity <= 1}
-                                    >
-                                      -
-                                    </button>
-                                    <span className="px-3 py-1 font-medium">{machine.quantity}</span>
-                                    <button
-                                      type="button"
-                                      className="px-2 py-1 bg-gray-100 hover:bg-gray-200 transition-colors duration-150"
-                                      onClick={() => updateMachineQuantity(machine.id, 1)}
-                                    >
-                                      +
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    <div className="border-t pt-4 mt-4">
-                      <h3 className="text-sm font-semibold mb-2 text-gray-700">
-                        Add Machine
-                      </h3>
-                      <Select
-                        label="Machine Type"
-                        options={MACHINE_TYPES}
-                        value={formData.machineType}
-                        onChange={(value) => {
-                          handleMachineTypeChange(value);
-                        }}
-                      />
-
-                      {formData.machineType && (
-                        <div className="mt-3">
-                          <Select
-                            label="Select Equipment"
-                            options={[
-                              { value: '', label: 'Select equipment...' },
-                              ...(Array.isArray(availableEquipment) ? availableEquipment : []).map(eq => ({
-                                value: eq.id,
-                                label: `${eq.equipmentId} - ${eq.name} (${formatCurrency(eq.baseRates?.[formData.orderType] || 0)}${formData.orderType === 'monthly' ? '/month' : '/hr'})`,
-                              }))
-                            ]}
-                            value={formData.selectedEquipment.id}
-                            onChange={(value) => {
-                              // This will set the selectedEquipmentBaseRate
-                              handleEquipmentSelect(value);
-                            }}
-                          />
-                        </div>
-                      )}
-                      
-                      {!(Array.isArray(availableEquipment) && availableEquipment.length) && formData.machineType && (
-                        <div className="text-sm text-amber-600 mt-2">
-                          No available equipment found for this machine type
-                        </div>
-                      )}
-
-                      <div className="mt-4">
-                        <Button
-                          type="button"
-                          variant="default"
-                          onClick={addMachine}
-                          leftIcon={<svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                          </svg>}
-                          disabled={!formData.machineType || !formData.selectedEquipment.id}
-                          className="w-full"
-                          size="default"
-                        >
-                          {formData.selectedMachines.length === 0 ? 'Add Machine to Quotation' : 'Add Another Machine'}
-                        </Button>
-                        {formData.selectedMachines.length > 0 && (
-                          <p className="text-xs text-gray-500 text-center mt-2">
-                            You have added {formData.selectedMachines.length} machine{formData.selectedMachines.length > 1 ? 's' : ''} to this quotation
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                )}
-              </Card>
-
-              {/* Working Hours Card */}
-              <Card className="shadow-sm hover:shadow-md transition-shadow duration-200">
-                <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors duration-200" onClick={() => toggleCard('workingHours')}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <Clock className="w-5 h-5 text-gray-500" />
-                      <CardTitle className="text-lg font-medium">Working Hours</CardTitle>
-                    </div>
-                    {expandedCards.workingHours ? (
-                      <ChevronUp className="h-5 w-5 text-gray-400" />
-                    ) : (
-                      <ChevronDown className="h-5 w-5 text-gray-400" />
-                    )}
-                  </div>
-                </CardHeader>
-                {expandedCards.workingHours && (
-                  <CardContent className="pt-4 space-y-4">
-                    <Select
-                      label="Shift"
-                      options={SHIFT_OPTIONS}
-                      value={formData.shift}
-                      onChange={(value) => {
-                        setFormData(prev => ({
-                          ...prev,
-                          shift: value as 'single' | 'double'
-                        }));
-                      }}
-                    />
-                    <div>
-                      <FormInput
-                        type="number"
-                        label="Number of Hours"
-                        value={formData.workingHours === 0 ? '' : formData.workingHours}
-                        onChange={(e) => {
-                          const value = e.target.value;
-                          // Allow empty value for user editing
-                          if (value === '') {
-                            setFormData(prev => ({ ...prev, workingHours: 0 }));
-                          } else if (/^\d+$/.test(value)) {
-                            const numValue = parseInt(value, 10);
-                            if (numValue >= 1 && numValue <= 24) {
-                              setFormData(prev => ({ ...prev, workingHours: numValue }));
-                            }
-                          }
-                        }}
-                        required
-                        min="1"
-                        max="24"
-                        placeholder="Enter hours (default: 8)"
-                        step="1"
-                        autoComplete="off"
-                      />
-                      <div className="flex items-center mt-1.5 text-sm text-gray-600">
-                        <Clock className="w-4 h-4 mr-1.5" />
-                        <span>Standard single shift duration is 8 hours</span>
-                      </div>
-                    </div>
-                    <Select
-                      label="Day/Night"
-                      options={TIME_OPTIONS}
-                      value={formData.dayNight}
-                      onChange={(value) => setFormData(prev => ({ ...prev, dayNight: value as 'day' | 'night' }))}
-                    />
-                    <div className="flex items-center gap-2">
-                      <input
-                        type="checkbox"
-                        id="sundayWorking"
-                        checked={formData.sundayWorking === 'yes'}
-                        onChange={(e) => setFormData(prev => ({ 
-                          ...prev, 
-                          sundayWorking: e.target.checked ? 'yes' : 'no' 
-                        }))}
-                        className="rounded border-gray-300"
-                      />
-                      <label htmlFor="sundayWorking" className="text-sm">
-                        Sunday Working
-                      </label>
-                    </div>
-                  </CardContent>
-                )}
-              </Card>
-
-              {/* Accommodation Card */}
-              <Card className="shadow-sm hover:shadow-md transition-shadow duration-200">
-                <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors duration-200" onClick={() => toggleCard('accommodation')}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <Building2 className="w-5 h-5 text-gray-500" />
-                      <CardTitle className="text-lg font-medium">Accommodation</CardTitle>
-                    </div>
-                    {expandedCards.accommodation ? (
-                      <ChevronUp className="h-5 w-5 text-gray-400" />
-                    ) : (
-                      <ChevronDown className="h-5 w-5 text-gray-400" />
-                    )}
-                  </div>
-                </CardHeader>
-                {expandedCards.accommodation && (
-                  <CardContent className="pt-4 space-y-4">
-                    <div>
-                      <FormInput
-                        type="number"
-                        label="Number of Resources"
-                        value={formData.foodResources || ''}
-                        onChange={(e) => setFormData(prev => ({ ...prev, foodResources: e.target.value === '' ? 0 : Number(e.target.value) }))}
-                        placeholder="Enter number of resources"
-                      />
-                      <div className="text-sm text-gray-500 mt-1">
-                        Rate: ₹2500/month per resource
-                      </div>
-                    </div>
-                    <div>
-                      <FormInput
-                        type="number"
-                        label="Number of Resources"
-                        value={formData.accomResources || ''}
-                        onChange={(e) => setFormData(prev => ({ ...prev, accomResources: e.target.value === '' ? 0 : Number(e.target.value) }))}
-                        placeholder="Enter number of resources"
-                      />
-                      <div className="text-sm text-gray-500 mt-1">
-                        Rate: ₹4000/month per resource
-                      </div>
-                    </div>
-                  </CardContent>
-                )}
-              </Card>
-
-              {/* Mob - Demob Card */}
-              <Card className="shadow-sm hover:shadow-md transition-shadow duration-200">
-                <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors duration-200" onClick={() => toggleCard('mobDemob')}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <Truck className="w-5 h-5 text-gray-500" />
-                      <CardTitle className="text-lg font-medium">Mob - Demob</CardTitle>
-                    </div>
-                    {expandedCards.mobDemob ? (
-                      <ChevronUp className="h-5 w-5 text-gray-400" />
-                    ) : (
-                      <ChevronDown className="h-5 w-5 text-gray-400" />
-                    )}
-                  </div>
-                </CardHeader>
-                {expandedCards.mobDemob && (
-                  <CardContent className="pt-4 space-y-4">
-                    <div>
-                      <FormInput
-                        type="number"
-                        label="Distance to Site (km)"
-                        value={formData.siteDistance || ''}
-                        onChange={(e) => setFormData(prev => ({ ...prev, siteDistance: e.target.value === '' ? 0 : Number(e.target.value) }))}
-                        placeholder="Enter distance in kilometers"
-                      />
-                    </div>
-                    <div>
-                      <FormInput
-                        type="number"
-                        label="Trailer Cost"
-                        value={formData.mobDemob || ''}
-                        onChange={(e) => setFormData(prev => ({ ...prev, mobDemob: e.target.value === '' ? 0 : Number(e.target.value) }))}
-                        placeholder="Enter additional trailer charges"
-                      />
-                    </div>
-                    <div>
-                      <FormInput
-                        type="number"
-                        label="Mob Relaxation"
-                        value={formData.mobRelaxation || ''}
-                        onChange={(e) => setFormData(prev => ({ ...prev, mobRelaxation: e.target.value === '' ? 0 : Number(e.target.value) }))}
-                        placeholder="Enter relaxation value (X%)"
-                      />
-                      <div className="text-sm text-gray-500 mt-1">
-                        Enter percentage value for discount on distance cost
-                      </div>
-                    </div>
-                  </CardContent>
-                )}
-              </Card>
-
-              {/* Additional Parameters Card */}
-              <Card className="shadow-sm hover:shadow-md transition-shadow duration-200">
-                <CardHeader className="cursor-pointer hover:bg-gray-50 transition-colors duration-200" onClick={() => toggleCard('additional')}>
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <Settings className="w-5 h-5 text-gray-500" />
-                      <CardTitle className="text-lg font-medium">Additional Parameters</CardTitle>
-                    </div>
-                    {expandedCards.additional ? (
-                      <ChevronUp className="h-5 w-5 text-gray-400" />
-                    ) : (
-                      <ChevronDown className="h-5 w-5 text-gray-400" />
-                    )}
-                  </div>
-                </CardHeader>
-                {expandedCards.additional && (
-                  <CardContent className="pt-4 space-y-4">
-                    <Select
-                      label="Usage"
-                      options={USAGE_OPTIONS}
-                      value={formData.usage}
-                      onChange={(value) => setFormData(prev => ({ ...prev, usage: value as 'normal' | 'heavy' }))}
-                    />
-                    <div className="flex items-center mt-1.5 text-sm text-gray-600">
-                      <AlertTriangle className="w-4 h-4 mr-1.5" />
-                      <span>Usage rates: Normal - 5% of base rate | Heavy - 10% of base rate</span>
-                    </div>
-                    
-                    <Select
-                      label="Deal Type"
-                      options={DEAL_TYPES}
-                      value={formData.dealType || DEAL_TYPES[0].value}
-                      onChange={(value) => setFormData(prev => ({ ...prev, dealType: value || DEAL_TYPES[0].value }))}
-                    />
-                    
-                    {/* Removed duplicate Sunday Working select */}
-                    
-                    <FormInput
-                      type="number"
-                      label="Extra Commercial Charges"
-                      value={formData.extraCharge || ''}
-                      onChange={(e) => setFormData(prev => ({ ...prev, extraCharge: e.target.value === '' ? 0 : Number(e.target.value) }))}
-                      placeholder="Enter extra charges"
-                    />
-                    
-                    <Select
-                      label="Risk Factor"
-                      options={RISK_LEVELS}
-                      value={formData.riskFactor}
-                      onChange={(value) => setFormData(prev => ({ ...prev, riskFactor: value as 'low' | 'medium' | 'high' }))}
-                    />
-                    
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-700">Incidental Charges</label>
-                      <div className="space-y-2">
-                        {INCIDENTAL_OPTIONS.map(opt => (
-                          <label key={opt.value} className="flex items-center space-x-2 p-2 rounded hover:bg-gray-50 transition-colors duration-200">
-                            <input
-                              type="checkbox"
-                              checked={formData.incidentalCharges.includes(opt.value)}
-                              onChange={e => {
-                                setFormData(prev => ({
-                                  ...prev,
-                                  incidentalCharges: e.target.checked
-                                    ? [...prev.incidentalCharges, opt.value]
-                                    : prev.incidentalCharges.filter(val => val !== opt.value)
-                                }));
-                              }}
-                              className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                            />
-                            <span className="text-sm text-gray-700">{opt.label}</span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <label className="text-sm font-medium text-gray-700">Other Factors</label>
-                      <div className="space-y-2">
-                        {OTHER_FACTORS.map((factor) => (
-                          <label key={factor.value} className="flex items-center space-x-2 p-2 rounded hover:bg-gray-50 transition-colors duration-200">
-                            <input
-                              type="checkbox"
-                              checked={formData.otherFactors.includes(factor.value)}
-                              onChange={e => {
-                                setFormData(prev => ({
-                                  ...prev,
-                                  otherFactors: e.target.checked
-                                    ? [...prev.otherFactors, factor.value]
-                                    : prev.otherFactors.filter(f => f !== factor.value)
-                                }));
-                              }}
-                              className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"
-                            />
-                            <span className="text-sm text-gray-700">
-                              {factor.label}
-                              {factor.value === 'rigger' && ' (₹40,000)'}
-                              {factor.value === 'helper' && ' (₹12,000)'}
-                            </span>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  </CardContent>
-                )}
+                <CardContent className="pt-0 space-y-3">
+                  <Select
+                    label="Shift Type"
+                    value={formData.shift}
+                    onChange={(value: string) => setFormData(prev => ({ ...prev, shift: value as 'single' | 'double' }))}
+                    options={SHIFT_OPTIONS}
+                  />
+                  <Select
+                    label="Time"
+                    value={formData.dayNight}
+                    onChange={(value: string) => setFormData(prev => ({ ...prev, dayNight: value as 'day' | 'night' }))}
+                    options={TIME_OPTIONS}
+                  />
+                </CardContent>
               </Card>
             </div>
 
-            {/* Right Column - Summary */}
-            <div className="space-y-6">
-              <Card className="shadow-lg border-0 bg-white sticky top-6">
-                <CardHeader className="border-b border-gray-100 pb-6">
-                  <CardTitle className="text-xl font-semibold flex items-center gap-2 text-gray-900">
-                    <Calculator className="w-5 h-5 text-blue-600" />
-                    <span className="text-gray-900">Quotation Summary</span>
+            {/* Resources & Costs Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <Card className="shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base font-medium flex items-center gap-2">
+                    <Users className="w-4 h-4 text-gray-500" />
+                    Food & Accommodation
                   </CardTitle>
                 </CardHeader>
-                <CardContent className="pt-6">
-                  {selectedEquipmentBaseRate > 0 && !formData.selectedMachines.length && (
-                    <div className="mb-6 p-4 bg-blue-50 rounded-xl border border-blue-200">
-                      <div className="text-sm font-medium text-gray-900 mb-2">Equipment Details</div>
-                      <div className="text-2xl font-bold text-gray-900">
-                        ₹{formatCurrency(selectedEquipmentBaseRate).replace('₹', '')}
-                        <span className="text-base font-medium text-gray-700 ml-1">
-                          {formData.orderType === 'monthly' ? '/month' : '/hr'}
+                <CardContent className="pt-0 space-y-3">
+                  <FormInput
+                    type="number"
+                    label="Food Resources"
+                    value={formData.foodResources || ''}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      setFormData(prev => ({ ...prev, foodResources: Number(e.target.value) || 0 }));
+                    }}
+                    min="0"
+                    placeholder="Number of people"
+                  />
+                  <FormInput
+                    type="number"
+                    label="Accommodation Resources"
+                    value={formData.accomResources || ''}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      setFormData(prev => ({ ...prev, accomResources: Number(e.target.value) || 0 }));
+                    }}
+                    min="0"
+                    placeholder="Number of people"
+                  />
+                </CardContent>
+              </Card>
+
+              <Card className="shadow-sm">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base font-medium flex items-center gap-2">
+                    <Truck className="w-4 h-4 text-gray-500" />
+                    Transport & Site
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-0 space-y-3">
+                  <FormInput
+                    type="number"
+                    label="Site Distance (km)"
+                    value={formData.siteDistance || ''}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      setFormData(prev => ({ ...prev, siteDistance: Number(e.target.value) || 0 }));
+                    }}
+                    min="0"
+                    placeholder="Distance in km"
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <Select
+                      label="Usage"
+                      value={formData.usage}
+                      onChange={(value: string) => setFormData(prev => ({ ...prev, usage: value as 'normal' | 'heavy' }))}
+                      options={USAGE_OPTIONS}
+                    />
+                    <Select
+                      label="Risk Level"
+                      value={formData.riskFactor}
+                      onChange={(value: string) => setFormData(prev => ({ ...prev, riskFactor: value as 'low' | 'medium' | 'high' }))}
+                      options={RISK_LEVELS}
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Additional Charges Row */}
+            <Card className="shadow-sm mb-6">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base font-medium flex items-center gap-2">
+                  <IndianRupee className="w-4 h-4 text-gray-500" />
+                  Additional Charges
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <FormInput
+                    type="number"
+                    label="Extra Commercial Charges"
+                    value={formData.extraCharge || ''}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      setFormData(prev => ({ ...prev, extraCharge: Number(e.target.value) || 0 }));
+                    }}
+                    min="0"
+                    placeholder="₹0"
+                  />
+                  
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Incidental Charges</label>
+                    <div className="space-y-2">
+                      {INCIDENTAL_OPTIONS.map(option => (
+                        <label key={option.value} className="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={formData.incidentalCharges.includes(option.value)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  incidentalCharges: [...prev.incidentalCharges, option.value]
+                                }));
+                              } else {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  incidentalCharges: prev.incidentalCharges.filter(val => val !== option.value)
+                                }));
+                              }
+                            }}
+                            className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-sm text-gray-700">{option.label}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Other Factors</label>
+                    <div className="space-y-2">
+                      {OTHER_FACTORS.map(factor => (
+                        <label key={factor.value} className="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={formData.otherFactors.includes(factor.value)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  otherFactors: [...prev.otherFactors, factor.value]
+                                }));
+                              } else {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  otherFactors: prev.otherFactors.filter(val => val !== factor.value)
+                                }));
+                              }
+                            }}
+                            className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-sm text-gray-700">
+                            {factor.label}
+                            {factor.value === 'rigger' && ' (₹40,000)'}
+                            {factor.value === 'helper' && ' (₹12,000)'}
+                          </span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Action Buttons */}
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => navigate('/quotations')}
+                className="sm:flex-1"
+              >
+                Cancel
+              </Button>
+              <Button 
+                type="submit"
+                disabled={isSaving || (formData.selectedMachines.length === 0 && !formData.selectedEquipment.id)}
+                className="sm:flex-1 bg-primary-600 hover:bg-primary-700"
+                leftIcon={isSaving ? <Clock className="animate-spin" /> : <Save />}
+                variant="accent"
+              >
+                {isSaving ? 'Saving...' : quotationId ? 'Update Quotation' : 'Create Quotation'}
+              </Button>
+              {formData.selectedMachines.length === 0 && !formData.selectedEquipment.id && (
+                <div className="text-xs text-center text-amber-600 col-span-2">
+                  Please add at least one machine
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Right Column - Summary */}
+          <div className="w-full xl:w-[400px] flex-shrink-0">
+            <div className="sticky top-6">
+              <Card className="shadow-xl border border-gray-200 bg-white">
+                <CardHeader className="border-b border-gray-100 pb-4 bg-gradient-to-r from-blue-50 to-white">
+                  <CardTitle className="text-lg font-bold flex items-center gap-2 text-blue-800">
+                    <Calculator className="w-5 h-5 text-blue-600" />
+                    <span>Quotation Summary</span>
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-4">
+                  <div className="space-y-4">
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4 text-blue-600" />
+                        <span className="text-sm font-medium text-gray-900">Working Cost</span>
+                      </div>
+                      <span className="font-bold text-blue-900">{formatCurrency(calculations.workingCost)}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <Users className="w-4 h-4 text-green-600" />
+                        <span className="text-sm font-medium text-gray-900">Food & Accommodation</span>
+                      </div>
+                      <span className="font-bold text-green-900">{formatCurrency(calculations.foodAccomCost)}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <Truck className="w-4 h-4 text-orange-600" />
+                        <span className="text-sm font-medium text-gray-900">Mob/Demob Cost</span>
+                      </div>
+                      <span className="font-bold text-orange-900">{formatCurrency(calculations.mobDemobCost)}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <AlertTriangle className="w-4 h-4 text-red-600" />
+                        <span className="text-sm font-medium text-gray-900">Risk & Usage</span>
+                      </div>
+                      <span className="font-bold text-red-900">{formatCurrency(calculations.riskAdjustment + calculations.usageLoadFactor)}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <IndianRupee className="w-4 h-4 text-purple-600" />
+                        <span className="text-sm font-medium text-gray-900">Extra Commercial Charges</span>
+                      </div>
+                      <span className="font-bold text-purple-900">{formatCurrency(Number(formData.extraCharge))}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <AlertCircle className="w-4 h-4 text-indigo-600" />
+                        <span className="text-sm font-medium text-gray-900">Incidental Charges</span>
+                      </div>
+                      <span className="font-bold text-indigo-900">
+                        {formatCurrency(formData.incidentalCharges.reduce((sum, val) => {
+                          const found = INCIDENTAL_OPTIONS.find(opt => opt.value === val);
+                          return sum + (found ? found.amount : 0);
+                        }, 0))}
+                      </span>
+                    </div>
+
+                    <div className="flex justify-between items-center">
+                      <div className="flex items-center gap-2">
+                        <Users className="w-4 h-4 text-cyan-600" />
+                        <span className="text-sm font-medium text-gray-900">Other Factors</span>
+                      </div>
+                      <span className="font-bold text-cyan-900">
+                        {formatCurrency(
+                          (formData.otherFactors.includes('rigger') ? (additionalParams?.riggerAmount || 40000) : 0) + 
+                          (formData.otherFactors.includes('helper') ? (additionalParams?.helperAmount || 12000) : 0)
+                        )}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mt-6 pt-4 border-t border-gray-200">
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-sm text-gray-700">
+                        <span>Subtotal</span>
+                        <span className="font-semibold text-gray-900">{formatCurrency(calculations.totalAmount - calculations.gstAmount)}</span>
+                      </div>
+                      
+                      {formData.includeGst && (
+                        <div className="flex justify-between text-sm text-gray-700">
+                          <span>GST (18%)</span>
+                          <span className="font-semibold text-gray-900">{formatCurrency(calculations.gstAmount)}</span>
+                        </div>
+                      )}
+                      
+                      <div className="flex justify-between items-center pt-3 border-t border-gray-300">
+                        <span className="text-lg font-bold text-gray-900">Total Amount</span>
+                        <span className="text-2xl font-bold text-blue-600">
+                          {formatCurrency(calculations.totalAmount)}
                         </span>
                       </div>
-                      <div className="text-sm text-gray-700 mt-1">
-                        {formData.orderType.charAt(0).toUpperCase() + formData.orderType.slice(1)} Rate
-                      </div>
-                      {formData.orderType === 'monthly' && (
-                        <div className="mt-2 text-sm text-gray-600">
-                          <div className="flex items-center">
-                            <span>Hourly Rate: </span>
-                            <span className="font-medium ml-1">
-                              ₹{formatCurrency((selectedEquipmentBaseRate / 26) / (parseFloat(formData.workingHours.toString()) || 8)).replace('₹', '')}/hr
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                      {formData.numberOfDays && (
-                        <div className="mt-3 text-sm text-gray-600">
-                          <div className="flex justify-between items-center mb-1">
-                            <span>Total Days:</span>
-                            <span className="font-medium">
-                              {Number(formData.numberOfDays) > 25 ? '26 (Monthly)' : formData.numberOfDays}
-                            </span>
-                          </div>
-                          {formData.orderType !== 'monthly' && (
-                            <div className="flex justify-between items-center mb-1">
-                              <span>Hours per Day:</span>
-                              <span className="font-medium">
-                                {formData.workingHours === 0 ? 8 : formData.workingHours || 8}
-                              </span>
-                            </div>
-                          )}
-                          <div className="flex justify-between items-center">
-                            <span>Order Type:</span>
-                            <span className="font-medium">
-                              {formData.orderType.charAt(0).toUpperCase() + formData.orderType.slice(1)}
-                            </span>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  <div className="space-y-6">
-                    {/* Selected Machines Summary */}
-                    {formData.selectedMachines.length > 0 && (
-                      <div className="mb-6">
-                        <h3 className="text-sm font-semibold mb-2 text-gray-900">Selected Machines ({formData.selectedMachines.length})</h3>
-                        <div className="space-y-2 bg-gray-50 p-3 rounded-md border border-gray-200">
-                          {formData.selectedMachines.map(machine => (
-                            <div key={machine.id} className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-md shadow-sm">
-                              <div>
-                                <div className="font-medium text-gray-900">{machine.name}</div>
-                                <div className="text-sm text-gray-600">
-                                  {machine.quantity} unit{machine.quantity > 1 ? 's' : ''} × {formatCurrency(machine.baseRate)}{formData.orderType === 'monthly' ? '/month' : '/hr'}
-                                </div>
-                              </div>
-                              <div className="text-right">
-                                <div className="font-semibold text-gray-900">
-                                  {formatCurrency(machine.baseRate * machine.quantity)}
-                                  <span className="text-xs ml-1 text-gray-600">{formData.orderType === 'monthly' ? '/month' : '/hr'}</span>
-                                </div>
-                              </div>
-                            </div>
-                          ))}
-                          <div className="flex justify-between items-center p-2 mt-2 border-t border-gray-300">
-                            <div className="text-sm text-gray-700">Total machines value</div>
-                            <div className="font-semibold text-gray-900">
-                              {formatCurrency(formData.selectedMachines.reduce((total, m) => total + (m.baseRate * m.quantity), 0))}
-                              <span className="text-xs ml-1 text-gray-600">{formData.orderType === 'monthly' ? '/month' : '/hr'}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                    
-                    <div className="space-y-4">
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center gap-2">
-                            <Clock className="w-4 h-4 text-blue-600" />
-                            <span className="text-sm font-medium text-gray-900">Working Cost</span>
-                          </div>
-                          <span className="font-semibold text-gray-900">{formatCurrency(calculations.workingCost)}</span>
-                        </div>
-                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-blue-600 rounded-full transition-all duration-300"
-                            style={{ 
-                              width: `${calculations.totalAmount > 0 ? (calculations.workingCost / calculations.totalAmount) * 100 : 0.5}%` 
-                            }}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center gap-2">
-                            <Users className="w-4 h-4 text-green-600" />
-                            <span className="text-sm font-medium text-gray-900">Food & Accommodation</span>
-                          </div>
-                          <span className="font-semibold text-gray-900">{formatCurrency(calculations.foodAccomCost)}</span>
-                        </div>
-                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-green-600 rounded-full transition-all duration-300"
-                            style={{ 
-                              width: `${calculations.totalAmount > 0 ? (calculations.foodAccomCost / calculations.totalAmount) * 100 : 0.5}%` 
-                            }}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center gap-2">
-                            <Truck className="w-4 h-4 text-orange-600" />
-                            <span className="text-sm font-medium text-gray-900">Mob/Demob Cost</span>
-                            <div className="group relative inline-block">
-                              <Info className="h-3.5 w-3.5 text-gray-400 cursor-help" />
-                              <div className="opacity-0 bg-gray-800 text-white text-xs rounded p-2 absolute z-10 group-hover:opacity-100 bottom-full left-1/2 transform -translate-x-1/2 w-48">
-                                Cost calculated for each machine based on distance, running cost per km, and trailer cost.
-                              </div>
-                            </div>
-                          </div>
-                          <span className="font-semibold text-gray-900">{formatCurrency(calculations.mobDemobCost)}</span>
-                        </div>
-                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-orange-600 rounded-full transition-all duration-300"
-                            style={{ 
-                              width: `${calculations.totalAmount > 0 ? (calculations.mobDemobCost / calculations.totalAmount) * 100 : 0.5}%` 
-                            }}
-                          />
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center gap-2">
-                            <AlertTriangle className="w-4 h-4 text-red-600" />
-                            <span className="text-sm font-medium text-gray-900">Risk & Usage</span>
-                            <div className="group relative inline-block">
-                              <Info className="h-3.5 w-3.5 text-gray-400 cursor-help" />
-                              <div className="opacity-0 bg-gray-800 text-white text-xs rounded p-2 absolute z-10 group-hover:opacity-100 bottom-full left-1/2 transform -translate-x-1/2 w-48">
-                                Risk factor (5-15%) and usage load (5-10%) calculated for each machine based on its base rate and quantity.
-                              </div>
-                            </div>
-                          </div>
-                          <span className="font-semibold text-gray-900">{formatCurrency(calculations.riskAdjustment + calculations.usageLoadFactor)}</span>
-                        </div>
-                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-red-600 rounded-full transition-all duration-300"
-                            style={{ 
-                              width: `${calculations.totalAmount > 0 ? ((calculations.riskAdjustment + calculations.usageLoadFactor) / calculations.totalAmount) * 100 : 0.5}%` 
-                            }}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Extra Commercial Charges */}
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center gap-2">
-                            <IndianRupee className="w-4 h-4 text-purple-600" />
-                            <span className="text-sm font-medium text-gray-900">Extra Commercial Charges</span>
-                          </div>
-                          <span className="font-semibold text-gray-900">{formatCurrency(Number(formData.extraCharge))}</span>
-                        </div>
-                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-purple-600 rounded-full transition-all duration-300"
-                            style={{ 
-                              width: `${calculations.totalAmount > 0 ? (Number(formData.extraCharge) / calculations.totalAmount) * 100 : 0.5}%` 
-                            }}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Incidental Charges */}
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center gap-2">
-                            <AlertCircle className="w-4 h-4 text-indigo-600" />
-                            <span className="text-sm font-medium text-gray-900">Incidental Charges</span>
-                          </div>
-                          <span className="font-semibold text-gray-900">
-                            {formatCurrency(formData.incidentalCharges.reduce((sum, val) => {
-                              const found = INCIDENTAL_OPTIONS.find(opt => opt.value === val);
-                              return sum + (found ? found.amount : 0);
-                            }, 0))}
-                          </span>
-                        </div>
-                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-indigo-600 rounded-full transition-all duration-300"
-                            style={{ 
-                              width: `${calculations.totalAmount > 0 ? 
-                                (formData.incidentalCharges.reduce((sum, val) => {
-                                  const found = INCIDENTAL_OPTIONS.find(opt => opt.value === val);
-                                  return sum + (found ? found.amount : 0);
-                                }, 0) / calculations.totalAmount) * 100 : 0.5}%` 
-                            }}
-                          />
-                        </div>
-                      </div>
-
-                      {/* Other Factors Charges */}
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center">
-                          <div className="flex items-center gap-2">
-                            <Users className="w-4 h-4 text-cyan-600" />
-                            <span className="text-sm font-medium text-gray-900">Other Factors</span>
-                          </div>
-                          <span className="font-semibold text-gray-900">
-                            {formatCurrency(
-                              (formData.otherFactors.includes('rigger') ? (additionalParams?.riggerAmount || 40000) : 0) + 
-                              (formData.otherFactors.includes('helper') ? (additionalParams?.helperAmount || 12000) : 0)
-                            )}
-                          </span>
-                        </div>
-                        <div className="h-1.5 bg-gray-100 rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-cyan-600 rounded-full transition-all duration-300"
-                            style={{ 
-                              width: `${calculations.totalAmount > 0 ? 
-                                (((formData.otherFactors.includes('rigger') ? (additionalParams?.riggerAmount || 40000) : 0) + 
-                                (formData.otherFactors.includes('helper') ? (additionalParams?.helperAmount || 12000) : 0)) / 
-                                calculations.totalAmount) * 100 : 0.5}%` 
-                            }}
-                          />
-                        </div>
-                      </div>
                     </div>
 
-                    <div className="mt-8 pt-6 border-t border-gray-200">
-                      <div className="space-y-3">
-                        <div className="flex justify-between text-sm text-gray-700">
-                          <span>Subtotal</span>
-                          <span className="font-medium text-gray-900">{formatCurrency(calculations.totalAmount - calculations.gstAmount)}</span>
-                        </div>
-                        
-                        {formData.includeGst && (
-                          <div className="flex justify-between text-sm text-gray-700">
-                            <span>GST (18%)</span>
-                            <span className="font-medium text-gray-900">{formatCurrency(calculations.gstAmount)}</span>
-                          </div>
-                        )}
-                        
-                        <div className="flex justify-between items-center pt-3 border-t border-gray-300">
-                          <span className="text-lg font-semibold text-gray-900">Total Amount</span>
-                          <span className="text-2xl font-bold text-blue-600">
-                            {formatCurrency(calculations.totalAmount)}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="mt-6">
-                      <label className="flex items-start gap-3 p-4 rounded-xl bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors duration-200">
+                    <div className="mt-4">
+                      <label className="flex items-start gap-3 p-3 rounded-lg bg-gray-50 cursor-pointer hover:bg-gray-100 transition-colors duration-200">
                         <input
                           type="checkbox"
                           checked={formData.includeGst}
@@ -1956,39 +1172,10 @@ export function QuotationCreation() {
                   </div>
                 </CardContent>
               </Card>
-
-              <div className="flex flex-col sm:flex-row gap-3 mt-4 sm:mt-6">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => navigate('/quotations')}
-                  className="sm:flex-1 order-2 sm:order-1"
-                  size="default"
-                >
-                  Cancel
-                </Button>
-                <div className="sm:flex-1 order-1 sm:order-2">
-                  <Button 
-                    type="submit"
-                    disabled={isSaving || (formData.selectedMachines.length === 0 && !formData.selectedEquipment.id)}
-                    className="w-full bg-primary-600 hover:bg-primary-700"
-                    leftIcon={isSaving ? <Clock className="animate-spin" /> : <Save />}
-                    size="default"
-                    variant="accent"
-                  >
-                    {isSaving ? 'Saving...' : quotationId ? 'Update Quotation' : 'Create Quotation'}
-                  </Button>
-                  {formData.selectedMachines.length === 0 && !formData.selectedEquipment.id && (
-                    <div className="mt-1 text-xs text-center text-amber-600">
-                      Please add at least one machine
-                    </div>
-                  )}
-                </div>
-              </div>
             </div>
           </div>
-        </form>
-      </div>
+        </div>
+      </form>
 
       {/* Toast Notifications */}
       {toast.show && (
