@@ -828,6 +828,7 @@ ASP Cranes Team`;
                   template={defaultTemplate}
                   onDownloadPDF={() => handleDownloadPDF(selectedQuotation)}
                   onSendEmail={() => handleSendToCustomer(selectedQuotation)}
+                  enablePrintOptions={true}
                 />
               </div>
               {/* QuotationSummary is now inside TemplatePreview */}
