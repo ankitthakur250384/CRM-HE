@@ -1,0 +1,87 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  database:
+    image: postgres:14
+    container_name: asp_cranes_db
+    environment:
+      POSTGRES_DB: asp_cranes
+      POSTGRES_USER: ${DB_USER:-asp_user}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-your_secure_password}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+      - ./database/aspcranes_backup.sql:/docker-entrypoint-initdb.d/02-backup.sql
+      - ./insert_missing_configs.sql:/docker-entrypoint-initdb.d/03-configs.sql
+    ports:
+      - "5432:5432"
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # Backend Service
+  backend:
+    build:
+      context: ./crm-app/backend
+      dockerfile: Dockerfile
+    container_name: asp_cranes_backend
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${DB_USER:-asp_user}:${DB_PASSWORD:-your_secure_password}@database:5432/asp_cranes
+      JWT_SECRET: ${JWT_SECRET:-your_jwt_secret_key}
+      PORT: 3001
+    ports:
+      - "3001:3001"
+    depends_on:
+      - database
+    networks:
+      - app-network
+    restart: unless-stopped
+    volumes:
+      - ./crm-app/backend/logs:/app/logs
+
+  # Frontend Service
+  frontend:
+    build:
+      context: ./crm-app/frontend
+      dockerfile: Dockerfile
+    container_name: asp_cranes_frontend
+    environment:
+      NODE_ENV: production
+      VITE_API_URL: https://www.avariq.in/api
+      VITE_APP_BASE_PATH: /lander
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+    networks:
+      - app-network
+    restart: unless-stopped
+
+  # Nginx Reverse Proxy
+  nginx:
+    build:
+      context: ./nginx
+      dockerfile: Dockerfile
+    container_name: asp_cranes_nginx
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - frontend
+      - backend
+    networks:
+      - app-network
+    restart: unless-stopped
+    volumes:
+      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf
+      - ./ssl:/etc/nginx/ssl  # SSL certificates
+      - ./nginx/logs:/var/log/nginx
+
+volumes:
+  postgres_data:
+
+networks:
+  app-network:
+    driver: bridge

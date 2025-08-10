@@ -20,7 +20,6 @@ import { Modal } from '../components/common/Modal';
 import { Toast } from '../components/common/Toast';
 import { StatusBadge } from '../components/common/StatusBadge';
 import { TemplatePreview } from '../components/quotations/TemplatePreview';
-import { QuotationSummary } from './QuotationSummary';
 import { useAuthStore } from '../store/authStore';
 import { Quotation } from '../types/quotation';
 import { Template } from '../types/template';

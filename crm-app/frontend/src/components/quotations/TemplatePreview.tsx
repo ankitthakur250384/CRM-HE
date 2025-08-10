@@ -1,4 +1,19 @@
 import { useState, useEffect } from 'react';
+// Utility: Filter mergedContent or data based on selectedOptions
+function filterContentByOptions(mergedContent: string, selectedOptions: string[]) {
+  // Example: Remove sections from mergedContent that are not in selectedOptions
+  // This is a placeholder. You should adapt this to your template structure.
+  let filteredContent = mergedContent;
+
+  // Example: Remove customer details if not selected
+  if (!selectedOptions.includes('customer_details')) {
+    filteredContent = filteredContent.replace(/<div[^>]*id=["']customer-details["'][^>]*>[\s\S]*?<\/div>/gi, '');
+  }
+  // Add similar blocks for other options as needed
+
+  // You can also use selectedOptions to filter data objects before rendering
+  return filteredContent;
+}
 import { Card, CardHeader, CardTitle, CardContent } from '../common/Card';
 import { Button } from '../common/Button';
 import { Toast } from '../common/Toast';
@@ -6,6 +21,7 @@ import { Template } from '../../types/template';
 import { Quotation } from '../../types/quotation';
 import { mergeQuotationWithTemplate } from '../../utils/templateMerger';
 import { QuotationSummary } from '../../pages/QuotationSummary';
+import { PrintOptionsModal } from './PrintOptionsModal';
 import { FileText, Info, Download, Send, RefreshCw } from 'lucide-react';
 
 // Sample quotation data for preview when no quotation is provided
@@ -102,12 +118,13 @@ interface TemplatePreviewProps {
 
 export function TemplatePreview({ 
   template, 
-  quotation, 
+  quotation,
   onDownloadPDF, 
   onSendEmail,
   className = '' 
 }: TemplatePreviewProps) {
   const [showPlaceholders, setShowPlaceholders] = useState(false);
+  const [showPrintOptions, setShowPrintOptions] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [toast, setToast] = useState<{
     show: boolean;
@@ -180,6 +197,33 @@ export function TemplatePreview({
     });
   };
 
+  const handleDownload = () => {
+    setShowPrintOptions(true);
+  };
+
+  // This function will filter the content based on selected options and trigger PDF generation
+  const handlePrintWithOptions = (selectedOptions: string[]) => {
+    showToast(`Generating PDF with ${selectedOptions.length} selected options`, 'success');
+    // Filter the content based on selected options
+    const filteredContent = filterContentByOptions(mergedContent, selectedOptions);
+
+    // Example: Use html2pdf or jsPDF to generate PDF from filteredContent
+    // Here is a placeholder for integration:
+    // html2pdf().from(filteredContent).save();
+    // OR
+    // const doc = new jsPDF();
+    // doc.text(filteredContent, 10, 10);
+    // doc.save('quotation.pdf');
+
+    // For now, just log the filtered content
+    console.log('Filtered content for PDF:', filteredContent);
+
+    // If you want to use the original onDownloadPDF, you can pass filteredContent or selectedOptions
+    if (onDownloadPDF) {
+      onDownloadPDF();
+    }
+  };
+
   if (error) {
     return (
       <div className="bg-red-50 border border-red-200 rounded-lg p-3 sm:p-4">
@@ -208,17 +252,15 @@ export function TemplatePreview({
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2 sm:gap-0">
                 <CardTitle className="text-base sm:text-lg">Quotation Preview</CardTitle>
                 <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-                  {onDownloadPDF && (
-                    <Button
-                      variant="outline"
-                      size="xs"
-                      onClick={onDownloadPDF}
-                      className="flex items-center gap-1 w-full sm:w-auto"
-                    >
-                      <Download className="w-3 h-3 sm:w-4 sm:h-4" />
-                      Download PDF
-                    </Button>
-                  )}
+                  <Button
+                    variant="outline"
+                    size="xs"
+                    onClick={handleDownload}
+                    className="flex items-center gap-1 w-full sm:w-auto"
+                  >
+                    <Download className="w-3 h-3 sm:w-4 sm:h-4" />
+                    Download PDF
+                  </Button>
                   {onSendEmail && (
                     <Button
                       variant="outline"
@@ -266,13 +308,13 @@ export function TemplatePreview({
           <QuotationSummary 
             calculations={{
               workingCost: previewQuotation.workingCost || 0,
-              foodAccomCost: previewQuotation.foodAccomCost || 0,
-              mobDemobCost: previewQuotation.mobDemobCost || 0,
-              riskAdjustment: previewQuotation.riskAdjustment || 0,
-              usageLoadFactor: previewQuotation.usageLoadFactor || 0,
-              extraCharges: previewQuotation.extraCharges || 0,
-              gstAmount: previewQuotation.gstAmount || 0,
-              totalAmount: previewQuotation.totalRent || 0
+              foodAccomCost: ((previewQuotation.foodResources || 0) + (previewQuotation.accomResources || 0)) * (previewQuotation.numberOfDays || 1),
+              mobDemobCost: previewQuotation.mobDemob || 0,
+              riskAdjustment: previewQuotation.riskFactor === 'high' ? 10000 : previewQuotation.riskFactor === 'medium' ? 5000 : 0,
+              usageLoadFactor: previewQuotation.usage === 'heavy' ? 5000 : 0,
+              extraCharges: previewQuotation.extraCharge || 0,
+              gstAmount: previewQuotation.includeGst ? Math.round((previewQuotation.totalRent || 0) * 0.18) : 0,
+              totalAmount: previewQuotation.includeGst ? Math.round((previewQuotation.totalRent || 0) * 1.18) : (previewQuotation.totalRent || 0)
             }}
             formData={{
               extraCharge: previewQuotation.extraCharge || 0,
@@ -370,6 +412,13 @@ export function TemplatePreview({
           onClose={() => setToast({ show: false, title: '' })}
         />
       )}
+
+      {/* Print Options Modal */}
+      <PrintOptionsModal
+        isOpen={showPrintOptions}
+        onClose={() => setShowPrintOptions(false)}
+        onPrint={handlePrintWithOptions}
+      />
     </div>
   );
 }
