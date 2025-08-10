@@ -20,6 +20,7 @@ import { Modal } from '../components/common/Modal';
 import { Toast } from '../components/common/Toast';
 import { StatusBadge } from '../components/common/StatusBadge';
 import { TemplatePreview } from '../components/quotations/TemplatePreview';
+import { PrintOptionsModal } from '../components/quotations/PrintOptionsModal';
 import { useAuthStore } from '../store/authStore';
 import { Quotation } from '../types/quotation';
 import { Template } from '../types/template';
@@ -369,9 +370,32 @@ export function QuotationManagement() {
     }
   };
 
-  const handleDownloadPDF = async (quotation: Quotation) => {
+  // State for print options modal
+  const [showPrintOptions, setShowPrintOptions] = useState(false);
+  const [printOptionsQuotation, setPrintOptionsQuotation] = useState<Quotation | null>(null);
+
+  // Show modal on download click
+  const handleDownloadClick = (quotation: Quotation) => {
+    setPrintOptionsQuotation(quotation);
+    setShowPrintOptions(true);
+  };
+
+  // Called when user confirms print options
+  const handlePrintWithOptions = (selectedOptions: string[]) => {
+    if (printOptionsQuotation) {
+      handleDownloadPDF(printOptionsQuotation, selectedOptions);
+    }
+    setShowPrintOptions(false);
+    setPrintOptionsQuotation(null);
+  };
+
+  // PDF generation logic (now takes selectedOptions)
+  const handleDownloadPDF = async (quotation: Quotation, selectedOptions?: string[]) => {
     try {
       setIsGeneratingPDF(true);
+      
+      // TODO: Use selectedOptions to filter PDF content
+      console.log('Selected options for PDF:', selectedOptions);
       
       if (!defaultTemplate) {
         showToast('No default template configured', 'warning', 'Please set a default template in Configuration settings.');
@@ -687,7 +711,7 @@ ASP Cranes Team`;
                             <Button
                               variant="ghost"
                               size="xs"
-                              onClick={() => handleDownloadPDF(quotation)}
+                              onClick={() => handleDownloadClick(quotation)}
                               disabled={isGeneratingPDF || !defaultTemplate || isLoading}
                               title="Download PDF"
                             >
@@ -828,7 +852,6 @@ ASP Cranes Team`;
                   template={defaultTemplate}
                   onDownloadPDF={() => handleDownloadPDF(selectedQuotation)}
                   onSendEmail={() => handleSendToCustomer(selectedQuotation)}
-                  enablePrintOptions={true}
                 />
               </div>
               {/* QuotationSummary is now inside TemplatePreview */}
@@ -844,6 +867,13 @@ ASP Cranes Team`;
             onClose={() => setToast({ show: false, title: '' })}
           />
         )}
+
+        {/* Print Options Modal for table download */}
+        <PrintOptionsModal
+          isOpen={showPrintOptions}
+          onClose={() => setShowPrintOptions(false)}
+          onPrint={handlePrintWithOptions}
+        />
       </div>
     </div>
   );

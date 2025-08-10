@@ -114,7 +114,6 @@ interface TemplatePreviewProps {
   onDownloadPDF?: () => void;
   onSendEmail?: () => void;
   className?: string;
-  enablePrintOptions?: boolean; // New prop to control print options modal
 }
 
 export function TemplatePreview({ 
@@ -122,8 +121,7 @@ export function TemplatePreview({
   quotation,
   onDownloadPDF, 
   onSendEmail,
-  className = '',
-  enablePrintOptions = true // Default to true to show print options modal
+  className = ''
 }: TemplatePreviewProps) {
   const [showPlaceholders, setShowPlaceholders] = useState(false);
   const [showPrintOptions, setShowPrintOptions] = useState(false);
@@ -200,13 +198,7 @@ export function TemplatePreview({
   };
 
   const handleDownload = () => {
-    if (enablePrintOptions) {
-      // Show print options modal
-      setShowPrintOptions(true);
-    } else if (onDownloadPDF) {
-      // Direct PDF download without options
-      onDownloadPDF();
-    }
+    setShowPrintOptions(true);
   };
 
   // This function will filter the content based on selected options and trigger PDF generation
