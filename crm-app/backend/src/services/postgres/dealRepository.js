@@ -168,12 +168,42 @@ export const deleteDeal = async (id) => {
 export const updateDealStage = async (id, stage) => {
   try {
     console.log(`📝 Updating deal stage: ${id} to ${stage}`);
-    const result = await db.one(
-      'UPDATE deals SET stage = $1, updated_at = NOW() WHERE id = $2 RETURNING *',
+    
+    // Update the deal stage
+    await db.none(
+      'UPDATE deals SET stage = $1, updated_at = NOW() WHERE id = $2',
       [stage, id]
     );
-    console.log(`✅ Deal stage updated successfully: ${result.id}`);
-    return result;
+    
+    // Fetch the updated deal with customer information
+    const updatedDeal = await db.oneOrNone(`
+      SELECT d.*, 
+             c.name AS customer_name, c.email AS customer_email, c.phone AS customer_phone, 
+             c.company_name AS customer_company, c.address AS customer_address, c.designation AS customer_designation
+      FROM deals d
+      LEFT JOIN customers c ON d.customer_id = c.id
+      WHERE d.id = $1
+    `, [id]);
+    
+    if (!updatedDeal) {
+      throw new Error(`Deal with ID ${id} not found after update`);
+    }
+    
+    // Map customer fields into a customer object
+    const dealWithCustomer = {
+      ...updatedDeal,
+      customer: {
+        name: updatedDeal.customer_name || '',
+        email: updatedDeal.customer_email || '',
+        phone: updatedDeal.customer_phone || '',
+        company: updatedDeal.customer_company || '',
+        address: updatedDeal.customer_address || '',
+        designation: updatedDeal.customer_designation || ''
+      }
+    };
+    
+    console.log(`✅ Deal stage updated successfully: ${dealWithCustomer.id}`);
+    return dealWithCustomer;
   } catch (error) {
     console.error('❌ Error updating deal stage:', error);
     throw error;

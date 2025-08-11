@@ -14,6 +14,7 @@ import { SalesAgentDashboard } from './pages/SalesAgentDashboard';
 import { OperationsManagerDashboard } from './pages/OperationsManagerDashboard';
 import { OperatorDashboard } from './pages/OperatorDashboard';
 import { LeadManagement } from './pages/LeadManagement';
+import ToastContainer from './components/common/ToastContainer';
 import { QuotationManagement } from './pages/QuotationManagement';
 import { QuotationCreation } from './pages/QuotationCreation';
 import { JobScheduling } from './pages/JobScheduling';
@@ -250,6 +251,7 @@ function App() {
           <>
             <AppContent />
             <FloatingChatWidget />
+            <ToastContainer />
           </>
         </AuthErrorBoundary>
       </AuthProvider>

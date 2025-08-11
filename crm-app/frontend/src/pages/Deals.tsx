@@ -188,19 +188,25 @@ export function Deals() {
       console.log(`Calling API to update deal ${draggableId} to stage ${newStage}`);
       const updatedDeal = await updateDealStage(draggableId, newStage);
       
-      if (updatedDeal) {
+      if (updatedDeal && typeof updatedDeal === 'object' && updatedDeal.id) {
         console.log('Deal updated successfully:', updatedDeal);
+        
+        // Ensure the updated deal has proper structure
+        const validatedDeal = {
+          ...updatedDeal,
+          customer: updatedDeal.customer || { name: 'Unknown Customer', email: '', phone: '', company: '', address: '' }
+        };
         
         // Update with actual data from server
         setDeals(prevDeals => 
           prevDeals.map(deal => 
-            deal.id === draggableId ? updatedDeal : deal
+            deal.id === draggableId ? validatedDeal : deal
           )
         );
         
         // Show success message
         const stageName = STAGE_CONFIGS.find(s => s.id === newStage)?.label || newStage;
-        const dealTitle = updatedDeal.title || 'Deal';
+        const dealTitle = validatedDeal.title || 'Deal';
         
         showToast(
           `Deal moved to ${stageName}`, 
@@ -210,7 +216,7 @@ export function Deals() {
         
         // Handle special case for won deals
         if (newStage === 'won') {
-          handleDealWon(updatedDeal);
+          handleDealWon(validatedDeal);
         }
       } else {
         // If the server returned null, revert to original state
@@ -225,11 +231,17 @@ export function Deals() {
       }
     } catch (error) {
       console.error('Error updating deal stage:', error);
+      console.error('Error details:', {
+        dealId: draggableId,
+        newStage,
+        errorMessage: error instanceof Error ? error.message : 'Unknown error',
+        errorStack: error instanceof Error ? error.stack : undefined
+      });
       
       // Revert to original state
       setDeals(originalDeals);
       
-      // Show error message
+      // Show error message with more context
       const errorMessage = error instanceof Error
         ? `Error: ${error.message}`
         : 'An unknown error occurred while updating the deal';
@@ -250,15 +262,17 @@ export function Deals() {
   
   // Function to handle when a deal is won
   const handleDealWon = (deal: Deal) => {
+    const customerName = deal.customer?.name || 'Customer';
+    
     showToast(
       'Schedule a job for this deal', 
       'success', 
-      `You've won the deal with ${deal.customer.name}! You'll be redirected to schedule a job.`
+      `You've won the deal with ${customerName}! You'll be redirected to schedule a job.`
     );
     
     // Short delay before navigation to ensure the toast is seen
     setTimeout(() => {
-      navigate(`/jobs?dealId=${deal.id}&action=schedule&customerName=${encodeURIComponent(deal.customer.name)}`);
+      navigate(`/jobs?dealId=${deal.id}&action=schedule&customerName=${encodeURIComponent(customerName)}`);
     }, 1500);
   };
   
