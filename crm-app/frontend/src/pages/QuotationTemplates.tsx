@@ -200,7 +200,17 @@ export function QuotationTemplates() {
   };
 
   const handleEditTemplate = (template: Template) => {
-    navigate(`/templates/edit/${template.id}`);
+    setTemplateForm(template);
+    setEditMode('edit');
+    // Determine the appropriate editor mode based on template content
+    if (template.elements && Array.isArray(template.elements) && template.elements.length > 0) {
+      setEditorMode('dynamic');
+    } else if (template.content && template.content.includes('<')) {
+      setEditorMode('html');
+    } else {
+      setEditorMode('visual');
+    }
+    setIsCreateModalOpen(true);
   };
 
   const handlePreviewTemplate = (template: Template) => {
