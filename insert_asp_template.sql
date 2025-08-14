@@ -1,3 +1,41 @@
+-- Insert ASP Cranes Professional Template for Modern Template Builder
+INSERT INTO quotation_templates (
+        name,
+        description,
+        content,
+        elements,
+        is_default,
+        created_by,
+        usage_count,
+        tags
+) VALUES (
+        'ASP Cranes Professional Template (Builder)',
+        'Professional quotation template for ASP Cranes with header, customer info, equipment table, and terms. Modern builder compatible.',
+        '<div>ASP Cranes Professional Template (Builder)</div>',
+        '[
+            {"id": "header", "type": "header", "content": "ASP CRANES", "subtitle": "Crane Rental & Equipment Solutions", "logo": "asp-logo.jpg", "styles": {"color": "#2563eb", "fontSize": 28, "fontWeight": "bold"}},
+            {"id": "quote_info", "type": "quote_info", "fields": ["Quote #", "Date", "Valid Until"]},
+            {"id": "customer_info", "type": "customer_info", "fields": ["Company", "Contact", "Phone", "Email", "Project", "Location", "Duration", "Start Date"]},
+            {"id": "equipment_table", "type": "table", "title": "Equipment & Services", "columns": ["Item", "Description", "Qty", "Duration", "Rate/Day", "Amount"], "dataKey": "equipment"},
+            {"id": "pricing", "type": "pricing", "fields": ["Subtotal", "Delivery & Setup", "Insurance", "Tax", "Total Amount"]},
+            {"id": "terms", "type": "terms", "title": "Terms & Conditions", "items": [
+                "Payment due within 30 days of invoice date",
+                "Equipment must be returned in same condition as delivered",
+                "Customer responsible for fuel and routine maintenance",
+                "Damage beyond normal wear will be charged separately",
+                "Delivery and pickup times subject to availability",
+                "Cancellation fee applies for orders cancelled within 24 hours",
+                "Insurance coverage required for all rentals",
+                "Operator certification required for specialized equipment"
+            ]},
+            {"id": "signatures", "type": "signatures", "fields": ["Customer Signature", "ASP Cranes Representative"]},
+            {"id": "footer", "type": "footer", "content": "Thank you for choosing ASP Cranes. For questions about this quote, please contact us at the above information. © 2025 ASP Cranes. All rights reserved."}
+        ]'::jsonb,
+        false,
+        'usr_admin01',
+        0,
+        ARRAY['asp', 'professional', 'modern', 'builder']
+);
 -- Insert ASP Cranes Professional Template
 -- First, ensure the styles column exists
 ALTER TABLE quotation_templates ADD COLUMN IF NOT EXISTS styles JSONB DEFAULT '{}'::jsonb;
