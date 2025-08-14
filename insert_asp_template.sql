@@ -385,8 +385,4 @@ INSERT INTO quotation_templates (
     }'::jsonb,
     true,
     'admin'
-) ON CONFLICT (name) DO UPDATE SET
-    content = EXCLUDED.content,
-    styles = EXCLUDED.styles,
-    description = EXCLUDED.description,
-    updated_at = CURRENT_TIMESTAMP;
+);
