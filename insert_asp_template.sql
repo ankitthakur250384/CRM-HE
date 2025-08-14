@@ -384,5 +384,5 @@ INSERT INTO quotation_templates (
         }
     }'::jsonb,
     true,
-    'admin'
+    'usr_admin01'
 );
