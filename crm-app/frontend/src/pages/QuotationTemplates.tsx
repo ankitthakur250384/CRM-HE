@@ -11,6 +11,8 @@ import { getTemplates, createTemplate, updateTemplate, deleteTemplate } from '..
 import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
 import { VisualTemplateEditor } from '../components/quotations/VisualTemplateEditor';
+import { ProfessionalTemplateBuilder } from '../components/quotations/ProfessionalTemplateBuilder';
+import { DynamicTemplateBuilder } from '../components/quotations/DynamicTemplateBuilder';
 import { Input } from '../components/common/Input';
 import { TextArea } from '../components/common/TextArea';
 import { PreviewModal } from '../components/quotations/PreviewModal';
@@ -147,7 +149,7 @@ export function QuotationTemplates() {
     variant?: 'success' | 'error' | 'warning';
   }>({ show: false, title: '' });
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-  const [isVisualMode, setIsVisualMode] = useState(false);
+  const [editorMode, setEditorMode] = useState<'visual' | 'html' | 'dynamic' | 'professional'>('visual');
   const [templateForm, setTemplateForm] = useState<Template>({
     id: '',
     name: '',
@@ -287,7 +289,6 @@ export function QuotationTemplates() {
       createdBy: user?.email || 'unknown',
       isDefault: false
     });
-    setIsVisualMode(false);
   };
 
   const handleSetDefault = async (id: string) => {
@@ -363,26 +364,50 @@ export function QuotationTemplates() {
             Create and manage quotation templates for your business
           </p>
         </div>
-        <Button 
-          onClick={() => {
-            setIsCreateModalOpen(true);
-            setEditMode('new');
-            setTemplateForm({
-              id: '',
-              name: '',
-              description: '',
-              content: defaultTemplate.content,
-              createdAt: new Date().toISOString(),
-              updatedAt: new Date().toISOString(),
-              createdBy: user?.email || 'unknown',
-              isDefault: false
-            });
-          }}
-          className="w-full sm:w-auto flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          Create Template
-        </Button>
+        <div className="flex gap-2">
+          <Button 
+            onClick={() => {
+              setIsCreateModalOpen(true);
+              setEditMode('new');
+              setTemplateForm({
+                id: '',
+                name: '',
+                description: '',
+                content: defaultTemplate.content,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                createdBy: user?.email || 'unknown',
+                isDefault: false
+              });
+            }}
+            variant="outline"
+            className="w-full sm:w-auto flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Create Basic Template
+          </Button>
+          <Button 
+            onClick={() => {
+              setIsCreateModalOpen(true);
+              setEditMode('new');
+              setEditorMode('dynamic');
+              setTemplateForm({
+                id: '',
+                name: 'ASP Cranes Professional Template',
+                description: 'Professional quotation template with equipment breakdown table',
+                content: '',
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                createdBy: user?.email || 'unknown',
+                isDefault: false
+              });
+            }}
+            className="w-full sm:w-auto flex items-center gap-2"
+          >
+            <Plus className="w-4 h-4" />
+            Create Professional Template
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
@@ -404,25 +429,48 @@ export function QuotationTemplates() {
             <FileText className="w-12 h-12 text-gray-400 mb-4" />
             <h3 className="text-lg font-medium text-gray-900 mb-2">No templates yet</h3>
             <p className="text-gray-500 mb-4 text-center">Create your first quotation template to get started.</p>
-            <Button
-              onClick={() => {
-                setIsCreateModalOpen(true);
-                setEditMode('new');
-                setTemplateForm({
-                  id: '',
-                  name: '',
-                  description: '',
-                  content: defaultTemplate.content,
-                  createdAt: new Date().toISOString(),
-                  updatedAt: new Date().toISOString(),
-                  createdBy: user?.email || 'unknown',
-                  isDefault: false
-                });
-              }}
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Create Template
-            </Button>
+            <div className="flex flex-col sm:flex-row gap-3">
+              <Button
+                onClick={() => {
+                  setIsCreateModalOpen(true);
+                  setEditMode('new');
+                  setTemplateForm({
+                    id: '',
+                    name: '',
+                    description: '',
+                    content: defaultTemplate.content,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                    createdBy: user?.email || 'unknown',
+                    isDefault: false
+                  });
+                }}
+                variant="outline"
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Create Basic Template
+              </Button>
+              <Button
+                onClick={() => {
+                  setIsCreateModalOpen(true);
+                  setEditMode('new');
+                  setEditorMode('dynamic');
+                  setTemplateForm({
+                    id: '',
+                    name: 'ASP Cranes Professional Template',
+                    description: 'Professional quotation template with equipment breakdown table',
+                    content: '',
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                    createdBy: user?.email || 'unknown',
+                    isDefault: false
+                  });
+                }}
+              >
+                <Plus className="w-4 h-4 mr-2" />
+                Create Professional Template
+              </Button>
+            </div>
           </CardContent>
         </Card>
       ) : (
@@ -457,16 +505,40 @@ export function QuotationTemplates() {
           
           <div className="flex gap-2 sm:gap-4 mb-4">
             <Button
-              variant={isVisualMode ? 'default' : 'outline'}
-              onClick={() => setIsVisualMode(true)}
+              variant={editorMode === 'visual' ? 'default' : 'outline'}
+              onClick={() => {
+                setEditorMode('visual');
+              }}
               size="sm"
               className="flex-1 sm:flex-none"
             >
               Visual Editor
             </Button>
             <Button
-              variant={!isVisualMode ? 'default' : 'outline'}
-              onClick={() => setIsVisualMode(false)}
+              variant={editorMode === 'dynamic' ? 'default' : 'outline'}
+              onClick={() => {
+                setEditorMode('dynamic');
+              }}
+              size="sm"
+              className="flex-1 sm:flex-none"
+            >
+              Dynamic Builder
+            </Button>
+            <Button
+              variant={editorMode === 'professional' ? 'default' : 'outline'}
+              onClick={() => {
+                setEditorMode('professional');
+              }}
+              size="sm"
+              className="flex-1 sm:flex-none"
+            >
+              Professional Builder
+            </Button>
+            <Button
+              variant={editorMode === 'html' ? 'default' : 'outline'}
+              onClick={() => {
+                setEditorMode('html');
+              }}
               size="sm"
               className="flex-1 sm:flex-none"
             >
@@ -474,10 +546,26 @@ export function QuotationTemplates() {
             </Button>
           </div>
             
-          {isVisualMode ? (
+          {editorMode === 'visual' ? (
             <VisualTemplateEditor
               template={templateForm}
               onChange={(updatedTemplate) => setTemplateForm(updatedTemplate)}
+            />
+          ) : editorMode === 'dynamic' ? (
+            <DynamicTemplateBuilder
+              template={templateForm}
+              onSave={(updatedTemplate) => {
+                setTemplateForm(updatedTemplate);
+                handleSaveTemplate({} as React.MouseEvent);
+              }}
+              onPreview={() => handlePreviewTemplate(templateForm)}
+            />
+          ) : editorMode === 'professional' ? (
+            <ProfessionalTemplateBuilder
+              template={templateForm}
+              onChange={(updatedTemplate) => setTemplateForm(updatedTemplate)}
+              onSave={() => handleSaveTemplate({} as React.MouseEvent)}
+              onPreview={() => handlePreviewTemplate(templateForm)}
             />
           ) : (
             <div className="space-y-4">
