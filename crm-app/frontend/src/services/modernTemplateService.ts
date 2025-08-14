@@ -18,7 +18,7 @@ export interface ModernTemplate {
 // Template element interface for drag-and-drop builder
 export interface TemplateElement {
   id: string;
-  type: 'text' | 'field' | 'table' | 'image' | 'spacer';
+  type: 'text' | 'field' | 'table' | 'image' | 'spacer' | 'header' | 'terms';
   content?: string;
   fieldType?: string;
 }
