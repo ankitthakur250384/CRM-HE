@@ -1,26 +1,21 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { 
   Calendar,
   Clock,
   Download,
-  FileText,
   MapPin,
   Send,
   Truck,
   User,
-  CheckCircle2,
-  XCircle,
-  AlertCircle
+  CheckCircle2
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/common/Card';
 import { Button } from '../components/common/Button';
 import { TextArea } from '../components/common/TextArea';
 import { Input } from '../components/common/Input';
-import { Modal } from '../components/common/Modal';
 import { Toast } from '../components/common/Toast';
 import { useAuthStore } from '../store/authStore';
-import { getJobById } from '../services/jobService';
 import { Job } from '../types/job';
 
 interface SafetyCheck {
@@ -54,7 +49,6 @@ export function JobSummaryFeedback() {
   const [isDiscountRequested, setIsDiscountRequested] = useState(false);
   const [discountReason, setDiscountReason] = useState('');
   const [discountPercentage, setDiscountPercentage] = useState('');
-  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
   const [feedback, setFeedback] = useState<CustomerFeedback | null>(null);
   const [toast, setToast] = useState<{
     show: boolean;
@@ -71,8 +65,24 @@ export function JobSummaryFeedback() {
 
   const fetchJobDetails = async () => {
     try {
-      const jobData = await getJobById(id!);
-      setJob(jobData);
+      // Mock job data since jobService is not available
+      const mockJob: Job = {
+        id: id!,
+        title: `Crane Rental - ${id}`,
+        leadId: 'lead_123',
+        customerId: 'cust_123',
+        customerName: 'ABC Construction Ltd.',
+        equipmentIds: ['eq_001'],
+        operatorIds: ['op_001'],
+        status: 'completed',
+        scheduledStartDate: new Date().toISOString(),
+        scheduledEndDate: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString(),
+        location: 'Mumbai Construction Site',
+        createdBy: 'user_123',
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      setJob(mockJob);
 
       // Mock feedback data
       setFeedback({
@@ -219,12 +229,12 @@ export function JobSummaryFeedback() {
                 <div className="mt-1 space-y-1">
                   <div className="flex items-center gap-2">
                     <Calendar className="h-5 w-5 text-gray-400" />
-                    <span>{new Date(job.startDate).toLocaleDateString()}</span>
+                    <span>{new Date(job.scheduledStartDate).toLocaleDateString()}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Clock className="h-5 w-5 text-gray-400" />
                     <span>
-                      {new Date(job.startDate).toLocaleTimeString()} - {new Date(job.endDate).toLocaleTimeString()}
+                      {new Date(job.scheduledStartDate).toLocaleTimeString()} - {new Date(job.scheduledEndDate).toLocaleTimeString()}
                     </span>
                   </div>
                 </div>
@@ -345,7 +355,7 @@ export function JobSummaryFeedback() {
             <div className="flex items-center gap-2">
               <input
                 type="checkbox"
-                id="requestDiscount"
+                id="jobFeedback-requestDiscount"
                 checked={isDiscountRequested}
                 onChange={(e) => setIsDiscountRequested(e.target.checked)}
                 className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"

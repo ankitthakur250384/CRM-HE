@@ -403,7 +403,7 @@ export function ServicesManagement() {
           <div className="flex items-center gap-2">
             <input
               type="checkbox"
-              id="isActive"
+              id="servicesMgmt-isActive"
               checked={formData.isActive}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, isActive: e.target.checked }))}
               className="rounded border-gray-300 text-primary-600 focus:ring-primary-500"

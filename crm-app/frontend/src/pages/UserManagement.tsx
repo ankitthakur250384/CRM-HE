@@ -585,7 +585,7 @@ export function UserManagement() {
           <div className="flex items-center gap-2">
             <input
               type="checkbox"
-              id="isActive"
+              id="userMgmt-isActive"
               checked={formData.status === 'active'}
               onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ 
                 ...prev, 

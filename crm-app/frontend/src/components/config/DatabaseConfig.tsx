@@ -214,13 +214,13 @@ export const DatabaseConfig = () => {
         <div className="flex items-center space-x-2 mt-8">
           <input
             type="checkbox"
-            id="ssl"
+            id="dbConfig-ssl"
             name="ssl"
             checked={config.ssl}
             onChange={handleChange}
             className="h-4 w-4 text-blue-600 rounded"
           />
-          <label htmlFor="ssl" className="text-sm text-gray-700">
+          <label htmlFor="dbConfig-ssl" className="text-sm text-gray-700">
             Enable SSL/TLS
           </label>
         </div>

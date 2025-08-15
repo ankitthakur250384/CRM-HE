@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import userService, { User, CreateUserData, UpdateUserData } from '../../services/userService';
+import { createUser, updateUser } from '../../services/userService';
+import { User, CreateUserData, UpdateUserData } from '../../types/auth';
 import { Button } from '../common/Button';
 import { X, Save, User as UserIcon } from 'lucide-react';
 
@@ -78,8 +79,8 @@ export function UserForm({ user, onSave, onCancel }: UserFormProps) {
           updateData.password = formData.password;
         }
 
-        const response = await userService.updateUser(user.id, updateData);
-        onSave(response.user);
+        const response = await updateUser(user.id, updateData);
+        onSave(response);
       } else {
         // Create new user
         const createData: CreateUserData = {
@@ -91,8 +92,8 @@ export function UserForm({ user, onSave, onCancel }: UserFormProps) {
           avatar: formData.avatar || undefined,
         };
 
-        const response = await userService.createUser(createData);
-        onSave(response.user);
+        const response = await createUser(createData);
+        onSave(response);
       }
     } catch (error: any) {
       console.error('Error saving user:', error);
@@ -139,12 +140,12 @@ export function UserForm({ user, onSave, onCancel }: UserFormProps) {
 
           {/* Name */}
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="userForm-name" className="block text-sm font-medium text-gray-700 mb-1">
               Full Name *
             </label>
             <input
               type="text"
-              id="name"
+              id="userForm-name"
               value={formData.name}
               onChange={(e) => handleInputChange('name', e.target.value)}
               className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
@@ -157,12 +158,12 @@ export function UserForm({ user, onSave, onCancel }: UserFormProps) {
 
           {/* Email */}
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="userForm-email" className="block text-sm font-medium text-gray-700 mb-1">
               Email Address *
             </label>
             <input
               type="email"
-              id="email"
+              id="userForm-email"
               value={formData.email}
               onChange={(e) => handleInputChange('email', e.target.value)}
               className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
@@ -175,11 +176,11 @@ export function UserForm({ user, onSave, onCancel }: UserFormProps) {
 
           {/* Role */}
           <div>
-            <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="userForm-role" className="block text-sm font-medium text-gray-700 mb-1">
               Role *
             </label>
             <select
-              id="role"
+              id="userForm-role"
               value={formData.role}
               onChange={(e) => handleInputChange('role', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -194,12 +195,12 @@ export function UserForm({ user, onSave, onCancel }: UserFormProps) {
 
           {/* Phone */}
           <div>
-            <label htmlFor="phone" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="userForm-phone" className="block text-sm font-medium text-gray-700 mb-1">
               Phone Number
             </label>
             <input
               type="tel"
-              id="phone"
+              id="userForm-phone"
               value={formData.phone}
               onChange={(e) => handleInputChange('phone', e.target.value)}
               className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -209,13 +210,13 @@ export function UserForm({ user, onSave, onCancel }: UserFormProps) {
 
           {/* Password */}
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="userForm-password" className="block text-sm font-medium text-gray-700 mb-1">
               Password {!isEditing && '*'}
               {isEditing && <span className="text-gray-500 text-xs">(leave blank to keep current)</span>}
             </label>
             <input
               type="password"
-              id="password"
+              id="userForm-password"
               value={formData.password}
               onChange={(e) => handleInputChange('password', e.target.value)}
               className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent ${
@@ -229,12 +230,12 @@ export function UserForm({ user, onSave, onCancel }: UserFormProps) {
           {/* Confirm Password */}
           {formData.password && (
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
+              <label htmlFor="userForm-confirmPassword" className="block text-sm font-medium text-gray-700 mb-1">
                 Confirm Password *
               </label>
               <input
                 type="password"
-                id="confirmPassword"
+                id="userForm-confirmPassword"
                 value={formData.confirmPassword}
                 onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
                 className={`w-full px-3 py-2 border rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent ${

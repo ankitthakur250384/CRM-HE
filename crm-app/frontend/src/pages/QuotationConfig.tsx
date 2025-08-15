@@ -27,12 +27,17 @@ const DefaultTemplateConfig = () => {
   const loadTemplatesAndConfig = async () => {
     try {
       setIsLoading(true);
+      console.log('Loading templates and config...');
+      
       // Load all templates
       const allTemplates = await getTemplates();
+      console.log('Loaded templates:', allTemplates);
       setTemplates(allTemplates);
       
       // Get current default template config
       const defaultConfig = await getDefaultTemplateConfig();
+      console.log('Default config:', defaultConfig);
+      
       if (defaultConfig && defaultConfig.defaultTemplateId) {
         setSelectedTemplateId(defaultConfig.defaultTemplateId);
       } else if (allTemplates.length > 0) {
@@ -43,7 +48,7 @@ const DefaultTemplateConfig = () => {
       console.error('Error loading templates and config:', error);
       setSaveStatus({
         saving: false,
-        message: 'Error loading templates and config',
+        message: 'Error loading templates and config: ' + (error instanceof Error ? error.message : String(error)),
         error: true
       });
     } finally {

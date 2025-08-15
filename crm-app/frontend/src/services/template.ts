@@ -73,7 +73,6 @@ export async function getTemplateById(templateId: string): Promise<Template> {
 export async function getTemplates(): Promise<Template[]> {
   try {
     const apiUrl = import.meta.env.VITE_API_URL || '/api';
-    console.log('Fetching templates from:', `${apiUrl}/templates`);
     
     const response = await fetch(`${apiUrl}/templates`, {
       method: 'GET',
@@ -81,15 +80,12 @@ export async function getTemplates(): Promise<Template[]> {
       credentials: 'include',
     });
     
-    console.log('Template fetch response status:', response.status);
-    
     if (!response.ok) {
       console.error('Failed to fetch templates:', response.status, response.statusText);
       throw new Error(`Failed to fetch templates: ${response.status}`);
     }
     
     const result = await response.json();
-    console.log('Template fetch result:', result);
     
     // Support both array and {data: array} responses
     const templates = Array.isArray(result)
@@ -98,7 +94,6 @@ export async function getTemplates(): Promise<Template[]> {
         ? result.data
         : [];
     
-    console.log('Processed templates:', templates);
     return templates;
   } catch (error) {
     console.error('Error in getTemplates:', error);

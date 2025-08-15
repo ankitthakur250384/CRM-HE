@@ -164,14 +164,6 @@ export function ProfessionalTemplateBuilder({
     ));
   }, []);
 
-  const handleSectionContentChange = useCallback((sectionId: string, content: string) => {
-    setSections(prev => prev.map(section => 
-      section.id === sectionId 
-        ? { ...section, content }
-        : section
-    ));
-  }, []);
-
   const addEquipmentRow = () => {
     const newRow: EquipmentRow = {
       id: String(equipmentRows.length + 1),

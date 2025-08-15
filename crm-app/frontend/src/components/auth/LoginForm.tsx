@@ -221,7 +221,7 @@ export function LoginForm() {
         <div className="space-y-5">
           <div>
             <input
-              id="email"
+              id="login-email"
               name="email"
               type="email"
               value={email}
@@ -235,7 +235,7 @@ export function LoginForm() {
           </div>
           <div>
             <input
-              id="password"
+              id="login-password"
               name="password"
               type="password"
               value={password}
