@@ -10,6 +10,7 @@ export class TemplateRepository {
         description: template.description,
         content: template.content,
         styles: template.styles,
+        elements: template.elements, // Add elements field
         isDefault: template.is_default,
         createdAt: template.created_at,
         updatedAt: template.updated_at,
@@ -32,6 +33,7 @@ export class TemplateRepository {
         description: template.description,
         content: template.content,
         styles: template.styles,
+        elements: template.elements, // Add elements field
         isDefault: template.is_default,
         createdAt: template.created_at,
         updatedAt: template.updated_at,
@@ -45,12 +47,12 @@ export class TemplateRepository {
   
   async createTemplate(template) {
     try {
-      const { name, description, content, styles, isDefault, createdBy } = template;
+      const { name, description, content, styles, elements, isDefault, createdBy } = template;
       const result = await db.one(
-        `INSERT INTO quotation_templates (name, description, content, styles, is_default, created_by)
-         VALUES ($1, $2, $3, $4, $5, $6)
+        `INSERT INTO quotation_templates (name, description, content, styles, elements, is_default, created_by)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)
          RETURNING *`,
-        [name, description, content, styles, isDefault || false, createdBy]
+        [name, description, content, styles, elements, isDefault || false, createdBy]
       );
       return {
         id: result.id,
@@ -58,6 +60,7 @@ export class TemplateRepository {
         description: result.description,
         content: result.content,
         styles: result.styles,
+        elements: result.elements,
         isDefault: result.is_default,
         createdAt: result.created_at,
         updatedAt: result.updated_at,
@@ -71,18 +74,19 @@ export class TemplateRepository {
   
   async updateTemplate(id, template) {
     try {
-      const { name, description, content, styles, isDefault } = template;
+      const { name, description, content, styles, elements, isDefault } = template;
       const result = await db.one(
         `UPDATE quotation_templates SET
           name = COALESCE($1, name),
           description = COALESCE($2, description),
           content = COALESCE($3, content),
           styles = COALESCE($4, styles),
-          is_default = COALESCE($5, is_default),
+          elements = COALESCE($5, elements),
+          is_default = COALESCE($6, is_default),
           updated_at = CURRENT_TIMESTAMP
-         WHERE id = $6
+         WHERE id = $7
          RETURNING *`,
-        [name, description, content, styles, isDefault, id]
+        [name, description, content, styles, elements, isDefault, id]
       );
       return {
         id: result.id,
@@ -90,6 +94,7 @@ export class TemplateRepository {
         description: result.description,
         content: result.content,
         styles: result.styles,
+        elements: result.elements,
         isDefault: result.is_default,
         createdAt: result.created_at,
         updatedAt: result.updated_at,

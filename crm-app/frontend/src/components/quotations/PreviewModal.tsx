@@ -40,7 +40,7 @@ const sampleData = {
 export function PreviewModal({ isOpen, onClose, template }: PreviewModalProps) {
   if (!isOpen) return null;
 
-  if (!template || !template.content) {
+  if (!template) {
     return (
       <Modal
         isOpen={isOpen}
@@ -56,15 +56,151 @@ export function PreviewModal({ isOpen, onClose, template }: PreviewModalProps) {
     );
   }
 
+  // Function to render elements-based templates
+  const renderElementsTemplate = (elements: any[]) => {
+    return elements.map((element, index) => {
+      switch (element.type) {
+        case 'header':
+          return (
+            <div key={index} className="header-section mb-6 p-4 border-b-2 border-blue-600">
+              <div className="flex justify-between items-center">
+                <div>
+                  <h1 className="text-3xl font-bold text-blue-600">{element.content || 'ASP CRANES'}</h1>
+                  <p className="text-gray-600">{element.subtitle || 'Crane Rental & Equipment Solutions'}</p>
+                </div>
+                <div className="text-right">
+                  <h2 className="text-xl font-bold text-blue-600">QUOTATION</h2>
+                  <p>Quote #: QT-2024-001</p>
+                  <p>Date: {new Date().toLocaleDateString()}</p>
+                </div>
+              </div>
+            </div>
+          );
+        case 'customer_info':
+          return (
+            <div key={index} className="customer-info mb-6">
+              <h3 className="text-lg font-bold text-blue-600 mb-3">Customer Information</h3>
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <h4 className="font-semibold">Bill To:</h4>
+                  <p>ABC Construction Ltd.</p>
+                  <p>John Smith</p>
+                  <p>+91 98765 12345</p>
+                  <p>john@abcconstruction.com</p>
+                </div>
+                <div>
+                  <h4 className="font-semibold">Project Details:</h4>
+                  <p>Construction Project</p>
+                  <p>Mumbai, India</p>
+                  <p>Duration: 30 days</p>
+                  <p>Start Date: {new Date().toLocaleDateString()}</p>
+                </div>
+              </div>
+            </div>
+          );
+        case 'table':
+          return (
+            <div key={index} className="equipment-table mb-6">
+              <h3 className="text-lg font-bold text-blue-600 mb-3">{element.title || 'Equipment & Services'}</h3>
+              <table className="w-full border-collapse border border-gray-300">
+                <thead>
+                  <tr className="bg-blue-600 text-white">
+                    {(element.columns || ['Item', 'Description', 'Qty', 'Duration', 'Rate/Day', 'Amount']).map((col: string, colIndex: number) => (
+                      <th key={colIndex} className="border border-gray-300 p-3 text-left">{col}</th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr className="bg-gray-50">
+                    <td className="border border-gray-300 p-3">50T Mobile Crane</td>
+                    <td className="border border-gray-300 p-3">Heavy lifting crane with operator</td>
+                    <td className="border border-gray-300 p-3">1</td>
+                    <td className="border border-gray-300 p-3">30 days</td>
+                    <td className="border border-gray-300 p-3">₹25,000</td>
+                    <td className="border border-gray-300 p-3">₹750,000</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          );
+        case 'pricing':
+          return (
+            <div key={index} className="pricing mb-6 bg-gray-50 p-4 rounded">
+              <div className="flex justify-between mb-2">
+                <span>Subtotal:</span>
+                <span>₹750,000</span>
+              </div>
+              <div className="flex justify-between mb-2">
+                <span>Delivery & Setup:</span>
+                <span>₹15,000</span>
+              </div>
+              <div className="flex justify-between mb-2">
+                <span>Insurance (5%):</span>
+                <span>₹37,500</span>
+              </div>
+              <div className="flex justify-between mb-2">
+                <span>Tax (18%):</span>
+                <span>₹135,000</span>
+              </div>
+              <div className="flex justify-between font-bold text-lg border-t pt-2">
+                <span>Total Amount:</span>
+                <span>₹937,500</span>
+              </div>
+            </div>
+          );
+        case 'terms':
+          return (
+            <div key={index} className="terms mb-6">
+              <h3 className="text-lg font-bold text-blue-600 mb-3">{element.title || 'Terms & Conditions'}</h3>
+              <ul className="list-disc list-inside space-y-1 text-sm">
+                {(element.items || [
+                  'Payment due within 30 days of invoice date',
+                  'Equipment must be returned in same condition as delivered',
+                  'Customer responsible for fuel and routine maintenance'
+                ]).map((item: string, itemIndex: number) => (
+                  <li key={itemIndex}>{item}</li>
+                ))}
+              </ul>
+            </div>
+          );
+        case 'footer':
+          return (
+            <div key={index} className="footer mt-8 pt-4 border-t text-center text-gray-600 text-sm">
+              <p>{element.content || 'Thank you for choosing ASP Cranes. © 2025 ASP Cranes. All rights reserved.'}</p>
+            </div>
+          );
+        default:
+          return (
+            <div key={index} className="custom-section mb-4">
+              <div dangerouslySetInnerHTML={{ __html: element.content || '' }} />
+            </div>
+          );
+      }
+    });
+  };
+
   try {
-    // Replace placeholders with sample data
-    const previewContent = Object.entries(sampleData).reduce(
-      (content, [key, value]) => {
-        const regex = new RegExp(`{{${key}}}`, 'g');
-        return content.replace(regex, value);
-      },
-      template.content
-    );
+    let previewContent: string | React.ReactNode;
+
+    // Check if template has elements (modern builder)
+    if (template.elements && Array.isArray(template.elements) && template.elements.length > 0) {
+      previewContent = (
+        <div className="template-preview">
+          {renderElementsTemplate(template.elements)}
+        </div>
+      );
+    } else if (template.content) {
+      // Replace placeholders with sample data for HTML templates
+      previewContent = Object.entries(sampleData).reduce(
+        (content, [key, value]) => {
+          const regex = new RegExp(`{{${key}}}`, 'g');
+          return content.replace(regex, value);
+        },
+        template.content
+      );
+    } else {
+      previewContent = '<div class="text-gray-500 p-8 text-center">No content available for preview</div>';
+    }
 
     return (
       <Modal
@@ -73,7 +209,13 @@ export function PreviewModal({ isOpen, onClose, template }: PreviewModalProps) {
         title="Template Preview"
         size="lg"
       >
-        <div className="prose max-w-none" dangerouslySetInnerHTML={{ __html: previewContent }} />
+        <div className="prose max-w-none">
+          {typeof previewContent === 'string' ? (
+            <div dangerouslySetInnerHTML={{ __html: previewContent }} />
+          ) : (
+            previewContent
+          )}
+        </div>
       </Modal>
     );
   } catch (error) {

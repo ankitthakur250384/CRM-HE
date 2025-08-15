@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../common/Card';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
@@ -166,6 +166,49 @@ export function DynamicTemplateBuilder({ template, onSave, onPreview }: DynamicT
     tableHeaderBg: '#f8f9fa',
     borderColor: '#ddd'
   });
+
+  // Load template data when template prop changes
+  useEffect(() => {
+    if (template) {
+      setTemplateName(template.name || '');
+      setTemplateDescription(template.description || '');
+      
+      // If template has elements, populate the builder sections
+      if (template.elements && Array.isArray(template.elements) && template.elements.length > 0) {
+        const templateSections: TemplateSection[] = template.elements.map((element: any, index: number) => ({
+          id: element.id || `section_${index}`,
+          type: element.type || 'custom',
+          title: element.title || element.content || `Section ${index + 1}`,
+          enabled: true,
+          order: index + 1,
+          content: element.content || '',
+          style: element.styles || {}
+        }));
+        setSections(templateSections);
+      }
+      
+      // Load styles if available
+      if (template.styles) {
+        try {
+          const styles = typeof template.styles === 'string' ? JSON.parse(template.styles) : template.styles;
+          if (styles.primaryColor) {
+            setTemplateStyle(prev => ({
+              ...prev,
+              primaryColor: styles.primaryColor || '#FF6B00',
+              secondaryColor: styles.secondaryColor || '#f8f9fa',
+              fontFamily: styles.typography?.fontFamily || 'Arial, sans-serif',
+              baseFontSize: styles.typography?.bodyFontSize || '12px',
+              headerFontSize: styles.typography?.headerFontSize || '18px',
+              tableHeaderBg: styles.tableStyle?.headerBackground || '#f8f9fa',
+              borderColor: styles.borderColor || '#ddd'
+            }));
+          }
+        } catch (e) {
+          console.warn('Failed to parse template styles:', e);
+        }
+      }
+    }
+  }, [template]);
 
   const moveSectionUp = useCallback((index: number) => {
     if (index > 0) {
