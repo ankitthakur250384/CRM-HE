@@ -9,7 +9,7 @@ export const authenticateToken = (req, res, next) => {
     req.headers['x-bypass-auth'] === 'true'
   ) {
     console.log('⚠️ [AUTH] Bypassing authentication with x-bypass-auth header');
-    req.user = { id: 'dev-user', email: 'dev@example.com', role: 'admin' };
+    req.user = { id: 'usr_test001', email: 'test@aspcranes.com', role: 'sales_agent' };
     return next();
   }
 
