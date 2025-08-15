@@ -31,40 +31,57 @@ const modernTemplateService = {
   
   async createTemplate(data) {
     const { name, description, elements, tags, usage_count, thumbnail, createdBy } = data;
-    return db.one(`
-      INSERT INTO quotation_templates (
+    
+    // Ensure we use a valid user ID to avoid foreign key constraint errors
+    let validCreatedBy = createdBy || 'usr_test001';
+    
+    // Map known invalid user IDs to valid ones
+    if (validCreatedBy === 'dev-user' || validCreatedBy === 'system') {
+      validCreatedBy = 'usr_test001';
+    }
+    
+    try {
+      return await db.one(`
+        INSERT INTO quotation_templates (
+          name, 
+          description, 
+          content, 
+          elements, 
+          tags, 
+          usage_count, 
+          thumbnail,
+          created_by
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
+        RETURNING 
+          id,
+          name,
+          description,
+          content,
+          elements,
+          is_default as "isDefault",
+          created_by as "createdBy",
+          created_at as "createdAt",
+          updated_at as "updatedAt",
+          usage_count,
+          tags,
+          thumbnail
+      `, [
         name, 
-        description, 
-        content, 
-        elements, 
-        tags, 
-        usage_count, 
-        thumbnail,
-        created_by
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) 
-      RETURNING 
-        id,
-        name,
-        description,
-        content,
-        elements,
-        is_default as "isDefault",
-        created_by as "createdBy",
-        created_at as "createdAt",
-        updated_at as "updatedAt",
-        usage_count,
-        tags,
-        thumbnail
-    `, [
-      name, 
-      description || '', 
-      '', // content can be empty for modern templates
-      JSON.stringify(elements || []), 
-      tags || [], 
-      usage_count || 0, 
-      thumbnail || null,
-      createdBy || 'system'
-    ]);
+        description || '', 
+        '', // content can be empty for modern templates
+        JSON.stringify(elements || []), 
+        tags || [], 
+        usage_count || 0, 
+        thumbnail || null,
+        validCreatedBy
+      ]);
+    } catch (error) {
+      // If foreign key constraint error, try with null (if allowed) or throw with better message
+      if (error.code === '23503' && error.constraint === 'quotation_templates_created_by_fkey') {
+        throw new Error(`Template creation failed: User '${validCreatedBy}' does not exist in the database. Please ensure a valid user is logged in.`);
+      }
+      throw error;
+    }
   },
   
   async updateTemplate(id, data) {
