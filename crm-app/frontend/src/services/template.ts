@@ -71,30 +71,47 @@ export async function getTemplateById(templateId: string): Promise<Template> {
 }
 // Fetch all templates from backend API
 export async function getTemplates(): Promise<Template[]> {
-  const apiUrl = import.meta.env.VITE_API_URL || '/api';
-  const response = await fetch(`${apiUrl}/templates`, {
-    method: 'GET',
-    headers: getHeaders(),
-    credentials: 'include',
-  });
-  if (!response.ok) {
-    throw new Error('Failed to fetch templates');
+  try {
+    const apiUrl = import.meta.env.VITE_API_URL || '/api';
+    console.log('Fetching templates from:', `${apiUrl}/templates`);
+    
+    const response = await fetch(`${apiUrl}/templates`, {
+      method: 'GET',
+      headers: getHeaders(),
+      credentials: 'include',
+    });
+    
+    console.log('Template fetch response status:', response.status);
+    
+    if (!response.ok) {
+      console.error('Failed to fetch templates:', response.status, response.statusText);
+      throw new Error(`Failed to fetch templates: ${response.status}`);
+    }
+    
+    const result = await response.json();
+    console.log('Template fetch result:', result);
+    
+    // Support both array and {data: array} responses
+    const templates = Array.isArray(result)
+      ? result
+      : Array.isArray(result.data)
+        ? result.data
+        : [];
+    
+    console.log('Processed templates:', templates);
+    return templates;
+  } catch (error) {
+    console.error('Error in getTemplates:', error);
+    throw error;
   }
-  const result = await response.json();
-  // Support both array and {data: array} responses
-  const templates = Array.isArray(result)
-    ? result
-    : Array.isArray(result.data)
-      ? result.data
-      : [];
-  return templates;
 }
 export interface Template {
   id: string;
   name: string;
   description?: string;
   content: string; // Template content with {{placeholders}}
-  styles?: string;
+  styles?: string | object;
+  elements?: any[]; // Drag-and-drop template elements
   createdAt: string;  // ISO date string
   updatedAt: string;  // ISO date string
   createdBy?: string;
