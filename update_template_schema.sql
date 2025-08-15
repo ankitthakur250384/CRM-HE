@@ -38,29 +38,28 @@ INSERT INTO quotation_templates (
     'Modern Template Builder Sample',
     'Sample template created with the new drag-and-drop builder',
     '<div>Sample HTML content</div>',
-    '[
-        {
-            "id": "element_1",
-            "type": "text",
-            "content": "Sample text element",
-            "styles": {
-                "fontSize": 16,
-                "fontWeight": "bold",
-                "textAlign": "center"
-            }
-        },
-        {
-            "id": "element_2", 
-            "type": "field",
-            "fieldType": "customer.name",
-            "styles": {
-                "fontSize": 14,
-                "textAlign": "left"
-            }
+    '{
+        "id": "element_1",
+        "type": "text",
+        "content": "Sample text element",
+        "styles": {
+            "fontSize": 16,
+            "fontWeight": "bold",
+            "textAlign": "center"
         }
+    },
+    {
+        "id": "element_2", 
+        "type": "field",
+        "fieldType": "customer.name",
+        "styles": {
+            "fontSize": 14,
+            "textAlign": "left"
+        }
+    }
     ]'::jsonb,
     false,
-    'admin',
+    'usr_admin01',
     0,
     ARRAY['sample', 'modern']
-) ON CONFLICT (name) DO NOTHING;
+);
