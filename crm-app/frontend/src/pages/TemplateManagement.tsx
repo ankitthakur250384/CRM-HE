@@ -22,7 +22,7 @@ import {
 import { Button } from '../components/common/Button';
 import { Input } from '../components/common/Input';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/common/Card';
-import TemplateBuilder from './TemplateBuilder';
+import ModernTemplateBuilder from '../components/templates/ModernTemplateBuilder';
 import { Toast } from '../components/common/Toast';
 import { 
   getModernTemplates, 
@@ -52,8 +52,8 @@ export const TemplateManagement: React.FC = () => {
   const fetchTemplates = async () => {
     try {
       setIsLoading(true);
-      const fetchedTemplates = await getModernTemplates();
-      setTemplates(fetchedTemplates);
+      const response = await getModernTemplates();
+      setTemplates(response.data || response);
     } catch (error) {
       console.error('Error fetching templates:', error);
       showToast('Error loading templates', 'error');
@@ -124,7 +124,29 @@ export const TemplateManagement: React.FC = () => {
 
   if (showBuilder) {
     return (
-      <TemplateBuilder />
+      <ModernTemplateBuilder 
+        template={selectedTemplate || undefined}
+        onSave={async (template) => {
+          try {
+            if (selectedTemplate) {
+              await updateModernTemplate(selectedTemplate.id, template);
+              showToast('Template updated successfully', 'success');
+            } else {
+              await createModernTemplate({
+                ...template,
+                createdBy: 'Current User'
+              });
+              showToast('Template created successfully', 'success');
+            }
+            setShowBuilder(false);
+            fetchTemplates();
+          } catch (error) {
+            console.error('Error saving template:', error);
+            showToast('Error saving template', 'error');
+          }
+        }}
+        onCancel={() => setShowBuilder(false)}
+      />
     );
   }
 
