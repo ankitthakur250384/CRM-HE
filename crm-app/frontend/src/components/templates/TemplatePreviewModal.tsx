@@ -31,6 +31,9 @@ export default function TemplatePreviewModal({
   elements,
   templateName = 'Template Preview'
 }: TemplatePreviewModalProps) {
+  console.log('🖥️ TemplatePreviewModal render:', { isOpen, elementsCount: elements?.length, templateName });
+  console.log('📊 Elements to preview:', elements?.map(el => ({ id: el.id, type: el.type })));
+  
   if (!isOpen) return null;
 
   const replacePlaceholders = (text: string): string => {

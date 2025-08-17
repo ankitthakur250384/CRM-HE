@@ -1322,8 +1322,11 @@ export default function ModernTemplateBuilder({
     console.log('🚨 TEMPLATE USEEFFECT TRIGGERED');
     console.log('📄 Template prop:', template);
     console.log('🔄 Current elements before template load:', elements.map(el => ({ id: el.id, type: el.type })));
+    console.log('🎯 Elements length:', elements.length);
     
-    if (template) {
+    // Only load template data if we have a template AND no current elements
+    // This prevents overwriting user changes when the template prop updates after save
+    if (template && elements.length === 0) {
       console.log('✅ Loading template:', template);
       setTemplateName(template.name);
       setTemplateDescription(template.description || '');
@@ -1345,8 +1348,12 @@ export default function ModernTemplateBuilder({
       
       console.log('📋 Setting elements from template:', enhancedElements.map(el => ({ id: el.id, type: el.type })));
       setElements(enhancedElements);
+    } else if (template && elements.length > 0) {
+      console.log('⚠️ Template provided but elements already exist, updating only name/description');
+      setTemplateName(template.name);
+      setTemplateDescription(template.description || '');
     } else {
-      console.log('❌ No template provided, keeping current elements');
+      console.log('❌ No template provided or template empty, keeping current elements');
     }
   }, [template]);
 
@@ -1406,13 +1413,20 @@ export default function ModernTemplateBuilder({
   };
 
   const handlePreview = () => {
+    console.log('🔍 Preview button clicked');
+    console.log('📊 Current elements:', elements.map(el => ({ id: el.id, type: el.type })));
+    console.log('🏷️ Template name:', templateName);
+    console.log('🎭 Show preview state:', showPreview);
+    
     if (elements.length === 0) {
+      console.log('❌ No elements to preview');
       setError('Please add elements to preview the template');
       setTimeout(() => setError(null), 3000);
       return;
     }
+    
+    console.log('✅ Opening preview modal');
     setShowPreview(true);
-    console.log('🔍 Opening preview for template:', templateName);
   };
 
   const handleEditElement = (element: EnhancedTemplateElement, index: number) => {
