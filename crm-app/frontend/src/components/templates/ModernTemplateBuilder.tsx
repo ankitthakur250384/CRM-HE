@@ -1158,7 +1158,7 @@ function TemplateCanvas({
       };
 
       const newElement: EnhancedTemplateElement = {
-        id: `element-${Date.now()}`,
+        id: `element-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
         type: item.elementType as any,
         content: item.defaultContent || '',
         style: {
@@ -1176,6 +1176,8 @@ function TemplateCanvas({
         config: getDefaultConfig(item.elementType)
       };
       
+      console.log('Adding new element:', newElement);
+      console.log('Current elements before add:', elements.map(el => ({ id: el.id, type: el.type })));
       onElementsChange([...elements, newElement]);
     },
     collect: (monitor) => ({
@@ -1188,8 +1190,10 @@ function TemplateCanvas({
   };
 
   const handleElementUpdate = (index: number, updates: Partial<EnhancedTemplateElement>) => {
+    console.log('handleElementUpdate called:', { index, updates, currentElement: elements[index]?.id });
     const newElements = [...elements];
     newElements[index] = { ...newElements[index], ...updates };
+    console.log('Updated element:', newElements[index]);
     onElementsChange(newElements);
   };
 
@@ -1265,9 +1269,20 @@ export default function ModernTemplateBuilder({
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Debug effect to track elements changes
+  useEffect(() => {
+    console.log('Elements state changed:', elements.map(el => ({ 
+      id: el.id, 
+      type: el.type,
+      content: el.content?.substring(0, 20) + '...',
+      configKeys: Object.keys(el.config || {})
+    })));
+  }, [elements]);
+
   // Load template data when component mounts or template prop changes
   useEffect(() => {
     if (template) {
+      console.log('Loading template:', template);
       setTemplateName(template.name);
       setTemplateDescription(template.description || '');
       
@@ -1286,6 +1301,7 @@ export default function ModernTemplateBuilder({
         }
       }));
       
+      console.log('Setting elements from template:', enhancedElements.map(el => ({ id: el.id, type: el.type })));
       setElements(enhancedElements);
     }
   }, [template]);
