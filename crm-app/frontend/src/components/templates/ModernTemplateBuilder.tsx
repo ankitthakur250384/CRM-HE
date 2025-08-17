@@ -3,7 +3,7 @@
  * Complete drag-and-drop template builder with preview, editing, and persistence
  */
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { 
@@ -1123,6 +1123,10 @@ function TemplateCanvas({
   onElementsChange: (elements: EnhancedTemplateElement[]) => void;
   onEditElement: (element: EnhancedTemplateElement, index: number) => void;
 }) {
+  // Use ref to always have the latest elements
+  const elementsRef = useRef(elements);
+  elementsRef.current = elements;
+
   const [{ isOver }, drop] = useDrop(() => ({
     accept: ItemTypes.PALETTE_ITEM,
     drop: (item: { elementType: string; defaultContent: string }) => {
@@ -1177,13 +1181,13 @@ function TemplateCanvas({
       };
       
       console.log('🔥 ADDING NEW ELEMENT');
-      console.log('📊 Current elements before add:', elements.map(el => ({ 
+      console.log('📊 Current elements before add:', elementsRef.current.map(el => ({ 
         id: el.id, 
         type: el.type, 
         content: (el.content || '').substring(0, 20) + '...' 
       })));
       console.log('➕ New element being added:', { id: newElement.id, type: newElement.type, content: newElement.content });
-      const newElementsArray = [...elements, newElement];
+      const newElementsArray = [...elementsRef.current, newElement];
       console.log('📋 Final elements array:', newElementsArray.map(el => ({ id: el.id, type: el.type })));
       onElementsChange(newElementsArray);
     },
@@ -1193,12 +1197,12 @@ function TemplateCanvas({
   }));
 
   const handleElementDelete = (index: number) => {
-    onElementsChange(elements.filter((_, i) => i !== index));
+    onElementsChange(elementsRef.current.filter((_, i) => i !== index));
   };
 
   const handleElementUpdate = (index: number, updates: Partial<EnhancedTemplateElement>) => {
-    console.log('handleElementUpdate called:', { index, updates, currentElement: elements[index]?.id });
-    const newElements = [...elements];
+    console.log('handleElementUpdate called:', { index, updates, currentElement: elementsRef.current[index]?.id });
+    const newElements = [...elementsRef.current];
     newElements[index] = { ...newElements[index], ...updates };
     console.log('Updated element:', newElements[index]);
     onElementsChange(newElements);
@@ -1206,15 +1210,15 @@ function TemplateCanvas({
 
   const handleMoveUp = (index: number) => {
     if (index > 0) {
-      const newElements = [...elements];
+      const newElements = [...elementsRef.current];
       [newElements[index], newElements[index - 1]] = [newElements[index - 1], newElements[index]];
       onElementsChange(newElements);
     }
   };
 
   const handleMoveDown = (index: number) => {
-    if (index < elements.length - 1) {
-      const newElements = [...elements];
+    if (index < elementsRef.current.length - 1) {
+      const newElements = [...elementsRef.current];
       [newElements[index], newElements[index + 1]] = [newElements[index + 1], newElements[index]];
       onElementsChange(newElements);
     }
@@ -1404,9 +1408,8 @@ export default function ModernTemplateBuilder({
   const handleElementsChange = useCallback((newElements: EnhancedTemplateElement[]) => {
     console.log('🎬 handleElementsChange called');
     console.log('📥 Incoming elements:', newElements.map(el => ({ id: el.id, type: el.type })));
-    console.log('📊 Current elements before update:', elements.map(el => ({ id: el.id, type: el.type })));
     setElements(newElements);
-  }, [elements]);
+  }, []);
 
   return (
     <DndProvider backend={HTML5Backend}>
