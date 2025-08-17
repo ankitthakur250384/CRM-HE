@@ -350,8 +350,8 @@ function CanvasElement({
   const elementStyle = {
     fontSize: element.style?.fontSize || '14px',
     fontWeight: element.style?.fontWeight || 'normal',
-    color: element.style?.color || '#000000',
-    backgroundColor: element.style?.backgroundColor || 'transparent',
+    color: element.style?.color && element.style?.color !== '#ffffff' ? element.style.color : '#222',
+    backgroundColor: element.style?.backgroundColor || '#fff',
     padding: element.style?.padding || '8px',
     margin: element.style?.margin || '0px',
     textAlign: element.style?.textAlign || 'left',
@@ -660,7 +660,15 @@ export default function ModernTemplateBuilder({
         })),
         tags: template?.tags || [],
         usage_count: template?.usage_count || 0,
-        createdBy: template?.createdBy || 'current-user'
+        createdBy: template?.createdBy || 'current-user',
+        version: template?.version || 1,
+        isDefault: template?.isDefault || false,
+        isActive: template?.isActive !== false,
+        category: template?.category || 'general',
+        styles: template?.styles || {},
+        layout: template?.layout || {},
+        thumbnail: template?.thumbnail,
+        content: template?.content || ''
       };
 
       await onSave(templateData);
