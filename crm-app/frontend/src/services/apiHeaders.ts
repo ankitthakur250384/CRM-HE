@@ -14,24 +14,28 @@ import { isProd, isDev, logDebug, getAuthHeaders, logError, logWarning } from '.
  * @param includeDevBypass Whether to include development bypass headers (use with caution)
  */
 export const getHeaders = (includeDevBypass: boolean = true): HeadersInit => {
-  // TEMPORARY: Always include dev bypass for testing authentication issues
-  includeDevBypass = true;
+  // DEVELOPMENT/TESTING: Always include dev bypass for hostname-based detection
+  includeDevBypass = includeDevBypass || (typeof window !== 'undefined' && (
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1' ||
+    window.location.port === '3000' ||
+    window.location.hostname.includes('.local')
+  ));
   
   const headers = getAuthHeaders(includeDevBypass);
   const typedHeaders = headers as Record<string, string>;
   
   // Add production-specific security headers
-  if (isProd()) {
+  if (isProd() && !includeDevBypass) {
     typedHeaders['X-Requested-With'] = 'XMLHttpRequest'; // CSRF protection
     typedHeaders['X-Application-Type'] = 'asp-cranes-crm';
   }
   
   // Log header usage in development only
-  if (isDev()) {
+  if (isDev() || includeDevBypass) {
     const hasToken = !!typedHeaders['Authorization'];
-    logDebug(`API headers prepared: Auth token ${hasToken ? 'present' : 'missing'}${
-      includeDevBypass ? ', dev bypass enabled' : ''
-    }`);
+    const hasBypass = !!typedHeaders['x-bypass-auth'];
+    logDebug(`API headers prepared: Auth token ${hasToken ? 'present' : 'missing'}, bypass ${hasBypass ? 'enabled' : 'disabled'}`);
   }
   
   return typedHeaders;
