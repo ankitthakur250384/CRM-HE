@@ -3,7 +3,7 @@
  * Complete drag-and-drop template builder with preview, editing, and persistence
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { DndProvider, useDrag, useDrop } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { 
@@ -1401,9 +1401,16 @@ export default function ModernTemplateBuilder({
     setEditingElement(null);
   };
 
+  const handleElementsChange = useCallback((newElements: EnhancedTemplateElement[]) => {
+    console.log('🎬 handleElementsChange called');
+    console.log('📥 Incoming elements:', newElements.map(el => ({ id: el.id, type: el.type })));
+    console.log('📊 Current elements before update:', elements.map(el => ({ id: el.id, type: el.type })));
+    setElements(newElements);
+  }, [elements]);
+
   return (
     <DndProvider backend={HTML5Backend}>
-      <div className="flex h-screen bg-gray-100">
+      <div className="flex flex-col lg:flex-row h-screen bg-gray-100">
         {/* Success notification */}
         {saveSuccess && (
           <div className="fixed top-4 right-4 bg-green-500 text-white px-4 py-2 rounded-lg shadow-lg z-50">
@@ -1412,14 +1419,14 @@ export default function ModernTemplateBuilder({
         )}
 
         {/* Left Sidebar - Element Palette */}
-        <div className="w-80 bg-white border-r border-gray-200 p-4 overflow-y-auto">
+        <div className="w-full lg:w-80 bg-white border-r border-gray-200 p-4 overflow-y-auto lg:h-full max-h-screen">
           <div className="mb-6">
             <h2 className="text-lg font-semibold text-gray-900 mb-2">Template Elements</h2>
             <p className="text-sm text-gray-600 mb-4">
               Drag elements to the canvas to build your template
             </p>
             
-            <div className="space-y-3">
+            <div className="grid grid-cols-2 lg:grid-cols-1 gap-3">
               {paletteItems.map((item) => (
                 <PaletteItem key={item.type} item={item} />
               ))}
@@ -1428,11 +1435,11 @@ export default function ModernTemplateBuilder({
         </div>
 
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col min-h-0">
           {/* Header */}
           <div className="bg-white border-b border-gray-200 p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex-1 mr-4">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="flex-1">
                 <Input
                   value={templateName}
                   onChange={(e) => setTemplateName(e.target.value)}
@@ -1447,7 +1454,7 @@ export default function ModernTemplateBuilder({
                 />
               </div>
               
-              <div className="flex gap-2">
+              <div className="flex flex-wrap gap-2">
                 <Button
                   variant="ghost"
                   onClick={handlePreview}
@@ -1484,7 +1491,7 @@ export default function ModernTemplateBuilder({
           <div className="flex-1 p-4 overflow-y-auto">
             <TemplateCanvas
               elements={elements}
-              onElementsChange={setElements}
+              onElementsChange={handleElementsChange}
               onEditElement={handleEditElement}
             />
           </div>
@@ -1492,11 +1499,16 @@ export default function ModernTemplateBuilder({
 
         {/* Right Sidebar - Element Editor */}
         {editingElement && (
-          <ElementEditor
-            element={editingElement.element}
-            onUpdate={handleElementEditorUpdate}
-            onClose={handleElementEditorClose}
-          />
+          <div className="fixed inset-0 lg:relative lg:inset-auto lg:w-80 lg:flex-shrink-0 z-30">
+            <div className="absolute inset-0 bg-black bg-opacity-50 lg:hidden" onClick={handleElementEditorClose}></div>
+            <div className="absolute right-0 top-0 bottom-0 w-80 lg:relative lg:w-full">
+              <ElementEditor
+                element={editingElement.element}
+                onUpdate={handleElementEditorUpdate}
+                onClose={handleElementEditorClose}
+              />
+            </div>
+          </div>
         )}
 
         {/* Success/Error Messages */}
