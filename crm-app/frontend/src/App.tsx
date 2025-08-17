@@ -18,7 +18,6 @@ import ToastContainer from './components/common/ToastContainer';
 import { QuotationManagement } from './pages/QuotationManagement';
 import { QuotationCreation } from './pages/QuotationCreation';
 import { JobScheduling } from './pages/JobScheduling';
-import { JobTest } from './pages/JobTest';
 import { SiteAssessment } from './pages/SiteAssessment';
 import { JobSummaryFeedback } from './pages/JobSummaryFeedback';
 import { EquipmentManagement } from './pages/EquipmentManagement';
@@ -213,12 +212,6 @@ function AppContent() {
             <Route path="jobs" element={
               <ProtectedRoute allowedRoles={['admin', 'operations_manager', 'operator']}>
                 <JobScheduling />
-              </ProtectedRoute>
-            } />
-            
-            <Route path="job-test" element={
-              <ProtectedRoute allowedRoles={['admin', 'operations_manager', 'operator']}>
-                <JobTest />
               </ProtectedRoute>
             } />
             
