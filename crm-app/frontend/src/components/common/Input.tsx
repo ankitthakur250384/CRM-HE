@@ -44,7 +44,16 @@ export function Input({ label, error, className = '', leftIcon, rightIcon, name,
             ${rightIcon ? 'pr-8 sm:pr-10' : ''}
             ${className}
           `}
-          style={{ color: '#222', WebkitTextFillColor: '#222', background: '#fff', borderColor: '#CAC0B0', fontWeight: 600, letterSpacing: '0.08em' }}
+          style={{ 
+            color: '#222 !important', 
+            WebkitTextFillColor: '#222 !important', 
+            background: '#fff !important', 
+            borderColor: '#CAC0B0', 
+            fontWeight: 600, 
+            letterSpacing: '0.08em',
+            zIndex: 1,
+            position: 'relative'
+          }}
           placeholder={props.placeholder ? `${props.placeholder}${props.required ? ' *' : ''}` : ''}
           {...inputProps}
         />

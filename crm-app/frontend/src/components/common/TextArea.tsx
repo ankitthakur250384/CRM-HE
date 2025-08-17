@@ -22,6 +22,14 @@ export function TextArea({ label, error, helperText, className = '', ...props }:
           error ? 'border-error-300 bg-error-50' : 'border-gray-300'
         } ${props.required ? 'bg-blue-50 border-blue-200 focus:bg-white' : 
            !props.disabled ? 'bg-green-50 border-green-200 focus:bg-white' : ''} ${className}`}
+        style={{ 
+          color: '#222 !important', 
+          WebkitTextFillColor: '#222 !important', 
+          background: '#fff !important',
+          fontWeight: 500,
+          zIndex: 1,
+          position: 'relative'
+        }}
         placeholder={props.placeholder ? `${props.placeholder}${props.required ? ' *' : ''}` : ''}
         {...props}
       />
