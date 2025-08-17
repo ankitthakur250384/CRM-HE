@@ -6,7 +6,7 @@ import { Toast } from '../common/Toast';
 import { Card, CardHeader, CardTitle, CardContent } from '../common/Card';
 import { Template } from '../../types/template';
 import { Quotation } from '../../types/quotation';
-import { mergeTemplateViaAPI } from '../../services/templateMerger';
+import { mergeQuotationWithTemplate } from '../../utils/templateMerger';
 import { getTemplates, updateTemplate } from '../../services/templateService';
 
 interface DefaultTemplateConfigProps {
@@ -86,7 +86,7 @@ export function DefaultTemplateConfig({ onSave }: DefaultTemplateConfigProps) {
     async function fetchPreview() {
       if (selectedTemplate && SAMPLE_QUOTATION) {
         try {
-          const html = await mergeTemplateViaAPI(selectedTemplate.id, SAMPLE_QUOTATION);
+          const html = mergeQuotationWithTemplate(SAMPLE_QUOTATION, selectedTemplate);
           setPreviewHtml(html);
         } catch (err) {
           setPreviewHtml('<div style="color:red">Error generating preview</div>');
