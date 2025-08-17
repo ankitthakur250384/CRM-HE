@@ -99,7 +99,34 @@ const paletteItems = [
     label: 'Terms & Conditions', 
     icon: FileText, 
     description: 'Legal terms and conditions',
-    defaultContent: 'Terms and Conditions'
+    defaultContent: `TERMS AND CONDITIONS
+
+1. SCOPE OF WORK
+   - Equipment will be provided as per specifications mentioned in the quotation
+   - Services include transportation, installation, and operation as agreed
+   - Any additional work will be charged separately
+
+2. PAYMENT TERMS
+   - 30% advance payment before commencement of work
+   - 40% payment upon delivery and installation
+   - 30% payment upon completion of work
+   - Payment to be made within 30 days of invoice date
+
+3. LIABILITY
+   - Company liability limited to equipment malfunction due to manufacturing defects
+   - Client responsible for site safety and security
+   - Insurance coverage as per applicable regulations
+
+4. CANCELLATION
+   - 48 hours notice required for cancellation
+   - Cancellation charges may apply as per company policy
+   - Advance payments are non-refundable after work commencement
+
+5. FORCE MAJEURE
+   - Company not liable for delays due to circumstances beyond control
+   - Includes natural disasters, strikes, government regulations, etc.
+
+For complete terms and conditions, please contact our office.`
   },
   { 
     type: 'image', 
@@ -829,7 +856,7 @@ function CanvasElement({
       
       case 'text':
         return (
-          <div style={elementStyle}>
+          <div style={elementStyle} className="whitespace-pre-wrap">
             {element.content || 'Text content'}
           </div>
         );
@@ -1006,7 +1033,7 @@ function CanvasElement({
         return (
           <div className="bg-gray-50 border border-gray-200 rounded p-4" style={elementStyle}>
             <h3 className="font-semibold mb-2">Terms & Conditions</h3>
-            <div className="text-sm text-gray-700">
+            <div className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed">
               {element.content || 'Terms and conditions content will appear here...'}
             </div>
           </div>
