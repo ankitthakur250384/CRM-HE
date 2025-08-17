@@ -728,6 +728,61 @@ function CanvasElement({
   isFirst: boolean;
   isLast: boolean;
 }) {
+  const [isResizing, setIsResizing] = useState(false);
+  const [dragStart, setDragStart] = useState({ x: 0, y: 0, width: 0, height: 0 });
+
+  const handleResizeStart = (e: React.MouseEvent, element: EnhancedTemplateElement) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsResizing(true);
+    
+    const rect = (e.target as HTMLElement).closest('.resizable-element')?.getBoundingClientRect();
+    if (rect) {
+      setDragStart({
+        x: e.clientX,
+        y: e.clientY,
+        width: rect.width,
+        height: rect.height
+      });
+    }
+  };
+
+  const handleResizeMove = (e: MouseEvent) => {
+    if (!isResizing) return;
+    
+    const deltaX = e.clientX - dragStart.x;
+    const deltaY = e.clientY - dragStart.y;
+    
+    const newWidth = Math.max(100, dragStart.width + deltaX);
+    const newHeight = Math.max(100, dragStart.height + deltaY);
+    
+    // Update the element style directly
+    const resizableElement = document.querySelector('.resizable-element') as HTMLElement;
+    if (resizableElement) {
+      resizableElement.style.width = `${newWidth}px`;
+      resizableElement.style.height = `${newHeight}px`;
+    }
+  };
+
+  const handleResizeEnd = () => {
+    if (!isResizing) return;
+    setIsResizing(false);
+    
+    // Here you would update the element's style in the state
+    // This requires a callback to update the element
+  };
+
+  React.useEffect(() => {
+    if (isResizing) {
+      document.addEventListener('mousemove', handleResizeMove);
+      document.addEventListener('mouseup', handleResizeEnd);
+      
+      return () => {
+        document.removeEventListener('mousemove', handleResizeMove);
+        document.removeEventListener('mouseup', handleResizeEnd);
+      };
+    }
+  }, [isResizing, dragStart]);
   const elementStyle = {
     fontSize: element.style?.fontSize || '14px',
     fontWeight: element.style?.fontWeight || 'normal',
@@ -826,10 +881,10 @@ function CanvasElement({
         if (element.config?.src) {
           return (
             <div 
-              className="relative border border-gray-300 rounded overflow-hidden group/image"
+              className="relative border border-gray-300 rounded overflow-hidden group/image resizable-element"
               style={{
-                width: element.style?.width || 'auto',
-                height: element.style?.height || 'auto',
+                width: element.style?.width || '200px',
+                height: element.style?.height || '150px',
                 maxWidth: element.style?.maxWidth || '100%',
                 textAlign: element.style?.textAlign || 'center',
                 minWidth: '100px',
@@ -846,15 +901,20 @@ function CanvasElement({
                 }}
               />
               {/* Resize handles */}
-              <div className="absolute inset-0 opacity-0 group-hover/image:opacity-100 transition-opacity pointer-events-none">
-                <div className="absolute bottom-0 right-0 w-3 h-3 bg-blue-500 cursor-nw-resize pointer-events-auto"
-                     onMouseDown={(e) => {
-                       e.stopPropagation();
-                       // Add resize logic here
-                     }}
+              <div className="absolute inset-0 opacity-0 group-hover/image:opacity-100 transition-opacity">
+                <div 
+                  className="absolute bottom-0 right-0 w-4 h-4 bg-blue-500 cursor-nw-resize border border-white shadow-lg"
+                  onMouseDown={(e) => handleResizeStart(e, element)}
+                  style={{ transform: 'translate(50%, 50%)' }}
                 />
-                <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-3 h-1 bg-blue-500 cursor-n-resize pointer-events-auto" />
-                <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-3 bg-blue-500 cursor-e-resize pointer-events-auto" />
+                <div 
+                  className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-3 h-2 bg-blue-500 cursor-n-resize border border-white shadow-lg" 
+                  style={{ transform: 'translateX(-50%) translateY(50%)' }}
+                />
+                <div 
+                  className="absolute right-0 top-1/2 transform -translate-y-1/2 w-2 h-3 bg-blue-500 cursor-e-resize border border-white shadow-lg"
+                  style={{ transform: 'translateY(-50%) translateX(50%)' }}
+                />
               </div>
             </div>
           );
@@ -862,10 +922,10 @@ function CanvasElement({
         
         return (
           <div 
-            className="border-2 border-dashed border-gray-300 rounded p-8 text-center bg-gray-50 group/image"
+            className="relative border-2 border-dashed border-gray-300 rounded p-8 text-center bg-gray-50 group/image resizable-element"
             style={{
-              width: element.style?.width || 'auto',
-              height: element.style?.height || 'auto',
+              width: element.style?.width || '200px',
+              height: element.style?.height || '150px',
               maxWidth: element.style?.maxWidth || '100%',
               minHeight: element.style?.minHeight || '120px',
               minWidth: '150px'
@@ -876,7 +936,15 @@ function CanvasElement({
               {element.content || 'Click to upload image'}
             </div>
             <div className="text-xs text-gray-400 mt-1">
-              Drag corners to resize
+              Drag corners to resize • Click settings to upload
+            </div>
+            {/* Resize handles for placeholder */}
+            <div className="absolute inset-0 opacity-0 group-hover/image:opacity-100 transition-opacity">
+              <div 
+                className="absolute bottom-0 right-0 w-4 h-4 bg-blue-500 cursor-nw-resize border border-white shadow-lg"
+                onMouseDown={(e) => handleResizeStart(e, element)}
+                style={{ transform: 'translate(50%, 50%)' }}
+              />
             </div>
           </div>
         );
@@ -911,48 +979,72 @@ function CanvasElement({
   return (
     <div className="group relative border border-gray-200 rounded-lg p-2 mb-2 hover:border-blue-300 hover:shadow-sm transition-all duration-200">
       {/* Element Controls */}
-      <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white rounded shadow-sm border">
-        <Button
-          variant="ghost"
-          size="sm"
+      <div className="absolute top-1 right-1 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity bg-white rounded shadow-lg border border-gray-300 p-1">
+        <button
           onClick={() => onEdit(element, index)}
-          className="p-1 h-6 w-6 text-gray-800 hover:text-blue-700 hover:bg-blue-50 border border-transparent hover:border-blue-200"
-          style={{ color: '#1f2937 !important', backgroundColor: 'white !important' }}
+          className="p-1 h-6 w-6 rounded hover:bg-blue-50 transition-colors"
+          style={{ 
+            color: '#374151', 
+            backgroundColor: 'white',
+            border: '1px solid #d1d5db',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+          title="Edit Element"
         >
-          <Settings size={12} style={{ color: '#1f2937' }} />
-        </Button>
+          <Settings size={12} color="#374151" />
+        </button>
         
-        <Button
-          variant="ghost"
-          size="sm"
+        <button
           onClick={() => onMoveUp(index)}
           disabled={isFirst}
-          className="p-1 h-6 w-6 text-gray-800 hover:text-green-700 hover:bg-green-50 border border-transparent hover:border-green-200 disabled:text-gray-400 disabled:hover:bg-gray-50"
-          style={{ color: isFirst ? '#9ca3af !important' : '#1f2937 !important', backgroundColor: 'white !important' }}
+          className="p-1 h-6 w-6 rounded hover:bg-green-50 transition-colors disabled:opacity-50"
+          style={{ 
+            color: isFirst ? '#9ca3af' : '#374151', 
+            backgroundColor: 'white',
+            border: '1px solid #d1d5db',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+          title="Move Up"
         >
-          <ArrowUp size={12} style={{ color: isFirst ? '#9ca3af' : '#1f2937' }} />
-        </Button>
+          <ArrowUp size={12} color={isFirst ? '#9ca3af' : '#374151'} />
+        </button>
         
-        <Button
-          variant="ghost"
-          size="sm"
+        <button
           onClick={() => onMoveDown(index)}
           disabled={isLast}
-          className="p-1 h-6 w-6 text-gray-800 hover:text-green-700 hover:bg-green-50 border border-transparent hover:border-green-200 disabled:text-gray-400 disabled:hover:bg-gray-50"
-          style={{ color: isLast ? '#9ca3af !important' : '#1f2937 !important', backgroundColor: 'white !important' }}
+          className="p-1 h-6 w-6 rounded hover:bg-green-50 transition-colors disabled:opacity-50"
+          style={{ 
+            color: isLast ? '#9ca3af' : '#374151', 
+            backgroundColor: 'white',
+            border: '1px solid #d1d5db',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+          title="Move Down"
         >
-          <ArrowDown size={12} style={{ color: isLast ? '#9ca3af' : '#1f2937' }} />
-        </Button>
+          <ArrowDown size={12} color={isLast ? '#9ca3af' : '#374151'} />
+        </button>
         
-        <Button
-          variant="ghost"
-          size="sm"
+        <button
           onClick={() => onDelete(index)}
-          className="p-1 h-6 w-6 text-red-700 hover:text-red-800 hover:bg-red-50 border border-transparent hover:border-red-200"
-          style={{ color: '#dc2626 !important', backgroundColor: 'white !important' }}
+          className="p-1 h-6 w-6 rounded hover:bg-red-50 transition-colors"
+          style={{ 
+            color: '#dc2626', 
+            backgroundColor: 'white',
+            border: '1px solid #d1d5db',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center'
+          }}
+          title="Delete Element"
         >
-          <Trash2 size={12} style={{ color: '#dc2626' }} />
-        </Button>
+          <Trash2 size={12} color="#dc2626" />
+        </button>
       </div>
 
       {/* Element Content */}
