@@ -1324,15 +1324,13 @@ export default function ModernTemplateBuilder({
     console.log('🔄 Current elements before template load:', elements.map(el => ({ id: el.id, type: el.type })));
     console.log('🎯 Elements length:', elements.length);
     
-    // Only load template data if we have a template AND no current elements
-    // This prevents overwriting user changes when the template prop updates after save
-    if (template && elements.length === 0) {
-      console.log('✅ Loading template:', template);
+    if (template && template.elements && template.elements.length > 0) {
+      console.log('✅ Loading template with elements:', template);
       setTemplateName(template.name);
       setTemplateDescription(template.description || '');
       
       // Convert template elements to enhanced elements with default styling
-      const enhancedElements: EnhancedTemplateElement[] = (template.elements || []).map(el => ({
+      const enhancedElements: EnhancedTemplateElement[] = template.elements.map(el => ({
         ...el,
         style: {
           fontSize: '14px',
@@ -1348,14 +1346,14 @@ export default function ModernTemplateBuilder({
       
       console.log('📋 Setting elements from template:', enhancedElements.map(el => ({ id: el.id, type: el.type })));
       setElements(enhancedElements);
-    } else if (template && elements.length > 0) {
-      console.log('⚠️ Template provided but elements already exist, updating only name/description');
+    } else if (template) {
+      console.log('⚠️ Template provided but no elements, setting name/description only');
       setTemplateName(template.name);
       setTemplateDescription(template.description || '');
     } else {
-      console.log('❌ No template provided or template empty, keeping current elements');
+      console.log('❌ No template provided, keeping current state');
     }
-  }, [template]);
+  }, [template?.id, template?.name, template?.elements?.length]); // More specific dependencies
 
   const handleSave = async () => {
     if (!templateName.trim()) {
