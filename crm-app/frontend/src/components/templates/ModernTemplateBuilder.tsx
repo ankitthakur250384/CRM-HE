@@ -1176,9 +1176,16 @@ function TemplateCanvas({
         config: getDefaultConfig(item.elementType)
       };
       
-      console.log('Adding new element:', newElement);
-      console.log('Current elements before add:', elements.map(el => ({ id: el.id, type: el.type })));
-      onElementsChange([...elements, newElement]);
+      console.log('🔥 ADDING NEW ELEMENT');
+      console.log('📊 Current elements before add:', elements.map(el => ({ 
+        id: el.id, 
+        type: el.type, 
+        content: (el.content || '').substring(0, 20) + '...' 
+      })));
+      console.log('➕ New element being added:', { id: newElement.id, type: newElement.type, content: newElement.content });
+      const newElementsArray = [...elements, newElement];
+      console.log('📋 Final elements array:', newElementsArray.map(el => ({ id: el.id, type: el.type })));
+      onElementsChange(newElementsArray);
     },
     collect: (monitor) => ({
       isOver: monitor.isOver(),
@@ -1281,8 +1288,12 @@ export default function ModernTemplateBuilder({
 
   // Load template data when component mounts or template prop changes
   useEffect(() => {
+    console.log('🚨 TEMPLATE USEEFFECT TRIGGERED');
+    console.log('📄 Template prop:', template);
+    console.log('🔄 Current elements before template load:', elements.map(el => ({ id: el.id, type: el.type })));
+    
     if (template) {
-      console.log('Loading template:', template);
+      console.log('✅ Loading template:', template);
       setTemplateName(template.name);
       setTemplateDescription(template.description || '');
       
@@ -1301,8 +1312,10 @@ export default function ModernTemplateBuilder({
         }
       }));
       
-      console.log('Setting elements from template:', enhancedElements.map(el => ({ id: el.id, type: el.type })));
+      console.log('📋 Setting elements from template:', enhancedElements.map(el => ({ id: el.id, type: el.type })));
       setElements(enhancedElements);
+    } else {
+      console.log('❌ No template provided, keeping current elements');
     }
   }, [template]);
 
