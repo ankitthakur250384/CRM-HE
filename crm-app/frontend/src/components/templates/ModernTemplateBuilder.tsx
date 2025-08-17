@@ -731,13 +731,15 @@ function CanvasElement({
   isLast: boolean;
 }) {
   const [isResizing, setIsResizing] = useState(false);
+  const [resizeMode, setResizeMode] = useState<'both' | 'width' | 'height'>('both');
   const [dragStart, setDragStart] = useState({ x: 0, y: 0, width: 0, height: 0 });
   const elementRef = React.useRef<HTMLDivElement>(null);
 
-  const handleResizeStart = (e: React.MouseEvent) => {
+  const handleResizeStart = (e: React.MouseEvent, mode: 'both' | 'width' | 'height' = 'both') => {
     e.preventDefault();
     e.stopPropagation();
     setIsResizing(true);
+    setResizeMode(mode);
     
     const rect = elementRef.current?.getBoundingClientRect();
     if (rect) {
@@ -756,12 +758,24 @@ function CanvasElement({
     const deltaX = e.clientX - dragStart.x;
     const deltaY = e.clientY - dragStart.y;
     
-    const newWidth = Math.max(100, dragStart.width + deltaX);
-    const newHeight = Math.max(100, dragStart.height + deltaY);
+    let newWidth = dragStart.width;
+    let newHeight = dragStart.height;
+    
+    if (resizeMode === 'both' || resizeMode === 'width') {
+      newWidth = Math.max(100, dragStart.width + deltaX);
+    }
+    
+    if (resizeMode === 'both' || resizeMode === 'height') {
+      newHeight = Math.max(100, dragStart.height + deltaY);
+    }
     
     // Update the element style directly for immediate visual feedback
-    elementRef.current.style.width = `${newWidth}px`;
-    elementRef.current.style.height = `${newHeight}px`;
+    if (resizeMode === 'both' || resizeMode === 'width') {
+      elementRef.current.style.width = `${newWidth}px`;
+    }
+    if (resizeMode === 'both' || resizeMode === 'height') {
+      elementRef.current.style.height = `${newHeight}px`;
+    }
   };
 
   const handleResizeEnd = () => {
@@ -891,7 +905,7 @@ function CanvasElement({
           return (
             <div 
               ref={elementRef}
-              className="relative border border-gray-300 rounded overflow-hidden group/image resizable-element"
+              className="relative border border-gray-300 rounded overflow-hidden group/image"
               style={{
                 width: element.style?.width || '200px',
                 height: element.style?.height || '150px',
@@ -906,28 +920,46 @@ function CanvasElement({
                 alt={element.config.alt || 'Uploaded image'}
                 className="w-full h-full object-contain pointer-events-none"
                 style={{
-                  aspectRatio: element.config.aspectRatio || 'auto',
-                  minHeight: element.style?.minHeight || '100px'
+                  aspectRatio: element.config.aspectRatio || 'auto'
                 }}
               />
-              {/* Resize handles */}
-              <div className="absolute inset-0 opacity-0 group-hover/image:opacity-100 transition-opacity">
+              
+              {/* Visible resize controls */}
+              <div className="absolute inset-0 opacity-0 group-hover/image:opacity-100 transition-opacity bg-black bg-opacity-10">
+                {/* Corner resize handle - bottom right */}
                 <div 
-                  className="absolute bottom-0 right-0 w-4 h-4 bg-blue-500 cursor-nw-resize border border-white shadow-lg hover:bg-blue-600 z-10"
-                  onMouseDown={(e) => handleResizeStart(e)}
-                  style={{ transform: 'translate(50%, 50%)' }}
-                  title="Drag to resize"
-                />
+                  className="absolute bottom-0 right-0 w-6 h-6 bg-blue-600 border-2 border-white cursor-nw-resize hover:bg-blue-700 shadow-lg flex items-center justify-center"
+                  onMouseDown={(e) => handleResizeStart(e, 'both')}
+                  style={{ transform: 'translate(3px, 3px)' }}
+                  title="Drag to resize both width and height"
+                >
+                  <div className="w-1 h-1 bg-white rounded-full"></div>
+                </div>
+                
+                {/* Bottom edge resize handle */}
                 <div 
-                  className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-3 h-2 bg-blue-500 cursor-n-resize border border-white shadow-lg hover:bg-blue-600 z-10" 
-                  style={{ transform: 'translateX(-50%) translateY(50%)' }}
-                  title="Drag to resize height"
-                />
+                  className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-6 h-3 bg-blue-600 border-2 border-white cursor-n-resize hover:bg-blue-700 shadow-lg"
+                  onMouseDown={(e) => handleResizeStart(e, 'height')}
+                  style={{ transform: 'translateX(-50%) translateY(3px)' }}
+                  title="Drag to resize height only"
+                >
+                  <div className="w-2 h-0.5 bg-white mx-auto mt-0.5"></div>
+                </div>
+                
+                {/* Right edge resize handle */}
                 <div 
-                  className="absolute right-0 top-1/2 transform -translate-y-1/2 w-2 h-3 bg-blue-500 cursor-e-resize border border-white shadow-lg hover:bg-blue-600 z-10"
-                  style={{ transform: 'translateY(-50%) translateX(50%)' }}
-                  title="Drag to resize width"
-                />
+                  className="absolute right-0 top-1/2 transform -translate-y-1/2 w-3 h-6 bg-blue-600 border-2 border-white cursor-e-resize hover:bg-blue-700 shadow-lg"
+                  onMouseDown={(e) => handleResizeStart(e, 'width')}
+                  style={{ transform: 'translateY(-50%) translateX(3px)' }}
+                  title="Drag to resize width only"
+                >
+                  <div className="h-2 w-0.5 bg-white mx-auto mt-1"></div>
+                </div>
+                
+                {/* Size indicator */}
+                <div className="absolute top-2 left-2 bg-black bg-opacity-75 text-white text-xs px-2 py-1 rounded">
+                  {element.style?.width || '200px'} × {element.style?.height || '150px'}
+                </div>
               </div>
             </div>
           );
@@ -936,30 +968,40 @@ function CanvasElement({
         return (
           <div 
             ref={elementRef}
-            className="relative border-2 border-dashed border-gray-300 rounded p-8 text-center bg-gray-50 group/image resizable-element"
+            className="relative border-2 border-dashed border-gray-300 rounded p-4 text-center bg-gray-50 group/image"
             style={{
               width: element.style?.width || '200px',
               height: element.style?.height || '150px',
               maxWidth: element.style?.maxWidth || '100%',
-              minHeight: element.style?.minHeight || '120px',
+              minHeight: '120px',
               minWidth: '150px'
             }}
           >
-            <Image size={48} className="mx-auto text-gray-400 mb-2 pointer-events-none" />
-            <div className="text-sm text-gray-500 pointer-events-none">
-              {element.content || 'Click to upload image'}
+            <div className="flex flex-col items-center justify-center h-full pointer-events-none">
+              <Image size={48} className="text-gray-400 mb-2" />
+              <div className="text-sm text-gray-500">
+                {element.content || 'Click to upload image'}
+              </div>
+              <div className="text-xs text-gray-400 mt-1">
+                Hover to resize • Use settings to upload
+              </div>
             </div>
-            <div className="text-xs text-gray-400 mt-1 pointer-events-none">
-              Drag corners to resize • Click settings to upload
-            </div>
+            
             {/* Resize handles for placeholder */}
-            <div className="absolute inset-0 opacity-0 group-hover/image:opacity-100 transition-opacity">
+            <div className="absolute inset-0 opacity-0 group-hover/image:opacity-100 transition-opacity bg-blue-50 bg-opacity-20">
               <div 
-                className="absolute bottom-0 right-0 w-4 h-4 bg-blue-500 cursor-nw-resize border border-white shadow-lg hover:bg-blue-600 z-10"
-                onMouseDown={(e) => handleResizeStart(e)}
-                style={{ transform: 'translate(50%, 50%)' }}
-                title="Drag to resize"
-              />
+                className="absolute bottom-0 right-0 w-6 h-6 bg-blue-600 border-2 border-white cursor-nw-resize hover:bg-blue-700 shadow-lg flex items-center justify-center"
+                onMouseDown={(e) => handleResizeStart(e, 'both')}
+                style={{ transform: 'translate(3px, 3px)' }}
+                title="Drag to resize both width and height"
+              >
+                <div className="w-1 h-1 bg-white rounded-full"></div>
+              </div>
+              
+              {/* Size indicator */}
+              <div className="absolute top-2 left-2 bg-blue-600 text-white text-xs px-2 py-1 rounded">
+                {element.style?.width || '200px'} × {element.style?.height || '150px'}
+              </div>
             </div>
           </div>
         );
