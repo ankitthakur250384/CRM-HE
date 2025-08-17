@@ -905,60 +905,61 @@ function CanvasElement({
           return (
             <div 
               ref={elementRef}
-              className="relative border border-gray-300 rounded overflow-hidden group/image"
+              className="relative border border-gray-300 rounded group/image bg-white"
               style={{
-                width: element.style?.width || '200px',
-                height: element.style?.height || '150px',
-                maxWidth: element.style?.maxWidth || '100%',
+                width: element.style?.width || '150px',
+                height: element.style?.height || '80px',
+                maxWidth: element.style?.maxWidth || '300px',
                 textAlign: element.style?.textAlign || 'center',
-                minWidth: '100px',
-                minHeight: '100px'
+                minWidth: '80px',
+                minHeight: '40px'
               }}
             >
               <img 
                 src={element.config.src}
                 alt={element.config.alt || 'Uploaded image'}
-                className="w-full h-full object-contain pointer-events-none"
+                className="w-full h-full object-contain"
                 style={{
                   aspectRatio: element.config.aspectRatio || 'auto'
                 }}
               />
               
-              {/* Visible resize controls */}
-              <div className="absolute inset-0 opacity-0 group-hover/image:opacity-100 transition-opacity bg-black bg-opacity-10">
-                {/* Corner resize handle - bottom right */}
-                <div 
-                  className="absolute bottom-0 right-0 w-6 h-6 bg-blue-600 border-2 border-white cursor-nw-resize hover:bg-blue-700 shadow-lg flex items-center justify-center"
-                  onMouseDown={(e) => handleResizeStart(e, 'both')}
-                  style={{ transform: 'translate(3px, 3px)' }}
-                  title="Drag to resize both width and height"
-                >
-                  <div className="w-1 h-1 bg-white rounded-full"></div>
-                </div>
-                
-                {/* Bottom edge resize handle */}
-                <div 
-                  className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-6 h-3 bg-blue-600 border-2 border-white cursor-n-resize hover:bg-blue-700 shadow-lg"
-                  onMouseDown={(e) => handleResizeStart(e, 'height')}
-                  style={{ transform: 'translateX(-50%) translateY(3px)' }}
-                  title="Drag to resize height only"
-                >
-                  <div className="w-2 h-0.5 bg-white mx-auto mt-0.5"></div>
-                </div>
-                
-                {/* Right edge resize handle */}
-                <div 
-                  className="absolute right-0 top-1/2 transform -translate-y-1/2 w-3 h-6 bg-blue-600 border-2 border-white cursor-e-resize hover:bg-blue-700 shadow-lg"
-                  onMouseDown={(e) => handleResizeStart(e, 'width')}
-                  style={{ transform: 'translateY(-50%) translateX(3px)' }}
-                  title="Drag to resize width only"
-                >
-                  <div className="h-2 w-0.5 bg-white mx-auto mt-1"></div>
-                </div>
-                
-                {/* Size indicator */}
-                <div className="absolute top-2 left-2 bg-black bg-opacity-75 text-white text-xs px-2 py-1 rounded">
-                  {element.style?.width || '200px'} × {element.style?.height || '150px'}
+              {/* Always visible resize indicator on hover */}
+              <div className="absolute inset-0 border-2 border-transparent group-hover/image:border-blue-400 transition-all">
+                {/* Highly visible resize handles */}
+                <div className="absolute inset-0 opacity-0 group-hover/image:opacity-100 transition-opacity">
+                  
+                  {/* Corner resize handle - large and visible */}
+                  <div 
+                    className="absolute -bottom-2 -right-2 w-8 h-8 bg-blue-600 border-4 border-white cursor-nw-resize hover:bg-blue-700 shadow-xl rounded-full flex items-center justify-center z-50"
+                    onMouseDown={(e) => handleResizeStart(e, 'both')}
+                    title="Drag to resize"
+                  >
+                    <div className="w-2 h-2 bg-white rounded-full"></div>
+                  </div>
+                  
+                  {/* Width resize handle */}
+                  <div 
+                    className="absolute -right-2 top-1/2 transform -translate-y-1/2 w-4 h-8 bg-blue-600 border-2 border-white cursor-e-resize hover:bg-blue-700 shadow-lg rounded-r z-40"
+                    onMouseDown={(e) => handleResizeStart(e, 'width')}
+                    title="Resize width"
+                  >
+                    <div className="h-3 w-1 bg-white mx-auto mt-1.5 rounded"></div>
+                  </div>
+                  
+                  {/* Height resize handle */}
+                  <div 
+                    className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-8 h-4 bg-blue-600 border-2 border-white cursor-n-resize hover:bg-blue-700 shadow-lg rounded-b z-40"
+                    onMouseDown={(e) => handleResizeStart(e, 'height')}
+                    title="Resize height"
+                  >
+                    <div className="w-3 h-1 bg-white mx-auto mt-1 rounded"></div>
+                  </div>
+                  
+                  {/* Size display */}
+                  <div className="absolute -top-8 left-0 bg-blue-600 text-white text-xs px-2 py-1 rounded shadow-lg whitespace-nowrap">
+                    {element.style?.width || '150px'} × {element.style?.height || '80px'}
+                  </div>
                 </div>
               </div>
             </div>
@@ -968,39 +969,34 @@ function CanvasElement({
         return (
           <div 
             ref={elementRef}
-            className="relative border-2 border-dashed border-gray-300 rounded p-4 text-center bg-gray-50 group/image"
+            className="relative border-2 border-dashed border-gray-400 rounded p-4 text-center bg-gray-50 group/image"
             style={{
-              width: element.style?.width || '200px',
-              height: element.style?.height || '150px',
-              maxWidth: element.style?.maxWidth || '100%',
-              minHeight: '120px',
-              minWidth: '150px'
+              width: element.style?.width || '150px',
+              height: element.style?.height || '80px',
+              maxWidth: '300px',
+              minHeight: '60px',
+              minWidth: '100px'
             }}
           >
-            <div className="flex flex-col items-center justify-center h-full pointer-events-none">
-              <Image size={48} className="text-gray-400 mb-2" />
-              <div className="text-sm text-gray-500">
-                {element.content || 'Click to upload image'}
-              </div>
-              <div className="text-xs text-gray-400 mt-1">
-                Hover to resize • Use settings to upload
-              </div>
+            <div className="flex flex-col items-center justify-center h-full">
+              <Image size={24} className="text-gray-400 mb-1" />
+              <div className="text-xs text-gray-500">Upload Image</div>
+              <div className="text-xs text-gray-400 mt-1">Logo / Company Image</div>
             </div>
             
             {/* Resize handles for placeholder */}
-            <div className="absolute inset-0 opacity-0 group-hover/image:opacity-100 transition-opacity bg-blue-50 bg-opacity-20">
+            <div className="absolute inset-0 opacity-0 group-hover/image:opacity-100 transition-opacity">
               <div 
-                className="absolute bottom-0 right-0 w-6 h-6 bg-blue-600 border-2 border-white cursor-nw-resize hover:bg-blue-700 shadow-lg flex items-center justify-center"
+                className="absolute -bottom-2 -right-2 w-6 h-6 bg-blue-600 border-2 border-white cursor-nw-resize hover:bg-blue-700 shadow-lg rounded-full flex items-center justify-center z-50"
                 onMouseDown={(e) => handleResizeStart(e, 'both')}
-                style={{ transform: 'translate(3px, 3px)' }}
-                title="Drag to resize both width and height"
+                title="Drag to resize"
               >
-                <div className="w-1 h-1 bg-white rounded-full"></div>
+                <div className="w-1.5 h-1.5 bg-white rounded-full"></div>
               </div>
               
-              {/* Size indicator */}
-              <div className="absolute top-2 left-2 bg-blue-600 text-white text-xs px-2 py-1 rounded">
-                {element.style?.width || '200px'} × {element.style?.height || '150px'}
+              {/* Size display */}
+              <div className="absolute -top-6 left-0 bg-blue-600 text-white text-xs px-2 py-1 rounded">
+                {element.style?.width || '150px'} × {element.style?.height || '80px'}
               </div>
             </div>
           </div>
@@ -1134,25 +1130,27 @@ function TemplateCanvas({
         switch (type) {
           case 'table':
             return {
-              columns: ['Equipment/Service', 'Specification', 'Quantity', 'Rate per Unit', 'Amount'],
+              columns: ['Sr.', 'Description of Equipment/Service', 'Capacity/Specification', 'Duration', 'Rate (₹)', 'Amount (₹)'],
               rows: [
-                ['{{item_name}}', '{{item_capacity}}', '{{item_quantity}}', '{{item_rate}}', '{{item_amount}}'],
-                ['Mobile Crane', '100MT Capacity', '1 Month', '₹7,85,000', '₹7,85,000']
+                ['1', '{{item_name}}', '{{item_capacity}}', '{{item_duration}}', '{{item_rate}}', '{{item_amount}}'],
+                ['2', 'Mobile Crane with Operator', '100MT Hydraulic', '1 Month', '7,85,000', '7,85,000'],
+                ['3', 'Transportation & Mobilization', 'To & From Site', '1 Trip', '25,000', '25,000']
               ],
               showHeader: true,
-              columnWidths: ['25%', '25%', '15%', '17.5%', '17.5%']
+              columnWidths: ['8%', '35%', '20%', '12%', '12%', '13%']
             };
           case 'image':
             return {
               src: '',
-              alt: 'Image',
-              aspectRatio: 'auto'
+              alt: 'Company Logo',
+              aspectRatio: '16/9',
+              position: 'center'
             };
-          case 'field':
+          case 'header':
             return {
-              placeholder: 'Enter field value',
-              required: false,
-              defaultValue: ''
+              showLogo: true,
+              showCompanyInfo: true,
+              layout: 'left-right'
             };
           default:
             return {};
@@ -1164,15 +1162,15 @@ function TemplateCanvas({
         type: item.elementType as any,
         content: item.defaultContent || '',
         style: {
-          fontSize: '14px',
-          fontWeight: 'normal',
+          fontSize: item.elementType === 'header' ? '18px' : item.elementType === 'table' ? '12px' : '14px',
+          fontWeight: item.elementType === 'header' ? 'bold' : 'normal',
           color: '#000000',
           backgroundColor: 'transparent',
-          padding: '8px',
+          padding: item.elementType === 'table' ? '4px' : '8px',
           margin: '4px 0',
-          textAlign: 'left',
-          width: 'auto',
-          height: 'auto',
+          textAlign: item.elementType === 'header' ? 'center' : 'left',
+          width: item.elementType === 'image' ? '120px' : 'auto',
+          height: item.elementType === 'image' ? '60px' : 'auto',
           maxWidth: '100%'
         },
         config: getDefaultConfig(item.elementType)
