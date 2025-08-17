@@ -121,11 +121,38 @@ const paletteItems = [
 const fieldOptions = [
   { value: '{{company_name}}', label: 'Company Name' },
   { value: '{{company_address}}', label: 'Company Address' },
+  { value: '{{company_phone}}', label: 'Company Phone' },
+  { value: '{{company_email}}', label: 'Company Email' },
   { value: '{{customer_name}}', label: 'Customer Name' },
   { value: '{{customer_address}}', label: 'Customer Address' },
+  { value: '{{customer_phone}}', label: 'Customer Phone' },
+  { value: '{{customer_email}}', label: 'Customer Email' },
   { value: '{{quotation_number}}', label: 'Quotation Number' },
   { value: '{{quotation_date}}', label: 'Quotation Date' },
-  { value: '{{total_amount}}', label: 'Total Amount' }
+  { value: '{{quotation_validity}}', label: 'Quotation Validity' },
+  { value: '{{total_amount}}', label: 'Total Amount' },
+  { value: '{{total_amount_words}}', label: 'Total Amount (in words)' },
+  { value: '{{gst_amount}}', label: 'GST Amount' },
+  { value: '{{final_amount}}', label: 'Final Amount' }
+];
+
+// Table field options for dynamic table content
+const tableFieldOptions = [
+  { value: '{{item_name}}', label: 'Item/Equipment Name' },
+  { value: '{{item_description}}', label: 'Item Description' },
+  { value: '{{item_model}}', label: 'Model/Type' },
+  { value: '{{item_capacity}}', label: 'Capacity/Specification' },
+  { value: '{{item_quantity}}', label: 'Quantity' },
+  { value: '{{item_unit}}', label: 'Unit (hrs/days/months)' },
+  { value: '{{item_rate}}', label: 'Rate per Unit' },
+  { value: '{{item_amount}}', label: 'Line Amount' },
+  { value: '{{item_duration}}', label: 'Duration' },
+  { value: '{{item_location}}', label: 'Location' },
+  { value: '{{item_operator}}', label: 'Operator Required' },
+  { value: '{{item_fuel}}', label: 'Fuel Included' },
+  { value: '{{item_transport}}', label: 'Transport Cost' },
+  { value: '{{item_tax}}', label: 'Tax %' },
+  { value: '{{item_remarks}}', label: 'Remarks/Notes' }
 ];
 
 // Draggable palette item
@@ -372,28 +399,89 @@ function ElementEditor({
 
             <div>
               <div className="block text-sm font-medium text-gray-700 mb-2">Data Rows</div>
+              <div className="mb-2 p-2 bg-blue-50 rounded text-xs text-blue-800">
+                💡 <strong>Tip:</strong> Use dynamic fields like {'{{item_name}}'}, {'{{item_rate}}'}, {'{{item_amount}}'} for auto-populated data
+              </div>
               {(localElement.config?.rows || []).map((row, rowIndex) => (
                 <div key={rowIndex} className="border border-gray-200 rounded p-2 mb-2">
                   <div className="flex justify-between items-center mb-2">
                     <span className="text-sm font-medium">Row {rowIndex + 1}</span>
-                    <Button
-                      onClick={() => removeTableRow(rowIndex)}
-                      size="sm"
-                      variant="ghost"
-                      className="text-red-600 hover:text-red-700"
-                      disabled={(localElement.config?.rows?.length || 0) <= 1}
-                    >
-                      <Trash2 size={12} />
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        onClick={() => {
+                          // Add a row with placeholder fields
+                          const columns = localElement.config?.columns || [];
+                          const suggestedRow = columns.map((col) => {
+                            if (col.toLowerCase().includes('equipment') || col.toLowerCase().includes('item')) return '{{item_name}}';
+                            if (col.toLowerCase().includes('capacity') || col.toLowerCase().includes('spec')) return '{{item_capacity}}';
+                            if (col.toLowerCase().includes('quantity')) return '{{item_quantity}}';
+                            if (col.toLowerCase().includes('rate')) return '{{item_rate}}';
+                            if (col.toLowerCase().includes('amount')) return '{{item_amount}}';
+                            if (col.toLowerCase().includes('duration')) return '{{item_duration}}';
+                            return '';
+                          });
+                          setLocalElement(prev => ({
+                            ...prev,
+                            config: {
+                              ...prev.config,
+                              rows: [...(prev.config?.rows || []), suggestedRow]
+                            }
+                          }));
+                          setHasChanges(true);
+                        }}
+                        size="sm"
+                        className="text-xs bg-green-600 hover:bg-green-700 text-white"
+                      >
+                        + Field Row
+                      </Button>
+                      <Button
+                        onClick={() => removeTableRow(rowIndex)}
+                        size="sm"
+                        variant="ghost"
+                        className="text-red-600 hover:text-red-700"
+                        disabled={(localElement.config?.rows?.length || 0) <= 1}
+                      >
+                        <Trash2 size={12} />
+                      </Button>
+                    </div>
                   </div>
                   {row.map((cell, colIndex) => (
-                    <Input
-                      key={colIndex}
-                      value={cell}
-                      onChange={(e) => updateTableCell(rowIndex, colIndex, e.target.value)}
-                      placeholder={`${localElement.config?.columns?.[colIndex] || `Column ${colIndex + 1}`}`}
-                      className="mb-1"
-                    />
+                    <div key={colIndex} className="mb-1 relative">
+                      <Input
+                        value={cell}
+                        onChange={(e) => updateTableCell(rowIndex, colIndex, e.target.value)}
+                        placeholder={`${localElement.config?.columns?.[colIndex] || `Column ${colIndex + 1}`}`}
+                        className="mb-1"
+                      />
+                      {/* Quick field buttons */}
+                      <div className="flex gap-1 mt-1 flex-wrap">
+                        {tableFieldOptions.slice(0, 3).map(field => (
+                          <button
+                            key={field.value}
+                            onClick={() => updateTableCell(rowIndex, colIndex, field.value)}
+                            className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
+                          >
+                            {field.label.split(' ')[0]}
+                          </button>
+                        ))}
+                        <select
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              updateTableCell(rowIndex, colIndex, e.target.value);
+                              e.target.value = '';
+                            }
+                          }}
+                          className="text-xs px-1 py-1 border border-gray-300 rounded"
+                        >
+                          <option value="">More Fields...</option>
+                          {tableFieldOptions.map(field => (
+                            <option key={field.value} value={field.value}>
+                              {field.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
                   ))}
                 </div>
               ))}
@@ -738,12 +826,14 @@ function CanvasElement({
         if (element.config?.src) {
           return (
             <div 
-              className="border border-gray-300 rounded overflow-hidden"
+              className="relative border border-gray-300 rounded overflow-hidden group/image"
               style={{
                 width: element.style?.width || 'auto',
                 height: element.style?.height || 'auto',
                 maxWidth: element.style?.maxWidth || '100%',
-                textAlign: element.style?.textAlign || 'center'
+                textAlign: element.style?.textAlign || 'center',
+                minWidth: '100px',
+                minHeight: '100px'
               }}
             >
               <img 
@@ -755,23 +845,39 @@ function CanvasElement({
                   minHeight: element.style?.minHeight || '100px'
                 }}
               />
+              {/* Resize handles */}
+              <div className="absolute inset-0 opacity-0 group-hover/image:opacity-100 transition-opacity pointer-events-none">
+                <div className="absolute bottom-0 right-0 w-3 h-3 bg-blue-500 cursor-nw-resize pointer-events-auto"
+                     onMouseDown={(e) => {
+                       e.stopPropagation();
+                       // Add resize logic here
+                     }}
+                />
+                <div className="absolute bottom-0 left-1/2 transform -translate-x-1/2 w-3 h-1 bg-blue-500 cursor-n-resize pointer-events-auto" />
+                <div className="absolute right-0 top-1/2 transform -translate-y-1/2 w-1 h-3 bg-blue-500 cursor-e-resize pointer-events-auto" />
+              </div>
             </div>
           );
         }
         
         return (
           <div 
-            className="border-2 border-dashed border-gray-300 rounded p-8 text-center bg-gray-50"
+            className="border-2 border-dashed border-gray-300 rounded p-8 text-center bg-gray-50 group/image"
             style={{
               width: element.style?.width || 'auto',
               height: element.style?.height || 'auto',
               maxWidth: element.style?.maxWidth || '100%',
-              minHeight: element.style?.minHeight || '120px'
+              minHeight: element.style?.minHeight || '120px',
+              minWidth: '150px'
             }}
           >
             <Image size={48} className="mx-auto text-gray-400 mb-2" />
-            <p className="text-gray-500">Image Placeholder</p>
-            <p className="text-xs text-gray-400">{element.content || 'Click to upload image'}</p>
+            <div className="text-sm text-gray-500">
+              {element.content || 'Click to upload image'}
+            </div>
+            <div className="text-xs text-gray-400 mt-1">
+              Drag corners to resize
+            </div>
           </div>
         );
       
@@ -810,9 +916,10 @@ function CanvasElement({
           variant="ghost"
           size="sm"
           onClick={() => onEdit(element, index)}
-          className="p-1 h-6 w-6 text-gray-700 hover:text-gray-900 hover:bg-gray-100"
+          className="p-1 h-6 w-6 text-gray-800 hover:text-blue-700 hover:bg-blue-50 border border-transparent hover:border-blue-200"
+          style={{ color: '#1f2937 !important', backgroundColor: 'white !important' }}
         >
-          <Settings size={12} />
+          <Settings size={12} style={{ color: '#1f2937' }} />
         </Button>
         
         <Button
@@ -820,9 +927,10 @@ function CanvasElement({
           size="sm"
           onClick={() => onMoveUp(index)}
           disabled={isFirst}
-          className="p-1 h-6 w-6 text-gray-700 hover:text-gray-900 hover:bg-gray-100 disabled:text-gray-300"
+          className="p-1 h-6 w-6 text-gray-800 hover:text-green-700 hover:bg-green-50 border border-transparent hover:border-green-200 disabled:text-gray-400 disabled:hover:bg-gray-50"
+          style={{ color: isFirst ? '#9ca3af !important' : '#1f2937 !important', backgroundColor: 'white !important' }}
         >
-          <ArrowUp size={12} />
+          <ArrowUp size={12} style={{ color: isFirst ? '#9ca3af' : '#1f2937' }} />
         </Button>
         
         <Button
@@ -830,18 +938,20 @@ function CanvasElement({
           size="sm"
           onClick={() => onMoveDown(index)}
           disabled={isLast}
-          className="p-1 h-6 w-6 text-gray-700 hover:text-gray-900 hover:bg-gray-100 disabled:text-gray-300"
+          className="p-1 h-6 w-6 text-gray-800 hover:text-green-700 hover:bg-green-50 border border-transparent hover:border-green-200 disabled:text-gray-400 disabled:hover:bg-gray-50"
+          style={{ color: isLast ? '#9ca3af !important' : '#1f2937 !important', backgroundColor: 'white !important' }}
         >
-          <ArrowDown size={12} />
+          <ArrowDown size={12} style={{ color: isLast ? '#9ca3af' : '#1f2937' }} />
         </Button>
         
         <Button
           variant="ghost"
           size="sm"
           onClick={() => onDelete(index)}
-          className="p-1 h-6 w-6 text-red-600 hover:text-red-700 hover:bg-red-50"
+          className="p-1 h-6 w-6 text-red-700 hover:text-red-800 hover:bg-red-50 border border-transparent hover:border-red-200"
+          style={{ color: '#dc2626 !important', backgroundColor: 'white !important' }}
         >
-          <Trash2 size={12} />
+          <Trash2 size={12} style={{ color: '#dc2626' }} />
         </Button>
       </div>
 
@@ -875,12 +985,13 @@ function TemplateCanvas({
         switch (type) {
           case 'table':
             return {
-              columns: ['Item', 'Description', 'Quantity', 'Rate', 'Amount'],
+              columns: ['Equipment/Service', 'Specification', 'Quantity', 'Rate per Unit', 'Amount'],
               rows: [
-                ['Sample Item', 'Description here', '1', '₹10,000', '₹10,000']
+                ['{{item_name}}', '{{item_capacity}}', '{{item_quantity}}', '{{item_rate}}', '{{item_amount}}'],
+                ['Mobile Crane', '100MT Capacity', '1 Month', '₹7,85,000', '₹7,85,000']
               ],
               showHeader: true,
-              columnWidths: ['20%', '30%', '15%', '15%', '20%']
+              columnWidths: ['25%', '25%', '15%', '17.5%', '17.5%']
             };
           case 'image':
             return {
