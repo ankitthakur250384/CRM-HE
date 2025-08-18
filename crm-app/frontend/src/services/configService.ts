@@ -314,7 +314,7 @@ export const updateDefaultTemplateConfig = async (templateId: string) => {
  */
 export const getTemplateById = async (templateId: string) => {
   try {
-    const response = await fetch(`/api/config/templates/${templateId}`, {
+    const response = await fetch(`/api/templates/${templateId}`, {
       method: 'GET',
       headers: getHeaders()
     });
