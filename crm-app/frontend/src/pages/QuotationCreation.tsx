@@ -406,6 +406,12 @@ export function QuotationCreation() {
           console.log('[QuotationCreation] Form data populated with', Object.keys(updatedFormData).length, 'fields');
           setFormData(updatedFormData);
 
+          // If we have calculations from the loaded quotation, use them to set initial state
+          if (quotationToLoad.calculations) {
+            console.log('[QuotationCreation] Setting calculations from loaded quotation:', quotationToLoad.calculations);
+            setCalculations(quotationToLoad.calculations);
+          }
+
           if (quotationToLoad.selectedEquipment?.id && equipmentData) {
             const selected = equipmentData.find((eq: any) => eq.id === quotationToLoad.selectedEquipment.id);
             if (selected?.baseRates) {
@@ -413,6 +419,12 @@ export function QuotationCreation() {
               setSelectedEquipmentBaseRate(baseRate);
             }
           }
+
+          // Force recalculation after loading data
+          setTimeout(() => {
+            console.log('[QuotationCreation] Forcing recalculation after data load');
+            calculateQuotation();
+          }, 100);
 
           if (!dealData && quotationToLoad.dealId) {
             try {
@@ -455,11 +467,19 @@ export function QuotationCreation() {
 
   const calculateQuotation = () => {
     console.log("Calculating quotation with working hours:", formData.workingHours);
+    console.log("FormData.numberOfDays:", formData.numberOfDays);
+    console.log("SelectedEquipmentBaseRate:", selectedEquipmentBaseRate);
+    console.log("FormData.selectedMachines:", formData.selectedMachines);
     
     const hasMachines = formData.selectedMachines.length > 0;
     const effectiveBaseRate = selectedEquipmentBaseRate;
     
     if (!formData.numberOfDays || (!hasMachines && !effectiveBaseRate)) {
+      console.log("❌ Calculation stopped - missing days or equipment", {
+        numberOfDays: formData.numberOfDays,
+        hasMachines,
+        effectiveBaseRate
+      });
       setCalculations({
         baseRate: 0,
         totalHours: 0,
@@ -479,6 +499,15 @@ export function QuotationCreation() {
     const workingHours = Number(formData.workingHours) || 8;
     const totalHours = numberOfDays * workingHours;
 
+    console.log("✅ Calculation inputs:", {
+      numberOfDays,
+      workingHours,
+      totalHours,
+      effectiveBaseRate,
+      hasMachines,
+      orderType: formData.orderType
+    });
+
     // Calculate working cost based on whether we have machines or single equipment
     let workingCost = 0;
     if (hasMachines) {
@@ -497,6 +526,8 @@ export function QuotationCreation() {
         workingCost = effectiveBaseRate * totalHours;
       }
     }
+
+    console.log("💰 Working cost calculated:", workingCost);
 
     // Food & Accommodation costs
     const foodRate = resourceRates?.foodRate || 0;
@@ -561,7 +592,7 @@ export function QuotationCreation() {
     const gstAmount = formData.includeGst ? subtotal * 0.18 : 0;
     const totalAmount = subtotal + gstAmount;
 
-    setCalculations({
+    const newCalculations = {
       baseRate: effectiveBaseRate,
       totalHours,
       workingCost,
@@ -572,7 +603,11 @@ export function QuotationCreation() {
       riskAdjustment,
       gstAmount,
       totalAmount,
-    });
+    };
+
+    console.log("🎯 Final calculations:", newCalculations);
+
+    setCalculations(newCalculations);
   };
 
   const showToast = (title: string, variant: 'success' | 'error' | 'warning' = 'success', description?: string) => {
@@ -608,8 +643,16 @@ export function QuotationCreation() {
           address: formData.customerContact?.address || deal?.customer?.address || '',
           designation: formData.customerContact?.designation || deal?.customer?.designation || ''
         },
+        // Include all calculation fields directly in the quotation data
         calculations,
         totalAmount: calculations.totalAmount,
+        totalCost: calculations.totalAmount,
+        workingCost: calculations.workingCost,
+        mobDemobCost: calculations.mobDemobCost,
+        foodAccomCost: calculations.foodAccomCost,
+        usageLoadFactor: calculations.usageLoadFactor,
+        riskAdjustment: calculations.riskAdjustment,
+        gstAmount: calculations.gstAmount,
         createdBy: user?.id || '',
         updatedAt: new Date().toISOString()
       };
