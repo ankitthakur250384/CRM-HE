@@ -808,7 +808,7 @@ router.put('/:id', async (req, res) => {
       const values = [
         id,
         quotationData.leadId || null,
-        quotationData.customerId || null,
+        quotationData.customerId || null, // Allow null customer_id for now
         quotationData.customerName,
         quotationData.machineType,
         quotationData.orderType,
