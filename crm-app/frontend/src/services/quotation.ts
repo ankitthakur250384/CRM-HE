@@ -3,7 +3,7 @@ import { getHeaders } from './apiHeaders';
 export async function updateQuotation(quotationId: string, updates: Partial<Quotation>): Promise<Quotation> {
   const apiUrl = import.meta.env.VITE_API_URL || '/api';
   const response = await fetch(`${apiUrl}/quotations/${quotationId}`, {
-    method: 'PATCH',
+    method: 'PUT', // Changed from PATCH to PUT to match backend route
     headers: { ...getHeaders(), 'Content-Type': 'application/json' },
     body: JSON.stringify(updates),
     credentials: 'include',
@@ -11,7 +11,8 @@ export async function updateQuotation(quotationId: string, updates: Partial<Quot
   if (!response.ok) {
     throw new Error('Failed to update quotation');
   }
-  return response.json();
+  const result = await response.json();
+  return result.data || result;
 }
 // Fetch a single quotation by ID from backend API
 export async function getQuotationById(quotationId: string): Promise<Quotation> {
@@ -24,7 +25,9 @@ export async function getQuotationById(quotationId: string): Promise<Quotation> 
   if (!response.ok) {
     throw new Error('Failed to fetch quotation by ID');
   }
-  return response.json();
+  const result = await response.json();
+  // Support both direct object and {data: object} responses
+  return result.data || result;
 }
 // Create a new quotation via backend API
 export async function createQuotation(quotation: Partial<Quotation>): Promise<Quotation> {
@@ -38,7 +41,8 @@ export async function createQuotation(quotation: Partial<Quotation>): Promise<Qu
   if (!response.ok) {
     throw new Error('Failed to create quotation');
   }
-  return response.json();
+  const result = await response.json();
+  return result.data || result;
 }
 // Fetch all quotations from backend API
 export async function getQuotations(): Promise<Quotation[]> {
