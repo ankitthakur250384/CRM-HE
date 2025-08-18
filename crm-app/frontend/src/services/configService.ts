@@ -75,6 +75,11 @@ const getHeaders = () => {
     headers['Authorization'] = `Bearer ${authToken}`;
   }
   
+  // For development: bypass authentication if on localhost
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    headers['x-bypass-auth'] = 'development-only-123';
+  }
+  
   return headers;
 };
 
