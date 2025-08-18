@@ -43,7 +43,7 @@ export default defineConfig(({ mode }) => {
         // Backend service imports should be handled by API calls in production
         // These imports point to the backend services, but for frontend builds
         // we need to provide stubs or redirect to API calls
-        '../services/templateService': isProduction ? '/src/shims/emptyModule.js' : '/src/services/template.ts',
+        // KEEP templateService active for frontend API calls
         '../services/leadService': isProduction ? '/src/shims/emptyModule.js' : '/src/services/lead.ts',
         '../services/jobService': isProduction ? '/src/shims/emptyModule.js' : '/src/services/job.ts',
         '../services/customerService': isProduction ? '/src/shims/emptyModule.js' : '/src/services/customer.ts',
@@ -53,7 +53,7 @@ export default defineConfig(({ mode }) => {
         '../services/siteAssessmentService': isProduction ? '/src/shims/emptyModule.js' : '/src/shims/emptyModule.js',
         '../services/serviceManagementService': isProduction ? '/src/shims/emptyModule.js' : '/src/shims/emptyModule.js',
         '../services/dealService': isProduction ? '/src/shims/emptyModule.js' : '/src/services/deal.ts',
-        '../services/configService': isProduction ? '/src/shims/emptyModule.js' : '/src/services/configService.ts',
+        '../services/configService': '/src/services/configService.ts',
         '../services/equipmentService': isProduction ? '/src/shims/emptyModule.js' : '/src/services/equipment.ts',
         '../utils/templateMerger': isProduction ? '/src/shims/emptyModule.js' : '/src/services/templateMerger.ts',
         '../../utils/debugHelper': isProduction ? '/src/shims/emptyModule.js' : '/src/services/debugHelper.ts',
@@ -61,7 +61,7 @@ export default defineConfig(({ mode }) => {
         '../services/jobApiClient': isProduction ? '/src/shims/emptyModule.js' : '/src/services/job.ts',
         '../../utils/templateMerger': isProduction ? '/src/shims/emptyModule.js' : '/src/services/templateMerger.ts',
         '../../services/jobApiClient': isProduction ? '/src/shims/emptyModule.js' : '/src/services/job.ts',
-        '../../services/templateService': isProduction ? '/src/shims/emptyModule.js' : '/src/services/template.ts',
+        '../../services/templateService': '/src/services/template.ts',
         '../../services/notificationService': isProduction ? '/src/shims/emptyModule.js' : '/src/services/notification.ts',
         '../../utils/apiHeaders': isProduction ? '/src/shims/emptyModule.js' : '/src/services/apiHeaders.ts',
         '../../services/customerService': isProduction ? '/src/shims/emptyModule.js' : '/src/services/customer.ts',

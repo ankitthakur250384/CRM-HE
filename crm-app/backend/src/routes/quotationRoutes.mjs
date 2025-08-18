@@ -107,6 +107,7 @@ router.get('/', async (req, res) => {
           orderType: q.order_type,
           numberOfDays: q.number_of_days,
           totalRent: q.total_rent,
+          totalCost: q.total_cost, // Add total_cost for quotation value display
           status: q.status,
           createdAt: q.created_at,
           updatedAt: q.updated_at,
@@ -200,7 +201,27 @@ router.get('/:id', async (req, res) => {
         incidentalCharges: quotation.incidental_charges || [],
         otherFactors: quotation.other_factors || [],
         totalRent: quotation.total_rent,
+        totalCost: quotation.total_cost, // Add total_cost to response
+        totalAmount: quotation.total_cost, // Alias for frontend compatibility
         workingCost: quotation.working_cost,
+        mobDemobCost: quotation.mob_demob_cost,
+        foodAccomCost: quotation.food_accom_cost,
+        usageLoadFactor: quotation.usage_load_factor,
+        riskAdjustment: quotation.risk_adjustment,
+        gstAmount: quotation.gst_amount,
+        // Include calculations object for frontend
+        calculations: {
+          baseRate: quotation.working_cost / (quotation.number_of_days * quotation.working_hours) || 0,
+          totalHours: quotation.number_of_days * quotation.working_hours,
+          workingCost: quotation.working_cost,
+          mobDemobCost: quotation.mob_demob_cost,
+          foodAccomCost: quotation.food_accom_cost,
+          usageLoadFactor: quotation.usage_load_factor,
+          extraCharges: quotation.extra_charge,
+          riskAdjustment: quotation.risk_adjustment,
+          gstAmount: quotation.gst_amount,
+          totalAmount: quotation.total_cost,
+        },
         mobDemobCost: quotation.mob_demob_cost,
         foodAccomCost: quotation.food_accom_cost,
         usageLoadFactor: quotation.usage_load_factor,
@@ -388,7 +409,11 @@ router.post('/', async (req, res) => {
       
       const id = uuidv4();
       
-      // Insert quotation with comprehensive schema fields
+      // Extract calculations from the frontend
+      const calculations = quotationData.calculations || {};
+      const totalAmount = calculations.totalAmount || quotationData.totalAmount || 0;
+      
+      // Insert quotation with comprehensive schema fields including total_cost
       const insertQuery = `
         INSERT INTO quotations (
           id, deal_id, lead_id, customer_id, customer_name, machine_type, order_type,
@@ -396,13 +421,13 @@ router.post('/', async (req, res) => {
           site_distance, usage, risk_factor, shift, day_night, mob_demob,
           mob_relaxation, extra_charge, other_factors_charge, billing,
           include_gst, sunday_working, customer_contact, incidental_charges,
-          other_factors, total_rent, working_cost, mob_demob_cost,
+          other_factors, total_rent, total_cost, working_cost, mob_demob_cost,
           food_accom_cost, usage_load_factor, risk_adjustment, gst_amount,
           version, created_by, status, created_at, updated_at
         ) VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
           $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29,
-          $30, $31, $32, $33, $34, $35, $36, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+          $30, $31, $32, $33, $34, $35, $36, $37, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
         );
       `;
       
@@ -433,13 +458,14 @@ router.post('/', async (req, res) => {
         JSON.stringify(quotationData.customerContact || {}), // JSONB field - needs JSON string
         quotationData.incidentalCharges || [],  // TEXT[] field - needs actual array, not JSON string
         quotationData.otherFactors || [],       // TEXT[] field - needs actual array, not JSON string
-        quotationData.totalRent || 0,
-        quotationData.workingCost || 0,
-        quotationData.mobDemobCost || 0,
-        quotationData.foodAccomCost || 0,
-        quotationData.usageLoadFactor || 0,
-        quotationData.riskAdjustment || 0,
-        quotationData.gstAmount || 0,
+        quotationData.totalRent || totalAmount || 0,
+        totalAmount, // total_cost - this is the main quotation value
+        calculations.workingCost || quotationData.workingCost || 0,
+        calculations.mobDemobCost || quotationData.mobDemobCost || 0,
+        calculations.foodAccomCost || quotationData.foodAccomCost || 0,
+        calculations.usageLoadFactor || quotationData.usageLoadFactor || 0,
+        calculations.riskAdjustment || quotationData.riskAdjustment || 0,
+        calculations.gstAmount || quotationData.gstAmount || 0,
         quotationData.version || 1,
         quotationData.createdBy || req.user?.id || req.user?.uid,
         quotationData.status || 'draft'
@@ -624,15 +650,19 @@ async function createQuotation(quotationData, client, res) {
         site_distance, usage, risk_factor, shift, day_night, mob_demob,
         mob_relaxation, extra_charge, other_factors_charge, billing,
         include_gst, sunday_working, customer_contact, incidental_charges,
-        other_factors, total_rent, working_cost, mob_demob_cost,
+        other_factors, total_rent, total_cost, working_cost, mob_demob_cost,
         food_accom_cost, usage_load_factor, risk_adjustment, gst_amount,
         version, created_by, status, created_at, updated_at
       ) VALUES (
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
         $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29,
-        $30, $31, $32, $33, $34, $35, $36, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+        $30, $31, $32, $33, $34, $35, $36, $37, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
       );
     `;
+    
+    // Extract calculations from the frontend
+    const calculations = quotationData.calculations || {};
+    const totalAmount = calculations.totalAmount || quotationData.totalAmount || 0;
     
     const values = [
       id,
@@ -661,13 +691,14 @@ async function createQuotation(quotationData, client, res) {
       JSON.stringify(quotationData.customerContact || {}), // JSONB field - needs JSON string
       quotationData.incidentalCharges || [],  // TEXT[] field - needs actual array, not JSON string
       quotationData.otherFactors || [],       // TEXT[] field - needs actual array, not JSON string
-      quotationData.totalRent || 0,
-      quotationData.workingCost || 0,
-      quotationData.mobDemobCost || 0,
-      quotationData.foodAccomCost || 0,
-      quotationData.usageLoadFactor || 0,
-      quotationData.riskAdjustment || 0,
-      quotationData.gstAmount || 0,
+      quotationData.totalRent || totalAmount || 0,
+      totalAmount, // total_cost - this is the main quotation value
+      calculations.workingCost || quotationData.workingCost || 0,
+      calculations.mobDemobCost || quotationData.mobDemobCost || 0,
+      calculations.foodAccomCost || quotationData.foodAccomCost || 0,
+      calculations.usageLoadFactor || quotationData.usageLoadFactor || 0,
+      calculations.riskAdjustment || quotationData.riskAdjustment || 0,
+      calculations.gstAmount || quotationData.gstAmount || 0,
       quotationData.version || 1,
       quotationData.createdBy || 'default_user',
       quotationData.status || 'draft'
@@ -763,12 +794,16 @@ router.put('/:id', async (req, res) => {
           mob_demob = $16, mob_relaxation = $17, extra_charge = $18,
           other_factors_charge = $19, billing = $20, include_gst = $21,
           sunday_working = $22, customer_contact = $23, incidental_charges = $24,
-          other_factors = $25, total_rent = $26, working_cost = $27,
-          mob_demob_cost = $28, food_accom_cost = $29, usage_load_factor = $30,
-          risk_adjustment = $31, gst_amount = $32, version = $33, status = $34,
+          other_factors = $25, total_rent = $26, total_cost = $27, working_cost = $28,
+          mob_demob_cost = $29, food_accom_cost = $30, usage_load_factor = $31,
+          risk_adjustment = $32, gst_amount = $33, version = $34, status = $35,
           updated_at = CURRENT_TIMESTAMP
         WHERE id = $1;
       `;
+      
+      // Extract calculations from the frontend
+      const calculations = quotationData.calculations || {};
+      const totalAmount = calculations.totalAmount || quotationData.totalAmount || 0;
       
       const values = [
         id,
@@ -796,13 +831,14 @@ router.put('/:id', async (req, res) => {
         JSON.stringify(quotationData.customerContact || {}), // JSONB field - needs JSON string
         quotationData.incidentalCharges || [],  // TEXT[] field - needs actual array, not JSON string
         quotationData.otherFactors || [],       // TEXT[] field - needs actual array, not JSON string
-        quotationData.totalRent || 0,
-        quotationData.workingCost || 0,
-        quotationData.mobDemobCost || 0,
-        quotationData.foodAccomCost || 0,
-        quotationData.usageLoadFactor || 0,
-        quotationData.riskAdjustment || 0,
-        quotationData.gstAmount || 0,
+        quotationData.totalRent || totalAmount || 0,
+        totalAmount, // total_cost - this is the main quotation value
+        calculations.workingCost || quotationData.workingCost || 0,
+        calculations.mobDemobCost || quotationData.mobDemobCost || 0,
+        calculations.foodAccomCost || quotationData.foodAccomCost || 0,
+        calculations.usageLoadFactor || quotationData.usageLoadFactor || 0,
+        calculations.riskAdjustment || quotationData.riskAdjustment || 0,
+        calculations.gstAmount || quotationData.gstAmount || 0,
         quotationData.version || 1,
         quotationData.status || 'draft'
       ];

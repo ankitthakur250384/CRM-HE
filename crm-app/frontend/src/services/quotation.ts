@@ -132,6 +132,20 @@ export interface Quotation extends QuotationInputs {
   customerContact: CustomerContact;
   selectedMachines?: SelectedMachine[];
   totalRent: number;
+  totalCost?: number; // Add totalCost field
+  totalAmount?: number; // Alias for totalCost
+  calculations?: { // Add calculations object
+    baseRate: number;
+    totalHours: number;
+    workingCost: number;
+    mobDemobCost: number;
+    foodAccomCost: number;
+    usageLoadFactor: number;
+    extraCharges: number;
+    riskAdjustment: number;
+    gstAmount: number;
+    totalAmount: number;
+  };
   workingCost?: number;
   mobDemobCost?: number;
   foodAccomCost?: number;
