@@ -664,11 +664,28 @@ async function createQuotation(quotationData, client, res) {
     const calculations = quotationData.calculations || {};
     const totalAmount = calculations.totalAmount || quotationData.totalAmount || 0;
     
+    // Get customer_id from deal if dealId is provided
+    let finalCustomerId = quotationData.customerId;
+    if (!finalCustomerId && quotationData.dealId) {
+      try {
+        const dealResult = await client.query(`
+          SELECT customer_id FROM deals WHERE id = $1
+        `, [quotationData.dealId]);
+        
+        if (dealResult.rows.length > 0) {
+          finalCustomerId = dealResult.rows[0].customer_id;
+          console.log('📋 Retrieved customer_id from deal for creation:', finalCustomerId);
+        }
+      } catch (dealError) {
+        console.warn('Could not get customer_id from deal:', dealError);
+      }
+    }
+    
     const values = [
       id,
       quotationData.dealId || null,  // deal_id
       quotationData.leadId || null,
-      quotationData.customerId || null,
+      finalCustomerId || null, // Use resolved customer_id
       quotationData.customerName,
       quotationData.machineType,
       quotationData.orderType,
@@ -805,10 +822,40 @@ router.put('/:id', async (req, res) => {
       const calculations = quotationData.calculations || {};
       const totalAmount = calculations.totalAmount || quotationData.totalAmount || 0;
       
+      // Get existing quotation to preserve customer_id if not provided
+      let finalCustomerId = quotationData.customerId;
+      if (!finalCustomerId && quotationData.dealId) {
+        try {
+          const dealResult = await client.query(`
+            SELECT customer_id FROM deals WHERE id = $1
+          `, [quotationData.dealId]);
+          
+          if (dealResult.rows.length > 0) {
+            finalCustomerId = dealResult.rows[0].customer_id;
+            console.log('📋 Retrieved customer_id from deal:', finalCustomerId);
+          }
+        } catch (dealError) {
+          console.warn('Could not get customer_id from deal:', dealError);
+        }
+      }
+      
+      // If still no customer_id, get it from the existing quotation
+      if (!finalCustomerId) {
+        try {
+          const existingResult = await client.query('SELECT customer_id FROM quotations WHERE id = $1', [id]);
+          if (existingResult.rows.length > 0) {
+            finalCustomerId = existingResult.rows[0].customer_id;
+            console.log('📋 Retrieved customer_id from existing quotation:', finalCustomerId);
+          }
+        } catch (existingError) {
+          console.warn('Could not get customer_id from existing quotation:', existingError);
+        }
+      }
+      
       const values = [
         id,
         quotationData.leadId || null,
-        quotationData.customerId || null, // Allow null customer_id for now
+        finalCustomerId, // Use the resolved customer_id
         quotationData.customerName,
         quotationData.machineType,
         quotationData.orderType,
