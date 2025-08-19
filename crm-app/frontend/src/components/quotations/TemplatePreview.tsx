@@ -157,7 +157,7 @@ export function TemplatePreview({
   // Merge template with quotation data
   let mergedContent = '';
   try {
-    if (template && template.content) {
+    if (template && (template.content || template.elements)) {
       mergedContent = mergeQuotationWithTemplate(previewQuotation, template);
       console.log("Generated merged content:", mergedContent ? mergedContent.substring(0, 100) + '...' : 'empty');
     } else {
