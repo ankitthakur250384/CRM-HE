@@ -137,7 +137,7 @@ export function TemplatePreview({
       setError('Template is required');
       return;
     }
-    if (!template.content) {
+    if (!template.content && !template.elements) {
       setError('Template content is required');
       return;
     }
