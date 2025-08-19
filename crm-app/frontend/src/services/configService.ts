@@ -5,6 +5,8 @@
  * Frontend-only implementation that doesn't import any server-side code.
  */
 
+import { getHeaders } from './apiHeaders';
+
 // Default fallback configurations
 export interface QuotationConfig {
   orderTypeLimits: {
@@ -62,25 +64,6 @@ export const DEFAULT_CONFIG: QuotationConfig = {
     monthly: { minDays: 26, maxDays: 365 },
     yearly: { minDays: 366, maxDays: 3650 }
   }
-};
-
-// API request headers
-const getHeaders = () => {
-  const headers: HeadersInit = {
-    'Content-Type': 'application/json'
-  };
-  
-  const authToken = localStorage.getItem('authToken');
-  if (authToken) {
-    headers['Authorization'] = `Bearer ${authToken}`;
-  }
-  
-  // For development: bypass authentication if on localhost
-  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
-    headers['x-bypass-auth'] = 'development-only-123';
-  }
-  
-  return headers;
 };
 
 /**
