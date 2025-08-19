@@ -277,8 +277,8 @@ export const getDefaultTemplateConfig = async () => {
  */
 export const updateDefaultTemplateConfig = async (templateId: string) => {
   try {
-    const response = await fetch('/api/config/default-template', {
-      method: 'POST',
+    const response = await fetch('/api/config/defaultTemplate', {
+      method: 'PUT',
       headers: {
         ...getHeaders(),
         'Content-Type': 'application/json'
