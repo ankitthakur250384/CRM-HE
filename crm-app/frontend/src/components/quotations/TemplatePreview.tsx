@@ -293,7 +293,7 @@ export function TemplatePreview({
                   <p className="text-xs sm:text-sm">Preparing preview...</p>
                 </div>
               )}
-              {template && !template.content && (
+              {template && !template.content && !template.elements && (
                 <div className="mt-3 sm:mt-4 bg-yellow-50 border border-yellow-100 rounded-md p-3 sm:p-4 text-yellow-800 text-xs sm:text-sm">
                   <p className="font-medium">Warning: Template has no content</p>
                   <p className="mt-1">This template appears to be empty. Please edit the template to add content.</p>
