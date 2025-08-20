@@ -32,41 +32,63 @@ export function calculateQuotationTotals(quotation: Quotation): QuotationCalcula
     totalRent: quotation.totalRent,
     riskFactor: quotation.riskFactor,
     usage: quotation.usage,
-    extraCharge: quotation.extraCharge
+    extraCharge: quotation.extraCharge,
+    // Database calculated values
+    mobDemobCost: quotation.mobDemobCost,
+    foodAccomCost: quotation.foodAccomCost,
+    usageLoadFactor: quotation.usageLoadFactor,
+    riskAdjustment: quotation.riskAdjustment,
+    gstAmount: quotation.gstAmount
   });
   
+  // Use database values if available, otherwise calculate
   const workingCost = quotation.workingCost || (quotation.totalRent || 0);
-  const foodRate = 2500;
-  const accomRate = 4000;
-  const foodAccomCost = ((quotation.foodResources || 0) * foodRate + 
-                        (quotation.accomResources || 0) * accomRate) * 
-                        (quotation.numberOfDays || 1);
+  
+  // Food & accommodation cost - use database value if available
+  let foodAccomCost = quotation.foodAccomCost;
+  if (foodAccomCost === undefined || foodAccomCost === null) {
+    const foodRate = 2500;
+    const accomRate = 4000;
+    foodAccomCost = ((quotation.foodResources || 0) * foodRate + 
+                     (quotation.accomResources || 0) * accomRate) * 
+                     (quotation.numberOfDays || 1);
+  }
   
   console.log('🍽️ Food & Accom calculation:', {
+    fromDatabase: quotation.foodAccomCost,
+    calculated: foodAccomCost,
     foodResources: quotation.foodResources || 0,
     accomResources: quotation.accomResources || 0,
-    numberOfDays: quotation.numberOfDays || 1,
-    foodRate,
-    accomRate,
-    result: foodAccomCost
+    numberOfDays: quotation.numberOfDays || 1
   });
   
   const transportCost = (quotation.siteDistance || 0) * (quotation.runningCostPerKm || 100);
-  const mobDemobCost = quotation.mobDemob || 0;
+  
+  // Use database mob/demob cost if available
+  const mobDemobCost = quotation.mobDemobCost !== undefined ? quotation.mobDemobCost : (quotation.mobDemob || 0);
   
   console.log('🚚 Transport & Mob/Demob:', {
     siteDistance: quotation.siteDistance || 0,
     runningCostPerKm: quotation.runningCostPerKm || 100,
     transportCost,
-    mobDemobCost
+    mobDemobFromDB: quotation.mobDemobCost,
+    mobDemobFinal: mobDemobCost
   });
   
-  let riskAdjustment = 0;
-  if (quotation.riskFactor === 'high') riskAdjustment = 15000;
-  else if (quotation.riskFactor === 'medium') riskAdjustment = 8000;
+  // Use database risk adjustment if available
+  let riskAdjustment = quotation.riskAdjustment;
+  if (riskAdjustment === undefined || riskAdjustment === null) {
+    riskAdjustment = 0;
+    if (quotation.riskFactor === 'high') riskAdjustment = 15000;
+    else if (quotation.riskFactor === 'medium') riskAdjustment = 8000;
+  }
   
-  let usageLoadFactor = 0;
-  if (quotation.usage === 'heavy') usageLoadFactor = Math.round(workingCost * 0.5);
+  // Use database usage load factor if available
+  let usageLoadFactor = quotation.usageLoadFactor;
+  if (usageLoadFactor === undefined || usageLoadFactor === null) {
+    usageLoadFactor = 0;
+    if (quotation.usage === 'heavy') usageLoadFactor = Math.round(workingCost * 0.5);
+  }
   
   const extraCharges = quotation.extraCharge || 0;
   
@@ -82,8 +104,32 @@ export function calculateQuotationTotals(quotation: Quotation): QuotationCalcula
                   riskAdjustment + usageLoadFactor + extraCharges + 
                   incidentalCost + otherFactorsCost;
   
-  const gstAmount = quotation.includeGst ? Math.round(subtotal * 0.18) : 0;
+  // Use database GST amount if available
+  const gstAmount = quotation.gstAmount !== undefined ? quotation.gstAmount : 
+                   (quotation.includeGst ? Math.round(subtotal * 0.18) : 0);
   const totalAmount = subtotal + gstAmount;
+  
+  console.log('💰 Final calculations:', {
+    workingCost,
+    foodAccomCost,
+    transportCost,
+    mobDemobCost,
+    riskAdjustment,
+    usageLoadFactor,
+    extraCharges,
+    incidentalCost,
+    otherFactorsCost,
+    subtotal,
+    gstAmount,
+    totalAmount,
+    usingDatabaseValues: {
+      foodAccom: quotation.foodAccomCost !== undefined,
+      mobDemob: quotation.mobDemobCost !== undefined,
+      risk: quotation.riskAdjustment !== undefined,
+      usage: quotation.usageLoadFactor !== undefined,
+      gst: quotation.gstAmount !== undefined
+    }
+  });
   
   return {
     workingCost, foodAccomCost, transportCost, mobDemobCost,
@@ -264,7 +310,7 @@ function processTemplateElement(
 function renderTemplateBuilderTable(
   element: any,
   quotation: Quotation,
-  calculations: QuotationCalculations,
+  _calculations: QuotationCalculations,
   wrapperStyle: string
 ): string {
   // If the element has table configuration, use it

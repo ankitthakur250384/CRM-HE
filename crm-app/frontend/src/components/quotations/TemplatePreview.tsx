@@ -26,6 +26,7 @@ import { PrintOptionsModal } from './PrintOptionsModal';
 import { FileText, Info, Download, Send, RefreshCw } from 'lucide-react';
 
 // Sample quotation data for preview when no quotation is provided
+// This matches the database schema and backend transformation
 const SAMPLE_QUOTATION: Quotation = {
   id: 'sample-quotation',
   leadId: 'sample-lead',
@@ -39,9 +40,11 @@ const SAMPLE_QUOTATION: Quotation = {
     address: '123 Business Park, Tech City, State - 400001',
     designation: 'Procurement Manager'
   },
+  machineType: 'mobile_crane',
   orderType: 'monthly',
   numberOfDays: 30,
-  workingHours: 8,  selectedEquipment: {
+  workingHours: 8,
+  selectedEquipment: {
     id: 'sample-equipment',
     equipmentId: 'crane-001',
     name: '50T Mobile Crane',
@@ -57,7 +60,8 @@ const SAMPLE_QUOTATION: Quotation = {
       id: 'sample-equipment',
       machineType: 'mobile_crane',
       equipmentId: 'crane-001',
-      name: '50T Mobile Crane',      baseRates: {
+      name: '50T Mobile Crane',
+      baseRates: {
         micro: 5000,
         small: 4500,
         monthly: 4000,
@@ -66,46 +70,37 @@ const SAMPLE_QUOTATION: Quotation = {
       baseRate: 4000,
       runningCostPerKm: 100,
       quantity: 1
-    },
-    {
-      id: 'sample-equipment-2',
-      machineType: 'mobile_crane',
-      equipmentId: 'crane-002',
-      name: '100T Mobile Crane',
-      baseRates: {
-        micro: 8000,
-        small: 7500,
-        monthly: 7000,
-        yearly: 6500
-      },
-      baseRate: 7000,
-      runningCostPerKm: 150,
-      quantity: 2
     }
   ],
   foodResources: 2,
   accomResources: 2,
   siteDistance: 50,
   usage: 'normal',
-  riskFactor: 'low',
+  riskFactor: 'medium',
   extraCharge: 5000,
   incidentalCharges: ['incident1', 'incident2'],
-  otherFactorsCharge: 2000,  
+  otherFactorsCharge: 2000,
   billing: 'gst',
-  workingCost: 150000, // Fixed: should match totalRent for consistency
   includeGst: true,
   shift: 'single',
   dayNight: 'day',
   mobDemob: 15000,
   mobRelaxation: 5000,
   runningCostPerKm: 100,
-  totalRent: 150000,
+  // Pre-calculated values (as would come from database)
+  totalRent: 960000, // 4000 * 8 * 30 = 960,000
+  workingCost: 960000,
+  mobDemobCost: 15000,
+  foodAccomCost: 390000, // (2*2500 + 2*4000) * 30 = 390,000
+  usageLoadFactor: 0, // Normal usage = 0
+  riskAdjustment: 8000, // Medium risk = 8000
+  gstAmount: 243000, // 18% of total before GST (approximately)
   version: 1,
   createdAt: new Date().toISOString(),
   updatedAt: new Date().toISOString(),
-  createdBy: 'system',  status: 'draft',
-  machineType: 'mobile_crane',
-  otherFactors: ['rigger', 'area', 'customer_reputation'],
+  createdBy: 'system',
+  status: 'draft',
+  otherFactors: ['rigger', 'area'],
   dealType: 'credit',
   sundayWorking: 'no'
 };
