@@ -128,6 +128,13 @@ export function calculateQuotationTotals(quotation: Quotation): QuotationCalcula
       risk: quotation.riskAdjustment !== undefined,
       usage: quotation.usageLoadFactor !== undefined,
       gst: quotation.gstAmount !== undefined
+    },
+    databaseValues: {
+      foodAccomCost: quotation.foodAccomCost,
+      mobDemobCost: quotation.mobDemobCost,
+      riskAdjustment: quotation.riskAdjustment,
+      usageLoadFactor: quotation.usageLoadFactor,
+      gstAmount: quotation.gstAmount
     }
   });
   
