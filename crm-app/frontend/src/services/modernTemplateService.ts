@@ -24,7 +24,7 @@ export interface ModernTemplate {
 // Enhanced template element interface with styling support
 export interface TemplateElement {
   id: string;
-  type: 'text' | 'field' | 'table' | 'image' | 'spacer' | 'header' | 'terms';
+  type: 'text' | 'field' | 'table' | 'image' | 'spacer' | 'header' | 'terms' | 'calculation' | 'conditional' | 'loop' | 'signature' | 'qr_code' | 'barcode';
   content?: string;
   fieldType?: string;
   styles?: Record<string, any>;

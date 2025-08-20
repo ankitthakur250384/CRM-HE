@@ -9,7 +9,7 @@ import { HTML5Backend } from 'react-dnd-html5-backend';
 import { 
   Trash2, Move, Type, Database, Grid, Image, Minus, Save, Eye,
   FileText, Settings, ArrowUp, ArrowDown,
-  AlignLeft, AlignCenter, AlignRight, Plus
+  AlignLeft, AlignCenter, AlignRight
 } from 'lucide-react';
 import { Button } from '../common/Button';
 import { Input } from '../common/Input';
@@ -23,7 +23,7 @@ const ItemTypes = {
   PALETTE_ITEM: 'palette_item'
 };
 
-// Enhanced element interface with styling and configuration
+// Enhanced element interface with proper config typing
 export interface EnhancedTemplateElement extends TemplateElement {
   style?: {
     fontSize?: string;
@@ -55,6 +55,13 @@ export interface EnhancedTemplateElement extends TemplateElement {
     alt?: string;
     uploadedFile?: File;
     aspectRatio?: string;
+    // Enhanced configurations
+    condition?: string;
+    loopSource?: string;
+    cssClasses?: string;
+    attributes?: string;
+    visibilityRules?: string;
+    customCss?: string;
   };
 }
 
@@ -64,35 +71,71 @@ interface ModernTemplateBuilderProps {
   onCancel: () => void;
 }
 
-// Palette items for the template builder
+// Enhanced palette items with SuiteCRM-inspired features
 const paletteItems = [
   { 
     type: 'header', 
     label: 'Header Section', 
     icon: Type, 
     description: 'Company logo and title',
-    defaultContent: 'Company Header'
+    defaultContent: 'Company Header',
+    category: 'layout'
   },
   { 
     type: 'text', 
     label: 'Text Block', 
     icon: Type, 
     description: 'Add custom text content',
-    defaultContent: 'Your text content here'
+    defaultContent: 'Your text content here',
+    category: 'content'
   },
   { 
     type: 'field', 
     label: 'Dynamic Field', 
     icon: Database, 
     description: 'Insert quotation data',
-    defaultContent: '{{customer_name}}'
+    defaultContent: '{{customer_name}}',
+    category: 'data'
+  },
+  { 
+    type: 'calculation', 
+    label: 'Calculation Field', 
+    icon: Database, 
+    description: 'Auto-calculated values',
+    defaultContent: '{{total_amount}}',
+    category: 'data'
+  },
+  { 
+    type: 'conditional', 
+    label: 'Conditional Block', 
+    icon: Database, 
+    description: 'Show/hide based on conditions',
+    defaultContent: 'Content shown if condition is met',
+    category: 'logic'
+  },
+  { 
+    type: 'loop', 
+    label: 'Repeating Section', 
+    icon: Grid, 
+    description: 'Loop through equipment items',
+    defaultContent: 'Repeating content for each item',
+    category: 'logic'
   },
   { 
     type: 'table', 
     label: 'Data Table', 
     icon: Grid, 
     description: 'Display equipment and pricing',
-    defaultContent: 'Equipment Table'
+    defaultContent: 'Equipment Table',
+    category: 'data'
+  },
+  { 
+    type: 'signature', 
+    label: 'Signature Block', 
+    icon: Type, 
+    description: 'Signature and approval area',
+    defaultContent: 'Authorized Signature',
+    category: 'content'
   },
   { 
     type: 'terms', 
@@ -126,44 +169,234 @@ const paletteItems = [
    - Company not liable for delays due to circumstances beyond control
    - Includes natural disasters, strikes, government regulations, etc.
 
-For complete terms and conditions, please contact our office.`
+For complete terms and conditions, please contact our office.`,
+    category: 'content'
   },
   { 
     type: 'image', 
     label: 'Image/Logo', 
     icon: Image, 
     description: 'Company logo or images',
-    defaultContent: 'Image Placeholder'
+    defaultContent: 'Image Placeholder',
+    category: 'content'
   },
   { 
     type: 'spacer', 
     label: 'Spacer', 
     icon: Minus, 
     description: 'Add vertical spacing',
-    defaultContent: ''
+    defaultContent: '',
+    category: 'layout'
+  },
+  { 
+    type: 'qr_code', 
+    label: 'QR Code', 
+    icon: Grid, 
+    description: 'Generate QR code',
+    defaultContent: 'QR Code for quotation',
+    category: 'content'
+  },
+  { 
+    type: 'barcode', 
+    label: 'Barcode', 
+    icon: Minus, 
+    description: 'Generate barcode',
+    defaultContent: 'Quotation barcode',
+    category: 'content'
   }
 ] as const;
 
-// Field options for dynamic content
-const fieldOptions = [
-  { value: '{{company_name}}', label: 'Company Name' },
-  { value: '{{company_address}}', label: 'Company Address' },
-  { value: '{{company_phone}}', label: 'Company Phone' },
-  { value: '{{company_email}}', label: 'Company Email' },
-  { value: '{{customer_name}}', label: 'Customer Name' },
-  { value: '{{customer_address}}', label: 'Customer Address' },
-  { value: '{{customer_phone}}', label: 'Customer Phone' },
-  { value: '{{customer_email}}', label: 'Customer Email' },
-  { value: '{{quotation_number}}', label: 'Quotation Number' },
-  { value: '{{quotation_date}}', label: 'Quotation Date' },
-  { value: '{{quotation_validity}}', label: 'Quotation Validity' },
-  { value: '{{total_amount}}', label: 'Total Amount' },
-  { value: '{{total_amount_words}}', label: 'Total Amount (in words)' },
-  { value: '{{gst_amount}}', label: 'GST Amount' },
-  { value: '{{final_amount}}', label: 'Final Amount' }
+// Enhanced field options with more comprehensive data
+const enhancedFieldOptions = [
+  // Company Information
+  { category: 'Company', value: '{{company_name}}', label: 'Company Name', description: 'Your company name' },
+  { category: 'Company', value: '{{company_address}}', label: 'Company Address', description: 'Full company address' },
+  { category: 'Company', value: '{{company_phone}}', label: 'Company Phone', description: 'Primary contact number' },
+  { category: 'Company', value: '{{company_email}}', label: 'Company Email', description: 'Primary email address' },
+  { category: 'Company', value: '{{company_website}}', label: 'Company Website', description: 'Company website URL' },
+  { category: 'Company', value: '{{company_gst}}', label: 'Company GST', description: 'GST registration number' },
+  { category: 'Company', value: '{{company_pan}}', label: 'Company PAN', description: 'PAN card number' },
+  
+  // Customer Information
+  { category: 'Customer', value: '{{customer_name}}', label: 'Customer Name', description: 'Customer/client name' },
+  { category: 'Customer', value: '{{customer_address}}', label: 'Customer Address', description: 'Customer address' },
+  { category: 'Customer', value: '{{customer_phone}}', label: 'Customer Phone', description: 'Customer contact number' },
+  { category: 'Customer', value: '{{customer_email}}', label: 'Customer Email', description: 'Customer email address' },
+  { category: 'Customer', value: '{{customer_gst}}', label: 'Customer GST', description: 'Customer GST number' },
+  { category: 'Customer', value: '{{customer_contact_person}}', label: 'Contact Person', description: 'Primary contact person' },
+  
+  // Quotation Details
+  { category: 'Quotation', value: '{{quotation_number}}', label: 'Quotation Number', description: 'Unique quotation ID' },
+  { category: 'Quotation', value: '{{quotation_date}}', label: 'Quotation Date', description: 'Date of quotation' },
+  { category: 'Quotation', value: '{{quotation_validity}}', label: 'Quotation Validity', description: 'Valid until date' },
+  { category: 'Quotation', value: '{{quotation_ref}}', label: 'Reference Number', description: 'Reference or PO number' },
+  { category: 'Quotation', value: '{{quotation_subject}}', label: 'Subject', description: 'Quotation subject/title' },
+  
+  // Financial Information
+  { category: 'Financial', value: '{{subtotal_amount}}', label: 'Subtotal Amount', description: 'Amount before tax' },
+  { category: 'Financial', value: '{{gst_amount}}', label: 'GST Amount', description: 'Total GST amount' },
+  { category: 'Financial', value: '{{discount_amount}}', label: 'Discount Amount', description: 'Total discount given' },
+  { category: 'Financial', value: '{{total_amount}}', label: 'Total Amount', description: 'Final total amount' },
+  { category: 'Financial', value: '{{total_amount_words}}', label: 'Amount in Words', description: 'Total amount in words' },
+  { category: 'Financial', value: '{{advance_amount}}', label: 'Advance Amount', description: 'Advance payment required' },
+  
+  // Project Details
+  { category: 'Project', value: '{{project_name}}', label: 'Project Name', description: 'Name of the project' },
+  { category: 'Project', value: '{{project_location}}', label: 'Project Location', description: 'Work site location' },
+  { category: 'Project', value: '{{project_duration}}', label: 'Project Duration', description: 'Total project duration' },
+  { category: 'Project', value: '{{start_date}}', label: 'Start Date', description: 'Project start date' },
+  { category: 'Project', value: '{{end_date}}', label: 'End Date', description: 'Project end date' },
+  
+  // Equipment Calculations
+  { category: 'Calculations', value: '{{working_cost}}', label: 'Working Cost', description: 'Total working cost' },
+  { category: 'Calculations', value: '{{mob_demob_cost}}', label: 'Mobilization Cost', description: 'Mobilization/demobilization cost' },
+  { category: 'Calculations', value: '{{food_accom_cost}}', label: 'Food & Accommodation', description: 'Food and accommodation cost' },
+  { category: 'Calculations', value: '{{fuel_cost}}', label: 'Fuel Cost', description: 'Total fuel cost' },
+  { category: 'Calculations', value: '{{operator_cost}}', label: 'Operator Cost', description: 'Operator charges' },
+  { category: 'Calculations', value: '{{transport_cost}}', label: 'Transport Cost', description: 'Transportation charges' },
+  { category: 'Calculations', value: '{{number_of_days}}', label: 'Number of Days', description: 'Total working days' },
+  
+  // Dates and Times
+  { category: 'DateTime', value: '{{current_date}}', label: 'Current Date', description: 'Today\'s date' },
+  { category: 'DateTime', value: '{{current_time}}', label: 'Current Time', description: 'Current time' },
+  { category: 'DateTime', value: '{{created_date}}', label: 'Created Date', description: 'Quotation creation date' },
+  { category: 'DateTime', value: '{{last_modified}}', label: 'Last Modified', description: 'Last modification date' },
+  
+  // User Information
+  { category: 'User', value: '{{created_by}}', label: 'Created By', description: 'User who created quotation' },
+  { category: 'User', value: '{{sales_person}}', label: 'Sales Person', description: 'Assigned sales person' },
+  { category: 'User', value: '{{manager}}', label: 'Manager', description: 'Reporting manager' }
 ];
 
-// Table field options for dynamic table content
+// Template themes for quick styling
+const templateThemes = [
+  {
+    id: 'professional',
+    name: 'Professional Blue',
+    description: 'Clean blue theme for corporate quotations',
+    colors: {
+      primary: '#2563eb',
+      secondary: '#64748b',
+      accent: '#f1f5f9',
+      text: '#1e293b',
+      background: '#ffffff'
+    },
+    fonts: {
+      heading: 'font-bold text-lg',
+      body: 'font-normal text-sm',
+      small: 'font-normal text-xs'
+    }
+  },
+  {
+    id: 'modern',
+    name: 'Modern Orange',
+    description: 'Contemporary orange theme with clean lines',
+    colors: {
+      primary: '#ea580c',
+      secondary: '#78716c',
+      accent: '#fef7ed',
+      text: '#292524',
+      background: '#ffffff'
+    },
+    fonts: {
+      heading: 'font-bold text-lg',
+      body: 'font-normal text-sm',
+      small: 'font-normal text-xs'
+    }
+  },
+  {
+    id: 'elegant',
+    name: 'Elegant Black',
+    description: 'Sophisticated black and gold theme',
+    colors: {
+      primary: '#1f2937',
+      secondary: '#d97706',
+      accent: '#f9fafb',
+      text: '#111827',
+      background: '#ffffff'
+    },
+    fonts: {
+      heading: 'font-bold text-lg',
+      body: 'font-normal text-sm',
+      small: 'font-normal text-xs'
+    }
+  }
+];
+
+// Element templates for quick insertion
+const elementTemplates = [
+  {
+    id: 'company_header',
+    name: 'Company Header Block',
+    description: 'Complete company header with logo and details',
+    elements: [
+      {
+        type: 'header',
+        content: '{{company_name}}',
+        style: { fontSize: '24px', fontWeight: 'bold', textAlign: 'center', margin: '20px 0' }
+      },
+      {
+        type: 'text',
+        content: '{{company_address}} | Phone: {{company_phone}} | Email: {{company_email}}',
+        style: { fontSize: '12px', textAlign: 'center', color: '#666666' }
+      }
+    ]
+  },
+  {
+    id: 'quotation_details',
+    name: 'Quotation Details Block',
+    description: 'Standard quotation information section',
+    elements: [
+      {
+        type: 'text',
+        content: 'QUOTATION',
+        style: { fontSize: '20px', fontWeight: 'bold', textAlign: 'center', margin: '20px 0' }
+      },
+      {
+        type: 'field',
+        content: 'Quotation No: {{quotation_number}}'
+      },
+      {
+        type: 'field',
+        content: 'Date: {{quotation_date}}'
+      },
+      {
+        type: 'field',
+        content: 'Valid Until: {{quotation_validity}}'
+      }
+    ]
+  },
+  {
+    id: 'customer_details',
+    name: 'Customer Details Block',
+    description: 'Customer information section',
+    elements: [
+      {
+        type: 'text',
+        content: 'BILL TO:',
+        style: { fontWeight: 'bold', margin: '15px 0 5px 0' }
+      },
+      {
+        type: 'field',
+        content: '{{customer_name}}'
+      },
+      {
+        type: 'field',
+        content: '{{customer_address}}'
+      },
+      {
+        type: 'field',
+        content: 'Phone: {{customer_phone}}'
+      }
+    ]
+  }
+];
+
+// Enhanced field options with better organization
+const fieldOptions = enhancedFieldOptions;
+
+// Table field options for dynamic table content (used in advanced table editing)
+/*
 const tableFieldOptions = [
   { value: '{{item_name}}', label: 'Item/Equipment Name' },
   { value: '{{item_description}}', label: 'Item Description' },
@@ -181,8 +414,9 @@ const tableFieldOptions = [
   { value: '{{item_tax}}', label: 'Tax %' },
   { value: '{{item_remarks}}', label: 'Remarks/Notes' }
 ];
+*/
 
-// Draggable palette item
+// Enhanced Palette Item with categories
 function PaletteItem({ item }: { item: typeof paletteItems[number] }) {
   const [{ isDragging }, drag] = useDrag(() => ({
     type: ItemTypes.PALETTE_ITEM,
@@ -193,18 +427,27 @@ function PaletteItem({ item }: { item: typeof paletteItems[number] }) {
   }));
 
   const IconComponent = item.icon;
+  
+  // Category colors
+  const categoryColors = {
+    content: 'border-blue-200 bg-blue-50 hover:border-blue-300',
+    data: 'border-green-200 bg-green-50 hover:border-green-300',
+    layout: 'border-purple-200 bg-purple-50 hover:border-purple-300',
+    logic: 'border-orange-200 bg-orange-50 hover:border-orange-300'
+  };
 
   return (
     <div 
       ref={drag}
       className={`
-        cursor-move p-3 bg-white border border-gray-200 rounded-lg shadow-sm
-        hover:shadow-md hover:border-blue-300 transition-all duration-200
+        cursor-move p-3 border rounded-lg shadow-sm
+        hover:shadow-md transition-all duration-200
         ${isDragging ? 'opacity-50' : 'opacity-100'}
+        ${categoryColors[item.category] || 'border-gray-200 bg-white hover:border-gray-300'}
       `}
     >
       <div className="flex items-center gap-3">
-        <IconComponent size={20} className="text-blue-600" />
+        <IconComponent size={20} className="text-gray-700" />
         <div>
           <div className="font-medium text-sm text-gray-900">{item.label}</div>
           <div className="text-xs text-gray-500">{item.description}</div>
@@ -214,7 +457,129 @@ function PaletteItem({ item }: { item: typeof paletteItems[number] }) {
   );
 }
 
-// Element editor panel
+// Variable Insertion Panel - SuiteCRM inspired
+function VariablePanel({ onInsertVariable }: { onInsertVariable: (variable: string) => void }) {
+  const [selectedCategory, setSelectedCategory] = useState<string>('Company');
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const categories = [...new Set(fieldOptions.map(field => field.category))];
+  
+  const filteredFields = fieldOptions.filter(field => {
+    const matchesCategory = selectedCategory === 'All' || field.category === selectedCategory;
+    const matchesSearch = searchTerm === '' || 
+      field.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      field.description.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
+
+  return (
+    <div className="h-full bg-white border-l border-gray-200 flex flex-col">
+      <div className="p-4 border-b border-gray-200">
+        <h3 className="font-semibold text-gray-900 mb-3">Insert Variables</h3>
+        
+        {/* Search */}
+        <Input
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+          placeholder="Search variables..."
+          className="mb-3"
+        />
+        
+        {/* Category Tabs */}
+        <div className="flex flex-wrap gap-1">
+          {['All', ...categories].map(category => (
+            <button
+              key={category}
+              onClick={() => setSelectedCategory(category)}
+              className={`px-2 py-1 text-xs rounded transition-colors ${
+                selectedCategory === category
+                  ? 'bg-blue-100 text-blue-700'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {category}
+            </button>
+          ))}
+        </div>
+      </div>
+      
+      {/* Variable List */}
+      <div className="flex-1 overflow-y-auto p-2">
+        {filteredFields.map((field, index) => (
+          <div
+            key={index}
+            onClick={() => onInsertVariable(field.value)}
+            className="p-2 rounded cursor-pointer hover:bg-gray-50 border-b border-gray-100"
+          >
+            <div className="font-medium text-sm text-gray-900">{field.label}</div>
+            <div className="text-xs text-gray-500 mb-1">{field.description}</div>
+            <div className="text-xs font-mono bg-gray-100 px-2 py-1 rounded">{field.value}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Theme Selector Panel
+function ThemePanel({ onApplyTheme }: { onApplyTheme: (theme: typeof templateThemes[0]) => void }) {
+  return (
+    <div className="p-4 bg-white border-b border-gray-200">
+      <h3 className="font-semibold text-gray-900 mb-3">Template Themes</h3>
+      <div className="space-y-2">
+        {templateThemes.map(theme => (
+          <div
+            key={theme.id}
+            onClick={() => onApplyTheme(theme)}
+            className="p-3 border border-gray-200 rounded-lg cursor-pointer hover:border-blue-300 hover:bg-blue-50 transition-colors"
+          >
+            <div className="flex items-center gap-3 mb-2">
+              <div 
+                className="w-4 h-4 rounded"
+                style={{ backgroundColor: theme.colors.primary }}
+              ></div>
+              <div className="font-medium text-sm">{theme.name}</div>
+            </div>
+            <div className="text-xs text-gray-500">{theme.description}</div>
+            <div className="flex gap-1 mt-2">
+              {Object.values(theme.colors).slice(0, 4).map((color, index) => (
+                <div
+                  key={index}
+                  className="w-3 h-3 rounded-sm"
+                  style={{ backgroundColor: color }}
+                ></div>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Element Template Panel  
+function ElementTemplatePanel({ onInsertTemplate }: { onInsertTemplate: (template: typeof elementTemplates[0]) => void }) {
+  return (
+    <div className="p-4 bg-white border-b border-gray-200">
+      <h3 className="font-semibold text-gray-900 mb-3">Quick Templates</h3>
+      <div className="space-y-2">
+        {elementTemplates.map(template => (
+          <div
+            key={template.id}
+            onClick={() => onInsertTemplate(template)}
+            className="p-3 border border-gray-200 rounded-lg cursor-pointer hover:border-green-300 hover:bg-green-50 transition-colors"
+          >
+            <div className="font-medium text-sm text-gray-900">{template.name}</div>
+            <div className="text-xs text-gray-500 mt-1">{template.description}</div>
+            <div className="text-xs text-blue-600 mt-2">{template.elements.length} elements</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// Enhanced Element editor panel with SuiteCRM-inspired features
 function ElementEditor({ 
   element, 
   onUpdate, 
@@ -226,6 +591,7 @@ function ElementEditor({
 }) {
   const [localElement, setLocalElement] = useState(element);
   const [hasChanges, setHasChanges] = useState(false);
+  const [activeTab, setActiveTab] = useState<'content' | 'style' | 'advanced'>('content');
 
   const handleStyleChange = (styleKey: string, value: string) => {
     setLocalElement(prev => ({
@@ -322,7 +688,9 @@ function ElementEditor({
   const removeTableColumn = (colIndex: number) => {
     if ((localElement.config?.columns?.length || 0) > 1) {
       const columns = localElement.config?.columns?.filter((_, index) => index !== colIndex) || [];
-      const rows = localElement.config?.rows?.map(row => row.filter((_, index) => index !== colIndex)) || [];
+      const rows = localElement.config?.rows?.map(row => 
+        row.filter((_, index) => index !== colIndex)
+      ) || [];
       setLocalElement(prev => ({
         ...prev,
         config: { ...prev.config, columns, rows }
@@ -331,403 +699,454 @@ function ElementEditor({
     }
   };
 
-  const handleSave = () => {
+  const applyChanges = () => {
     onUpdate(localElement);
-    onClose();
-    console.log('💾 Element changes saved');
+    setHasChanges(false);
   };
 
-  const handleCancel = () => {
-    if (hasChanges) {
-      const confirmCancel = window.confirm('You have unsaved changes. Are you sure you want to cancel?');
-      if (!confirmCancel) return;
-    }
-    onClose();
+  const resetChanges = () => {
+    setLocalElement(element);
+    setHasChanges(false);
   };
 
   return (
-    <div className="w-96 bg-white border-l border-gray-200 p-4 overflow-y-auto max-h-screen">
-      <div className="flex items-center justify-between mb-4">
-        <h3 className="font-semibold text-gray-900">Edit Element</h3>
-        <Button variant="ghost" size="sm" onClick={onClose} className="text-gray-700 hover:text-gray-900 hover:bg-gray-100">×</Button>
+    <div className="bg-white shadow-lg h-full flex flex-col">
+      {/* Header */}
+      <div className="p-4 border-b border-gray-200">
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-gray-900">Edit Element</h3>
+          <button
+            onClick={onClose}
+            className="text-gray-400 hover:text-gray-600"
+          >
+            ✕
+          </button>
+        </div>
+        
+        {/* Element Type Badge */}
+        <div className="mt-2">
+          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+            {localElement.type}
+          </span>
+        </div>
       </div>
 
-      <div className="space-y-4">
-        {/* Content Editor */}
-        <div>
-          <div className="block text-sm font-medium text-gray-700 mb-1">Content</div>
-          {element.type === 'field' ? (
-            <select
-              value={localElement.content || ''}
-              onChange={(e) => handleContentChange(e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              <option value="">Select a field</option>
-              {fieldOptions.map(option => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          ) : element.type === 'table' ? (
-            <div className="text-sm text-gray-600">
-              Configure table structure below
-            </div>
-          ) : element.type === 'image' ? (
-            <div className="text-sm text-gray-600">
-              Upload or configure image below
-            </div>
-          ) : (
-            <TextArea
-              value={localElement.content || ''}
-              onChange={(e) => handleContentChange(e.target.value)}
-              rows={3}
-              placeholder="Enter content..."
-            />
-          )}
-        </div>
+      {/* Tabs */}
+      <div className="flex border-b border-gray-200">
+        {[
+          { id: 'content', label: 'Content' },
+          { id: 'style', label: 'Style' },
+          { id: 'advanced', label: 'Advanced' }
+        ].map(tab => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as any)}
+            className={`flex-1 px-4 py-2 text-sm font-medium ${
+              activeTab === tab.id
+                ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-700'
+                : 'text-gray-600 hover:text-gray-900'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
 
-        {/* Table Configuration */}
-        {element.type === 'table' && (
-          <div className="space-y-3">
-            <h4 className="font-medium text-gray-900">Table Configuration</h4>
-            
-            <div className="flex gap-2">
-              <Button onClick={addTableColumn} size="sm" className="bg-green-600 hover:bg-green-700 text-white">
-                <Plus size={14} /> Add Column
-              </Button>
-              <Button onClick={addTableRow} size="sm" className="bg-blue-600 hover:bg-blue-700 text-white">
-                <Plus size={14} /> Add Row
-              </Button>
-            </div>
-
+      {/* Tab Content */}
+      <div className="flex-1 overflow-y-auto p-4">
+        {activeTab === 'content' && (
+          <div className="space-y-4">
+            {/* Content Editor */}
             <div>
-              <div className="block text-sm font-medium text-gray-700 mb-2">Headers</div>
-              {(localElement.config?.columns || []).map((column, colIndex) => (
-                <div key={colIndex} className="flex gap-2 mb-2">
-                  <Input
-                    value={column}
-                    onChange={(e) => updateTableHeader(colIndex, e.target.value)}
-                    placeholder={`Column ${colIndex + 1}`}
-                    className="flex-1"
-                  />
-                  <Button
-                    onClick={() => removeTableColumn(colIndex)}
-                    size="sm"
-                    variant="ghost"
-                    className="text-red-600 hover:text-red-700"
-                    disabled={(localElement.config?.columns?.length || 0) <= 1}
-                  >
-                    <Trash2 size={14} />
-                  </Button>
-                </div>
-              ))}
-            </div>
-
-            <div>
-              <div className="block text-sm font-medium text-gray-700 mb-2">Data Rows</div>
-              <div className="mb-2 p-2 bg-blue-50 rounded text-xs text-blue-800">
-                💡 <strong>Tip:</strong> Use dynamic fields like {'{{item_name}}'}, {'{{item_rate}}'}, {'{{item_amount}}'} for auto-populated data
-              </div>
-              {(localElement.config?.rows || []).map((row, rowIndex) => (
-                <div key={rowIndex} className="border border-gray-200 rounded p-2 mb-2">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-sm font-medium">Row {rowIndex + 1}</span>
-                    <div className="flex gap-2">
-                      <Button
-                        onClick={() => {
-                          // Add a row with placeholder fields
-                          const columns = localElement.config?.columns || [];
-                          const suggestedRow = columns.map((col) => {
-                            if (col.toLowerCase().includes('equipment') || col.toLowerCase().includes('item')) return '{{item_name}}';
-                            if (col.toLowerCase().includes('capacity') || col.toLowerCase().includes('spec')) return '{{item_capacity}}';
-                            if (col.toLowerCase().includes('quantity')) return '{{item_quantity}}';
-                            if (col.toLowerCase().includes('rate')) return '{{item_rate}}';
-                            if (col.toLowerCase().includes('amount')) return '{{item_amount}}';
-                            if (col.toLowerCase().includes('duration')) return '{{item_duration}}';
-                            return '';
-                          });
-                          setLocalElement(prev => ({
-                            ...prev,
-                            config: {
-                              ...prev.config,
-                              rows: [...(prev.config?.rows || []), suggestedRow]
-                            }
-                          }));
-                          setHasChanges(true);
-                        }}
-                        size="sm"
-                        className="text-xs bg-green-600 hover:bg-green-700 text-white"
-                      >
-                        + Field Row
-                      </Button>
-                      <Button
-                        onClick={() => removeTableRow(rowIndex)}
-                        size="sm"
-                        variant="ghost"
-                        className="text-red-600 hover:text-red-700"
-                        disabled={(localElement.config?.rows?.length || 0) <= 1}
-                      >
-                        <Trash2 size={12} />
-                      </Button>
-                    </div>
-                  </div>
-                  {row.map((cell, colIndex) => (
-                    <div key={colIndex} className="mb-1 relative">
-                      <Input
-                        value={cell}
-                        onChange={(e) => updateTableCell(rowIndex, colIndex, e.target.value)}
-                        placeholder={`${localElement.config?.columns?.[colIndex] || `Column ${colIndex + 1}`}`}
-                        className="mb-1"
-                      />
-                      {/* Quick field buttons */}
-                      <div className="flex gap-1 mt-1 flex-wrap">
-                        {tableFieldOptions.slice(0, 3).map(field => (
-                          <button
-                            key={field.value}
-                            onClick={() => updateTableCell(rowIndex, colIndex, field.value)}
-                            className="text-xs px-2 py-1 bg-blue-100 text-blue-700 rounded hover:bg-blue-200"
-                          >
-                            {field.label.split(' ')[0]}
-                          </button>
-                        ))}
-                        <select
-                          onChange={(e) => {
-                            if (e.target.value) {
-                              updateTableCell(rowIndex, colIndex, e.target.value);
-                              e.target.value = '';
-                            }
-                          }}
-                          className="text-xs px-1 py-1 border border-gray-300 rounded"
-                        >
-                          <option value="">More Fields...</option>
-                          {tableFieldOptions.map(field => (
-                            <option key={field.value} value={field.value}>
-                              {field.label}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Content</label>
+              {localElement.type === 'field' ? (
+                <select
+                  value={localElement.content}
+                  onChange={(e) => handleContentChange(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                >
+                  <option value="">Select a field...</option>
+                  {enhancedFieldOptions.map((field, index) => (
+                    <option key={index} value={field.value}>
+                      {field.label} - {field.value}
+                    </option>
                   ))}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Image Configuration */}
-        {element.type === 'image' && (
-          <div className="space-y-3">
-            <h4 className="font-medium text-gray-900">Image Configuration</h4>
-            
-            <div>
-              <div className="block text-sm font-medium text-gray-700 mb-1">Upload Image</div>
-              <input
-                type="file"
-                accept="image/*"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file) handleImageUpload(file);
-                }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-
-            {localElement.config?.src && (
-              <div>
-                <div className="block text-sm font-medium text-gray-700 mb-1">Preview</div>
-                <img 
-                  src={localElement.config.src} 
-                  alt="Preview" 
-                  className="w-full max-w-xs border border-gray-300 rounded"
+                </select>
+              ) : (
+                <TextArea
+                  value={localElement.content || ''}
+                  onChange={(e) => handleContentChange(e.target.value)}
+                  rows={localElement.type === 'terms' ? 10 : 3}
+                  className="w-full"
+                  placeholder="Enter content..."
                 />
+              )}
+            </div>
+
+            {/* Conditional Content */}
+            {localElement.type === 'conditional' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Condition</label>
+                <Input
+                  value={localElement.config?.condition || ''}
+                  onChange={(e) => handleConfigChange('condition', e.target.value)}
+                  placeholder="e.g., {{total_amount}} > 10000"
+                  className="w-full"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Show this content only when condition is true
+                </p>
               </div>
             )}
 
+            {/* Loop Configuration */}
+            {localElement.type === 'loop' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Loop Over</label>
+                <select
+                  value={localElement.config?.loopSource || ''}
+                  onChange={(e) => handleConfigChange('loopSource', e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                >
+                  <option value="">Select data source...</option>
+                  <option value="equipment_items">Equipment Items</option>
+                  <option value="services">Services</option>
+                  <option value="additional_costs">Additional Costs</option>
+                </select>
+              </div>
+            )}
+
+            {/* Table Configuration */}
+            {localElement.type === 'table' && (
+              <div className="space-y-3">
+                <h4 className="font-medium text-gray-900">Table Structure</h4>
+                
+                <div className="flex gap-2">
+                  <button
+                    onClick={addTableColumn}
+                    className="px-3 py-1 bg-green-600 text-white rounded text-sm hover:bg-green-700"
+                  >
+                    + Column
+                  </button>
+                  <button
+                    onClick={addTableRow}
+                    className="px-3 py-1 bg-blue-600 text-white rounded text-sm hover:bg-blue-700"
+                  >
+                    + Row
+                  </button>
+                </div>
+
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Headers</label>
+                  {(localElement.config?.columns || []).map((column: string, colIndex: number) => (
+                    <div key={colIndex} className="flex gap-2 mb-2">
+                      <Input
+                        value={column}
+                        onChange={(e) => updateTableHeader(colIndex, e.target.value)}
+                        placeholder={`Column ${colIndex + 1}`}
+                        className="flex-1 text-sm"
+                      />
+                      <button
+                        onClick={() => removeTableColumn(colIndex)}
+                        disabled={(localElement.config?.columns?.length || 0) <= 1}
+                        className="px-2 py-1 text-red-600 hover:text-red-700 disabled:opacity-50"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                </div>
+
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Data Rows</label>
+                  {(localElement.config?.rows || []).map((row: string[], rowIndex: number) => (
+                    <div key={rowIndex} className="border border-gray-200 rounded p-2 mb-2">
+                      <div className="flex justify-between items-center mb-2">
+                        <span className="text-xs font-medium">Row {rowIndex + 1}</span>
+                        <button
+                          onClick={() => removeTableRow(rowIndex)}
+                          disabled={(localElement.config?.rows?.length || 0) <= 1}
+                          className="text-xs text-red-600 hover:text-red-700 disabled:opacity-50"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                      {row.map((cell: string, colIndex: number) => (
+                        <Input
+                          key={colIndex}
+                          value={cell}
+                          onChange={(e) => updateTableCell(rowIndex, colIndex, e.target.value)}
+                          placeholder={`${localElement.config?.columns?.[colIndex] || `Column ${colIndex + 1}`}`}
+                          className="mb-1 text-sm"
+                        />
+                      ))}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Image Upload */}
+            {localElement.type === 'image' && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Image</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => e.target.files?.[0] && handleImageUpload(e.target.files[0])}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md text-sm"
+                />
+                {localElement.config?.src && (
+                  <img
+                    src={localElement.config.src}
+                    alt="Preview"
+                    className="mt-2 max-w-full h-20 object-contain border border-gray-200 rounded"
+                  />
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'style' && (
+          <div className="space-y-4">
+            {/* Typography */}
             <div>
-              <div className="block text-sm font-medium text-gray-700 mb-1">Alt Text</div>
-              <Input
-                value={localElement.config?.alt || ''}
-                onChange={(e) => handleConfigChange('alt', e.target.value)}
-                placeholder="Image description"
-              />
+              <h4 className="font-medium text-gray-900 mb-2">Typography</h4>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Font Size</label>
+                  <select
+                    value={localElement.style?.fontSize || '14px'}
+                    onChange={(e) => handleStyleChange('fontSize', e.target.value)}
+                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                  >
+                    <option value="10px">10px</option>
+                    <option value="12px">12px</option>
+                    <option value="14px">14px</option>
+                    <option value="16px">16px</option>
+                    <option value="18px">18px</option>
+                    <option value="20px">20px</option>
+                    <option value="24px">24px</option>
+                    <option value="28px">28px</option>
+                    <option value="32px">32px</option>
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Font Weight</label>
+                  <select
+                    value={localElement.style?.fontWeight || 'normal'}
+                    onChange={(e) => handleStyleChange('fontWeight', e.target.value)}
+                    className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                  >
+                    <option value="normal">Normal</option>
+                    <option value="bold">Bold</option>
+                    <option value="lighter">Light</option>
+                    <option value="bolder">Extra Bold</option>
+                  </select>
+                </div>
+              </div>
             </div>
 
+            {/* Text Alignment */}
             <div>
-              <div className="block text-sm font-medium text-gray-700 mb-1">Aspect Ratio</div>
-              <select
-                value={localElement.config?.aspectRatio || 'auto'}
-                onChange={(e) => handleConfigChange('aspectRatio', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="auto">Auto</option>
-                <option value="1/1">Square (1:1)</option>
-                <option value="16/9">Widescreen (16:9)</option>
-                <option value="4/3">Standard (4:3)</option>
-                <option value="3/2">Photo (3:2)</option>
-              </select>
+              <h4 className="font-medium text-gray-900 mb-2">Alignment</h4>
+              <div className="flex gap-1">
+                {[
+                  { value: 'left', icon: AlignLeft },
+                  { value: 'center', icon: AlignCenter },
+                  { value: 'right', icon: AlignRight }
+                ].map(({ value, icon: Icon }) => (
+                  <button
+                    key={value}
+                    onClick={() => handleStyleChange('textAlign', value)}
+                    className={`p-2 border rounded ${
+                      localElement.style?.textAlign === value
+                        ? 'bg-blue-100 border-blue-300'
+                        : 'bg-white border-gray-300 hover:bg-gray-50'
+                    }`}
+                  >
+                    <Icon size={16} />
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Colors */}
+            <div>
+              <h4 className="font-medium text-gray-900 mb-2">Colors</h4>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Text Color</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="color"
+                      value={localElement.style?.color || '#000000'}
+                      onChange={(e) => handleStyleChange('color', e.target.value)}
+                      className="w-8 h-8 border border-gray-300 rounded"
+                    />
+                    <Input
+                      value={localElement.style?.color || '#000000'}
+                      onChange={(e) => handleStyleChange('color', e.target.value)}
+                      className="flex-1 text-xs"
+                      placeholder="#000000"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Background</label>
+                  <div className="flex gap-2">
+                    <input
+                      type="color"
+                      value={localElement.style?.backgroundColor || '#ffffff'}
+                      onChange={(e) => handleStyleChange('backgroundColor', e.target.value)}
+                      className="w-8 h-8 border border-gray-300 rounded"
+                    />
+                    <Input
+                      value={localElement.style?.backgroundColor || '#ffffff'}
+                      onChange={(e) => handleStyleChange('backgroundColor', e.target.value)}
+                      className="flex-1 text-xs"
+                      placeholder="#ffffff"
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Spacing */}
+            <div>
+              <h4 className="font-medium text-gray-900 mb-2">Spacing</h4>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Padding</label>
+                  <Input
+                    value={localElement.style?.padding || '8px'}
+                    onChange={(e) => handleStyleChange('padding', e.target.value)}
+                    className="w-full text-xs"
+                    placeholder="8px"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Margin</label>
+                  <Input
+                    value={localElement.style?.margin || '4px 0'}
+                    onChange={(e) => handleStyleChange('margin', e.target.value)}
+                    className="w-full text-xs"
+                    placeholder="4px 0"
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Borders */}
+            <div>
+              <h4 className="font-medium text-gray-900 mb-2">Borders</h4>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Border</label>
+                  <Input
+                    value={localElement.style?.border || ''}
+                    onChange={(e) => handleStyleChange('border', e.target.value)}
+                    className="w-full text-xs"
+                    placeholder="1px solid #ddd"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-600 mb-1">Border Radius</label>
+                  <Input
+                    value={localElement.style?.borderRadius || ''}
+                    onChange={(e) => handleStyleChange('borderRadius', e.target.value)}
+                    className="w-full text-xs"
+                    placeholder="4px"
+                  />
+                </div>
+              </div>
             </div>
           </div>
         )}
 
-        {/* Sizing Options */}
-        <div className="space-y-3">
-          <h4 className="font-medium text-gray-900">Size & Layout</h4>
-          
-          <div className="grid grid-cols-2 gap-2">
+        {activeTab === 'advanced' && (
+          <div className="space-y-4">
+            {/* CSS Classes */}
             <div>
-              <div className="block text-sm font-medium text-gray-700 mb-1">Width</div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">CSS Classes</label>
               <Input
-                value={localElement.style?.width || 'auto'}
-                onChange={(e) => handleStyleChange('width', e.target.value)}
-                placeholder="auto, 100px, 50%"
+                value={localElement.config?.cssClasses || ''}
+                onChange={(e) => handleConfigChange('cssClasses', e.target.value)}
+                className="w-full"
+                placeholder="custom-class another-class"
               />
+              <p className="text-xs text-gray-500 mt-1">
+                Space-separated CSS class names
+              </p>
             </div>
 
+            {/* Custom Attributes */}
             <div>
-              <div className="block text-sm font-medium text-gray-700 mb-1">Height</div>
-              <Input
-                value={localElement.style?.height || 'auto'}
-                onChange={(e) => handleStyleChange('height', e.target.value)}
-                placeholder="auto, 100px, 50%"
+              <label className="block text-sm font-medium text-gray-700 mb-1">Custom Attributes</label>
+              <TextArea
+                value={localElement.config?.attributes || ''}
+                onChange={(e) => handleConfigChange('attributes', e.target.value)}
+                rows={3}
+                className="w-full"
+                placeholder='{"data-id": "custom-id", "title": "Custom title"}'
               />
+              <p className="text-xs text-gray-500 mt-1">
+                JSON object with custom HTML attributes
+              </p>
             </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-2">
+            {/* Visibility Rules */}
             <div>
-              <div className="block text-sm font-medium text-gray-700 mb-1">Max Width</div>
-              <Input
-                value={localElement.style?.maxWidth || '100%'}
-                onChange={(e) => handleStyleChange('maxWidth', e.target.value)}
-                placeholder="100%, 500px"
+              <label className="block text-sm font-medium text-gray-700 mb-1">Visibility Rules</label>
+              <TextArea
+                value={localElement.config?.visibilityRules || ''}
+                onChange={(e) => handleConfigChange('visibilityRules', e.target.value)}
+                rows={2}
+                className="w-full"
+                placeholder="Show only if: {{field_name}} === 'value'"
               />
+              <p className="text-xs text-gray-500 mt-1">
+                Conditional visibility based on data values
+              </p>
             </div>
 
+            {/* Custom CSS */}
             <div>
-              <div className="block text-sm font-medium text-gray-700 mb-1">Min Height</div>
-              <Input
-                value={localElement.style?.minHeight || 'auto'}
-                onChange={(e) => handleStyleChange('minHeight', e.target.value)}
-                placeholder="auto, 50px"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Styling Options */}
-        <div className="space-y-3">
-          <h4 className="font-medium text-gray-900">Styling</h4>
-          
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <div className="block text-sm font-medium text-gray-700 mb-1">Font Size</div>
-              <select
-                value={localElement.style?.fontSize || '14px'}
-                onChange={(e) => handleStyleChange('fontSize', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="12px">12px</option>
-                <option value="14px">14px</option>
-                <option value="16px">16px</option>
-                <option value="18px">18px</option>
-                <option value="20px">20px</option>
-                <option value="24px">24px</option>
-                <option value="32px">32px</option>
-              </select>
-            </div>
-
-            <div>
-              <div className="block text-sm font-medium text-gray-700 mb-1">Font Weight</div>
-              <select
-                value={localElement.style?.fontWeight || 'normal'}
-                onChange={(e) => handleStyleChange('fontWeight', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="normal">Normal</option>
-                <option value="bold">Bold</option>
-                <option value="600">Semi Bold</option>
-                <option value="300">Light</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <div className="block text-sm font-medium text-gray-700 mb-1">Text Alignment</div>
-            <div className="flex gap-1">
-              {(['left', 'center', 'right'] as const).map(align => (
-                <Button
-                  key={align}
-                  variant={localElement.style?.textAlign === align ? 'default' : 'ghost'}
-                  size="sm"
-                  onClick={() => handleStyleChange('textAlign', align)}
-                  className={localElement.style?.textAlign === align 
-                    ? "text-white bg-blue-600" 
-                    : "text-gray-700 hover:text-gray-900 hover:bg-gray-100"
-                  }
-                >
-                  {align === 'left' && <AlignLeft size={16} />}
-                  {align === 'center' && <AlignCenter size={16} />}
-                  {align === 'right' && <AlignRight size={16} />}
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          <div>
-            <div className="block text-sm font-medium text-gray-700 mb-1">Text Color</div>
-            <Input
-              type="color"
-              value={localElement.style?.color || '#000000'}
-              onChange={(e) => handleStyleChange('color', e.target.value)}
-            />
-          </div>
-
-          <div>
-            <div className="block text-sm font-medium text-gray-700 mb-1">Background Color</div>
-            <Input
-              type="color"
-              value={localElement.style?.backgroundColor || '#ffffff'}
-              onChange={(e) => handleStyleChange('backgroundColor', e.target.value)}
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <div className="block text-sm font-medium text-gray-700 mb-1">Padding</div>
-              <Input
-                value={localElement.style?.padding || '8px'}
-                onChange={(e) => handleStyleChange('padding', e.target.value)}
-                placeholder="8px"
-              />
-            </div>
-
-            <div>
-              <div className="block text-sm font-medium text-gray-700 mb-1">Margin</div>
-              <Input
-                value={localElement.style?.margin || '0px'}
-                onChange={(e) => handleStyleChange('margin', e.target.value)}
-                placeholder="0px"
+              <label className="block text-sm font-medium text-gray-700 mb-1">Custom CSS</label>
+              <TextArea
+                value={localElement.config?.customCss || ''}
+                onChange={(e) => handleConfigChange('customCss', e.target.value)}
+                rows={4}
+                className="w-full font-mono text-xs"
+                placeholder="/* Custom CSS styles */
+.custom-element {
+  transform: rotate(45deg);
+  transition: all 0.3s ease;
+}"
               />
             </div>
           </div>
-        </div>
+        )}
+      </div>
 
-        <div className="flex gap-2 pt-4">
-          <Button 
-            onClick={handleSave} 
-            className="flex-1 bg-blue-600 hover:bg-blue-700 text-white" 
+      {/* Footer */}
+      <div className="p-4 border-t border-gray-200 bg-gray-50">
+        <div className="flex gap-2">
+          <Button
+            onClick={applyChanges}
             disabled={!hasChanges}
+            className="flex-1 bg-blue-600 text-white hover:bg-blue-700 disabled:bg-gray-400"
           >
-            {hasChanges ? 'Save Changes' : 'No Changes'}
+            Apply Changes
           </Button>
-          <Button 
-            variant="ghost" 
-            onClick={handleCancel}
-            className="text-gray-700 hover:text-gray-900 hover:bg-gray-100"
+          <Button
+            onClick={resetChanges}
+            disabled={!hasChanges}
+            variant="ghost"
+            className="flex-1"
           >
-            Cancel
+            Reset
           </Button>
         </div>
       </div>
@@ -1306,6 +1725,7 @@ export default function ModernTemplateBuilder({
   const [showPreview, setShowPreview] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [activePanel, setActivePanel] = useState<'elements' | 'variables' | 'themes' | 'templates'>('elements');
 
   // Debug effect to track elements changes
   useEffect(() => {
@@ -1339,7 +1759,7 @@ export default function ModernTemplateBuilder({
           backgroundColor: 'transparent',
           padding: '8px',
           margin: '4px 0',
-          textAlign: 'left',
+          textAlign: 'left' as const,
           ...((el as any).style || {})
         }
       }));
@@ -1354,6 +1774,69 @@ export default function ModernTemplateBuilder({
       console.log('❌ No template provided, keeping current state');
     }
   }, [template?.id, template?.name, template?.elements?.length]); // More specific dependencies
+
+  // Handle cancel with unsaved changes check
+  // const handleCancel = () => {
+  //   const hasChanges = elements.length > 0 || templateName !== (template?.name || '') || templateDescription !== (template?.description || '');
+  //   
+  //   if (hasChanges) {
+  //     const confirmCancel = window.confirm('You have unsaved changes. Are you sure you want to cancel?');
+  //     if (!confirmCancel) return;
+  //   }
+  //   onCancel?.();
+  // };
+
+  // Handle variable insertion
+  const handleInsertVariable = (variable: string) => {
+    // Insert variable at current cursor position or add as new text element
+    const newElement: EnhancedTemplateElement = {
+      id: `element-${Date.now()}`,
+      type: 'field',
+      content: variable,
+      style: {
+        fontSize: '14px',
+        fontWeight: 'normal',
+        color: '#000000',
+        backgroundColor: 'transparent',
+        padding: '8px',
+        margin: '4px 0',
+        textAlign: 'left' as const
+      }
+    };
+    setElements(prev => [...prev, newElement]);
+  };
+
+  // Handle theme application
+  const handleApplyTheme = (theme: typeof templateThemes[0]) => {
+    setElements(prev => prev.map(element => ({
+      ...element,
+      style: {
+        ...element.style,
+        color: theme.colors.text,
+        backgroundColor: element.type === 'header' ? theme.colors.accent : 'transparent'
+      }
+    })));
+  };
+
+  // Handle template insertion
+  const handleInsertTemplate = (template: typeof elementTemplates[0]) => {
+    const newElements: EnhancedTemplateElement[] = template.elements.map((el, index) => ({
+      id: `template-${Date.now()}-${index}`,
+      type: el.type as any,
+      content: el.content,
+      style: {
+        fontSize: '14px',
+        fontWeight: 'normal',
+        color: '#000000',
+        backgroundColor: 'transparent',
+        padding: '8px',
+        margin: '4px 0',
+        textAlign: 'left' as const,
+        ...(el.style || {} as any)
+      }
+    }));
+    setElements(prev => [...prev, ...newElements]);
+  };
 
   const handleSave = async () => {
     if (!templateName.trim()) {
@@ -1460,19 +1943,82 @@ export default function ModernTemplateBuilder({
           </div>
         )}
 
-        {/* Left Sidebar - Element Palette */}
-        <div className="w-full lg:w-80 bg-white border-r border-gray-200 p-4 overflow-y-auto lg:h-full max-h-screen">
-          <div className="mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-2">Template Elements</h2>
-            <p className="text-sm text-gray-600 mb-4">
-              Drag elements to the canvas to build your template
-            </p>
-            
-            <div className="grid grid-cols-2 lg:grid-cols-1 gap-3">
-              {paletteItems.map((item) => (
-                <PaletteItem key={item.type} item={item} />
-              ))}
-            </div>
+        {/* Enhanced Left Sidebar with Tabs */}
+        <div className="w-full lg:w-80 bg-white border-r border-gray-200 flex flex-col lg:h-full max-h-screen">
+          {/* Sidebar Tabs */}
+          <div className="flex border-b border-gray-200">
+            {[
+              { id: 'elements', label: 'Elements', icon: Grid },
+              { id: 'variables', label: 'Variables', icon: Database },
+              { id: 'themes', label: 'Themes', icon: Settings },
+              { id: 'templates', label: 'Templates', icon: FileText }
+            ].map(tab => {
+              const IconComponent = tab.icon;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => setActivePanel(tab.id as any)}
+                  className={`flex-1 px-3 py-2 text-xs font-medium transition-colors ${
+                    activePanel === tab.id
+                      ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-700'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  }`}
+                >
+                  <IconComponent size={16} className="mx-auto mb-1" />
+                  <div>{tab.label}</div>
+                </button>
+              );
+            })}
+          </div>
+
+          {/* Sidebar Content */}
+          <div className="flex-1 overflow-hidden">
+            {activePanel === 'elements' && (
+              <div className="p-4 h-full overflow-y-auto">
+                <div className="mb-6">
+                  <h2 className="text-lg font-semibold text-gray-900 mb-2">Template Elements</h2>
+                  <p className="text-sm text-gray-600 mb-4">
+                    Drag elements to the canvas to build your template
+                  </p>
+                  
+                  {/* Category Filter */}
+                  <div className="mb-4">
+                    <div className="flex flex-wrap gap-1">
+                      {['All', 'content', 'data', 'layout', 'logic'].map(category => (
+                        <button
+                          key={category}
+                          className="px-2 py-1 text-xs rounded bg-gray-100 text-gray-600 hover:bg-gray-200"
+                        >
+                          {category.charAt(0).toUpperCase() + category.slice(1)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 gap-3">
+                    {paletteItems.map((item) => (
+                      <PaletteItem key={item.type} item={item} />
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activePanel === 'variables' && (
+              <VariablePanel onInsertVariable={handleInsertVariable} />
+            )}
+
+            {activePanel === 'themes' && (
+              <div className="h-full overflow-y-auto">
+                <ThemePanel onApplyTheme={handleApplyTheme} />
+              </div>
+            )}
+
+            {activePanel === 'templates' && (
+              <div className="h-full overflow-y-auto">
+                <ElementTemplatePanel onInsertTemplate={handleInsertTemplate} />
+              </div>
+            )}
           </div>
         </div>
 
