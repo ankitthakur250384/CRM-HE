@@ -31,6 +31,8 @@ import dbConfigRoutes from './routes/dbConfigRoutes.mjs';
 import templateRoutes from './routes/templateRoutes.mjs';
 
 import modernTemplateRoutes from './routes/modernTemplateRoutes.mjs';
+import quotationPrintRoutes from './routes/quotationPrintRoutes.mjs';
+import templateConfigRoutes from './routes/templateConfigRoutes.mjs';
 console.log('DEBUG: modernTemplateRoutes import:', modernTemplateRoutes);
 
 // Load environment variables
@@ -143,9 +145,11 @@ app.use('/api/auth', authRoutes);
 app.use('/api/deals', dealsRoutes);
 app.use('/api/leads', leadsRoutes);
 app.use('/api/quotations', quotationRoutes);
+app.use('/api/quotations', quotationPrintRoutes); // Add print routes
 app.use('/api/customers', customerRoutes);
 app.use('/api/equipment', equipmentRoutes);
 app.use('/api/config', configRoutes);
+app.use('/api/config', templateConfigRoutes); // Add template config routes
 app.use('/api/users', userRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/operators', operatorRoutes);
