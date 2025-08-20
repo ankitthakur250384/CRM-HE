@@ -198,6 +198,9 @@ export function PreviewModal({ isOpen, onClose, template }: PreviewModalProps) {
         },
         template.content
       );
+    } else if (template.elements && Array.isArray(template.elements)) {
+      // Modern template with elements but no content
+      previewContent = '<div class="p-8"><h2>Modern Template Preview</h2><p>Template: ' + template.name + '</p><p>This template was created with the Template Builder and contains ' + template.elements.length + ' elements.</p></div>';
     } else {
       previewContent = '<div class="text-gray-500 p-8 text-center">No content available for preview</div>';
     }

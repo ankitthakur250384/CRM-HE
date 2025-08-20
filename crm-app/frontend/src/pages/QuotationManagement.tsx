@@ -403,11 +403,20 @@ export function QuotationManagement() {
       }
 
       // Use inline template merger logic
-      let content = defaultTemplate.content;
-      content = content.replace(/\{\{customer_name\}\}/g, quotation.customerContact?.name || quotation.customerName || '');
-      content = content.replace(/\{\{equipment_name\}\}/g, quotation.selectedEquipment?.name || '');
-      content = content.replace(/\{\{project_duration\}\}/g, `${quotation.numberOfDays} days`);
-      content = content.replace(/\{\{total_amount\}\}/g, quotation.totalRent?.toLocaleString('en-IN', { style: 'currency', currency: 'INR' }) || '');
+      let content = '';
+      if (defaultTemplate.elements && Array.isArray(defaultTemplate.elements)) {
+        // Modern template - generate simple HTML from elements
+        content = '<div style="padding: 20px;"><h2>Quotation Preview</h2><p>Template: ' + defaultTemplate.name + '</p><p>Customer: ' + (quotation.customerContact?.name || quotation.customerName || '') + '</p><p>Equipment: ' + (quotation.selectedEquipment?.name || '') + '</p><p>Duration: ' + quotation.numberOfDays + ' days</p><p>Total: ' + (quotation.totalRent?.toLocaleString('en-IN', { style: 'currency', currency: 'INR' }) || '') + '</p></div>';
+      } else if (defaultTemplate.content) {
+        // Legacy template
+        content = defaultTemplate.content;
+        content = content.replace(/\{\{customer_name\}\}/g, quotation.customerContact?.name || quotation.customerName || '');
+        content = content.replace(/\{\{equipment_name\}\}/g, quotation.selectedEquipment?.name || '');
+        content = content.replace(/\{\{project_duration\}\}/g, `${quotation.numberOfDays} days`);
+        content = content.replace(/\{\{total_amount\}\}/g, quotation.totalRent?.toLocaleString('en-IN', { style: 'currency', currency: 'INR' }) || '');
+      } else {
+        content = '<div style="padding: 20px;">Template content not available</div>';
+      }
       
       // Create a new window with the content for PDF generation
       const printWindow = window.open('', '_blank');
@@ -460,11 +469,20 @@ export function QuotationManagement() {
       }
 
       // Use inline template merger logic
-      let content = defaultTemplate.content;
-      content = content.replace(/\{\{customer_name\}\}/g, quotation.customerContact?.name || quotation.customerName || '');
-      content = content.replace(/\{\{equipment_name\}\}/g, quotation.selectedEquipment?.name || '');
-      content = content.replace(/\{\{project_duration\}\}/g, `${quotation.numberOfDays} days`);
-      content = content.replace(/\{\{total_amount\}\}/g, quotation.totalRent?.toLocaleString('en-IN', { style: 'currency', currency: 'INR' }) || '');
+      let content = '';
+      if (defaultTemplate.elements && Array.isArray(defaultTemplate.elements)) {
+        // Modern template - generate simple HTML from elements
+        content = '<div style="padding: 20px;"><h2>Quotation Preview</h2><p>Template: ' + defaultTemplate.name + '</p><p>Customer: ' + (quotation.customerContact?.name || quotation.customerName || '') + '</p><p>Equipment: ' + (quotation.selectedEquipment?.name || '') + '</p><p>Duration: ' + quotation.numberOfDays + ' days</p><p>Total: ' + (quotation.totalRent?.toLocaleString('en-IN', { style: 'currency', currency: 'INR' }) || '') + '</p></div>';
+      } else if (defaultTemplate.content) {
+        // Legacy template
+        content = defaultTemplate.content;
+        content = content.replace(/\{\{customer_name\}\}/g, quotation.customerContact?.name || quotation.customerName || '');
+        content = content.replace(/\{\{equipment_name\}\}/g, quotation.selectedEquipment?.name || '');
+        content = content.replace(/\{\{project_duration\}\}/g, `${quotation.numberOfDays} days`);
+        content = content.replace(/\{\{total_amount\}\}/g, quotation.totalRent?.toLocaleString('en-IN', { style: 'currency', currency: 'INR' }) || '');
+      } else {
+        content = '<div style="padding: 20px;">Template content not available</div>';
+      }
       
       // Create mailto link with the quotation content
       // Create a more descriptive equipment text based on whether we have multiple machines

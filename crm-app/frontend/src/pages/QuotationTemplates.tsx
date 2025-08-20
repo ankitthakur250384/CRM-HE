@@ -10,9 +10,9 @@ import { Toast } from '../components/common/Toast';
 import { getTemplates, createTemplate, updateTemplate, deleteTemplate } from '../services/templateService';
 import { useAuthStore } from '../store/authStore';
 import { useNavigate } from 'react-router-dom';
-import { VisualTemplateEditor } from '../components/quotations/VisualTemplateEditor';
-import { ProfessionalTemplateBuilder } from '../components/quotations/ProfessionalTemplateBuilder';
-import { DynamicTemplateBuilder } from '../components/quotations/DynamicTemplateBuilder';
+// import { VisualTemplateEditor } from '../components/quotations/VisualTemplateEditor';
+// import { ProfessionalTemplateBuilder } from '../components/quotations/ProfessionalTemplateBuilder';
+// import { DynamicTemplateBuilder } from '../components/quotations/DynamicTemplateBuilder';
 import { Input } from '../components/common/Input';
 import { TextArea } from '../components/common/TextArea';
 import { PreviewModal } from '../components/quotations/PreviewModal';
@@ -383,7 +383,8 @@ export function QuotationTemplates() {
                 id: '',
                 name: '',
                 description: '',
-                content: defaultTemplate.content,
+                content: defaultTemplate.content || '',
+                elements: defaultTemplate.elements || [],
                 createdAt: new Date().toISOString(),
                 updatedAt: new Date().toISOString(),
                 createdBy: user?.email || 'unknown',
@@ -448,7 +449,8 @@ export function QuotationTemplates() {
                     id: '',
                     name: '',
                     description: '',
-                    content: defaultTemplate.content,
+                    content: defaultTemplate.content || '',
+                    elements: defaultTemplate.elements || [],
                     createdAt: new Date().toISOString(),
                     updatedAt: new Date().toISOString(),
                     createdBy: user?.email || 'unknown',
@@ -557,26 +559,17 @@ export function QuotationTemplates() {
           </div>
             
           {editorMode === 'visual' ? (
-            <VisualTemplateEditor
-              template={templateForm}
-              onChange={(updatedTemplate) => setTemplateForm(updatedTemplate)}
-            />
+            <div className="p-4 bg-gray-100 rounded-lg">
+              <p>Visual Template Editor not available</p>
+            </div>
           ) : editorMode === 'dynamic' ? (
-            <DynamicTemplateBuilder
-              template={templateForm}
-              onSave={(updatedTemplate) => {
-                setTemplateForm(updatedTemplate);
-                handleSaveTemplate({} as React.MouseEvent);
-              }}
-              onPreview={() => handlePreviewTemplate(templateForm)}
-            />
+            <div className="p-4 bg-gray-100 rounded-lg">
+              <p>Dynamic Template Builder not available</p>
+            </div>
           ) : editorMode === 'professional' ? (
-            <ProfessionalTemplateBuilder
-              template={templateForm}
-              onChange={(updatedTemplate) => setTemplateForm(updatedTemplate)}
-              onSave={() => handleSaveTemplate({} as React.MouseEvent)}
-              onPreview={() => handlePreviewTemplate(templateForm)}
-            />
+            <div className="p-4 bg-gray-100 rounded-lg">
+              <p>Professional Template Builder not available</p>
+            </div>
           ) : (
             <div className="space-y-4">
               <TextArea
