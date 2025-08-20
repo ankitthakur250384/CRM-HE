@@ -22,7 +22,9 @@ export interface QuotationCalculations {
 }
 
 export function calculateQuotationTotals(quotation: Quotation): QuotationCalculations {
-  console.log('💰 Calculating quotation totals for ID:', quotation.id);
+  console.log('� CALCULATION FUNCTION CALLED for quotation:', quotation.id);
+  console.log('�💰 Calculating quotation totals for ID:', quotation.id);
+  console.log('📊 Full quotation object:', quotation);
   console.log('📊 Input quotation data:', {
     foodResources: quotation.foodResources,
     accomResources: quotation.accomResources,

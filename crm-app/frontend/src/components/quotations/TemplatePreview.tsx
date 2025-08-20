@@ -328,9 +328,14 @@ export function TemplatePreview({
           <h3 className="text-lg font-semibold mb-4 text-gray-900">Quotation Summary</h3>
           <QuotationSummary 
             calculations={(() => {
+              console.log('🔍 TemplatePreview: Which quotation are we using?');
+              console.log('📋 quotation prop passed to TemplatePreview:', quotation);
+              console.log('📋 previewQuotation (quotation || SAMPLE_QUOTATION):', previewQuotation);
+              console.log('📋 Using sample data?', !quotation);
+              
               const calcs = calculateQuotationTotals(previewQuotation);
-              console.log('🧮 TemplatePreview calculations:', calcs);
-              console.log('📋 Preview quotation data:', {
+              console.log('🧮 TemplatePreview calculations result:', calcs);
+              console.log('📋 Preview quotation data used for calculation:', {
                 foodResources: previewQuotation.foodResources,
                 accomResources: previewQuotation.accomResources,
                 numberOfDays: previewQuotation.numberOfDays,
