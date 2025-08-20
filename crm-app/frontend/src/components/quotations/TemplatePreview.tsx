@@ -332,7 +332,20 @@ export function TemplatePreview({
         <div className="w-full md:w-80 bg-white rounded-lg shadow p-6 mt-6 md:mt-0">
           <h3 className="text-lg font-semibold mb-4 text-gray-900">Quotation Summary</h3>
           <QuotationSummary 
-            calculations={calculateQuotationTotals(previewQuotation)}
+            calculations={(() => {
+              const calcs = calculateQuotationTotals(previewQuotation);
+              console.log('🧮 TemplatePreview calculations:', calcs);
+              console.log('📋 Preview quotation data:', {
+                foodResources: previewQuotation.foodResources,
+                accomResources: previewQuotation.accomResources,
+                numberOfDays: previewQuotation.numberOfDays,
+                mobDemob: previewQuotation.mobDemob,
+                extraCharge: previewQuotation.extraCharge,
+                workingCost: previewQuotation.workingCost,
+                totalRent: previewQuotation.totalRent
+              });
+              return calcs;
+            })()}
             formData={{
               extraCharge: previewQuotation.extraCharge || 0,
               incidentalCharges: previewQuotation.incidentalCharges || [],

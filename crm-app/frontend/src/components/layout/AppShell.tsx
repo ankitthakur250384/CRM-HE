@@ -3,7 +3,6 @@ import { useAuthStore } from '../../store/authStore';
 import { Navigate, Outlet, useNavigate } from 'react-router-dom';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
-import { monitorOperation } from '../../utils/debugHelper';
 
 interface AppShellProps {
   requiredRole?: string;
@@ -63,7 +62,7 @@ export const AppShell = memo(function AppShell({ requiredRole, children }: AppSh
       }
     };
 
-    monitorOperation('AppShell Auth Validation', () => validateAuth());
+    validateAuth();
   }, [navigate, isAuthenticated, user, requiredRole]);
 
   // Close sidebar when navigating on mobile
