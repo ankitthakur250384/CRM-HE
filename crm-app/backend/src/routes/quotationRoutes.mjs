@@ -7,8 +7,12 @@ import express from 'express';
 import pg from 'pg';
 import { v4 as uuidv4 } from 'uuid';
 import * as dealRepository from '../services/postgres/dealRepository.js';
+import quotationPrintRoutes from './quotationPrintRoutes.mjs';
 
 const router = express.Router();
+
+// Mount print routes
+router.use('/print', quotationPrintRoutes);
 
 // Database configuration
 const pool = new pg.Pool({

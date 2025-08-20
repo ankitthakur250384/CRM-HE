@@ -1,0 +1,523 @@
+import React, { useState, useEffect, useRef } from 'react';
+import { Button } from '../ui/button';
+import { 
+  Printer, 
+  Download, 
+  Mail, 
+  Eye, 
+  RefreshCw,
+  CheckCircle,
+  AlertCircle,
+  Loader2
+} from 'lucide-react';
+
+interface QuotationPrintSystemProps {
+  quotationId: number;
+  onClose?: () => void;
+}
+
+interface Template {
+  id: number;
+  name: string;
+  description: string;
+  is_active: boolean;
+  is_default: boolean;
+}
+
+interface EmailFormData {
+  to: string;
+  subject: string;
+  message: string;
+}
+
+const QuotationPrintSystem: React.FC<QuotationPrintSystemProps> = ({ 
+  quotationId 
+}) => {
+  const [templates, setTemplates] = useState<Template[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<number | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
+  const [emailForm, setEmailForm] = useState<EmailFormData>({
+    to: '',
+    subject: `Quotation #${quotationId}`,
+    message: 'Please find the attached quotation for your review.'
+  });
+  const [operationStatus, setOperationStatus] = useState<{
+    type: 'success' | 'error' | 'loading' | null;
+    message: string;
+  }>({ type: null, message: '' });
+
+  const previewFrameRef = useRef<HTMLIFrameElement>(null);
+
+  // Load templates on component mount
+  useEffect(() => {
+    loadTemplates();
+  }, []);
+
+  const showNotification = (title: string, message: string, type: 'success' | 'error' = 'success') => {
+    console.log(`${type.toUpperCase()}: ${title} - ${message}`);
+    // For now, use console log. Can be replaced with proper toast implementation
+  };
+
+  const loadTemplates = async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch('/api/templates/quotation');
+      const data = await response.json();
+
+      if (data.success) {
+        setTemplates(data.templates);
+        
+        // Auto-select default template
+        const defaultTemplate = data.templates.find((t: Template) => t.is_default);
+        if (defaultTemplate) {
+          setSelectedTemplate(defaultTemplate.id);
+        } else if (data.templates.length > 0) {
+          setSelectedTemplate(data.templates[0].id);
+        }
+      } else {
+        throw new Error(data.error || 'Failed to load templates');
+      }
+    } catch (error) {
+      console.error('Error loading templates:', error);
+      setOperationStatus({
+        type: 'error',
+        message: 'Failed to load templates. Please try again.'
+      });
+      showNotification("Error", "Failed to load quotation templates.", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const generatePreview = async () => {
+    if (!selectedTemplate) {
+      showNotification("No Template Selected", "Please select a template first.", "error");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setOperationStatus({ type: 'loading', message: 'Generating preview...' });
+
+      const response = await fetch('/api/quotations/print/preview', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          quotationId,
+          templateId: selectedTemplate,
+          format: 'html'
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setIsPreviewOpen(true);
+        setOperationStatus({ type: 'success', message: 'Preview generated successfully!' });
+        
+        // Load preview in iframe
+        setTimeout(() => {
+          if (previewFrameRef.current) {
+            const iframe = previewFrameRef.current;
+            const doc = iframe.contentDocument || iframe.contentWindow?.document;
+            if (doc) {
+              doc.open();
+              doc.write(data.html);
+              doc.close();
+            }
+          }
+        }, 100);
+
+        showNotification("Preview Ready", "Quotation preview has been generated successfully.");
+      } else {
+        throw new Error(data.error || 'Failed to generate preview');
+      }
+    } catch (error) {
+      console.error('Error generating preview:', error);
+      setOperationStatus({
+        type: 'error',
+        message: 'Failed to generate preview. Please check your data and try again.'
+      });
+      showNotification("Preview Error", "Failed to generate quotation preview.", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handlePrint = async () => {
+    if (!selectedTemplate) {
+      showNotification("No Template Selected", "Please select a template first.", "error");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setOperationStatus({ type: 'loading', message: 'Preparing for print...' });
+
+      const response = await fetch('/api/quotations/print/print', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          quotationId,
+          templateId: selectedTemplate
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        // Open print dialog with the HTML content
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+          printWindow.document.write(data.html);
+          printWindow.document.close();
+          printWindow.print();
+          
+          setOperationStatus({ type: 'success', message: 'Print dialog opened!' });
+          showNotification("Print Ready", "Print dialog has been opened with your quotation.");
+        } else {
+          throw new Error('Failed to open print window');
+        }
+      } else {
+        throw new Error(data.error || 'Failed to prepare print');
+      }
+    } catch (error) {
+      console.error('Error printing:', error);
+      setOperationStatus({
+        type: 'error',
+        message: 'Failed to prepare print. Please try again.'
+      });
+      showNotification("Print Error", "Failed to prepare quotation for printing.", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleDownloadPDF = async () => {
+    if (!selectedTemplate) {
+      showNotification("No Template Selected", "Please select a template first.", "error");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setOperationStatus({ type: 'loading', message: 'Generating PDF...' });
+
+      const response = await fetch('/api/quotations/print/pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          quotationId,
+          templateId: selectedTemplate
+        })
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `quotation_${quotationId}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+
+        setOperationStatus({ type: 'success', message: 'PDF downloaded successfully!' });
+        showNotification("Download Complete", "Quotation PDF has been downloaded successfully.");
+      } else {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate PDF');
+      }
+    } catch (error) {
+      console.error('Error downloading PDF:', error);
+      setOperationStatus({
+        type: 'error',
+        message: 'Failed to generate PDF. Please try again.'
+      });
+      showNotification("Download Error", "Failed to generate PDF file.", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleEmailPDF = async () => {
+    if (!selectedTemplate) {
+      showNotification("No Template Selected", "Please select a template first.", "error");
+      return;
+    }
+
+    if (!emailForm.to.trim()) {
+      showNotification("Email Required", "Please enter a recipient email address.", "error");
+      return;
+    }
+
+    try {
+      setIsLoading(true);
+      setOperationStatus({ type: 'loading', message: 'Sending email...' });
+
+      const response = await fetch('/api/quotations/print/email-pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          quotationId,
+          templateId: selectedTemplate,
+          emailTo: emailForm.to,
+          subject: emailForm.subject,
+          message: emailForm.message
+        })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        setIsEmailDialogOpen(false);
+        setOperationStatus({ type: 'success', message: 'Email sent successfully!' });
+        showNotification("Email Sent", `Quotation has been sent to ${emailForm.to}`);
+      } else {
+        throw new Error(data.error || 'Failed to send email');
+      }
+    } catch (error) {
+      console.error('Error sending email:', error);
+      setOperationStatus({
+        type: 'error',
+        message: 'Failed to send email. Please try again.'
+      });
+      showNotification("Email Error", "Failed to send quotation via email.", "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const refreshTemplates = () => {
+    loadTemplates();
+  };
+
+  const StatusIcon = () => {
+    switch (operationStatus.type) {
+      case 'loading':
+        return <Loader2 className="h-4 w-4 animate-spin" />;
+      case 'success':
+        return <CheckCircle className="h-4 w-4 text-green-500" />;
+      case 'error':
+        return <AlertCircle className="h-4 w-4 text-red-500" />;
+      default:
+        return null;
+    }
+  };
+
+  return (
+    <div className="space-y-6 p-6 bg-white rounded-lg shadow-lg">
+      {/* Header */}
+      <div className="border border-gray-200 rounded-lg">
+        <div className="p-4 border-b border-gray-200">
+          <div className="flex items-center justify-between">
+            <span className="text-xl font-bold text-gray-900">Quotation Print System</span>
+            <span className="text-sm font-normal text-gray-500">
+              ID: {quotationId}
+            </span>
+          </div>
+        </div>
+        <div className="p-4">
+          {/* Template Selection */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <label htmlFor="template-select" className="block text-sm font-medium text-gray-700">
+                Template
+              </label>
+              <Button
+                onClick={refreshTemplates}
+                disabled={isLoading}
+                className="text-sm"
+              >
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Refresh
+              </Button>
+            </div>
+            
+            <select
+              id="template-select"
+              value={selectedTemplate?.toString() || ''}
+              onChange={(e) => setSelectedTemplate(parseInt(e.target.value) || null)}
+              disabled={isLoading}
+              className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+            >
+              <option value="">Select a template</option>
+              {templates.map((template) => (
+                <option key={template.id} value={template.id.toString()}>
+                  {template.name} {template.is_default ? '(Default)' : ''}
+                </option>
+              ))}
+            </select>
+
+            {templates.length === 0 && !isLoading && (
+              <p className="text-sm text-gray-500">
+                No templates available. Please create a template first.
+              </p>
+            )}
+          </div>
+
+          {/* Status Message */}
+          {operationStatus.type && (
+            <div className="flex items-center space-x-2 p-3 mt-4 rounded-md bg-gray-50 border">
+              <StatusIcon />
+              <span className="text-sm">{operationStatus.message}</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="border border-gray-200 rounded-lg">
+        <div className="p-4 border-b border-gray-200">
+          <h3 className="text-lg font-semibold text-gray-900">Actions</h3>
+        </div>
+        <div className="p-4">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {/* Preview Button */}
+            <Button 
+              onClick={generatePreview}
+              disabled={!selectedTemplate || isLoading}
+              className="flex flex-col items-center space-y-2 h-auto py-4"
+            >
+              <Eye className="h-6 w-6" />
+              <span>Preview</span>
+            </Button>
+
+            {/* Print Button */}
+            <Button 
+              onClick={handlePrint}
+              disabled={!selectedTemplate || isLoading}
+              className="flex flex-col items-center space-y-2 h-auto py-4"
+            >
+              <Printer className="h-6 w-6" />
+              <span>Print</span>
+            </Button>
+
+            {/* Download PDF Button */}
+            <Button 
+              onClick={handleDownloadPDF}
+              disabled={!selectedTemplate || isLoading}
+              className="flex flex-col items-center space-y-2 h-auto py-4"
+            >
+              <Download className="h-6 w-6" />
+              <span>Download PDF</span>
+            </Button>
+
+            {/* Email Button */}
+            <Button 
+              onClick={() => setIsEmailDialogOpen(true)}
+              disabled={!selectedTemplate || isLoading}
+              className="flex flex-col items-center space-y-2 h-auto py-4"
+            >
+              <Mail className="h-6 w-6" />
+              <span>Email PDF</span>
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* Preview Modal */}
+      {isPreviewOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg w-11/12 h-5/6 max-w-6xl">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold">Quotation Preview</h3>
+              <div className="space-x-2">
+                <Button onClick={handlePrint} disabled={isLoading}>
+                  <Printer className="h-4 w-4 mr-2" />
+                  Print
+                </Button>
+                <Button onClick={() => setIsPreviewOpen(false)}>
+                  Close
+                </Button>
+              </div>
+            </div>
+            <div className="h-full p-4">
+              <iframe
+                ref={previewFrameRef}
+                className="w-full h-full border-0 rounded"
+                title="Quotation Preview"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Email Dialog */}
+      {isEmailDialogOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg w-96 max-w-full">
+            <div className="p-4 border-b border-gray-200">
+              <h3 className="text-lg font-semibold">Email Quotation PDF</h3>
+            </div>
+            <div className="p-4 space-y-4">
+              <div>
+                <label htmlFor="email-to" className="block text-sm font-medium text-gray-700">
+                  To
+                </label>
+                <input
+                  id="email-to"
+                  type="email"
+                  value={emailForm.to}
+                  onChange={(e) => setEmailForm({ ...emailForm, to: e.target.value })}
+                  placeholder="recipient@example.com"
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label htmlFor="email-subject" className="block text-sm font-medium text-gray-700">
+                  Subject
+                </label>
+                <input
+                  id="email-subject"
+                  value={emailForm.subject}
+                  onChange={(e) => setEmailForm({ ...emailForm, subject: e.target.value })}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+              <div>
+                <label htmlFor="email-message" className="block text-sm font-medium text-gray-700">
+                  Message
+                </label>
+                <textarea
+                  id="email-message"
+                  value={emailForm.message}
+                  onChange={(e) => setEmailForm({ ...emailForm, message: e.target.value })}
+                  rows={4}
+                  className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                />
+              </div>
+            </div>
+            <div className="p-4 border-t border-gray-200 flex justify-end space-x-2">
+              <Button 
+                onClick={() => setIsEmailDialogOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleEmailPDF}
+                disabled={isLoading}
+              >
+                {isLoading && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Send Email
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default QuotationPrintSystem;
