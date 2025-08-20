@@ -53,7 +53,7 @@ export const DEFAULT_CONFIGS = {
     dayNightFactors: { day: 1.0, night: 1.3 }
   },
   defaultTemplate: {
-    defaultTemplateId: 'qtpl_363d4310',
+    defaultTemplateId: 'qtpl_a650c77a',
     updatedAt: new Date().toISOString()
   },
   database: {

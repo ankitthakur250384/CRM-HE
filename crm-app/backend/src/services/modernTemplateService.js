@@ -259,9 +259,25 @@ const modernTemplateService = {
   // Set default template (uses database function)
   async setDefaultTemplate(id) {
     try {
+      // First verify the template exists
+      const template = await db.oneOrNone('SELECT id FROM quotation_templates WHERE id = $1 AND is_active = TRUE', [id]);
+      if (!template) {
+        throw new Error('Template not found or inactive');
+      }
+      
+      // Use the database function to set default
       await db.none('SELECT set_default_template($1)', [id]);
+      
+      // Also update the config table to keep everything in sync
+      const { updateConfig } = await import('./postgres/configRepository.js');
+      await updateConfig('defaultTemplate', {
+        defaultTemplateId: id,
+        updatedAt: new Date().toISOString()
+      });
+      
       return true;
     } catch (error) {
+      console.error('Error setting default template:', error);
       throw new Error('Failed to set default template: ' + error.message);
     }
   },
