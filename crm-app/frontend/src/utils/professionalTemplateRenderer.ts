@@ -41,54 +41,64 @@ export function calculateQuotationTotals(quotation: Quotation): QuotationCalcula
     gstAmount: quotation.gstAmount
   });
   
-  // Use database values if available, otherwise calculate
+  // Prioritize database values over calculations
   const workingCost = quotation.workingCost || (quotation.totalRent || 0);
   
-  // Food & accommodation cost - use database value if available
-  let foodAccomCost = quotation.foodAccomCost;
-  if (foodAccomCost === undefined || foodAccomCost === null) {
+  // Food & accommodation cost - use database value first
+  const foodAccomCost = quotation.foodAccomCost ?? (() => {
     const foodRate = 2500;
     const accomRate = 4000;
-    foodAccomCost = ((quotation.foodResources || 0) * foodRate + 
-                     (quotation.accomResources || 0) * accomRate) * 
-                     (quotation.numberOfDays || 1);
-  }
+    return ((quotation.foodResources || 0) * foodRate + 
+            (quotation.accomResources || 0) * accomRate) * 
+            (quotation.numberOfDays || 1);
+  })();
   
   console.log('🍽️ Food & Accom calculation:', {
     fromDatabase: quotation.foodAccomCost,
-    calculated: foodAccomCost,
+    finalValue: foodAccomCost,
     foodResources: quotation.foodResources || 0,
     accomResources: quotation.accomResources || 0,
-    numberOfDays: quotation.numberOfDays || 1
+    numberOfDays: quotation.numberOfDays || 1,
+    usingDatabaseValue: quotation.foodAccomCost !== undefined && quotation.foodAccomCost !== null
   });
   
   const transportCost = (quotation.siteDistance || 0) * (quotation.runningCostPerKm || 100);
   
-  // Use database mob/demob cost if available
-  const mobDemobCost = quotation.mobDemobCost !== undefined ? quotation.mobDemobCost : (quotation.mobDemob || 0);
+  // Use database mob/demob cost first
+  const mobDemobCost = quotation.mobDemobCost ?? (quotation.mobDemob || 0);
   
   console.log('🚚 Transport & Mob/Demob:', {
     siteDistance: quotation.siteDistance || 0,
     runningCostPerKm: quotation.runningCostPerKm || 100,
     transportCost,
     mobDemobFromDB: quotation.mobDemobCost,
-    mobDemobFinal: mobDemobCost
+    mobDemobFinal: mobDemobCost,
+    usingDatabaseValue: quotation.mobDemobCost !== undefined && quotation.mobDemobCost !== null
   });
   
-  // Use database risk adjustment if available
-  let riskAdjustment = quotation.riskAdjustment;
-  if (riskAdjustment === undefined || riskAdjustment === null) {
-    riskAdjustment = 0;
-    if (quotation.riskFactor === 'high') riskAdjustment = 15000;
-    else if (quotation.riskFactor === 'medium') riskAdjustment = 8000;
-  }
+  // Use database risk adjustment first
+  const riskAdjustment = quotation.riskAdjustment ?? (() => {
+    if (quotation.riskFactor === 'high') return 15000;
+    if (quotation.riskFactor === 'medium') return 8000;
+    return 0;
+  })();
   
-  // Use database usage load factor if available
-  let usageLoadFactor = quotation.usageLoadFactor;
-  if (usageLoadFactor === undefined || usageLoadFactor === null) {
-    usageLoadFactor = 0;
-    if (quotation.usage === 'heavy') usageLoadFactor = Math.round(workingCost * 0.5);
-  }
+  // Use database usage load factor first
+  const usageLoadFactor = quotation.usageLoadFactor ?? (() => {
+    if (quotation.usage === 'heavy') return Math.round(workingCost * 0.5);
+    return 0;
+  })();
+  
+  console.log('⚠️ Risk & Usage factors:', {
+    riskFromDB: quotation.riskAdjustment,
+    riskFinal: riskAdjustment,
+    usageFromDB: quotation.usageLoadFactor,
+    usageFinal: usageLoadFactor,
+    riskFactor: quotation.riskFactor,
+    usage: quotation.usage,
+    usingDatabaseRisk: quotation.riskAdjustment !== undefined && quotation.riskAdjustment !== null,
+    usingDatabaseUsage: quotation.usageLoadFactor !== undefined && quotation.usageLoadFactor !== null
+  });
   
   const extraCharges = quotation.extraCharge || 0;
   
@@ -104,9 +114,8 @@ export function calculateQuotationTotals(quotation: Quotation): QuotationCalcula
                   riskAdjustment + usageLoadFactor + extraCharges + 
                   incidentalCost + otherFactorsCost;
   
-  // Use database GST amount if available
-  const gstAmount = quotation.gstAmount !== undefined ? quotation.gstAmount : 
-                   (quotation.includeGst ? Math.round(subtotal * 0.18) : 0);
+  // Use database GST amount first, then calculate if needed
+  const gstAmount = quotation.gstAmount ?? (quotation.includeGst ? Math.round(subtotal * 0.18) : 0);
   const totalAmount = subtotal + gstAmount;
   
   console.log('💰 Final calculations:', {
@@ -123,11 +132,11 @@ export function calculateQuotationTotals(quotation: Quotation): QuotationCalcula
     gstAmount,
     totalAmount,
     usingDatabaseValues: {
-      foodAccom: quotation.foodAccomCost !== undefined,
-      mobDemob: quotation.mobDemobCost !== undefined,
-      risk: quotation.riskAdjustment !== undefined,
-      usage: quotation.usageLoadFactor !== undefined,
-      gst: quotation.gstAmount !== undefined
+      foodAccom: quotation.foodAccomCost !== undefined && quotation.foodAccomCost !== null,
+      mobDemob: quotation.mobDemobCost !== undefined && quotation.mobDemobCost !== null,
+      risk: quotation.riskAdjustment !== undefined && quotation.riskAdjustment !== null,
+      usage: quotation.usageLoadFactor !== undefined && quotation.usageLoadFactor !== null,
+      gst: quotation.gstAmount !== undefined && quotation.gstAmount !== null
     },
     databaseValues: {
       foodAccomCost: quotation.foodAccomCost,
