@@ -157,7 +157,15 @@ export function TemplatePreview({
         console.log("Template preview received quotation:", quotation);
 
         const result = await mergeQuotationWithTemplate(previewQuotation, template);
-        console.log("Generated merged content:", result ? result.substring(0, 100) + '...' : 'empty');
+        console.log("Generated merged content length:", result?.length || 0);
+        console.log("Generated merged content preview:", result ? result.substring(0, 200) : 'empty');
+        console.log("Template structure:", {
+          id: template.id,
+          name: template.name,
+          hasContent: !!template.content,
+          hasElements: !!template.elements,
+          elementsCount: template.elements?.length || 0
+        });
         
         if (result && result.trim()) {
           setMergedContent(result);
