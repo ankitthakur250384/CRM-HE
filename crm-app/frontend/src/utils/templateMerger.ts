@@ -31,107 +31,100 @@ export function mergeQuotationWithTemplate(quotation: Quotation, template: Templ
 // Function to render modern template elements to HTML
 function renderModernTemplate(elements: any[], quotation: Quotation): string {
   let html = `
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <meta charset="UTF-8">
-        <title>ASP Cranes Quotation</title>
-        <style>
-            body { 
-                font-family: Arial, sans-serif; 
-                margin: 0; 
-                padding: 20px; 
-                background: white;
-                color: #333;
-                line-height: 1.4;
-            }
-            .header { 
-                display: flex; 
-                justify-content: space-between; 
-                align-items: center; 
-                margin-bottom: 30px; 
-                padding-bottom: 20px; 
-                border-bottom: 3px solid #2563eb;
-            }
-            .logo-section { 
-                display: flex; 
-                align-items: center; 
-                gap: 15px;
-            }
-            .logo { 
-                width: 80px; 
-                height: 80px; 
-                background: #2563eb; 
-                border-radius: 8px;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                color: white;
-                font-weight: bold;
-                font-size: 24px;
-            }
-            .company-info h1 { 
-                margin: 0; 
-                color: #2563eb; 
-                font-size: 28px; 
-                font-weight: bold;
-            }
-            .company-info p { 
-                margin: 5px 0; 
-                color: #666; 
-                font-size: 14px;
-            }
-            .quotation-info { 
-                text-align: right; 
-                color: #333;
-            }
-            .quotation-info h2 { 
-                margin: 0; 
-                color: #2563eb; 
-                font-size: 24px;
-            }
-            .content-section { 
-                margin: 30px 0;
-            }
-            .equipment-table { 
-                width: 100%; 
-                border-collapse: collapse; 
-                margin: 20px 0; 
-                box-shadow: 0 1px 3px rgba(0,0,0,0.1);
-            }
-            .equipment-table th { 
-                background: #2563eb; 
-                color: white; 
-                padding: 12px; 
-                text-align: left; 
-                font-weight: bold;
-                font-size: 14px;
-                border: 1px solid #2563eb;
-            }
-            .equipment-table td { 
-                padding: 12px; 
-                border: 1px solid #e5e7eb; 
-                color: #374151;
-            }
-            .equipment-table tr:nth-child(even) { 
-                background: #f9fafb;
-            }
-            .terms-section { 
-                margin: 30px 0; 
-                padding: 20px; 
-                background: #fefefe; 
-                border: 1px solid #e5e7eb; 
-                border-radius: 8px;
-                white-space: pre-line;
-                font-size: 12px;
-                line-height: 1.5;
-            }
-            @media print {
-                body { margin: 0; padding: 15px; }
-            }
-        </style>
-    </head>
-    <body>`;
+    <style>
+      body { 
+        font-family: Arial, sans-serif; 
+        margin: 0; 
+        padding: 20px; 
+        background: white;
+        color: #333;
+        line-height: 1.4;
+      }
+      .header { 
+        display: flex; 
+        justify-content: space-between; 
+        align-items: center; 
+        margin-bottom: 30px; 
+        padding-bottom: 20px; 
+        border-bottom: 3px solid #2563eb;
+      }
+      .logo-section { 
+        display: flex; 
+        align-items: center; 
+        gap: 15px;
+      }
+      .logo { 
+        width: 80px; 
+        height: 80px; 
+        background: #2563eb; 
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: bold;
+        font-size: 24px;
+      }
+      .company-info h1 { 
+        margin: 0; 
+        color: #2563eb; 
+        font-size: 28px; 
+        font-weight: bold;
+      }
+      .company-info p { 
+        margin: 5px 0; 
+        color: #666; 
+        font-size: 14px;
+      }
+      .quotation-info { 
+        text-align: right; 
+        color: #333;
+      }
+      .quotation-info h2 { 
+        margin: 0; 
+        color: #2563eb; 
+        font-size: 24px;
+      }
+      .content-section { 
+        margin: 30px 0;
+      }
+      .equipment-table { 
+        width: 100%; 
+        border-collapse: collapse; 
+        margin: 20px 0; 
+        box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+      }
+      .equipment-table th { 
+        background: #2563eb; 
+        color: white; 
+        padding: 12px; 
+        text-align: left; 
+        font-weight: bold;
+        font-size: 14px;
+        border: 1px solid #2563eb;
+      }
+      .equipment-table td { 
+        padding: 12px; 
+        border: 1px solid #e5e7eb; 
+        color: #374151;
+      }
+      .equipment-table tr:nth-child(even) { 
+        background: #f9fafb;
+      }
+      .terms-section { 
+        margin: 30px 0; 
+        padding: 20px; 
+        background: #fefefe; 
+        border: 1px solid #e5e7eb; 
+        border-radius: 8px;
+        white-space: pre-line;
+        font-size: 12px;
+        line-height: 1.5;
+      }
+      @media print {
+        body { margin: 0; padding: 15px; }
+      }
+    </style>`;
   
   elements.forEach(element => {
     switch (element.type) {
@@ -224,10 +217,6 @@ function renderModernTemplate(elements: any[], quotation: Quotation): string {
     }
   });
   
-  html += `
-    </body>
-    </html>`;
-    
   return html;
 }
 

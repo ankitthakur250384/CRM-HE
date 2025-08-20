@@ -29,7 +29,7 @@ import { getQuotations } from '../services/quotation';
 import { getDeals, getDealById } from '../services/deal';
 import { getDefaultTemplateConfig, getTemplateById } from '../services/configService';
 import { getQuotationById } from '../services/quotation';
-// import { mergeQuotationWithTemplate } from '../utils/templateMerger';
+import { mergeQuotationWithTemplate } from '../utils/templateMerger';
 import { formatCurrency } from '../utils/formatters';
 
 const STATUS_OPTIONS = [
@@ -402,21 +402,8 @@ export function QuotationManagement() {
         return;
       }
 
-      // Use inline template merger logic
-      let content = '';
-      if (defaultTemplate.elements && Array.isArray(defaultTemplate.elements)) {
-        // Modern template - generate simple HTML from elements
-        content = '<div style="padding: 20px;"><h2>Quotation Preview</h2><p>Template: ' + defaultTemplate.name + '</p><p>Customer: ' + (quotation.customerContact?.name || quotation.customerName || '') + '</p><p>Equipment: ' + (quotation.selectedEquipment?.name || '') + '</p><p>Duration: ' + quotation.numberOfDays + ' days</p><p>Total: ' + (quotation.totalRent?.toLocaleString('en-IN', { style: 'currency', currency: 'INR' }) || '') + '</p></div>';
-      } else if (defaultTemplate.content) {
-        // Legacy template
-        content = defaultTemplate.content;
-        content = content.replace(/\{\{customer_name\}\}/g, quotation.customerContact?.name || quotation.customerName || '');
-        content = content.replace(/\{\{equipment_name\}\}/g, quotation.selectedEquipment?.name || '');
-        content = content.replace(/\{\{project_duration\}\}/g, `${quotation.numberOfDays} days`);
-        content = content.replace(/\{\{total_amount\}\}/g, quotation.totalRent?.toLocaleString('en-IN', { style: 'currency', currency: 'INR' }) || '');
-      } else {
-        content = '<div style="padding: 20px;">Template content not available</div>';
-      }
+      // Use the improved template merger
+      const content = mergeQuotationWithTemplate(quotation, defaultTemplate);
       
       // Create a new window with the content for PDF generation
       const printWindow = window.open('', '_blank');
@@ -468,21 +455,8 @@ export function QuotationManagement() {
         return;
       }
 
-      // Use inline template merger logic
-      let content = '';
-      if (defaultTemplate.elements && Array.isArray(defaultTemplate.elements)) {
-        // Modern template - generate simple HTML from elements
-        content = '<div style="padding: 20px;"><h2>Quotation Preview</h2><p>Template: ' + defaultTemplate.name + '</p><p>Customer: ' + (quotation.customerContact?.name || quotation.customerName || '') + '</p><p>Equipment: ' + (quotation.selectedEquipment?.name || '') + '</p><p>Duration: ' + quotation.numberOfDays + ' days</p><p>Total: ' + (quotation.totalRent?.toLocaleString('en-IN', { style: 'currency', currency: 'INR' }) || '') + '</p></div>';
-      } else if (defaultTemplate.content) {
-        // Legacy template
-        content = defaultTemplate.content;
-        content = content.replace(/\{\{customer_name\}\}/g, quotation.customerContact?.name || quotation.customerName || '');
-        content = content.replace(/\{\{equipment_name\}\}/g, quotation.selectedEquipment?.name || '');
-        content = content.replace(/\{\{project_duration\}\}/g, `${quotation.numberOfDays} days`);
-        content = content.replace(/\{\{total_amount\}\}/g, quotation.totalRent?.toLocaleString('en-IN', { style: 'currency', currency: 'INR' }) || '');
-      } else {
-        content = '<div style="padding: 20px;">Template content not available</div>';
-      }
+      // Use the improved template merger
+      const content = mergeQuotationWithTemplate(quotation, defaultTemplate);
       
       // Create mailto link with the quotation content
       // Create a more descriptive equipment text based on whether we have multiple machines
