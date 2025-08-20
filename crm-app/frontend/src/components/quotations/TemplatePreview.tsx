@@ -20,6 +20,7 @@ import { Toast } from '../common/Toast';
 import { Template } from '../../types/template';
 import { Quotation } from '../../types/quotation';
 import { mergeQuotationWithTemplate } from '../../utils/templateMerger';
+import { calculateQuotationTotals } from '../../utils/professionalTemplateRenderer';
 import { QuotationSummary } from '../../pages/QuotationSummary';
 import { PrintOptionsModal } from './PrintOptionsModal';
 import { FileText, Info, Download, Send, RefreshCw } from 'lucide-react';
@@ -126,49 +127,60 @@ export function TemplatePreview({
   const [showPlaceholders, setShowPlaceholders] = useState(false);
   const [showPrintOptions, setShowPrintOptions] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mergedContent, setMergedContent] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(false);
   const [toast, setToast] = useState<{
     show: boolean;
     title: string;
     variant?: 'success' | 'error' | 'warning';
   }>({ show: false, title: '' });
-  // Validate template
-  useEffect(() => {
-    if (!template) {
-      setError('Template is required');
-      return;
-    }
-    if (!template.content && !template.elements) {
-      setError('Template content is required');
-      return;
-    }
-    setError(null);
-    
-    console.log("Template preview received template:", template);
-    console.log("Template preview received quotation:", quotation);
-  }, [template, quotation]);
 
   const previewQuotation = quotation || SAMPLE_QUOTATION;
+
+  // Generate template content when component mounts or data changes
+  useEffect(() => {
+    const generatePreview = async () => {
+      if (!template) {
+        setError('Template is required');
+        return;
+      }
+      if (!template.content && !template.elements) {
+        setError('Template content is required');
+        return;
+      }
+
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        console.log("Template preview received template:", template);
+        console.log("Template preview received quotation:", quotation);
+
+        const result = await mergeQuotationWithTemplate(previewQuotation, template);
+        console.log("Generated merged content:", result ? result.substring(0, 100) + '...' : 'empty');
+        
+        if (result && result.trim()) {
+          setMergedContent(result);
+        } else {
+          console.warn("Cannot merge template - missing template or content");
+          setMergedContent('<div style="padding: 20px;">Template content could not be loaded</div>');
+        }
+      } catch (err) {
+        console.error('Error merging template:', err);
+        setError('Failed to merge template with quotation data');
+        setMergedContent('<div style="padding: 20px; color: red;">Error generating preview</div>');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    generatePreview();
+  }, [template, quotation]);
 
   const showToast = (title: string, variant: 'success' | 'error' | 'warning' = 'success') => {
     setToast({ show: true, title, variant });
     setTimeout(() => setToast({ show: false, title: '' }), 3000);
   };
-
-  // Merge template with quotation data
-  let mergedContent = '';
-  try {
-    if (template && (template.content || template.elements)) {
-      mergedContent = mergeQuotationWithTemplate(previewQuotation, template);
-      console.log("Generated merged content:", mergedContent ? mergedContent.substring(0, 100) + '...' : 'empty');
-    } else {
-      console.warn("Cannot merge template - missing template or content");
-      mergedContent = '<div style="padding: 20px;">Template content could not be loaded</div>';
-    }
-  } catch (err) {
-    console.error('Error merging template:', err);
-    setError('Failed to merge template with quotation data');
-    mergedContent = '<div style="padding: 20px; color: red;">Error generating preview</div>';
-  }
 
   // Define available placeholders
   const placeholders = [
@@ -282,18 +294,23 @@ export function TemplatePreview({
                   <p className="mt-1">Please try refreshing the page or select a different template.</p>
                 </div>
               ) : null}
-              {mergedContent ? (
+              {isLoading ? (
+                <div className="flex flex-col items-center justify-center text-gray-500 py-8 sm:py-16 border border-dashed rounded-md">
+                  <RefreshCw className="w-6 sm:w-8 h-6 sm:h-8 animate-spin mb-3 sm:mb-4" />
+                  <p className="text-xs sm:text-sm">Preparing preview...</p>
+                </div>
+              ) : mergedContent ? (
                 <div 
                   className="prose max-w-none border rounded-md p-3 sm:p-4 text-xs sm:text-sm overflow-x-auto"
                   dangerouslySetInnerHTML={{ __html: mergedContent }} 
                 />
               ) : (
                 <div className="flex flex-col items-center justify-center text-gray-500 py-8 sm:py-16 border border-dashed rounded-md">
-                  <RefreshCw className="w-6 sm:w-8 h-6 sm:h-8 animate-spin mb-3 sm:mb-4" />
-                  <p className="text-xs sm:text-sm">Preparing preview...</p>
+                  <FileText className="w-6 sm:w-8 h-6 sm:h-8 mb-3 sm:mb-4 text-gray-300" />
+                  <p className="text-xs sm:text-sm">No content available</p>
                 </div>
               )}
-              {template && !template.content && !template.elements && (
+              {template && !template.content && !template.elements && !isLoading && (
                 <div className="mt-3 sm:mt-4 bg-yellow-50 border border-yellow-100 rounded-md p-3 sm:p-4 text-yellow-800 text-xs sm:text-sm">
                   <p className="font-medium">Warning: Template has no content</p>
                   <p className="mt-1">This template appears to be empty. Please edit the template to add content.</p>
@@ -306,16 +323,7 @@ export function TemplatePreview({
         <div className="w-full md:w-80 bg-white rounded-lg shadow p-6 mt-6 md:mt-0">
           <h3 className="text-lg font-semibold mb-4 text-gray-900">Quotation Summary</h3>
           <QuotationSummary 
-            calculations={{
-              workingCost: previewQuotation.workingCost || 0,
-              foodAccomCost: ((previewQuotation.foodResources || 0) + (previewQuotation.accomResources || 0)) * (previewQuotation.numberOfDays || 1),
-              mobDemobCost: previewQuotation.mobDemob || 0,
-              riskAdjustment: previewQuotation.riskFactor === 'high' ? 10000 : previewQuotation.riskFactor === 'medium' ? 5000 : 0,
-              usageLoadFactor: previewQuotation.usage === 'heavy' ? 5000 : 0,
-              extraCharges: previewQuotation.extraCharge || 0,
-              gstAmount: previewQuotation.includeGst ? Math.round((previewQuotation.totalRent || 0) * 0.18) : 0,
-              totalAmount: previewQuotation.includeGst ? Math.round((previewQuotation.totalRent || 0) * 1.18) : (previewQuotation.totalRent || 0)
-            }}
+            calculations={calculateQuotationTotals(previewQuotation)}
             formData={{
               extraCharge: previewQuotation.extraCharge || 0,
               incidentalCharges: previewQuotation.incidentalCharges || [],
