@@ -1,4 +1,4 @@
-import { renderTemplate } from './templateRenderer';
+import { renderProfessionalTemplate } from './professionalTemplateRenderer';
 import { Quotation } from '../types/quotation';
 import { Template } from '../types/template';
 
@@ -26,30 +26,10 @@ export function mergeQuotationWithTemplate(quotation: Quotation, template: Templ
       return '<div style="padding: 20px; color: red;">No template available</div>';
     }
 
-    // Convert quotation and template to the format expected by templateRenderer
-    const quotationData = {
-      id: quotation.id,
-      customerName: quotation.customerName,
-      customerContact: quotation.customerContact,
-      selectedEquipment: quotation.selectedEquipment,
-      selectedMachines: quotation.selectedMachines,
-      numberOfDays: quotation.numberOfDays,
-      totalRent: quotation.totalRent || 0,
-      includeGst: quotation.includeGst,
-      mobDemob: quotation.mobDemob,
-      foodResources: quotation.foodResources,
-      accomResources: quotation.accomResources
-    };
-
-    const templateData = {
-      id: template.id,
-      name: template.name,
-      content: template.content,
-      elements: template.elements
-    };
-
-    // Use the new template renderer
-    const result = renderTemplate(quotationData, templateData);
+    // For now, always use the professional template renderer
+    // This ensures consistent, high-quality output regardless of template type
+    console.log('🎨 Using professional template renderer');
+    const result = renderProfessionalTemplate(quotation, template);
     
     console.log('✅ Template merge successful, content length:', result.length);
     return result;
