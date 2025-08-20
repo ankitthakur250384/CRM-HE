@@ -22,7 +22,18 @@ export interface QuotationCalculations {
 }
 
 export function calculateQuotationTotals(quotation: Quotation): QuotationCalculations {
-  console.log('💰 Calculating quotation totals:', quotation.id);
+  console.log('💰 Calculating quotation totals for ID:', quotation.id);
+  console.log('📊 Input quotation data:', {
+    foodResources: quotation.foodResources,
+    accomResources: quotation.accomResources,
+    numberOfDays: quotation.numberOfDays,
+    mobDemob: quotation.mobDemob,
+    workingCost: quotation.workingCost,
+    totalRent: quotation.totalRent,
+    riskFactor: quotation.riskFactor,
+    usage: quotation.usage,
+    extraCharge: quotation.extraCharge
+  });
   
   const workingCost = quotation.workingCost || (quotation.totalRent || 0);
   const foodRate = 2500;
@@ -31,8 +42,24 @@ export function calculateQuotationTotals(quotation: Quotation): QuotationCalcula
                         (quotation.accomResources || 0) * accomRate) * 
                         (quotation.numberOfDays || 1);
   
+  console.log('🍽️ Food & Accom calculation:', {
+    foodResources: quotation.foodResources || 0,
+    accomResources: quotation.accomResources || 0,
+    numberOfDays: quotation.numberOfDays || 1,
+    foodRate,
+    accomRate,
+    result: foodAccomCost
+  });
+  
   const transportCost = (quotation.siteDistance || 0) * (quotation.runningCostPerKm || 100);
   const mobDemobCost = quotation.mobDemob || 0;
+  
+  console.log('🚚 Transport & Mob/Demob:', {
+    siteDistance: quotation.siteDistance || 0,
+    runningCostPerKm: quotation.runningCostPerKm || 100,
+    transportCost,
+    mobDemobCost
+  });
   
   let riskAdjustment = 0;
   if (quotation.riskFactor === 'high') riskAdjustment = 15000;
@@ -67,6 +94,14 @@ export function calculateQuotationTotals(quotation: Quotation): QuotationCalcula
 
 export function renderProfessionalTemplate(quotation: Quotation, template?: Template): string {
   console.log('🎨 Rendering professional template for quotation:', quotation.id);
+  console.log('📄 Template info:', {
+    id: template?.id,
+    name: template?.name,
+    hasContent: !!template?.content,
+    hasElements: !!template?.elements,
+    elementsCount: template?.elements?.length || 0,
+    elements: template?.elements
+  });
   
   const calculations = calculateQuotationTotals(quotation);
   const quoteNumber = `ASP-${new Date().getFullYear()}-${quotation.id.slice(-6).toUpperCase()}`;
@@ -80,13 +115,13 @@ export function renderProfessionalTemplate(quotation: Quotation, template?: Temp
   }
 
   // Check if we have legacy template content
-  if (template?.content) {
+  if (template?.content && template.content.trim().length > 0) {
     console.log('📰 Using legacy template content');
     return renderLegacyTemplate(quotation, template, calculations);
   }
 
-  // Default professional template
-  console.log('🎯 Using default professional template');
+  // If template exists but has no elements or content, still use default professional template
+  console.log('🎯 Using default professional template (template empty or no content)');
   return renderDefaultTemplate(quotation, calculations, quoteNumber, quoteDate, validUntil);
 }
 
@@ -98,15 +133,34 @@ function renderTemplateBuilderTemplate(
   quoteDate: string,
   validUntil: string
 ): string {
+  console.log('🏗️ Processing Template Builder template with', template.elements?.length, 'elements');
+  
   let html = getBaseStyles() + '<div class="quotation-container">';
 
   // Process each element from Template Builder
-  template.elements?.forEach((element) => {
-    html += processTemplateElement(element, quotation, calculations, quoteNumber, quoteDate, validUntil);
-  });
+  if (template.elements && template.elements.length > 0) {
+    template.elements.forEach((element, index) => {
+      console.log(`📦 Processing element ${index + 1}:`, element.type, element);
+      try {
+        const elementHtml = processTemplateElement(element, quotation, calculations, quoteNumber, quoteDate, validUntil);
+        html += elementHtml;
+        console.log(`✅ Element ${index + 1} processed successfully, HTML length:`, elementHtml.length);
+      } catch (error) {
+        console.error(`❌ Error processing element ${index + 1}:`, error);
+        html += `<div style="padding: 10px; background: #ffebee; border: 1px solid #f44336; margin: 10px 0;">
+          <strong>Error processing template element:</strong> ${element.type}<br>
+          <small>${error instanceof Error ? error.message : 'Unknown error'}</small>
+        </div>`;
+      }
+    });
+  } else {
+    console.warn('⚠️ No elements found in Template Builder template');
+    html += '<div style="padding: 20px; text-align: center; color: #666;">No template elements found</div>';
+  }
 
   // Add cost summary if not included
   if (!template.elements?.some(e => e.type === 'total' || e.type === 'cost_summary')) {
+    console.log('➕ Adding default cost summary');
     html += `<div class="cost-summary">
       <h3>💰 Cost Summary</h3>
       ${generateCostBreakdown(calculations, quotation)}
@@ -114,6 +168,7 @@ function renderTemplateBuilderTemplate(
   }
 
   html += '</div>';
+  console.log('🎉 Template Builder rendering complete, total HTML length:', html.length);
   return html;
 }
 
@@ -125,9 +180,18 @@ function processTemplateElement(
   quoteDate: string,
   validUntil: string
 ): string {
+  console.log(`🧩 Processing element: ${element.type}`, element);
+  
+  // Apply element styles
+  const styleString = element.style ? Object.entries(element.style)
+    .map(([key, value]) => `${key.replace(/([A-Z])/g, '-$1').toLowerCase()}: ${value}`)
+    .join('; ') : '';
+  
+  const wrapperStyle = styleString ? `style="${styleString}"` : '';
+  
   switch (element.type) {
     case 'header':
-      return `<div class="template-header">
+      return `<div class="template-header" ${wrapperStyle}>
         <div class="company-section">
           <div class="company-logo">ASP</div>
           <div class="company-details">
@@ -144,9 +208,17 @@ function processTemplateElement(
         </div>
       </div>`;
       
+    case 'text':
+      const processedText = replaceTemplatePlaceholders(element.content || '', quotation, quoteNumber, quoteDate);
+      return `<div class="text-section" ${wrapperStyle}>${processedText}</div>`;
+      
+    case 'field':
+      const fieldValue = replaceTemplatePlaceholders(element.content || '', quotation, quoteNumber, quoteDate);
+      return `<div class="field-section" ${wrapperStyle}>${fieldValue}</div>`;
+      
     case 'customer':
     case 'customer_details':
-      return `<div class="customer-section">
+      return `<div class="customer-section" ${wrapperStyle}>
         <h3>📋 Bill To</h3>
         <div><strong>${quotation.customerContact?.company || quotation.customerName || 'Valued Customer'}</strong></div>
         <div>Contact: ${quotation.customerContact?.name || 'N/A'}</div>
@@ -156,33 +228,81 @@ function processTemplateElement(
       </div>`;
       
     case 'table':
-    case 'equipment_table':
-      return `<div class="equipment-section">
-        <h3>🏗️ Equipment & Services</h3>
-        ${generateEquipmentTable(quotation)}
+      return renderTemplateBuilderTable(element, quotation, calculations, wrapperStyle);
+      
+    case 'terms':
+    case 'terms_conditions':
+      const termsContent = element.content || getDefaultTerms();
+      return `<div class="terms-section" ${wrapperStyle}>
+        <h3>⚖️ Terms & Conditions</h3>
+        <div class="terms-content">${termsContent}</div>
+      </div>`;
+      
+    case 'image':
+      const imageSrc = element.config?.src || '/placeholder-image.png';
+      const imageAlt = element.config?.alt || 'Template Image';
+      return `<div class="image-section" ${wrapperStyle}>
+        <img src="${imageSrc}" alt="${imageAlt}" style="max-width: 100%; height: auto;" />
       </div>`;
       
     case 'total':
     case 'cost_summary':
-      return `<div class="cost-summary">
+      return `<div class="cost-summary" ${wrapperStyle}>
         <h3>💰 Cost Summary</h3>
         ${generateCostBreakdown(calculations, quotation)}
       </div>`;
       
-    case 'terms':
-    case 'terms_conditions':
-      return `<div class="terms-section">
-        <h3>⚖️ Terms & Conditions</h3>
-        <div class="terms-content">${element.content || getDefaultTerms()}</div>
-      </div>`;
-      
-    case 'text':
     default:
-      if (element.content) {
-        return `<div class="text-content">${replaceTemplatePlaceholders(element.content, quotation, quoteNumber, quoteDate)}</div>`;
-      }
-      return '';
+      console.warn(`⚠️ Unknown element type: ${element.type}`);
+      return `<div class="unknown-element" ${wrapperStyle}>
+        <p>Unknown element: ${element.type}</p>
+        <p>Content: ${element.content || 'No content'}</p>
+      </div>`;
   }
+}
+
+function renderTemplateBuilderTable(
+  element: any,
+  quotation: Quotation,
+  calculations: QuotationCalculations,
+  wrapperStyle: string
+): string {
+  // If the element has table configuration, use it
+  if (element.config?.columns && element.config?.rows) {
+    const { columns, rows } = element.config;
+    
+    let tableHtml = `<div class="equipment-section" ${wrapperStyle}>
+      <h3>🏗️ ${element.content || 'Equipment & Services'}</h3>
+      <table class="equipment-table">
+        <thead>
+          <tr>`;
+    
+    // Render headers
+    columns.forEach((column: string) => {
+      tableHtml += `<th>${column}</th>`;
+    });
+    
+    tableHtml += `</tr></thead><tbody>`;
+    
+    // Render rows with placeholder replacement
+    rows.forEach((row: string[]) => {
+      tableHtml += '<tr>';
+      row.forEach((cell: string) => {
+        const processedCell = replaceTemplatePlaceholders(cell, quotation, '', '');
+        tableHtml += `<td>${processedCell}</td>`;
+      });
+      tableHtml += '</tr>';
+    });
+    
+    tableHtml += `</tbody></table></div>`;
+    return tableHtml;
+  }
+  
+  // Fallback to default equipment table
+  return `<div class="equipment-section" ${wrapperStyle}>
+    <h3>🏗️ Equipment & Services</h3>
+    ${generateEquipmentTable(quotation)}
+  </div>`;
 }
 
 function renderLegacyTemplate(quotation: Quotation, template: Template, _calculations: QuotationCalculations): string {

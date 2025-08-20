@@ -90,8 +90,9 @@ const SAMPLE_QUOTATION: Quotation = {
   riskFactor: 'low',
   extraCharge: 5000,
   incidentalCharges: ['incident1', 'incident2'],
-  otherFactorsCharge: 2000,  billing: 'gst',
-  workingCost: 4000,
+  otherFactorsCharge: 2000,  
+  billing: 'gst',
+  workingCost: 150000, // Fixed: should match totalRent for consistency
   includeGst: true,
   shift: 'single',
   dayNight: 'day',
