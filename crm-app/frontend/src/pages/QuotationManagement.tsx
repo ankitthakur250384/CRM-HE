@@ -94,8 +94,15 @@ export function QuotationManagement() {
       }
       
       try {
-        dealsData = await getDeals();
-        console.log('QuotationManagement: Fetched deals:', dealsData?.length || 0);
+        // Fetch all deals first for complete list, then filter eligible ones
+        const allDeals = await getDeals();
+        console.log('QuotationManagement: Fetched all deals:', allDeals?.length || 0);
+        
+        // Also fetch qualified deals separately for quotation creation
+        const qualifiedDeals = await getDeals(['qualification', 'proposal', 'negotiation']);
+        console.log('QuotationManagement: Fetched qualified deals:', qualifiedDeals?.length || 0);
+        
+        dealsData = allDeals || [];
       } catch (error) {
         console.error('Error fetching deals:', error);
         showToast('Warning: Could not load deals.', 'warning');

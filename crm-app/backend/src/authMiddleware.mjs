@@ -3,23 +3,29 @@ import jwt from 'jsonwebtoken';
 const JWT_SECRET = process.env.JWT_SECRET || 'your-super-secret-jwt-key-here';
 
 export const authenticateToken = (req, res, next) => {
+  // Debug logging for authentication
+  console.log('🔒 [AUTH] Incoming request:', req.method, req.originalUrl);
+  console.log('🔒 [AUTH] All headers:', JSON.stringify(req.headers, null, 2));
+  console.log('🔒 [AUTH] Authorization header:', req.headers['authorization']);
+  console.log('🔒 [AUTH] Bypass header:', req.headers['x-bypass-auth']);
+
+  // Check for development environment and enable bypass
+  const isDevelopment = process.env.NODE_ENV !== 'production';
+  const isLocalhost = req.hostname === 'localhost' || req.hostname === '127.0.0.1';
+  
   // Skip authentication check if bypass header is present (for testing purposes)
   if (
     req.headers['x-bypass-auth'] === 'development-only-123' ||
-    req.headers['x-bypass-auth'] === 'true'
+    req.headers['x-bypass-auth'] === 'true' ||
+    (isDevelopment && isLocalhost) // Auto-bypass for development on localhost
   ) {
-    console.log('⚠️ [AUTH] Bypassing authentication with x-bypass-auth header');
+    console.log('⚠️ [AUTH] Bypassing authentication - Development mode');
     req.user = { id: 'usr_test001', email: 'test@aspcranes.com', role: 'sales_agent' };
     return next();
   }
 
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
-
-  // Debug logging for authentication
-  console.log('🔒 [AUTH] Incoming request:', req.method, req.originalUrl);
-  console.log('🔒 [AUTH] Authorization header:', authHeader);
-  console.log('🔒 [AUTH] Token:', token);
 
   if (!token) {
     console.warn('🔒 [AUTH] No token provided. Rejecting request.');

@@ -1,14 +1,21 @@
 import { getHeaders } from './apiHeaders';
 
-// Get all deals from the backend API
-export async function getDeals(): Promise<Deal[]> {
+// Get all deals from the backend API with optional stage filtering
+export async function getDeals(stages?: string[]): Promise<Deal[]> {
   const apiUrl = import.meta.env.VITE_API_URL || '/api';
+  
+  let url = `${apiUrl}/deals`;
+  if (stages && stages.length > 0) {
+    const stagesParam = stages.join(',');
+    url += `?stages=${encodeURIComponent(stagesParam)}`;
+  }
+  
   const headers = getHeaders();
   
-  console.log('🔧 getDeals: Making request to:', `${apiUrl}/deals`);
+  console.log('🔧 getDeals: Making request to:', url);
   console.log('🔧 getDeals: Headers being sent:', headers);
   
-  const res = await fetch(`${apiUrl}/deals`, {
+  const res = await fetch(url, {
     method: 'GET',
     headers,
     credentials: 'include',
