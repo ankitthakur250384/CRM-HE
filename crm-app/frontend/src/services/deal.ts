@@ -3,12 +3,25 @@ import { getHeaders } from './apiHeaders';
 // Get all deals from the backend API
 export async function getDeals(): Promise<Deal[]> {
   const apiUrl = import.meta.env.VITE_API_URL || '/api';
+  const headers = getHeaders();
+  
+  console.log('🔧 getDeals: Making request to:', `${apiUrl}/deals`);
+  console.log('🔧 getDeals: Headers being sent:', headers);
+  
   const res = await fetch(`${apiUrl}/deals`, {
     method: 'GET',
-    headers: getHeaders(),
+    headers,
     credentials: 'include',
   });
-  if (!res.ok) throw new Error('Failed to fetch deals');
+  
+  console.log('🔧 getDeals: Response status:', res.status, res.statusText);
+  
+  if (!res.ok) {
+    const errorText = await res.text();
+    console.error('🔧 getDeals: Error response:', errorText);
+    throw new Error(`Failed to fetch deals: ${res.statusText}`);
+  }
+  
   const data = await res.json();
   // Support both array and {data: array} responses
   if (Array.isArray(data)) return data;

@@ -110,10 +110,19 @@ export const getAuthHeaders = (includeDevBypass: boolean = false): HeadersInit =
       localStorage.getItem('force-dev-bypass') === 'true'
     ));
 
+  // Debug log what we're about to do
+  console.log('🔧 getAuthHeaders called:', {
+    includeDevBypass,
+    shouldUseBypass,
+    hostname: typeof window !== 'undefined' ? window.location.hostname : 'server',
+    port: typeof window !== 'undefined' ? window.location.port : 'server'
+  });
+
   // If bypass should be used, ONLY use bypass header - don't send JWT tokens
   if (shouldUseBypass) {
     headers['x-bypass-auth'] = 'development-only-123';
     console.log('🔓 Development bypass header added (hostname-based detection), skipping JWT token');
+    console.log('🔧 Headers being sent:', headers);
     return headers;
   }
 
@@ -133,6 +142,7 @@ export const getAuthHeaders = (includeDevBypass: boolean = false): HeadersInit =
     console.warn('⚠️ No auth token found in localStorage - API requests may fail with 403');
   }
 
+  console.log('🔧 Final headers being sent:', headers);
   return headers;
 };
 
