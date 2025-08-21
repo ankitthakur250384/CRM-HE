@@ -19,7 +19,7 @@ import { Select } from '../components/common/Select';
 import { Modal } from '../components/common/Modal';
 import { Toast } from '../components/common/Toast';
 import { StatusBadge } from '../components/common/StatusBadge';
-import { QuotationPreviewPrint } from '../components/quotations/QuotationPreviewPrint';
+import QuotationPreviewPrint from '../components/quotations/QuotationPreviewPrint';
 import { useAuthStore } from '../store/authStore';
 import { Quotation } from '../types/quotation';
 import { Template } from '../types/template';
@@ -405,7 +405,7 @@ export function QuotationManagement() {
           <div class="details">
             <p><strong>Customer:</strong> ${quotation.customerContact?.name || 'N/A'}</p>
             <p><strong>Date:</strong> ${new Date(quotation.createdAt).toLocaleDateString()}</p>
-            <p><strong>Amount:</strong> ₹${quotation.totalCost?.toLocaleString() || 0}</p>
+            <p><strong>Amount:</strong> ₹${quotation.totalRent?.toLocaleString() || 0}</p>
           </div>
         </body>
         </html>
@@ -422,7 +422,6 @@ export function QuotationManagement() {
     } finally {
       setIsGeneratingPDF(false);
     }
-  };
   };
 
   const handleSendToCustomer = async (quotation: Quotation) => {

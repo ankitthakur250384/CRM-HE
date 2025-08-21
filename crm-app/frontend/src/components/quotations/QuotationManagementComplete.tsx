@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import SuiteCRMQuotationSystem from './SuiteCRMQuotationSystem';
 import NewQuotationBuilder from './NewQuotationBuilder';
+import DealSelection from './DealSelection';
 
 interface QuotationListItem {
   id: string;
@@ -145,33 +146,267 @@ const QuotationManagementComplete: React.FC = () => {
   };
 
   const handleQuickAction = (action: string, quotationId: string) => {
+    const quotation = quotations.find(q => q.id === quotationId);
+    
     switch (action) {
       case 'view':
         setSelectedQuotation(quotationId);
         break;
       case 'edit':
-        console.log('Edit quotation:', quotationId);
+        // Navigate to edit mode
+        setSelectedQuotation(`EDIT_${quotationId}`);
         break;
       case 'duplicate':
-        console.log('Duplicate quotation:', quotationId);
+        // Create a copy of the quotation
+        duplicateQuotation(quotationId);
         break;
       case 'delete':
         if (confirm('Are you sure you want to delete this quotation?')) {
-          setQuotations(prev => prev.filter(q => q.id !== quotationId));
+          deleteQuotation(quotationId);
         }
+        break;
+      case 'download':
+        downloadQuotation(quotationId);
+        break;
+      case 'print':
+        printQuotation(quotationId);
+        break;
+      case 'email':
+        emailQuotation(quotationId);
         break;
     }
   };
 
+  const deleteQuotation = async (quotationId: string) => {
+    try {
+      const response = await fetch(`/api/quotations/${quotationId}`, {
+        method: 'DELETE',
+      });
+      
+      if (response.ok) {
+        setQuotations(prev => prev.filter(q => q.id !== quotationId));
+        showNotification('Quotation deleted successfully', 'success');
+      } else {
+        throw new Error('Failed to delete quotation');
+      }
+    } catch (error) {
+      console.error('Error deleting quotation:', error);
+      showNotification('Failed to delete quotation', 'error');
+    }
+  };
+
+  const duplicateQuotation = async (quotationId: string) => {
+    try {
+      const original = quotations.find(q => q.id === quotationId);
+      if (!original) return;
+
+      const duplicateData = {
+        ...original,
+        customer_name: `${original.customer_name} (Copy)`,
+        status: 'draft'
+      };
+
+      const response = await fetch('/api/quotations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(duplicateData),
+      });
+
+      if (response.ok) {
+        fetchQuotations(); // Refresh the list
+        showNotification('Quotation duplicated successfully', 'success');
+      } else {
+        throw new Error('Failed to duplicate quotation');
+      }
+    } catch (error) {
+      console.error('Error duplicating quotation:', error);
+      showNotification('Failed to duplicate quotation', 'error');
+    }
+  };
+
+  const downloadQuotation = async (quotationId: string) => {
+    try {
+      const quotation = quotations.find(q => q.id === quotationId);
+      if (!quotation) return;
+
+      // Generate PDF via backend
+      const response = await fetch('/api/quotations/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          quotationId: quotation.id,
+          customerName: quotation.customer_name,
+          customerEmail: quotation.customer_email,
+          items: [{
+            description: quotation.machine_type,
+            qty: quotation.number_of_days,
+            price: quotation.total_cost / quotation.number_of_days
+          }],
+          gstRate: 18
+        }),
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Quotation_${quotation.id}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        showNotification('Quotation downloaded successfully', 'success');
+      } else {
+        throw new Error('Failed to generate PDF');
+      }
+    } catch (error) {
+      console.error('Error downloading quotation:', error);
+      showNotification('Failed to download quotation', 'error');
+    }
+  };
+
+  const printQuotation = (quotationId: string) => {
+    const quotation = quotations.find(q => q.id === quotationId);
+    if (!quotation) return;
+
+    // Open quotation in new window for printing
+    const printWindow = window.open('', '_blank');
+    if (!printWindow) {
+      showNotification('Please allow popups to print quotations', 'error');
+      return;
+    }
+
+    printWindow.document.write(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>Quotation ${quotation.id}</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .company-name { font-size: 24px; font-weight: bold; color: #1e40af; }
+            .quotation-title { font-size: 20px; margin: 10px 0; }
+            .details { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
+            .section { border: 1px solid #ddd; padding: 15px; border-radius: 5px; }
+            .section h3 { margin-top: 0; color: #1e40af; }
+            .total { font-size: 18px; font-weight: bold; text-align: right; margin-top: 20px; }
+            @media print { body { margin: 0; } }
+          </style>
+        </head>
+        <body>
+          <div class="header">
+            <div class="company-name">ASP CRANES</div>
+            <div class="quotation-title">QUOTATION</div>
+            <div>Quotation ID: ${quotation.id}</div>
+            <div>Date: ${new Date(quotation.created_at).toLocaleDateString()}</div>
+          </div>
+          
+          <div class="details">
+            <div class="section">
+              <h3>Customer Details</h3>
+              <p><strong>Company:</strong> ${quotation.customer_name}</p>
+              <p><strong>Email:</strong> ${quotation.customer_email || 'N/A'}</p>
+              <p><strong>Phone:</strong> ${quotation.customer_phone || 'N/A'}</p>
+            </div>
+            
+            <div class="section">
+              <h3>Project Details</h3>
+              <p><strong>Equipment:</strong> ${quotation.machine_type}</p>
+              <p><strong>Duration:</strong> ${quotation.number_of_days} days</p>
+              <p><strong>Working Hours:</strong> ${quotation.working_hours}/day</p>
+              <p><strong>Order Type:</strong> ${quotation.order_type}</p>
+            </div>
+          </div>
+          
+          <div class="total">
+            <p>Total Amount: ₹${quotation.total_cost.toLocaleString('en-IN')}</p>
+          </div>
+        </body>
+      </html>
+    `);
+    
+    printWindow.document.close();
+    printWindow.print();
+    showNotification('Print dialog opened', 'success');
+  };
+
+  const emailQuotation = (quotationId: string) => {
+    const quotation = quotations.find(q => q.id === quotationId);
+    if (!quotation) return;
+
+    const subject = `Quotation ${quotation.id} - ASP Cranes`;
+    const body = `Dear ${quotation.customer_name},
+
+Please find our quotation for ${quotation.machine_type} services:
+
+Quotation ID: ${quotation.id}
+Equipment: ${quotation.machine_type}
+Duration: ${quotation.number_of_days} days
+Total Amount: ₹${quotation.total_cost.toLocaleString('en-IN')}
+
+Thank you for considering ASP Cranes for your project.
+
+Best regards,
+ASP Cranes Team`;
+
+    const mailtoLink = `mailto:${quotation.customer_email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+    window.open(mailtoLink);
+    showNotification('Email client opened', 'info');
+  };
+
+  const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    // You can implement a toast notification system here
+    console.log(`${type.toUpperCase()}: ${message}`);
+  };
+
   const handleCreateNew = () => {
-    // Navigate to new quotation builder
-    setSelectedQuotation('NEW_QUOTATION');
+    // Navigate to deal selection for quotation creation
+    setSelectedQuotation('DEAL_SELECTION');
   };
 
   if (selectedQuotation === 'NEW_QUOTATION') {
     // Show the new quotation builder
     return (
       <NewQuotationBuilder onClose={() => setSelectedQuotation(null)} onSave={fetchQuotations} />
+    );
+  }
+
+  if (selectedQuotation === 'DEAL_SELECTION') {
+    // Show deal selection for quotation creation
+    return (
+      <DealSelection 
+        onClose={() => setSelectedQuotation(null)} 
+        onSelectDeal={(deal) => {
+          // Navigate to quotation builder with deal data
+          setSelectedQuotation(`NEW_FROM_DEAL_${deal.id}`);
+        }} 
+      />
+    );
+  }
+
+  if (selectedQuotation?.startsWith('NEW_FROM_DEAL_')) {
+    // Extract deal ID and show quotation builder with deal data
+    const dealId = selectedQuotation.replace('NEW_FROM_DEAL_', '');
+    return (
+      <NewQuotationBuilder 
+        dealId={dealId}
+        onClose={() => setSelectedQuotation(null)} 
+        onSave={fetchQuotations} 
+      />
+    );
+  }
+
+  if (selectedQuotation?.startsWith('EDIT_')) {
+    // Extract quotation ID and show quotation builder in edit mode
+    const quotationId = selectedQuotation.replace('EDIT_', '');
+    const quotationData = quotations.find(q => q.id === quotationId);
+    return (
+      <NewQuotationBuilder 
+        quotationData={quotationData}
+        onClose={() => setSelectedQuotation(null)} 
+        onSave={fetchQuotations} 
+      />
     );
   }
 
@@ -452,20 +687,23 @@ const QuotationManagementComplete: React.FC = () => {
                           <Edit className="h-4 w-4" />
                         </button>
                         <button
+                          onClick={() => handleQuickAction('download', quotation.id)}
                           className="text-green-600 hover:text-green-700 p-1 rounded"
-                          title="Download"
+                          title="Download PDF"
                         >
                           <Download className="h-4 w-4" />
                         </button>
                         <button
+                          onClick={() => handleQuickAction('print', quotation.id)}
                           className="text-purple-600 hover:text-purple-700 p-1 rounded"
-                          title="Print"
+                          title="Print Quotation"
                         >
                           <Printer className="h-4 w-4" />
                         </button>
                         <button
+                          onClick={() => handleQuickAction('email', quotation.id)}
                           className="text-orange-600 hover:text-orange-700 p-1 rounded"
-                          title="Email"
+                          title="Email Quotation"
                         >
                           <Mail className="h-4 w-4" />
                         </button>

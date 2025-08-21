@@ -34,8 +34,22 @@ const asyncHandler = (fn) => (req, res, next) => {
 
 /**
  * GET /deals - Get all deals (AUTH with bypass support)
+ * Supports filtering by stages for quotation creation
  */
 router.get('/', authenticateToken, asyncHandler(async (req, res) => {
+  const { stages } = req.query;
+  
+  // If stages filter is provided, use custom query
+  if (stages) {
+    const stageList = stages.split(',').map(s => s.trim());
+    const deals = await dealRepository.getDealsByStages(stageList);
+    return res.json({
+      success: true,
+      data: deals
+    });
+  }
+  
+  // Default: get all deals
   const deals = await dealRepository.getDeals();
   res.json({
     success: true,

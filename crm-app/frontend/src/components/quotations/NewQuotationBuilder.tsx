@@ -2,15 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { 
   ArrowLeft, 
   Save, 
-  Eye, 
   Calculator,
   Building,
   Truck,
-  Clock,
   MapPin,
-  Users,
-  DollarSign,
-  FileText,
   CheckCircle,
   AlertCircle,
   Loader2
@@ -19,6 +14,8 @@ import {
 interface NewQuotationBuilderProps {
   onClose: () => void;
   onSave: () => void;
+  dealId?: string;
+  quotationData?: any;
 }
 
 interface QuotationFormData {
@@ -74,10 +71,18 @@ const orderTypeOptions = [
   { value: 'specialized_rental', label: 'Specialized Rental', multiplier: 1.2 },
 ];
 
-const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({ onClose, onSave }) => {
+const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({ 
+  onClose, 
+  onSave, 
+  dealId, 
+  quotationData 
+}) => {
   const [formData, setFormData] = useState<QuotationFormData>(initialFormData);
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
+  const [loadingDeal, setLoadingDeal] = useState(!!dealId);
+  const [dealData, setDealData] = useState<any>(null);
+  const [isEditMode] = useState(!!quotationData);
   const [calculations, setCalculations] = useState({
     baseRate: 0,
     totalRent: 0,
@@ -91,6 +96,62 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({ onClose, onSa
     type: 'success' | 'error' | 'info';
     message: string;
   }>({ show: false, type: 'info', message: '' });
+
+  // Load deal data or quotation data on mount
+  useEffect(() => {
+    const loadInitialData = async () => {
+      try {
+        if (dealId) {
+          // Load deal data for creating quotation from deal
+          setLoadingDeal(true);
+          const response = await fetch(`/api/deals/${dealId}`);
+          if (response.ok) {
+            const result = await response.json();
+            if (result.success) {
+              const deal = result.data;
+              setDealData(deal);
+              
+              // Pre-populate form with deal data
+              setFormData(prev => ({
+                ...prev,
+                customerName: deal.customer?.company || deal.customer?.name || '',
+                customerEmail: deal.customer?.email || '',
+                customerPhone: deal.customer?.phone || '',
+                customerAddress: deal.customer?.address || '',
+                notes: `Quotation for deal: ${deal.title}\n${deal.description}`
+              }));
+            }
+          }
+          setLoadingDeal(false);
+        } else if (quotationData) {
+          // Load existing quotation data for editing
+          setFormData({
+            customerName: quotationData.customer_name || '',
+            customerEmail: quotationData.customer_email || '',
+            customerPhone: quotationData.customer_phone || '',
+            customerAddress: quotationData.customer_address || '',
+            machineType: quotationData.machine_type || 'mobile_crane',
+            orderType: quotationData.order_type || 'rental',
+            numberOfDays: quotationData.number_of_days || 1,
+            workingHours: quotationData.working_hours || 8,
+            siteDistance: quotationData.site_distance || 0,
+            usage: quotationData.usage || 'Construction',
+            shift: quotationData.shift || 'Day Shift',
+            foodResources: quotationData.food_resources || 'Client Provided',
+            accomResources: quotationData.accom_resources || 'Client Provided',
+            riskFactor: quotationData.risk_factor || 'Medium',
+            extraCharge: quotationData.extra_charge || 0,
+            notes: quotationData.notes || ''
+          });
+        }
+      } catch (error) {
+        console.error('Error loading initial data:', error);
+        showNotification('error', 'Failed to load data');
+      }
+    };
+
+    loadInitialData();
+  }, [dealId, quotationData]);
 
   // Calculate costs whenever form data changes
   useEffect(() => {
@@ -604,8 +665,17 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({ onClose, onSa
                 <ArrowLeft className="h-5 w-5" />
               </button>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">New Quotation</h1>
-                <p className="text-gray-600">Create a professional quotation</p>
+                <h1 className="text-2xl font-bold text-gray-900">
+                  {isEditMode ? 'Edit Quotation' : dealId ? 'New Quotation from Deal' : 'New Quotation'}
+                </h1>
+                <p className="text-gray-600">
+                  {isEditMode ? 'Update quotation details' : dealId ? 'Create quotation for selected deal' : 'Create a professional quotation'}
+                </p>
+                {dealData && (
+                  <p className="text-sm text-blue-600 mt-1">
+                    Deal: {dealData.title}
+                  </p>
+                )}
               </div>
             </div>
             
@@ -616,7 +686,7 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({ onClose, onSa
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 disabled:opacity-50 flex items-center space-x-2"
               >
                 {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                <span>{isLoading ? 'Saving...' : 'Save Quotation'}</span>
+                <span>{isLoading ? 'Saving...' : isEditMode ? 'Update Quotation' : 'Save Quotation'}</span>
               </button>
             </div>
           </div>
@@ -698,7 +768,7 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({ onClose, onSa
                 className="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 flex items-center space-x-2"
               >
                 {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                <span>{isLoading ? 'Creating...' : 'Create Quotation'}</span>
+                <span>{isLoading ? 'Saving...' : isEditMode ? 'Update Quotation' : 'Create Quotation'}</span>
               </button>
             )}
           </div>

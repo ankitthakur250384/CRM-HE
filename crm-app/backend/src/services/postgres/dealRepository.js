@@ -32,6 +32,38 @@ export const getDeals = async () => {
   }
 };
 
+export const getDealsByStages = async (stages) => {
+  try {
+    console.log(`📋 Fetching deals with stages: ${stages.join(', ')}`);
+    const deals = await db.any(`
+      SELECT d.*, 
+             c.name AS customer_name, c.email AS customer_email, c.phone AS customer_phone, c.company_name AS customer_company, c.address AS customer_address, c.designation AS customer_designation
+      FROM deals d
+      LEFT JOIN customers c ON d.customer_id = c.id
+      WHERE d.stage = ANY($1)
+      ORDER BY d.created_at DESC
+    `, [stages]);
+    
+    // Map customer fields into a customer object for each deal
+    const dealsWithCustomer = deals.map(deal => ({
+      ...deal,
+      customer: {
+        name: deal.customer_name || '',
+        email: deal.customer_email || '',
+        phone: deal.customer_phone || '',
+        company: deal.customer_company || '',
+        address: deal.customer_address || '',
+        designation: deal.customer_designation || ''
+      }
+    }));
+    console.log(`✅ Found ${dealsWithCustomer.length} deals with specified stages`);
+    return dealsWithCustomer;
+  } catch (error) {
+    console.error('❌ Error fetching deals by stages:', error);
+    return [];
+  }
+};
+
 
 export const getDealById = async (id) => {
   try {
