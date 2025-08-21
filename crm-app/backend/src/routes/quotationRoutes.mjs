@@ -77,24 +77,62 @@ router.get('/', async (req, res) => {
     
     try {
       const result = await client.query(`
-        SELECT q.*, c.name as customer_name, d.title as deal_title
+        SELECT 
+          q.id,
+          q.customer_name,
+          q.customer_contact->>'email' as customer_email,
+          q.customer_contact->>'phone' as customer_phone,
+          q.customer_contact->>'address' as customer_address,
+          q.machine_type,
+          q.order_type,
+          q.number_of_days,
+          q.working_hours,
+          q.total_cost,
+          q.status,
+          q.created_at,
+          q.updated_at,
+          q.site_distance,
+          q.usage,
+          q.shift,
+          q.day_night,
+          q.food_resources,
+          q.accom_resources,
+          q.risk_factor,
+          q.mob_demob_cost,
+          q.working_cost,
+          q.food_accom_cost,
+          q.gst_amount,
+          q.total_rent
         FROM quotations q
-        LEFT JOIN customers c ON q.customer_id = c.id
-        LEFT JOIN deals d ON q.deal_id = d.id
         ORDER BY q.created_at DESC;
       `);
       
       const quotations = result.rows.map(q => ({
         id: q.id,
         quotationId: q.id,
-        customerName: q.customer_name || q.customer_name,
-        dealTitle: q.deal_title,
-        totalCost: q.total_cost,
+        customer_name: q.customer_name,
+        customer_email: q.customer_email,
+        customer_phone: q.customer_phone,
+        customer_address: q.customer_address,
+        machine_type: q.machine_type,
+        order_type: q.order_type,
+        number_of_days: q.number_of_days,
+        working_hours: q.working_hours,
+        total_cost: parseFloat(q.total_cost || 0),
         status: q.status,
-        createdAt: q.created_at,
-        machineType: q.machine_type,
-        orderType: q.order_type,
-        numberOfDays: q.number_of_days
+        created_at: q.created_at,
+        updated_at: q.updated_at,
+        site_distance: parseFloat(q.site_distance || 0),
+        usage: q.usage,
+        shift: q.shift === 'single' ? 'Day Shift' : 'Double Shift',
+        food_resources: q.food_resources > 0 ? 'ASP Provided' : 'Client Provided',
+        accom_resources: q.accom_resources > 0 ? 'ASP Provided' : 'Client Provided',
+        risk_factor: q.risk_factor?.charAt(0).toUpperCase() + q.risk_factor?.slice(1) || 'Medium',
+        mob_demob_cost: parseFloat(q.mob_demob_cost || 0),
+        working_cost: parseFloat(q.working_cost || 0),
+        food_accom_cost: parseFloat(q.food_accom_cost || 0),
+        gst_amount: parseFloat(q.gst_amount || 0),
+        total_rent: parseFloat(q.total_rent || 0)
       }));
       
       return res.status(200).json({
@@ -108,7 +146,8 @@ router.get('/', async (req, res) => {
     console.error('Error fetching quotations:', error);
     return res.status(500).json({ 
       success: false,
-      message: 'Internal server error' 
+      message: 'Internal server error',
+      error: error.message
     });
   }
 });
@@ -202,10 +241,8 @@ router.post('/', async (req, res) => {
     const quotationData = req.body;
     
     // Validate required fields
-    const requiredFields = ['customerName', 'items'];
-    const missingFields = requiredFields.filter(field => 
-      !quotationData[field] || (Array.isArray(quotationData[field]) && quotationData[field].length === 0)
-    );
+    const requiredFields = ['customerName', 'machineType', 'orderType', 'numberOfDays'];
+    const missingFields = requiredFields.filter(field => !quotationData[field]);
     
     if (missingFields.length > 0) {
       return res.status(400).json({ 
@@ -217,54 +254,124 @@ router.post('/', async (req, res) => {
     const client = await pool.connect();
     
     try {
+      // Check if customer exists, if not create one
+      let customerId;
+      const customerResult = await client.query(
+        'SELECT id FROM customers WHERE email = $1 OR name = $2',
+        [quotationData.customerEmail, quotationData.customerName]
+      );
+      
+      if (customerResult.rows.length > 0) {
+        customerId = customerResult.rows[0].id;
+      } else {
+        // Create new customer
+        const newCustomerResult = await client.query(`
+          INSERT INTO customers (
+            name, company_name, contact_name, email, phone, address, type
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7)
+          RETURNING id
+        `, [
+          quotationData.customerName,
+          quotationData.customerName,
+          quotationData.customerName,
+          quotationData.customerEmail || 'noemail@example.com',
+          quotationData.customerPhone || 'N/A',
+          quotationData.customerAddress || 'N/A',
+          'other'
+        ]);
+        customerId = newCustomerResult.rows[0].id;
+      }
+      
       const id = uuidv4();
       
-      // Calculate total cost from items
-      const totalCost = quotationData.items.reduce((sum, item) => {
-        const itemTotal = (item.qty || 0) * (item.price || 0);
-        return sum + itemTotal;
-      }, 0);
+      // Map frontend data to database schema
+      const orderTypeMapping = {
+        'rental': 'monthly',
+        'long_term_rental': 'yearly',
+        'project_rental': 'monthly',
+        'specialized_rental': 'monthly'
+      };
       
-      // Apply GST
-      const gstRate = quotationData.gstRate || 18;
-      const gstAmount = totalCost * (gstRate / 100);
+      const shiftMapping = {
+        'Day Shift': 'single',
+        'Night Shift': 'single',
+        'Double Shift': 'double',
+        'Round the Clock': 'double'
+      };
+      
+      const riskMapping = {
+        'Low': 'low',
+        'Medium': 'medium',
+        'High': 'high',
+        'Very High': 'high'
+      };
+      
+      // Calculate costs (simplified for now)
+      const totalCost = quotationData.totalCost || 100000;
+      const gstAmount = totalCost * 0.18;
       const finalTotal = totalCost + gstAmount;
+      
+      const customerContact = {
+        name: quotationData.customerName,
+        email: quotationData.customerEmail || '',
+        phone: quotationData.customerPhone || '',
+        address: quotationData.customerAddress || '',
+        company: quotationData.customerName
+      };
       
       // Insert quotation
       const insertQuery = `
         INSERT INTO quotations (
-          id, customer_name, machine_type, order_type, number_of_days,
-          total_cost, status, created_at, updated_at
-        ) VALUES ($1, $2, $3, $4, $5, $6, $7, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+          id, customer_id, customer_name, machine_type, order_type, 
+          number_of_days, working_hours, food_resources, accom_resources,
+          site_distance, usage, risk_factor, shift, day_night,
+          mob_demob, mob_relaxation, extra_charge, other_factors_charge,
+          billing, include_gst, sunday_working, customer_contact,
+          total_rent, total_cost, working_cost, mob_demob_cost,
+          food_accom_cost, gst_amount, created_by, status, notes
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
+          $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26,
+          $27, $28, $29, $30, $31
+        )
       `;
       
       const values = [
         id,
+        customerId,
         quotationData.customerName,
-        quotationData.machineType || 'Mixed Equipment',
-        quotationData.orderType || 'rental',
+        quotationData.machineType,
+        orderTypeMapping[quotationData.orderType] || 'monthly',
         quotationData.numberOfDays || 1,
+        quotationData.workingHours || 8,
+        quotationData.foodResources === 'ASP Provided' ? 2 : 0,
+        quotationData.accomResources === 'ASP Provided' ? 2 : 0,
+        quotationData.siteDistance || 0,
+        'normal', // usage (will be enhanced later)
+        riskMapping[quotationData.riskFactor] || 'medium',
+        shiftMapping[quotationData.shift] || 'single',
+        'day', // day_night (will be enhanced later)
+        15000, // mob_demob (default)
+        0, // mob_relaxation
+        quotationData.extraCharge || 0,
+        0, // other_factors_charge
+        'gst', // billing
+        true, // include_gst
+        'no', // sunday_working
+        JSON.stringify(customerContact),
+        totalCost,
         finalTotal,
-        'draft'
+        totalCost * 0.8, // working_cost
+        15000, // mob_demob_cost
+        quotationData.foodResources === 'ASP Provided' || quotationData.accomResources === 'ASP Provided' ? 
+          (quotationData.numberOfDays || 1) * 6500 : 0, // food_accom_cost
+        gstAmount,
+        'system', // created_by (will be replaced with actual user)
+        'draft',
+        quotationData.notes || ''
       ];
       
       await client.query(insertQuery, values);
-      
-      // Insert items as quotation machines
-      if (quotationData.items && quotationData.items.length > 0) {
-        for (const item of quotationData.items) {
-          await client.query(`
-            INSERT INTO quotation_machines (
-              quotation_id, equipment_id, quantity, base_rate
-            ) VALUES ($1, $2, $3, $4)
-          `, [
-            id,
-            item.equipmentId || null,
-            item.qty || 1,
-            item.price || 0
-          ]);
-        }
-      }
       
       return res.status(201).json({ 
         success: true,
@@ -278,7 +385,8 @@ router.post('/', async (req, res) => {
     console.error('Error creating quotation:', error);
     return res.status(500).json({ 
       success: false,
-      message: 'Internal server error' 
+      message: 'Internal server error',
+      error: error.message
     });
   }
 });

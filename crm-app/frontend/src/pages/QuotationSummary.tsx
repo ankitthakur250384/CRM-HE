@@ -20,49 +20,49 @@ export const QuotationSummary: React.FC<QuotationSummaryProps> = ({ calculations
     <div className="flex justify-between items-center">
       <div className="flex items-center gap-2">
         <Clock className="w-4 h-4 text-blue-600" />
-        <span className="text-sm font-medium text-gray-900">Working Cost</span>
+        <span className="text-sm font-semibold text-gray-900">Working Cost</span>
       </div>
-      <span className="font-bold text-blue-900">{formatCurrency(calculations?.workingCost || 0)}</span>
+      <span className="font-bold text-gray-900">{formatCurrency(calculations?.workingCost || 0)}</span>
     </div>
     
     <div className="flex justify-between items-center">
       <div className="flex items-center gap-2">
         <Users className="w-4 h-4 text-green-600" />
-        <span className="text-sm font-medium text-gray-900">Food & Accommodation</span>
+        <span className="text-sm font-semibold text-gray-900">Food & Accommodation</span>
       </div>
-      <span className="font-bold text-green-900">{formatCurrency(calculations?.foodAccomCost || 0)}</span>
+      <span className="font-bold text-gray-900">{formatCurrency(calculations?.foodAccomCost || 0)}</span>
     </div>
     
     <div className="flex justify-between items-center">
       <div className="flex items-center gap-2">
         <Truck className="w-4 h-4 text-orange-600" />
-        <span className="text-sm font-medium text-gray-900">Mob/Demob Cost</span>
+        <span className="text-sm font-semibold text-gray-900">Mob/Demob Cost</span>
       </div>
-      <span className="font-bold text-orange-900">{formatCurrency(calculations?.mobDemobCost || 0)}</span>
+      <span className="font-bold text-gray-900">{formatCurrency(calculations?.mobDemobCost || 0)}</span>
     </div>
     
     <div className="flex justify-between items-center">
       <div className="flex items-center gap-2">
         <AlertTriangle className="w-4 h-4 text-red-600" />
-        <span className="text-sm font-medium text-gray-900">Risk & Usage</span>
+        <span className="text-sm font-semibold text-gray-900">Risk & Usage</span>
       </div>
-      <span className="font-bold text-red-900">{formatCurrency((calculations?.riskAdjustment || 0) + (calculations?.usageLoadFactor || 0))}</span>
+      <span className="font-bold text-gray-900">{formatCurrency((calculations?.riskAdjustment || 0) + (calculations?.usageLoadFactor || 0))}</span>
     </div>
     
     <div className="flex justify-between items-center">
       <div className="flex items-center gap-2">
         <IndianRupee className="w-4 h-4 text-purple-600" />
-        <span className="text-sm font-medium text-gray-900">Extra Commercial Charges</span>
+        <span className="text-sm font-semibold text-gray-900">Extra Commercial Charges</span>
       </div>
-      <span className="font-bold text-purple-900">{formatCurrency(calculations?.extraCharges || formData?.extraCharge || 0)}</span>
+      <span className="font-bold text-gray-900">{formatCurrency(calculations?.extraCharges || formData?.extraCharge || 0)}</span>
     </div>
     
     <div className="flex justify-between items-center">
       <div className="flex items-center gap-2">
         <AlertCircle className="w-4 h-4 text-indigo-600" />
-        <span className="text-sm font-medium text-gray-900">Incidental Charges</span>
+        <span className="text-sm font-semibold text-gray-900">Incidental Charges</span>
       </div>
-      <span className="font-bold text-indigo-900">
+      <span className="font-bold text-gray-900">
         {formatCurrency(calculations?.incidentalCost || 
           (formData?.incidentalCharges || []).reduce((sum: number, val: string) => {
             const found = INCIDENTAL_OPTIONS.find((opt: any) => opt.value === val);
@@ -74,9 +74,9 @@ export const QuotationSummary: React.FC<QuotationSummaryProps> = ({ calculations
     <div className="flex justify-between items-center">
       <div className="flex items-center gap-2">
         <Users className="w-4 h-4 text-cyan-600" />
-        <span className="text-sm font-medium text-gray-900">Other Factors</span>
+        <span className="text-sm font-semibold text-gray-900">Other Factors</span>
       </div>
-      <span className="font-bold text-cyan-900">
+      <span className="font-bold text-gray-900">
         {formatCurrency(calculations?.otherFactorsCost || 
           ((formData?.otherFactors || []).includes('rigger') ? (additionalParams?.riggerAmount || 40000) : 0) +
           ((formData?.otherFactors || []).includes('helper') ? (additionalParams?.helperAmount || 12000) : 0))}

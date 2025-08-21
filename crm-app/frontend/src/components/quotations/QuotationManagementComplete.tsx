@@ -17,6 +17,7 @@ import {
   FileText
 } from 'lucide-react';
 import SuiteCRMQuotationSystem from './SuiteCRMQuotationSystem';
+import NewQuotationBuilder from './NewQuotationBuilder';
 
 interface QuotationListItem {
   id: string;
@@ -53,142 +54,68 @@ const QuotationManagementComplete: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
 
-  // Sample data for demonstration
-  const sampleQuotations: QuotationListItem[] = [
-    {
-      id: 'QT-2024-001',
-      customer_name: 'ABC Construction Ltd.',
-      customer_email: 'contact@abcconstruction.com',
-      customer_phone: '+91-9876543210',
-      customer_address: '123 Industrial Area, Delhi - 110001',
-      machine_type: 'Mobile Crane 50T',
-      order_type: 'Rental',
-      number_of_days: 7,
-      working_hours: 8,
-      total_cost: 175000,
-      status: 'sent',
-      created_at: '2024-01-15T10:30:00Z',
-      updated_at: '2024-01-15T10:30:00Z',
-      site_distance: 45,
-      usage: 'Construction',
-      shift: 'Day Shift',
-      food_resources: 'Client Provided',
-      accom_resources: 'Client Provided',
-      risk_factor: 'Medium',
-      mob_demob_cost: 15000,
-      working_cost: 140000,
-      food_accom_cost: 0,
-      gst_amount: 20000,
-      total_rent: 155000
-    },
-    {
-      id: 'QT-2024-002',
-      customer_name: 'XYZ Infrastructure Pvt Ltd',
-      customer_email: 'projects@xyzinfra.com',
-      customer_phone: '+91-9876543211',
-      customer_address: '456 Tech Park, Mumbai - 400001',
-      machine_type: 'Tower Crane 60T',
-      order_type: 'Rental',
-      number_of_days: 30,
-      working_hours: 12,
-      total_cost: 850000,
-      status: 'draft',
-      created_at: '2024-01-14T14:20:00Z',
-      updated_at: '2024-01-14T14:20:00Z',
-      site_distance: 25,
-      usage: 'High-rise Construction',
-      shift: 'Double Shift',
-      food_resources: 'ASP Provided',
-      accom_resources: 'ASP Provided',
-      risk_factor: 'High',
-      mob_demob_cost: 50000,
-      working_cost: 650000,
-      food_accom_cost: 50000,
-      gst_amount: 100000,
-      total_rent: 700000
-    },
-    {
-      id: 'QT-2024-003',
-      customer_name: 'Metro Railway Corporation',
-      customer_email: 'procurement@metrorail.com',
-      customer_phone: '+91-9876543212',
-      customer_address: '789 Metro Bhawan, Kolkata - 700001',
-      machine_type: 'Crawler Crane 100T',
-      order_type: 'Long-term Rental',
-      number_of_days: 90,
-      working_hours: 16,
-      total_cost: 2850000,
-      status: 'accepted',
-      created_at: '2024-01-10T09:15:00Z',
-      updated_at: '2024-01-12T16:45:00Z',
-      site_distance: 15,
-      usage: 'Metro Construction',
-      shift: 'Round the Clock',
-      food_resources: 'Client Provided',
-      accom_resources: 'ASP Provided',
-      risk_factor: 'Very High',
-      mob_demob_cost: 100000,
-      working_cost: 2300000,
-      food_accom_cost: 150000,
-      gst_amount: 300000,
-      total_rent: 2400000
-    },
-    {
-      id: 'QT-2024-004',
-      customer_name: 'Green Energy Solutions',
-      customer_email: 'ops@greenenergy.in',
-      customer_phone: '+91-9876543213',
-      customer_address: '321 Solar Park, Rajasthan - 342001',
-      machine_type: 'All Terrain Crane 80T',
-      order_type: 'Project Rental',
-      number_of_days: 45,
-      working_hours: 10,
-      total_cost: 1250000,
-      status: 'rejected',
-      created_at: '2024-01-08T11:00:00Z',
-      updated_at: '2024-01-09T10:30:00Z',
-      site_distance: 120,
-      usage: 'Wind Farm Setup',
-      shift: 'Day Shift',
-      food_resources: 'Client Provided',
-      accom_resources: 'Client Provided',
-      risk_factor: 'Medium',
-      mob_demob_cost: 80000,
-      working_cost: 950000,
-      food_accom_cost: 0,
-      gst_amount: 220000,
-      total_rent: 1030000
-    },
-    {
-      id: 'QT-2024-005',
-      customer_name: 'Shipyard Industries Ltd',
-      customer_email: 'contracts@shipyard.co.in',
-      customer_phone: '+91-9876543214',
-      customer_address: '654 Port Area, Chennai - 600001',
-      machine_type: 'Floating Crane 150T',
-      order_type: 'Specialized Rental',
-      number_of_days: 14,
-      working_hours: 8,
-      total_cost: 980000,
-      status: 'sent',
-      created_at: '2024-01-12T13:45:00Z',
-      updated_at: '2024-01-12T13:45:00Z',
-      site_distance: 35,
-      usage: 'Ship Building',
-      shift: 'Day Shift',
-      food_resources: 'ASP Provided',
-      accom_resources: 'ASP Provided',
-      risk_factor: 'High',
-      mob_demob_cost: 120000,
-      working_cost: 700000,
-      food_accom_cost: 80000,
-      gst_amount: 80000,
-      total_rent: 780000
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  // Fetch quotations from database
+  const fetchQuotations = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const response = await fetch('/api/quotations');
+      
+      if (!response.ok) {
+        throw new Error(`Failed to fetch quotations: ${response.statusText}`);
+      }
+      
+      const result = await response.json();
+      
+      if (result.success && Array.isArray(result.data)) {
+        // Transform API data to match our interface
+        const transformedQuotations: QuotationListItem[] = result.data.map((item: any) => ({
+          id: item.id || item.quotationId,
+          customer_name: item.customerName || item.customer_name || 'Unknown Customer',
+          customer_email: item.customerEmail || item.customer_email,
+          customer_phone: item.customerPhone || item.customer_phone,
+          customer_address: item.customerAddress || item.customer_address,
+          machine_type: item.machineType || item.machine_type || 'Unknown Equipment',
+          order_type: item.orderType || item.order_type || 'rental',
+          number_of_days: item.numberOfDays || item.number_of_days || 1,
+          working_hours: item.workingHours || item.working_hours || 8,
+          total_cost: item.totalCost || item.total_cost || 0,
+          status: item.status || 'draft',
+          created_at: item.createdAt || item.created_at || new Date().toISOString(),
+          updated_at: item.updatedAt || item.updated_at || new Date().toISOString(),
+          site_distance: item.siteDistance || item.site_distance || 0,
+          usage: item.usage || 'General Construction',
+          shift: item.shift || 'Day Shift',
+          food_resources: item.foodResources || item.food_resources || 'To be discussed',
+          accom_resources: item.accomResources || item.accom_resources || 'To be discussed',
+          risk_factor: item.riskFactor || item.risk_factor || 'Medium',
+          mob_demob_cost: item.mobDemobCost || item.mob_demob_cost || 0,
+          working_cost: item.workingCost || item.working_cost || 0,
+          food_accom_cost: item.foodAccomCost || item.food_accom_cost || 0,
+          gst_amount: item.gstAmount || item.gst_amount || 0,
+          total_rent: item.totalRent || item.total_rent || 0,
+        }));
+        
+        setQuotations(transformedQuotations);
+      } else {
+        console.warn('Invalid response format:', result);
+        setQuotations([]);
+      }
+    } catch (err) {
+      console.error('Error fetching quotations:', err);
+      setError(err instanceof Error ? err.message : 'Failed to fetch quotations');
+      setQuotations([]);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
 
   useEffect(() => {
-    setQuotations(sampleQuotations);
+    fetchQuotations();
   }, []);
 
   const filteredQuotations = quotations.filter(quotation => {
@@ -237,9 +164,16 @@ const QuotationManagementComplete: React.FC = () => {
   };
 
   const handleCreateNew = () => {
-    const newId = `QT-2024-${String(quotations.length + 1).padStart(3, '0')}`;
-    setSelectedQuotation(newId);
+    // Navigate to new quotation builder
+    setSelectedQuotation('NEW_QUOTATION');
   };
+
+  if (selectedQuotation === 'NEW_QUOTATION') {
+    // Show the new quotation builder
+    return (
+      <NewQuotationBuilder onClose={() => setSelectedQuotation(null)} onSave={fetchQuotations} />
+    );
+  }
 
   if (selectedQuotation) {
     const quotationData = quotations.find(q => q.id === selectedQuotation);
@@ -249,6 +183,54 @@ const QuotationManagementComplete: React.FC = () => {
         quotationData={quotationData}
         onClose={() => setSelectedQuotation(null)}
       />
+    );
+  }
+
+  // Loading state
+  if (loading) {
+    return (
+      <div className="quotation-management-complete bg-gray-50 min-h-screen">
+        <div className="bg-white border-b border-gray-200">
+          <div className="px-6 py-4">
+            <h1 className="text-2xl font-bold text-gray-900">Quotation Management</h1>
+            <p className="text-gray-600 mt-1">Loading quotations...</p>
+          </div>
+        </div>
+        <div className="flex items-center justify-center py-20">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+            <p className="text-gray-600">Fetching quotations from database...</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (error) {
+    return (
+      <div className="quotation-management-complete bg-gray-50 min-h-screen">
+        <div className="bg-white border-b border-gray-200">
+          <div className="px-6 py-4">
+            <h1 className="text-2xl font-bold text-gray-900">Quotation Management</h1>
+            <p className="text-gray-600 mt-1">Error loading quotations</p>
+          </div>
+        </div>
+        <div className="flex items-center justify-center py-20">
+          <div className="text-center max-w-md">
+            <div className="bg-red-100 text-red-600 p-4 rounded-lg mb-4">
+              <h3 className="font-semibold mb-2">Failed to load quotations</h3>
+              <p className="text-sm">{error}</p>
+            </div>
+            <button
+              onClick={fetchQuotations}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+            >
+              Try Again
+            </button>
+          </div>
+        </div>
+      </div>
     );
   }
 
