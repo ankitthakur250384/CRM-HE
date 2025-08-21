@@ -6,7 +6,7 @@ import { Toast } from '../common/Toast';
 import { Card, CardHeader, CardTitle, CardContent } from '../common/Card';
 import { Template } from '../../types/template';
 import { Quotation } from '../../types/quotation';
-import { mergeQuotationWithTemplate } from '../../utils/templateMerger';
+import { mergeQuotationWithTemplate } from '../../utils/templateMerger.ts';
 import { getTemplates, updateTemplate } from '../../services/templateService';
 
 interface DefaultTemplateConfigProps {

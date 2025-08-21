@@ -15,7 +15,7 @@ import { OperationsManagerDashboard } from './pages/OperationsManagerDashboard';
 import { OperatorDashboard } from './pages/OperatorDashboard';
 import { LeadManagement } from './pages/LeadManagement';
 import ToastContainer from './components/common/ToastContainer';
-import { QuotationManagement } from './pages/QuotationManagement';
+import QuotationManagementComplete from './components/quotations/QuotationManagementComplete';
 import { QuotationCreation } from './pages/QuotationCreation';
 import { JobScheduling } from './pages/JobScheduling';
 import { SiteAssessment } from './pages/SiteAssessment';
@@ -199,7 +199,7 @@ function AppContent() {
             
             <Route path="quotations" element={
               <ProtectedRoute allowedRoles={['admin', 'sales_agent', 'operations_manager']}>
-                <QuotationManagement />
+                <QuotationManagementComplete />
               </ProtectedRoute>
             } />
             

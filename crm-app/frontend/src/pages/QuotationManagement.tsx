@@ -19,8 +19,7 @@ import { Select } from '../components/common/Select';
 import { Modal } from '../components/common/Modal';
 import { Toast } from '../components/common/Toast';
 import { StatusBadge } from '../components/common/StatusBadge';
-import { TemplatePreview } from '../components/quotations/TemplatePreview';
-import { PrintOptionsModal } from '../components/quotations/PrintOptionsModal';
+import { QuotationPreviewPrint } from '../components/quotations/QuotationPreviewPrint';
 import { useAuthStore } from '../store/authStore';
 import { Quotation } from '../types/quotation';
 import { Template } from '../types/template';
@@ -370,80 +369,60 @@ export function QuotationManagement() {
     }
   };
 
-  // State for print options modal
-  const [showPrintOptions, setShowPrintOptions] = useState(false);
-  const [printOptionsQuotation, setPrintOptionsQuotation] = useState<Quotation | null>(null);
-
   // Show modal on download click
   const handleDownloadClick = (quotation: Quotation) => {
-    setPrintOptionsQuotation(quotation);
-    setShowPrintOptions(true);
+    handleDownloadPDF(quotation);
   };
 
-  // Called when user confirms print options
-  const handlePrintWithOptions = (selectedOptions: string[]) => {
-    if (printOptionsQuotation) {
-      handleDownloadPDF(printOptionsQuotation, selectedOptions);
-    }
-    setShowPrintOptions(false);
-    setPrintOptionsQuotation(null);
-  };
-
-  // PDF generation logic (now takes selectedOptions)
-  const handleDownloadPDF = async (quotation: Quotation, selectedOptions?: string[]) => {
+  // PDF generation logic (simplified)
+  const handleDownloadPDF = async (quotation: Quotation) => {
     try {
       setIsGeneratingPDF(true);
       
-      // TODO: Use selectedOptions to filter PDF content
-      console.log('Selected options for PDF:', selectedOptions);
-      
-      if (!defaultTemplate) {
-        showToast('No default template configured', 'warning', 'Please set a default template in Configuration settings.');
-        return;
-      }
-
-      // Use the improved template merger
-      const content = mergeQuotationWithTemplate(quotation, defaultTemplate);
-      
-      // Create a new window with the content for PDF generation
+      // Simple PDF generation using browser print
       const printWindow = window.open('', '_blank');
       if (!printWindow) {
         showToast('Popup blocked', 'error', 'Please allow popups to download PDF.');
         return;
       }
 
-      printWindow.document.write(`
+      const html = `
         <!DOCTYPE html>
         <html>
         <head>
-          <title>Quotation - ${quotation.customerContact?.name || 'Customer'}</title>
+          <title>Quotation ${quotation.id}</title>
           <style>
-            @media print {
-              body { margin: 0; padding: 20px; }
-              @page { size: A4; margin: 20mm; }
-            }
+            body { font-family: Arial, sans-serif; margin: 20px; }
+            .header { text-align: center; margin-bottom: 30px; }
+            .details { margin: 20px 0; }
+            @media print { body { margin: 0; } }
           </style>
         </head>
         <body>
-          ${content}
+          <div class="header">
+            <h1>ASP Cranes - Quotation #${quotation.id}</h1>
+          </div>
+          <div class="details">
+            <p><strong>Customer:</strong> ${quotation.customerContact?.name || 'N/A'}</p>
+            <p><strong>Date:</strong> ${new Date(quotation.createdAt).toLocaleDateString()}</p>
+            <p><strong>Amount:</strong> ₹${quotation.totalCost?.toLocaleString() || 0}</p>
+          </div>
         </body>
         </html>
-      `);
+      `;
 
-      // Wait for images to load
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      printWindow.document.write(html);
       printWindow.document.close();
       printWindow.print();
-      printWindow.close();
       
-      showToast('PDF generated successfully', 'success');
+      showToast('PDF generated', 'success', 'PDF print dialog opened successfully.');
     } catch (error) {
       console.error('Error generating PDF:', error);
-      showToast('Failed to generate PDF', 'error');
+      showToast('PDF Generation Failed', 'error', 'Unable to generate PDF. Please try again.');
     } finally {
       setIsGeneratingPDF(false);
     }
+  };
   };
 
   const handleSendToCustomer = async (quotation: Quotation) => {
@@ -829,24 +808,19 @@ ASP Cranes Team`;
           </div>
         </Modal>
 
-        {/* Template Preview Modal */}
+        {/* Quotation Preview Modal */}
         <Modal
           isOpen={isPreviewOpen}
           onClose={() => setIsPreviewOpen(false)}
-          title="Quotation Preview"
+          title="Quotation Preview & Print"
           size="full"
         >
-          {selectedQuotation && defaultTemplate && (
-            <div className="flex flex-col md:flex-row gap-8">
-              <div className="flex-1">
-                <TemplatePreview
-                  quotation={selectedQuotation}
-                  template={defaultTemplate}
-                  onDownloadPDF={() => handleDownloadPDF(selectedQuotation)}
-                  onSendEmail={() => handleSendToCustomer(selectedQuotation)}
-                />
-              </div>
-              {/* QuotationSummary is now inside TemplatePreview */}
+          {selectedQuotation && (
+            <div className="p-6">
+              <QuotationPreviewPrint
+                quotationId={selectedQuotation.id}
+                quotationData={selectedQuotation}
+              />
             </div>
           )}
         </Modal>
@@ -859,13 +833,6 @@ ASP Cranes Team`;
             onClose={() => setToast({ show: false, title: '' })}
           />
         )}
-
-        {/* Print Options Modal for table download */}
-        <PrintOptionsModal
-          isOpen={showPrintOptions}
-          onClose={() => setShowPrintOptions(false)}
-          onPrint={handlePrintWithOptions}
-        />
       </div>
     </div>
   );
