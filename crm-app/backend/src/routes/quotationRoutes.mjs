@@ -239,20 +239,23 @@ router.get('/:id', async (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const quotationData = req.body;
-    
     // Validate required fields
     const requiredFields = ['customerName', 'machineType', 'orderType', 'numberOfDays'];
     const missingFields = requiredFields.filter(field => !quotationData[field]);
-    
+    // Validate dealId/leadId presence
+    if (!quotationData.dealId && !quotationData.leadId) {
+      return res.status(400).json({
+        success: false,
+        message: 'At least one of dealId or leadId must be provided.'
+      });
+    }
     if (missingFields.length > 0) {
       return res.status(400).json({ 
         success: false,
         message: `Missing required fields: ${missingFields.join(', ')}` 
       });
     }
-    
     const client = await pool.connect();
-    
     try {
       // Check if customer exists, if not create one
       let customerId;
@@ -328,14 +331,14 @@ router.post('/', async (req, res) => {
           mob_demob, mob_relaxation, extra_charge, other_factors_charge,
           billing, include_gst, sunday_working, customer_contact,
           total_rent, total_cost, working_cost, mob_demob_cost,
-          food_accom_cost, gst_amount, created_by, status, notes
+          food_accom_cost, gst_amount, created_by, status, notes,
+          deal_id, lead_id
         ) VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
           $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26,
-          $27, $28, $29, $30, $31
+          $27, $28, $29, $30, $31, $32, $33
         )
       `;
-      
       const values = [
         id,
         customerId,
@@ -368,9 +371,10 @@ router.post('/', async (req, res) => {
         gstAmount,
         'system', // created_by (will be replaced with actual user)
         'draft',
-        quotationData.notes || ''
+        quotationData.notes || '',
+        quotationData.dealId || null,
+        quotationData.leadId || null
       ];
-      
       await client.query(insertQuery, values);
       
       return res.status(201).json({ 

@@ -412,7 +412,7 @@ export function QuotationManagement() {
           <div class="details">
             <p><strong>Customer:</strong> ${quotation.customerContact?.name || 'N/A'}</p>
             <p><strong>Date:</strong> ${new Date(quotation.createdAt).toLocaleDateString()}</p>
-            <p><strong>Amount:</strong> ₹${quotation.totalRent?.toLocaleString() || 0}</p>
+            <p><strong>Amount:</strong> {formatCurrency(quotation.totalRent)}</p>
           </div>
         </body>
         </html>
@@ -759,23 +759,23 @@ ASP Cranes Team`;
                     
                     return (
                       <div className="space-y-2">
-                        <h4 className="text-sm sm:text-base font-medium text-blue-900">Selected Deal Details</h4>
+                        <h4 className="text-sm sm:text-base font-bold text-blue-900">Selected Deal Details</h4>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 sm:gap-4 text-xs sm:text-sm">
                           <div>
                             <span className="text-blue-700 font-medium">Customer:</span>
-                            <p className="text-blue-800">{selectedDeal.customer.name}</p>
+                            <p className="text-blue-900">{selectedDeal.customer.name}</p>
                           </div>
                           <div>
                             <span className="text-blue-700 font-medium">Company:</span>
-                            <p className="text-blue-800">{selectedDeal.customer.company}</p>
+                            <p className="text-blue-900">{selectedDeal.customer.company}</p>
                           </div>
                           <div>
                             <span className="text-blue-700 font-medium">Value:</span>
-                            <p className="text-blue-800">{formatCurrency(selectedDeal.value)}</p>
+                            <p className="text-blue-900">{formatCurrency(selectedDeal.value)}</p>
                           </div>
                           <div>
                             <span className="text-blue-700 font-medium">Stage:</span>
-                            <p className="text-blue-800 capitalize">{selectedDeal.stage}</p>
+                            <p className="text-blue-900 capitalize">{selectedDeal.stage}</p>
                           </div>
                         </div>
                       </div>

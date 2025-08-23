@@ -713,10 +713,10 @@ export function QuotationCreation() {
             Back
           </Button>
           <div>
-            <h1 className="text-xl sm:text-2xl font-semibold text-gray-900">
+            <h1 className="text-xl sm:text-2xl font-bold text-blue-900">
               {quotationId ? 'Edit Quotation' : 'Create Quotation'}
             </h1>
-            <p className="text-sm sm:text-base text-gray-600">
+            <p className="text-sm sm:text-base text-blue-700">
               For {deal?.customer?.name || 'New Customer'} - {deal?.title || 'New Quotation'}
             </p>
           </div>
@@ -737,37 +737,37 @@ export function QuotationCreation() {
           <CardContent className="pt-0">
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 text-sm">
               <div>
-                <div className="text-gray-600 mb-1">Customer</div>
+                    <div className="text-blue-700 mb-1">Customer</div>
                 <div className="font-semibold text-gray-900">
                   {formData.customerName || deal?.customer?.name || 'N/A'}
                 </div>
               </div>
               <div>
-                <div className="text-gray-600 mb-1">Company</div>
+                    <div className="text-blue-700 mb-1">Company</div>
                 <div className="font-semibold text-gray-900">
                   {formData.customerContact?.company || deal?.customer?.company || 'N/A'}
                 </div>
               </div>
               <div>
-                <div className="text-gray-600 mb-1">Email</div>
+                    <div className="text-blue-700 mb-1">Email</div>
                 <div className="font-semibold text-gray-900 break-all">
                   {formData.customerContact?.email || deal?.customer?.email || 'N/A'}
                 </div>
               </div>
               <div>
-                <div className="text-gray-600 mb-1">Phone</div>
+                    <div className="text-blue-700 mb-1">Phone</div>
                 <div className="font-semibold text-gray-900">
                   {formData.customerContact?.phone || deal?.customer?.phone || 'N/A'}
                 </div>
               </div>
               <div>
-                <div className="text-gray-600 mb-1">Designation</div>
+                    <div className="text-blue-700 mb-1">Designation</div>
                 <div className="font-semibold text-gray-900">
                   {formData.customerContact?.designation || deal?.customer?.designation || 'N/A'}
                 </div>
               </div>
               <div>
-                <div className="text-gray-600 mb-1">Address</div>
+                    <div className="text-blue-700 mb-1">Address</div>
                 <div className="font-semibold text-gray-900">
                   {formData.customerContact?.address || deal?.customer?.address || 'N/A'}
                 </div>
