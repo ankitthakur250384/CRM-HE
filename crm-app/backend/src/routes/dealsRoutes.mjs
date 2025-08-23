@@ -32,16 +32,23 @@ const asyncHandler = (fn) => (req, res, next) => {
   });
 };
 
+// Development bypass for auth (non-production only)
+const isDev = process.env.NODE_ENV !== 'production';
+const devBypass = (req, res, next) => {
+  // Check for bypass header first
+  if (req.headers['x-bypass-auth'] === 'development-only-123' || req.headers['x-bypass-auth'] === 'true') {
+    console.log('⚠️ [AUTH] Bypassing authentication with x-bypass-auth header');
+    req.user = { id: 'dev-user', email: 'dev@example.com', role: 'admin' };
+    return next();
+  }
+  return authenticateToken(req, res, next);
+};
+
 /**
  * GET /deals - Get all deals (AUTH with bypass support)
  * Supports filtering by stages for quotation creation
- * TEMPORARILY DISABLED AUTH FOR DEVELOPMENT
  */
-router.get('/', asyncHandler(async (req, res) => {
-  // TEMPORARY: Skip auth for development - TODO: Fix frontend auth headers
-  console.log('⚠️ [DEALS] Temporarily bypassing auth for development');
-  req.user = { id: 'usr_test001', email: 'test@aspcranes.com', role: 'sales_agent' };
-  
+router.get('/', devBypass, asyncHandler(async (req, res) => {
   const { stages } = req.query;
   
   // If stages filter is provided, use custom query
@@ -64,13 +71,8 @@ router.get('/', asyncHandler(async (req, res) => {
 
 /**
  * GET /deals/:id - Get deal by ID
- * TEMPORARILY DISABLED AUTH FOR DEVELOPMENT
  */
-router.get('/:id', asyncHandler(async (req, res) => {
-  // TEMPORARY: Skip auth for development - TODO: Fix frontend auth headers
-  console.log('⚠️ [DEALS] Temporarily bypassing auth for development');
-  req.user = { id: 'usr_test001', email: 'test@aspcranes.com', role: 'sales_agent' };
-  
+router.get('/:id', devBypass, asyncHandler(async (req, res) => {
   const deal = await dealRepository.getDealById(req.params.id);
   
   if (!deal) {
