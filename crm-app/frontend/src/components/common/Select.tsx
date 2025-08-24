@@ -50,9 +50,10 @@ export function Select({
               !props.disabled ? 'bg-green-50 border-green-200 focus:bg-white' : ''}
             ${leftIcon ? 'pl-10' : ''}
             appearance-none
-            ${!value ? 'text-gray-500' : 'text-gray-900'}
+            ${!value ? 'text-gray-500' : 'text-gray-900 font-medium'}
             ${className}
           `}
+          style={{ color: value ? '#111827' : '#6B7280' }}
           {...props}
         >
           {options.map((option) => (

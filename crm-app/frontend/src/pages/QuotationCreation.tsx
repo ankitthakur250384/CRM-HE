@@ -637,6 +637,12 @@ export function QuotationCreation() {
         return;
       }
 
+      // Validate deal stage
+      if (!deal?.stage || !['qualification', 'proposal', 'negotiation'].includes(deal.stage)) {
+        showToast('Quotations can only be created for deals in Qualification, Proposal, or Negotiation stages', 'error');
+        return;
+      }
+
       const quotationData = {
         ...formData,
         dealId: dealId,
@@ -703,12 +709,25 @@ export function QuotationCreation() {
           input[type="number"] {
             -moz-appearance: textfield;
           }
-          .form-input, .form-select {
+          input, select {
             color: #1a202c !important;
+            background-color: #ffffff !important;
           }
-          .form-input::placeholder {
-            color: #a0aec0 !important;
+          input::placeholder {
+            color: #718096 !important;
             opacity: 1;
+          }
+          select {
+            font-weight: 500 !important;
+          }
+          .form-input, .form-select {
+            border-color: #e2e8f0;
+            font-weight: 500;
+          }
+          option {
+            color: #1a202c !important;
+            background-color: #ffffff !important;
+            font-weight: 500;
           }
         `}
       </style>
@@ -806,6 +825,7 @@ export function QuotationCreation() {
                     type="number"
                     label="Number of Days"
                     value={formData.numberOfDays === 0 ? '' : formData.numberOfDays}
+                    style={{ color: '#1a202c', WebkitTextFillColor: '#1a202c' }}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                       const days = e.target.value === '' ? 0 : Number(e.target.value);
                       const newOrderType = determineOrderType(days);

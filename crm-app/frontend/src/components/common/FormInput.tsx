@@ -37,7 +37,7 @@ export function FormInput({
         id={inputId}
         name={name || inputId}
         type={type}
-        className={`${fullWidth ? 'w-full' : ''} ${error ? 'border-error-500' : ''} text-sm sm:text-base ${className}`}
+        className={`${fullWidth ? 'w-full' : ''} ${error ? 'border-error-500' : ''} text-gray-900 text-sm sm:text-base ${className}`}
         {...props}
         // Remove spinners from number inputs
         onWheel={type === 'number' ? (e) => e.currentTarget.blur() : undefined}

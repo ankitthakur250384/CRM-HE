@@ -36,23 +36,22 @@ export function Input({ label, error, className = '', leftIcon, rightIcon, name,
             shadow-sm
             focus:border-primary-500 focus:ring-primary-500 
             disabled:bg-gray-100 disabled:text-gray-500
-            text-[#222] placeholder:text-[#888]
-            text-base
-            py-2 px-3 border border-[#CAC0B0] bg-white
-            ${error ? 'border-error-300 bg-error-50' : 'border-gray-300'}
+            text-gray-900 placeholder:text-gray-500
+            text-base font-medium
+            py-2 px-3 border border-gray-300 bg-white
+            ${error ? 'border-error-300 bg-error-50' : 'border-gray-300 focus:border-blue-500'}
             ${leftIcon ? 'pl-8 sm:pl-10' : ''}
             ${rightIcon ? 'pr-8 sm:pr-10' : ''}
             ${className}
           `}
           style={{ 
-            color: '#222 !important', 
-            WebkitTextFillColor: '#222 !important', 
-            background: '#fff !important', 
-            borderColor: '#CAC0B0', 
-            fontWeight: 600, 
-            letterSpacing: '0.08em',
-            zIndex: 1,
-            position: 'relative'
+            color: '#1a202c', 
+            WebkitTextFillColor: '#1a202c', 
+            background: '#ffffff', 
+            borderColor: '#e2e8f0', 
+            fontWeight: 500,
+            position: 'relative',
+            opacity: 1
           }}
           placeholder={props.placeholder ? `${props.placeholder}${props.required ? ' *' : ''}` : ''}
           {...inputProps}
