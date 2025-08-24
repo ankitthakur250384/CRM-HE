@@ -879,12 +879,22 @@ export function QuotationCreation() {
                   <Select
                     label="Machine Type"
                     value={formData.machineType}
-                    onChange={(value: string) => setFormData(prev => ({ 
-                      ...prev, 
-                      machineType: value,
-                      selectedEquipment: { id: '', equipmentId: '', name: '', baseRates: { micro: 0, small: 0, monthly: 0, yearly: 0 } },
-                      selectedMachines: []
-                    }))}
+                    onChange={(value: string) => {
+                      setFormData(prev => ({ 
+                        ...prev, 
+                        machineType: value,
+                        selectedEquipment: { id: '', equipmentId: '', name: '', baseRates: { micro: 0, small: 0, monthly: 0, yearly: 0 } },
+                        selectedMachines: []
+                      }));
+                      if (value) {
+                        getEquipmentByCategory(value as CraneCategory).then(equipment => {
+                          setAvailableEquipment(Array.isArray(equipment) ? equipment : []);
+                        }).catch(error => {
+                          console.error('Error fetching equipment:', error);
+                          setAvailableEquipment([]);
+                        });
+                      }
+                    }}
                     options={[
                       { value: '', label: 'Select machine type...' },
                       { value: 'mobile_crane', label: 'Mobile Crane (₹4,000/hr)' },
@@ -896,14 +906,14 @@ export function QuotationCreation() {
                     className="text-gray-900"
                   />
                   
-                  {formData.machineType && (
+                  {formData.machineType && availableEquipment.length > 0 && (
                     <Select
                       label="Equipment"
                       value={formData.selectedEquipment.id}
                       onChange={(value: string) => {
                         const selected = availableEquipment.find(eq => eq.id === value);
                         if (selected) {
-                          const baseRate = selected.baseRates[formData.orderType];
+                          const baseRate = selected.baseRates[formData.orderType] || 0;
                           setSelectedEquipmentBaseRate(baseRate);
                           setFormData(prev => ({
                             ...prev,
@@ -913,7 +923,6 @@ export function QuotationCreation() {
                               name: selected.name,
                               baseRates: selected.baseRates
                             },
-                            baseRate,
                             runningCostPerKm: selected.runningCostPerKm || 0
                           }));
                         }
@@ -926,8 +935,13 @@ export function QuotationCreation() {
                         }))
                       ]}
                       required={formData.selectedMachines.length === 0}
-                      className="text-gray-900"
+                      className="text-gray-900 mb-0"
                     />
+                  )}
+                  {formData.machineType && availableEquipment.length === 0 && (
+                    <div className="text-gray-500 text-sm italic">
+                      No equipment available for this type
+                    </div>
                   )}
                 </CardContent>
               </Card>

@@ -46,14 +46,16 @@ export function Select({
             disabled:bg-gray-100 disabled:text-gray-500
             text-sm sm:text-base py-2 px-3 pr-10
             ${error ? 'border-error-300 bg-error-50' : 'border-gray-300'}
-            ${props.required ? 'bg-blue-50 border-blue-200 focus:bg-white' : 
-              !props.disabled ? 'bg-green-50 border-green-200 focus:bg-white' : ''}
+            border-gray-300 bg-white
             ${leftIcon ? 'pl-10' : ''}
             appearance-none
-            ${!value ? 'text-gray-500' : 'text-gray-900 font-medium'}
+            text-gray-900 font-medium
             ${className}
           `}
-          style={{ color: value ? '#111827' : '#6B7280' }}
+          style={{
+            backgroundColor: '#ffffff',
+            color: '#1a202c'
+          }}
           {...props}
         >
           {options.map((option) => (
