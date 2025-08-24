@@ -32,13 +32,13 @@ import { useQuotationConfig, useConfigChangeListener } from '../hooks/useQuotati
 
 
 
-const MACHINE_TYPES = [
-  { value: '', label: 'Select machine type...' },
-  { value: 'mobile_crane', label: 'Mobile Crane' },
-  { value: 'tower_crane', label: 'Tower Crane' },
-  { value: 'crawler_crane', label: 'Crawler Crane' },
-  { value: 'pick_and_carry_crane', label: 'Pick & Carry Crane' },
-] satisfies { value: string; label: string }[];
+// Equipment types with rates
+const EQUIPMENT_RATES = {
+  mobile_crane: 4000,
+  tower_crane: 3500,
+  crawler_crane: 5000,
+  pick_and_carry_crane: 3000
+};
 
 const SHIFT_OPTIONS = [
   { value: 'single', label: 'Single Shift' },
@@ -631,9 +631,15 @@ export function QuotationCreation() {
     try {
       setIsSaving(true);
       
+      // Ensure we have either a deal or lead ID
+      if (!dealId) {
+        showToast('A deal must be selected to create a quotation', 'error');
+        return;
+      }
+
       const quotationData = {
         ...formData,
-        dealId: dealId || 'new',
+        dealId: dealId,
         customerName: formData.customerName || deal?.customer?.name || '',
         customerContact: {
           name: formData.customerContact?.name || deal?.customer?.name || '',
@@ -696,6 +702,13 @@ export function QuotationCreation() {
           }
           input[type="number"] {
             -moz-appearance: textfield;
+          }
+          .form-input, .form-select {
+            color: #1a202c !important;
+          }
+          .form-input::placeholder {
+            color: #a0aec0 !important;
+            opacity: 1;
           }
         `}
       </style>
@@ -792,7 +805,7 @@ export function QuotationCreation() {
                   <FormInput
                     type="number"
                     label="Number of Days"
-                    value={formData.numberOfDays || ''}
+                    value={formData.numberOfDays === 0 ? '' : formData.numberOfDays}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                       const days = e.target.value === '' ? 0 : Number(e.target.value);
                       const newOrderType = determineOrderType(days);
@@ -818,6 +831,7 @@ export function QuotationCreation() {
                     required
                     min="1"
                     placeholder="Enter days"
+                    className="text-gray-900"
                   />
                   <FormInput
                     type="number"
@@ -851,8 +865,15 @@ export function QuotationCreation() {
                       selectedEquipment: { id: '', equipmentId: '', name: '', baseRates: { micro: 0, small: 0, monthly: 0, yearly: 0 } },
                       selectedMachines: []
                     }))}
-                    options={MACHINE_TYPES}
+                    options={[
+                      { value: '', label: 'Select machine type...' },
+                      { value: 'mobile_crane', label: 'Mobile Crane (₹4,000/hr)' },
+                      { value: 'tower_crane', label: 'Tower Crane (₹3,500/hr)' },
+                      { value: 'crawler_crane', label: 'Crawler Crane (₹5,000/hr)' },
+                      { value: 'pick_and_carry_crane', label: 'Pick & Carry Crane (₹3,000/hr)' },
+                    ]}
                     required
+                    className="text-gray-900"
                   />
                   
                   {formData.machineType && (
@@ -879,9 +900,13 @@ export function QuotationCreation() {
                       }}
                       options={[
                         { value: '', label: 'Select equipment...' },
-                        ...availableEquipment.map(eq => ({ value: eq.id, label: `${eq.name} (${eq.equipmentId})` }))
+                        ...availableEquipment.map(eq => ({ 
+                          value: eq.id, 
+                          label: `${eq.name} (${formatCurrency(eq.baseRates[formData.orderType] || 0)}/hr)` 
+                        }))
                       ]}
                       required={formData.selectedMachines.length === 0}
+                      className="text-gray-900"
                     />
                   )}
                 </CardContent>
