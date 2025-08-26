@@ -88,7 +88,7 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
   const [loadingDeal, setLoadingDeal] = useState(!!dealId);
   const [dealData, setDealData] = useState<any>(null);
   const [isEditMode] = useState(!!quotationData);
-  const [equipmentTypes, setEquipmentTypes] = useState<{value: string, label: string}[]>([]);
+  const [equipmentTypes, setEquipmentTypes] = useState<{value: string, label: string, originalCategory?: string}[]>([]);
   const [availableEquipment, setAvailableEquipment] = useState<Equipment[]>([]);
   const [equipmentByType, setEquipmentByType] = useState<{[key: string]: Equipment[]}>({});
   const [calculations, setCalculations] = useState({
@@ -110,10 +110,10 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
     const fetchEquipmentData = async () => {
       // Set fallback equipment types immediately for better UX
       const fallbackTypes = [
-        { value: 'mobile_crane', label: 'Mobile Crane' },
-        { value: 'tower_crane', label: 'Tower Crane' },
-        { value: 'crawler_crane', label: 'Crawler Crane' },
-        { value: 'pick_and_carry_crane', label: 'Pick And Carry Crane' }
+        { value: 'mobile_crane', label: 'Mobile Crane', originalCategory: 'Mobile Crane' },
+        { value: 'tower_crane', label: 'Tower Crane', originalCategory: 'Tower Crane' },
+        { value: 'crawler_crane', label: 'Crawler Crane', originalCategory: 'Crawler Crane' },
+        { value: 'pick_and_carry_crane', label: 'Pick And Carry Crane', originalCategory: 'Pick And Carry Crane' }
       ];
       setEquipmentTypes(fallbackTypes);
       
@@ -124,18 +124,30 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
         setAvailableEquipment(equipment);
         
         if (equipment && equipment.length > 0) {
-          // Extract unique equipment types
-          const types = [...new Set(equipment.map(e => e.category))].map(category => ({
-            value: category,
-            label: category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-          }));
+          // Extract unique equipment types - handle both formats (spaces and underscores)
+          const categories = [...new Set(equipment.map(e => e.category))];
+          const types = categories.map(category => {
+            // Normalize category to underscore format for value
+            const normalizedValue = category.toLowerCase().replace(/\s+/g, '_');
+            // Keep original format for label, or format it nicely
+            const formattedLabel = category.includes('_') 
+              ? category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+              : category;
+            
+            return {
+              value: normalizedValue,
+              label: formattedLabel,
+              originalCategory: category // Keep original for lookup
+            };
+          });
           console.log('📋 Equipment types extracted:', types);
           setEquipmentTypes(types);
           
-          // Group equipment by type
+          // Group equipment by normalized type (underscore format)
           const grouped = equipment.reduce((acc, eq) => {
-            if (!acc[eq.category]) acc[eq.category] = [];
-            acc[eq.category].push(eq);
+            const normalizedCategory = eq.category.toLowerCase().replace(/\s+/g, '_');
+            if (!acc[normalizedCategory]) acc[normalizedCategory] = [];
+            acc[normalizedCategory].push(eq);
             return acc;
           }, {} as {[key: string]: Equipment[]});
           console.log('🏗️ Equipment grouped by type:', grouped);
