@@ -69,21 +69,12 @@ const initialFormData: QuotationFormData = {
 };
 
 
-  const orderTypeOptions = [
-    { value: 'micro', label: 'Micro (1-10 days)', multiplier: 1, minDays: 1, maxDays: 10 },
-    { value: 'small', label: 'Small (11-25 days)', multiplier: 1, minDays: 11, maxDays: 25 },
-    { value: 'monthly', label: 'Monthly (26-365 days)', multiplier: 1, minDays: 26, maxDays: 365 },
-    { value: 'yearly', label: 'Yearly (366+ days)', multiplier: 1, minDays: 366, maxDays: 3650 },
-  ];
-
-  // Function to determine order type based on number of days
-  const getOrderTypeByDays = useCallback((days: number): string => {
-    if (days >= 1 && days <= 10) return 'micro';
-    if (days >= 11 && days <= 25) return 'small';
-    if (days >= 26 && days <= 365) return 'monthly';
-    if (days >= 366) return 'yearly';
-    return 'micro'; // Default fallback
-  }, []);
+const orderTypeOptions = [
+  { value: 'micro', label: 'Micro (1-10 days)', multiplier: 1, minDays: 1, maxDays: 10 },
+  { value: 'small', label: 'Small (11-25 days)', multiplier: 1, minDays: 11, maxDays: 25 },
+  { value: 'monthly', label: 'Monthly (26-365 days)', multiplier: 1, minDays: 26, maxDays: 365 },
+  { value: 'yearly', label: 'Yearly (366+ days)', multiplier: 1, minDays: 366, maxDays: 3650 },
+];
 
 const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({ 
   onClose, 
@@ -112,6 +103,15 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
     type: 'success' | 'error' | 'info';
     message: string;
   }>({ show: false, type: 'info', message: '' });
+
+  // Function to determine order type based on number of days
+  const getOrderTypeByDays = useCallback((days: number): string => {
+    if (days >= 1 && days <= 10) return 'micro';
+    if (days >= 11 && days <= 25) return 'small';
+    if (days >= 26 && days <= 365) return 'monthly';
+    if (days >= 366) return 'yearly';
+    return 'micro'; // Default fallback
+  }, []);
 
   // Fetch equipment data on mount
   useEffect(() => {
