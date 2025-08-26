@@ -10,6 +10,8 @@ import {
   AlertCircle,
   Loader2
 } from 'lucide-react';
+import { getEquipment } from '../../services/equipment';
+import { Equipment, CraneCategory } from '../../types/equipment';
 
 interface NewQuotationBuilderProps {
   onClose: () => void;
@@ -66,19 +68,12 @@ const initialFormData: QuotationFormData = {
   notes: ''
 };
 
-const equipmentOptions = [
-  { value: 'mobile_crane', label: 'Mobile Crane', baseRate: 4000 },
-  { value: 'tower_crane', label: 'Tower Crane', baseRate: 5500 },
-  { value: 'crawler_crane', label: 'Crawler Crane', baseRate: 6000 },
-  { value: 'all_terrain_crane', label: 'All Terrain Crane', baseRate: 5000 },
-  { value: 'floating_crane', label: 'Floating Crane', baseRate: 7000 },
-];
 
 const orderTypeOptions = [
-  { value: 'rental', label: 'Rental', multiplier: 1 },
-  { value: 'long_term_rental', label: 'Long-term Rental', multiplier: 0.9 },
-  { value: 'project_rental', label: 'Project Rental', multiplier: 0.95 },
-  { value: 'specialized_rental', label: 'Specialized Rental', multiplier: 1.2 },
+  { value: 'micro', label: 'Micro', multiplier: 1 },
+  { value: 'small', label: 'Small', multiplier: 1 },
+  { value: 'monthly', label: 'Monthly', multiplier: 1 },
+  { value: 'yearly', label: 'Yearly', multiplier: 1 },
 ];
 
 const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({ 
@@ -93,6 +88,9 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
   const [loadingDeal, setLoadingDeal] = useState(!!dealId);
   const [dealData, setDealData] = useState<any>(null);
   const [isEditMode] = useState(!!quotationData);
+  const [equipmentTypes, setEquipmentTypes] = useState<{value: string, label: string}[]>([]);
+  const [availableEquipment, setAvailableEquipment] = useState<Equipment[]>([]);
+  const [equipmentByType, setEquipmentByType] = useState<{[key: string]: Equipment[]}>({});
   const [calculations, setCalculations] = useState({
     baseRate: 0,
     totalRent: 0,
@@ -106,6 +104,42 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
     type: 'success' | 'error' | 'info';
     message: string;
   }>({ show: false, type: 'info', message: '' });
+
+  // Fetch equipment data on mount
+  useEffect(() => {
+    const fetchEquipmentData = async () => {
+      try {
+        const equipment = await getEquipment();
+        setAvailableEquipment(equipment);
+        
+        // Extract unique equipment types
+        const types = [...new Set(equipment.map(e => e.category))].map(category => ({
+          value: category,
+          label: category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+        }));
+        setEquipmentTypes(types);
+        
+        // Group equipment by type
+        const grouped = equipment.reduce((acc, eq) => {
+          if (!acc[eq.category]) acc[eq.category] = [];
+          acc[eq.category].push(eq);
+          return acc;
+        }, {} as {[key: string]: Equipment[]});
+        setEquipmentByType(grouped);
+      } catch (error) {
+        console.error('Failed to fetch equipment:', error);
+        // Use fallback equipment types if API fails
+        setEquipmentTypes([
+          { value: 'mobile_crane', label: 'Mobile Crane' },
+          { value: 'tower_crane', label: 'Tower Crane' },
+          { value: 'crawler_crane', label: 'Crawler Crane' },
+          { value: 'pick_and_carry_crane', label: 'Pick And Carry Crane' }
+        ]);
+      }
+    };
+    
+    fetchEquipmentData();
+  }, []);
 
   // Load deal data or quotation data on mount
   useEffect(() => {
@@ -168,6 +202,26 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
   useEffect(() => {
     calculateCosts();
   }, [formData]);
+
+  // Recalculate machine base rates when order type changes
+  useEffect(() => {
+    if (formData.selectedMachines.length > 0) {
+      const orderType = formData.orderType as 'micro' | 'small' | 'monthly' | 'yearly';
+      const updatedMachines = formData.selectedMachines.map(machine => {
+        const equipment = availableEquipment.find(eq => eq.id === machine.id);
+        if (equipment) {
+          const newBaseRate = equipment.baseRates[orderType] || equipment.baseRates.micro;
+          return { ...machine, baseRate: newBaseRate };
+        }
+        return machine;
+      });
+      
+      setFormData(prev => ({
+        ...prev,
+        selectedMachines: updatedMachines
+      }));
+    }
+  }, [formData.orderType, availableEquipment]);
 
   const calculateCosts = () => {
     const orderType = orderTypeOptions.find(ot => ot.value === formData.orderType);
@@ -412,9 +466,9 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                   required
                 >
                   <option value="">Select equipment type...</option>
-                  {equipmentOptions.map(option => (
+                  {equipmentTypes.map(option => (
                     <option key={option.value} value={option.value}>
-                      {option.label} (₹{option.baseRate.toLocaleString()}/hr)
+                      {option.label}
                     </option>
                   ))}
                 </select>
@@ -430,9 +484,9 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                       value=""
                       onChange={(e) => {
                         if (e.target.value) {
-                          const option = equipmentOptions.find(opt => opt.value === e.target.value);
-                          if (option) {
-                            const existingIndex = formData.selectedMachines.findIndex(m => m.id === option.value);
+                          const selectedEquipment = availableEquipment.find(eq => eq.id === e.target.value);
+                          if (selectedEquipment) {
+                            const existingIndex = formData.selectedMachines.findIndex(m => m.id === selectedEquipment.id);
                             if (existingIndex >= 0) {
                               // Increase quantity
                               setFormData(prev => ({
@@ -442,12 +496,15 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                                 )
                               }));
                             } else {
-                              // Add new machine
+                              // Add new machine - use baseRates based on orderType
+                              const orderType = formData.orderType as 'micro' | 'small' | 'monthly' | 'yearly';
+                              const baseRate = selectedEquipment.baseRates[orderType] || selectedEquipment.baseRates.micro;
+                              
                               const newMachine: SelectedMachine = {
-                                id: option.value,
-                                type: option.value,
-                                label: option.label,
-                                baseRate: option.baseRate,
+                                id: selectedEquipment.id,
+                                type: selectedEquipment.category,
+                                label: selectedEquipment.name,
+                                baseRate: baseRate,
                                 quantity: 1
                               };
                               setFormData(prev => ({
@@ -461,13 +518,15 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                       className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
                       <option value="">Select equipment to add...</option>
-                      {equipmentOptions
-                        .filter(opt => opt.value === formData.machineType)
-                        .map(option => (
-                          <option key={option.value} value={option.value}>
-                            {option.label} - ₹{option.baseRate.toLocaleString()}/hr
+                      {equipmentByType[formData.machineType]?.map(equipment => {
+                        const orderType = formData.orderType as 'micro' | 'small' | 'monthly' | 'yearly';
+                        const baseRate = equipment.baseRates[orderType] || equipment.baseRates.micro;
+                        return (
+                          <option key={equipment.id} value={equipment.id}>
+                            {equipment.name} - ₹{baseRate.toLocaleString()}/hr
                           </option>
-                        ))}
+                        );
+                      })}
                     </select>
                   </div>
                   
@@ -778,7 +837,7 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                   <span className="font-medium">Customer:</span> {formData.customerName}
                 </div>
                 <div>
-                  <span className="font-medium">Equipment Type:</span> {equipmentOptions.find(eq => eq.value === formData.machineType)?.label}
+                  <span className="font-medium">Equipment Type:</span> {equipmentTypes.find(eq => eq.value === formData.machineType)?.label}
                 </div>
                 <div className="md:col-span-2">
                   <span className="font-medium">Selected Equipment:</span>

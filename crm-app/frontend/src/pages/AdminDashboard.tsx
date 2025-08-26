@@ -111,8 +111,8 @@ export function AdminDashboard() {
   // Memoized calculations for performance
   const totalRevenue = useMemo(() => {
     if (Array.isArray(deals) && deals.length > 0) {
-      const wonDeals = deals.filter(deal => deal && deal.stage === 'won');
-      return wonDeals.reduce((total, deal) => total + (deal.value || 0), 0);
+      // Include all deal stages: qualification, proposal, negotiation, won, and lost
+      return deals.reduce((total, deal) => total + (deal.value || 0), 0);
     }
     return 0;
   }, [deals]);

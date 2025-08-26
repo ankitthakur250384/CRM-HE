@@ -68,30 +68,21 @@ export async function getEquipmentByCategory(category: string): Promise<Equipmen
   if (data && Array.isArray(data.data)) return data.data;
   return data;
 }
-// Stub/mock for frontend: getEquipment
+// Get all equipment from backend API
 export async function getEquipment(): Promise<Equipment[]> {
-  // TODO: Replace with real API call
-  return [
-    {
-      id: '1',
-      equipmentId: 'EQ0001',
-      name: 'Demo Crane',
-      category: 'mobile_crane',
-      manufacturingDate: '2022-01',
-      registrationDate: '2022-02',
-      maxLiftingCapacity: 50,
-      unladenWeight: 20,
-      baseRates: { micro: 100, small: 200, monthly: 3000, yearly: 35000 },
-      runningCostPerKm: 10,
-      description: 'Sample equipment',
-      status: 'available',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      runningCost: 0,
-      _source: 'client',
-      _mockFlag: true,
-    },
-  ];
+  const apiUrl = import.meta.env.VITE_API_URL || '/api';
+  const response = await fetch(`${apiUrl}/equipment`, {
+    method: 'GET',
+    headers: getHeaders(false),
+    credentials: 'include',
+  });
+  
+  if (!response.ok) {
+    throw new Error('Failed to fetch equipment');
+  }
+  
+  const data = await response.json();
+  return Array.isArray(data) ? data : (data.equipment || []);
 }
 export type CraneCategory = 'mobile_crane' | 'tower_crane' | 'crawler_crane' | 'pick_and_carry_crane';
 
