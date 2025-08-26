@@ -485,7 +485,7 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                       onChange={(e) => {
                         if (e.target.value) {
                           const selectedEquipment = availableEquipment.find(eq => eq.id === e.target.value);
-                          if (selectedEquipment) {
+                          if (selectedEquipment && selectedEquipment.baseRates) {
                             const existingIndex = formData.selectedMachines.findIndex(m => m.id === selectedEquipment.id);
                             if (existingIndex >= 0) {
                               // Increase quantity
@@ -498,7 +498,7 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                             } else {
                               // Add new machine - use baseRates based on orderType
                               const orderType = formData.orderType as 'micro' | 'small' | 'monthly' | 'yearly';
-                              const baseRate = selectedEquipment.baseRates[orderType] || selectedEquipment.baseRates.micro;
+                              const baseRate = selectedEquipment.baseRates[orderType] || selectedEquipment.baseRates.micro || 0;
                               
                               const newMachine: SelectedMachine = {
                                 id: selectedEquipment.id,
@@ -512,21 +512,29 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                                 selectedMachines: [...prev.selectedMachines, newMachine]
                               }));
                             }
+                          } else {
+                            console.error('Equipment not found or missing base rates:', e.target.value);
                           }
                         }
                       }}
                       className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                     >
                       <option value="">Select equipment to add...</option>
-                      {equipmentByType[formData.machineType]?.map(equipment => {
-                        const orderType = formData.orderType as 'micro' | 'small' | 'monthly' | 'yearly';
-                        const baseRate = equipment.baseRates[orderType] || equipment.baseRates.micro;
-                        return (
-                          <option key={equipment.id} value={equipment.id}>
-                            {equipment.name} - ₹{baseRate.toLocaleString()}/hr
-                          </option>
-                        );
-                      })}
+                      {formData.machineType && equipmentByType[formData.machineType]?.length > 0 ? (
+                        equipmentByType[formData.machineType].map(equipment => {
+                          const orderType = formData.orderType as 'micro' | 'small' | 'monthly' | 'yearly';
+                          const baseRate = equipment.baseRates?.[orderType] || equipment.baseRates?.micro || 0;
+                          return (
+                            <option key={equipment.id} value={equipment.id}>
+                              {equipment.name} - ₹{baseRate.toLocaleString()}/hr
+                            </option>
+                          );
+                        })
+                      ) : formData.machineType ? (
+                        <option value="" disabled>No equipment available for this type</option>
+                      ) : (
+                        <option value="" disabled>Please select equipment type first</option>
+                      )}
                     </select>
                   </div>
                   
