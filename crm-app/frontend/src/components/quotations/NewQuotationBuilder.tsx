@@ -55,8 +55,8 @@ const initialFormData: QuotationFormData = {
   customerAddress: '',
   machineType: 'mobile_crane',
   selectedMachines: [],
-  orderType: 'rental',
-  numberOfDays: 1,
+  orderType: 'micro',
+  numberOfDays: 0,
   workingHours: 8,
   siteDistance: 0,
   usage: 'Construction',
@@ -292,7 +292,7 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
         }));
       }
     }
-  }, [formData.numberOfDays, getOrderTypeByDays]); // Only depend on numberOfDays and the function
+  }, [formData.numberOfDays, getOrderTypeByDays]);
 
   const calculateCosts = () => {
     const orderType = orderTypeOptions.find(ot => ot.value === formData.orderType);
@@ -588,6 +588,19 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                                   baseRate = selectedEquipment.baseRateMicro || selectedEquipment.baseRates?.micro || 0;
                               }
                               
+                              console.log('📊 Adding equipment with rate:', {
+                                equipmentName: selectedEquipment.name,
+                                orderType,
+                                baseRate,
+                                rawRates: {
+                                  micro: selectedEquipment.baseRateMicro,
+                                  small: selectedEquipment.baseRateSmall,
+                                  monthly: selectedEquipment.baseRateMonthly,
+                                  yearly: selectedEquipment.baseRateYearly
+                                },
+                                baseRatesObject: selectedEquipment.baseRates
+                              });
+                              
                               const newMachine: SelectedMachine = {
                                 id: selectedEquipment.id,
                                 type: selectedEquipment.category,
@@ -629,6 +642,13 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                             default:
                               baseRate = equipment.baseRateMicro || equipment.baseRates?.micro || 0;
                           }
+                          
+                          console.log('🏗️ Equipment option:', {
+                            name: equipment.name,
+                            orderType,
+                            displayRate: baseRate,
+                            rawData: equipment
+                          });
                           
                           return (
                             <option key={equipment.id} value={equipment.id}>
@@ -919,10 +939,21 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                 <input
                   type="number"
                   min="1"
-                  value={formData.numberOfDays}
-                  onChange={(e) => handleInputChange('numberOfDays', parseInt(e.target.value) || 1)}
+                  value={formData.numberOfDays || ''}
+                  onChange={(e) => {
+                    const value = e.target.value;
+                    if (value === '') {
+                      handleInputChange('numberOfDays', 0);
+                    } else {
+                      const days = parseInt(value);
+                      if (!isNaN(days) && days >= 0) {
+                        handleInputChange('numberOfDays', days);
+                      }
+                    }
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   required
+                  placeholder="Enter number of days"
                 />
               </div>
               
