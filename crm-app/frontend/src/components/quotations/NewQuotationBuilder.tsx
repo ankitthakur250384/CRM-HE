@@ -108,33 +108,44 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
   // Fetch equipment data on mount
   useEffect(() => {
     const fetchEquipmentData = async () => {
+      // Set fallback equipment types immediately for better UX
+      const fallbackTypes = [
+        { value: 'mobile_crane', label: 'Mobile Crane' },
+        { value: 'tower_crane', label: 'Tower Crane' },
+        { value: 'crawler_crane', label: 'Crawler Crane' },
+        { value: 'pick_and_carry_crane', label: 'Pick And Carry Crane' }
+      ];
+      setEquipmentTypes(fallbackTypes);
+      
       try {
+        console.log('🔄 Fetching equipment data...');
         const equipment = await getEquipment();
+        console.log('✅ Equipment fetched:', equipment);
         setAvailableEquipment(equipment);
         
-        // Extract unique equipment types
-        const types = [...new Set(equipment.map(e => e.category))].map(category => ({
-          value: category,
-          label: category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-        }));
-        setEquipmentTypes(types);
-        
-        // Group equipment by type
-        const grouped = equipment.reduce((acc, eq) => {
-          if (!acc[eq.category]) acc[eq.category] = [];
-          acc[eq.category].push(eq);
-          return acc;
-        }, {} as {[key: string]: Equipment[]});
-        setEquipmentByType(grouped);
+        if (equipment && equipment.length > 0) {
+          // Extract unique equipment types
+          const types = [...new Set(equipment.map(e => e.category))].map(category => ({
+            value: category,
+            label: category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+          }));
+          console.log('📋 Equipment types extracted:', types);
+          setEquipmentTypes(types);
+          
+          // Group equipment by type
+          const grouped = equipment.reduce((acc, eq) => {
+            if (!acc[eq.category]) acc[eq.category] = [];
+            acc[eq.category].push(eq);
+            return acc;
+          }, {} as {[key: string]: Equipment[]});
+          console.log('🏗️ Equipment grouped by type:', grouped);
+          setEquipmentByType(grouped);
+        } else {
+          console.warn('⚠️ No equipment data received, using fallback types');
+        }
       } catch (error) {
-        console.error('Failed to fetch equipment:', error);
-        // Use fallback equipment types if API fails
-        setEquipmentTypes([
-          { value: 'mobile_crane', label: 'Mobile Crane' },
-          { value: 'tower_crane', label: 'Tower Crane' },
-          { value: 'crawler_crane', label: 'Crawler Crane' },
-          { value: 'pick_and_carry_crane', label: 'Pick And Carry Crane' }
-        ]);
+        console.error('❌ Failed to fetch equipment:', error);
+        // Fallback types already set above
       }
     };
     
