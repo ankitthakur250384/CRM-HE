@@ -18,7 +18,10 @@ export interface Equipment {
   registrationDate: string; // YYYY-MM format
   maxLiftingCapacity: number; // in tons
   unladenWeight: number; // in tons
-  baseRates: BaseRates; // rates per hour for different order types
+  baseRateMicro: number;
+  baseRateSmall: number;
+  baseRateMonthly: number;
+  baseRateYearly: number;
   runningCostPerKm: number;
   description?: string;
   status: 'available' | 'in_use' | 'maintenance';
@@ -29,4 +32,7 @@ export interface Equipment {
   // Development fields for tracking data source
   _source?: 'api' | 'schema' | 'client';
   _mockFlag?: boolean;
+  
+  // Computed property for backward compatibility
+  baseRates?: BaseRates;
 }

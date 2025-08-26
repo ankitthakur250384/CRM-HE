@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   ArrowLeft, 
   Save, 
@@ -11,7 +11,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { getEquipment } from '../../services/equipment';
-import { Equipment, CraneCategory } from '../../types/equipment';
+import { Equipment } from '../../types/equipment';
 
 interface NewQuotationBuilderProps {
   onClose: () => void;
@@ -69,12 +69,21 @@ const initialFormData: QuotationFormData = {
 };
 
 
-const orderTypeOptions = [
-  { value: 'micro', label: 'Micro', multiplier: 1 },
-  { value: 'small', label: 'Small', multiplier: 1 },
-  { value: 'monthly', label: 'Monthly', multiplier: 1 },
-  { value: 'yearly', label: 'Yearly', multiplier: 1 },
-];
+  const orderTypeOptions = [
+    { value: 'micro', label: 'Micro (1-10 days)', multiplier: 1, minDays: 1, maxDays: 10 },
+    { value: 'small', label: 'Small (11-25 days)', multiplier: 1, minDays: 11, maxDays: 25 },
+    { value: 'monthly', label: 'Monthly (26-365 days)', multiplier: 1, minDays: 26, maxDays: 365 },
+    { value: 'yearly', label: 'Yearly (366+ days)', multiplier: 1, minDays: 366, maxDays: 3650 },
+  ];
+
+  // Function to determine order type based on number of days
+  const getOrderTypeByDays = useCallback((days: number): string => {
+    if (days >= 1 && days <= 10) return 'micro';
+    if (days >= 11 && days <= 25) return 'small';
+    if (days >= 26 && days <= 365) return 'monthly';
+    if (days >= 366) return 'yearly';
+    return 'micro'; // Default fallback
+  }, []);
 
 const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({ 
   onClose, 
@@ -85,7 +94,6 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
   const [formData, setFormData] = useState<QuotationFormData>(initialFormData);
   const [currentStep, setCurrentStep] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
-  const [loadingDeal, setLoadingDeal] = useState(!!dealId);
   const [dealData, setDealData] = useState<any>(null);
   const [isEditMode] = useState(!!quotationData);
   const [equipmentTypes, setEquipmentTypes] = useState<{value: string, label: string, originalCategory?: string}[]>([]);
@@ -170,7 +178,6 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
       try {
         if (dealId) {
           // Load deal data for creating quotation from deal
-          setLoadingDeal(true);
           const response = await fetch(`/api/deals/${dealId}`);
           if (response.ok) {
             const result = await response.json();
@@ -189,7 +196,6 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
               }));
             }
           }
-          setLoadingDeal(false);
         } else if (quotationData) {
           // Load existing quotation data for editing
           setFormData({
@@ -233,8 +239,37 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
       const updatedMachines = formData.selectedMachines.map(machine => {
         const equipment = availableEquipment.find(eq => eq.id === machine.id);
         if (equipment) {
-          const newBaseRate = equipment.baseRates[orderType] || equipment.baseRates.micro;
-          return { ...machine, baseRate: newBaseRate };
+          let newDefaultRate = 0;
+          
+          switch (orderType) {
+            case 'micro':
+              newDefaultRate = equipment.baseRateMicro || equipment.baseRates?.micro || 0;
+              break;
+            case 'small':
+              newDefaultRate = equipment.baseRateSmall || equipment.baseRates?.small || 0;
+              break;
+            case 'monthly':
+              newDefaultRate = equipment.baseRateMonthly || equipment.baseRates?.monthly || 0;
+              break;
+            case 'yearly':
+              newDefaultRate = equipment.baseRateYearly || equipment.baseRates?.yearly || 0;
+              break;
+            default:
+              newDefaultRate = equipment.baseRateMicro || equipment.baseRates?.micro || 0;
+          }
+          
+          // Check if the current rate is a default rate (matches any of the base rates for the equipment)
+          const currentRateIsDefault = 
+            machine.baseRate === (equipment.baseRateMicro || equipment.baseRates?.micro || 0) ||
+            machine.baseRate === (equipment.baseRateSmall || equipment.baseRates?.small || 0) ||
+            machine.baseRate === (equipment.baseRateMonthly || equipment.baseRates?.monthly || 0) ||
+            machine.baseRate === (equipment.baseRateYearly || equipment.baseRates?.yearly || 0);
+          
+          // Only update the rate if it's currently using a default rate, preserve custom rates
+          return { 
+            ...machine, 
+            baseRate: currentRateIsDefault ? newDefaultRate : machine.baseRate 
+          };
         }
         return machine;
       });
@@ -245,6 +280,19 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
       }));
     }
   }, [formData.orderType, availableEquipment]);
+
+  // Auto-update order type based on number of days
+  useEffect(() => {
+    if (formData.numberOfDays > 0) {
+      const autoOrderType = getOrderTypeByDays(formData.numberOfDays);
+      if (autoOrderType !== formData.orderType) {
+        setFormData(prev => ({
+          ...prev,
+          orderType: autoOrderType
+        }));
+      }
+    }
+  }, [formData.numberOfDays, getOrderTypeByDays]); // Only depend on numberOfDays and the function
 
   const calculateCosts = () => {
     const orderType = orderTypeOptions.find(ot => ot.value === formData.orderType);
@@ -508,7 +556,7 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                       onChange={(e) => {
                         if (e.target.value) {
                           const selectedEquipment = availableEquipment.find(eq => eq.id === e.target.value);
-                          if (selectedEquipment && selectedEquipment.baseRates) {
+                          if (selectedEquipment) {
                             const existingIndex = formData.selectedMachines.findIndex(m => m.id === selectedEquipment.id);
                             if (existingIndex >= 0) {
                               // Increase quantity
@@ -519,9 +567,26 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                                 )
                               }));
                             } else {
-                              // Add new machine - use baseRates based on orderType
+                              // Add new machine - use direct base rate properties
                               const orderType = formData.orderType as 'micro' | 'small' | 'monthly' | 'yearly';
-                              const baseRate = selectedEquipment.baseRates[orderType] || selectedEquipment.baseRates.micro || 0;
+                              let baseRate = 0;
+                              
+                              switch (orderType) {
+                                case 'micro':
+                                  baseRate = selectedEquipment.baseRateMicro || selectedEquipment.baseRates?.micro || 0;
+                                  break;
+                                case 'small':
+                                  baseRate = selectedEquipment.baseRateSmall || selectedEquipment.baseRates?.small || 0;
+                                  break;
+                                case 'monthly':
+                                  baseRate = selectedEquipment.baseRateMonthly || selectedEquipment.baseRates?.monthly || 0;
+                                  break;
+                                case 'yearly':
+                                  baseRate = selectedEquipment.baseRateYearly || selectedEquipment.baseRates?.yearly || 0;
+                                  break;
+                                default:
+                                  baseRate = selectedEquipment.baseRateMicro || selectedEquipment.baseRates?.micro || 0;
+                              }
                               
                               const newMachine: SelectedMachine = {
                                 id: selectedEquipment.id,
@@ -536,7 +601,7 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                               }));
                             }
                           } else {
-                            console.error('Equipment not found or missing base rates:', e.target.value);
+                            console.error('Equipment not found:', e.target.value);
                           }
                         }
                       }}
@@ -546,7 +611,25 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                       {formData.machineType && equipmentByType[formData.machineType]?.length > 0 ? (
                         equipmentByType[formData.machineType].map(equipment => {
                           const orderType = formData.orderType as 'micro' | 'small' | 'monthly' | 'yearly';
-                          const baseRate = equipment.baseRates?.[orderType] || equipment.baseRates?.micro || 0;
+                          let baseRate = 0;
+                          
+                          switch (orderType) {
+                            case 'micro':
+                              baseRate = equipment.baseRateMicro || equipment.baseRates?.micro || 0;
+                              break;
+                            case 'small':
+                              baseRate = equipment.baseRateSmall || equipment.baseRates?.small || 0;
+                              break;
+                            case 'monthly':
+                              baseRate = equipment.baseRateMonthly || equipment.baseRates?.monthly || 0;
+                              break;
+                            case 'yearly':
+                              baseRate = equipment.baseRateYearly || equipment.baseRates?.yearly || 0;
+                              break;
+                            default:
+                              baseRate = equipment.baseRateMicro || equipment.baseRates?.micro || 0;
+                          }
+                          
                           return (
                             <option key={equipment.id} value={equipment.id}>
                               {equipment.name} - ₹{baseRate.toLocaleString()}/hr
@@ -563,50 +646,91 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                   
                   {formData.selectedMachines.length > 0 && (
                     <div className="mt-4 space-y-3">
-                      <h4 className="text-sm font-medium text-gray-900">
-                        Selected Equipment ({formData.selectedMachines.length} item{formData.selectedMachines.length !== 1 ? 's' : ''})
-                      </h4>
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-sm font-medium text-gray-900">
+                          Selected Equipment ({formData.selectedMachines.length} item{formData.selectedMachines.length !== 1 ? 's' : ''})
+                        </h4>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFormData(prev => ({
+                              ...prev,
+                              selectedMachines: prev.selectedMachines.map(machine => {
+                                const equipment = availableEquipment.find(eq => eq.id === machine.id);
+                                if (equipment) {
+                                  const orderType = formData.orderType as 'micro' | 'small' | 'monthly' | 'yearly';
+                                  let defaultRate = 0;
+                                  
+                                  switch (orderType) {
+                                    case 'micro':
+                                      defaultRate = equipment.baseRateMicro || equipment.baseRates?.micro || 0;
+                                      break;
+                                    case 'small':
+                                      defaultRate = equipment.baseRateSmall || equipment.baseRates?.small || 0;
+                                      break;
+                                    case 'monthly':
+                                      defaultRate = equipment.baseRateMonthly || equipment.baseRates?.monthly || 0;
+                                      break;
+                                    case 'yearly':
+                                      defaultRate = equipment.baseRateYearly || equipment.baseRates?.yearly || 0;
+                                      break;
+                                  }
+                                  
+                                  return { ...machine, baseRate: defaultRate };
+                                }
+                                return machine;
+                              })
+                            }));
+                          }}
+                          className="text-xs text-blue-600 hover:text-blue-800 underline"
+                          title="Reset all equipment rates to defaults"
+                        >
+                          Reset All Rates
+                        </button>
+                      </div>
                       {formData.selectedMachines.map((machine, index) => (
-                        <div key={`${machine.id}-${index}`} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg border">
-                          <div className="flex-1">
-                            <div className="font-medium text-gray-900">{machine.label}</div>
-                            <div className="text-sm text-gray-600">
-                              ₹{machine.baseRate.toLocaleString()}/hr × {machine.quantity} unit{machine.quantity !== 1 ? 's' : ''}
+                        <div key={`${machine.id}-${index}`} className="bg-gray-50 p-4 rounded-lg border space-y-3">
+                          <div className="flex items-center justify-between">
+                            <div className="flex-1">
+                              <div className="font-medium text-gray-900">{machine.label}</div>
+                              <div className="text-sm text-gray-600">
+                                Equipment ID: {machine.id}
+                              </div>
+                              {(() => {
+                                const equipment = availableEquipment.find(eq => eq.id === machine.id);
+                                if (equipment) {
+                                  const orderType = formData.orderType as 'micro' | 'small' | 'monthly' | 'yearly';
+                                  let defaultRate = 0;
+                                  
+                                  switch (orderType) {
+                                    case 'micro':
+                                      defaultRate = equipment.baseRateMicro || equipment.baseRates?.micro || 0;
+                                      break;
+                                    case 'small':
+                                      defaultRate = equipment.baseRateSmall || equipment.baseRates?.small || 0;
+                                      break;
+                                    case 'monthly':
+                                      defaultRate = equipment.baseRateMonthly || equipment.baseRates?.monthly || 0;
+                                      break;
+                                    case 'yearly':
+                                      defaultRate = equipment.baseRateYearly || equipment.baseRates?.yearly || 0;
+                                      break;
+                                  }
+                                  
+                                  const isCustomRate = machine.baseRate !== defaultRate;
+                                  return isCustomRate ? (
+                                    <div className="text-xs text-orange-600 font-medium">
+                                      ⚡ Custom Rate (Default: ₹{defaultRate.toLocaleString()}/hr)
+                                    </div>
+                                  ) : (
+                                    <div className="text-xs text-green-600">
+                                      ✓ Using Default Rate
+                                    </div>
+                                  );
+                                }
+                                return null;
+                              })()}
                             </div>
-                            <div className="text-sm text-green-600 font-medium">
-                              Subtotal: ₹{(machine.baseRate * machine.quantity).toLocaleString()}/hr
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setFormData(prev => ({
-                                  ...prev,
-                                  selectedMachines: prev.selectedMachines.map((m, i) => 
-                                    i === index ? { ...m, quantity: Math.max(1, m.quantity - 1) } : m
-                                  )
-                                }));
-                              }}
-                              className="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-gray-600"
-                            >
-                              -
-                            </button>
-                            <span className="text-sm font-medium min-w-[30px] text-center">{machine.quantity}</span>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setFormData(prev => ({
-                                  ...prev,
-                                  selectedMachines: prev.selectedMachines.map((m, i) => 
-                                    i === index ? { ...m, quantity: m.quantity + 1 } : m
-                                  )
-                                }));
-                              }}
-                              className="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-gray-600"
-                            >
-                              +
-                            </button>
                             <button
                               type="button"
                               onClick={() => {
@@ -615,10 +739,130 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                                   selectedMachines: prev.selectedMachines.filter((_, i) => i !== index)
                                 }));
                               }}
-                              className="ml-2 w-8 h-8 rounded-full bg-red-100 hover:bg-red-200 flex items-center justify-center text-red-600"
+                              className="w-8 h-8 rounded-full bg-red-100 hover:bg-red-200 flex items-center justify-center text-red-600"
+                              title="Remove equipment"
                             >
                               ×
                             </button>
+                          </div>
+                          
+                          <div className="grid grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 mb-1">
+                                Rate per Hour (₹)
+                              </label>
+                              <input
+                                type="number"
+                                min="0"
+                                step="100"
+                                value={machine.baseRate || ''}
+                                onChange={(e) => {
+                                  const newRate = parseFloat(e.target.value) || 0;
+                                  setFormData(prev => ({
+                                    ...prev,
+                                    selectedMachines: prev.selectedMachines.map((m, i) => 
+                                      i === index ? { ...m, baseRate: newRate } : m
+                                    )
+                                  }));
+                                }}
+                                className="w-full px-2 py-1 text-sm border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                placeholder="Enter rate"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const equipment = availableEquipment.find(eq => eq.id === machine.id);
+                                  if (equipment) {
+                                    const orderType = formData.orderType as 'micro' | 'small' | 'monthly' | 'yearly';
+                                    let defaultRate = 0;
+                                    
+                                    switch (orderType) {
+                                      case 'micro':
+                                        defaultRate = equipment.baseRateMicro || equipment.baseRates?.micro || 0;
+                                        break;
+                                      case 'small':
+                                        defaultRate = equipment.baseRateSmall || equipment.baseRates?.small || 0;
+                                        break;
+                                      case 'monthly':
+                                        defaultRate = equipment.baseRateMonthly || equipment.baseRates?.monthly || 0;
+                                        break;
+                                      case 'yearly':
+                                        defaultRate = equipment.baseRateYearly || equipment.baseRates?.yearly || 0;
+                                        break;
+                                    }
+                                    
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      selectedMachines: prev.selectedMachines.map((m, i) => 
+                                        i === index ? { ...m, baseRate: defaultRate } : m
+                                      )
+                                    }));
+                                  }
+                                }}
+                                className="mt-1 text-xs text-blue-600 hover:text-blue-800 underline"
+                                title="Reset to default rate from database"
+                              >
+                                Reset to Default
+                              </button>
+                            </div>
+                            
+                            <div>
+                              <label className="block text-xs font-medium text-gray-700 mb-1">
+                                Quantity
+                              </label>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      selectedMachines: prev.selectedMachines.map((m, i) => 
+                                        i === index ? { ...m, quantity: Math.max(1, m.quantity - 1) } : m
+                                      )
+                                    }));
+                                  }}
+                                  className="w-7 h-7 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-gray-600 text-sm"
+                                >
+                                  -
+                                </button>
+                                <input
+                                  type="number"
+                                  min="1"
+                                  value={machine.quantity}
+                                  onChange={(e) => {
+                                    const newQuantity = Math.max(1, parseInt(e.target.value) || 1);
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      selectedMachines: prev.selectedMachines.map((m, i) => 
+                                        i === index ? { ...m, quantity: newQuantity } : m
+                                      )
+                                    }));
+                                  }}
+                                  className="w-12 px-1 py-1 text-sm text-center border border-gray-300 rounded focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                                />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setFormData(prev => ({
+                                      ...prev,
+                                      selectedMachines: prev.selectedMachines.map((m, i) => 
+                                        i === index ? { ...m, quantity: m.quantity + 1 } : m
+                                      )
+                                    }));
+                                  }}
+                                  className="w-7 h-7 rounded bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-gray-600 text-sm"
+                                >
+                                  +
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                          
+                          <div className="flex justify-between items-center pt-2 border-t border-gray-200">
+                            <span className="text-sm text-gray-600">Cost per hour:</span>
+                            <span className="text-sm font-medium text-gray-900">
+                              ₹{(machine.baseRate * machine.quantity).toLocaleString()}/hr
+                            </span>
                           </div>
                         </div>
                       ))}
@@ -631,6 +875,10 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                             ).toLocaleString()}/hr
                           </span>
                         </div>
+                        <div className="mt-2 text-xs text-gray-600">
+                          💡 <strong>Tip:</strong> You can adjust individual equipment rates above to customize pricing for this specific quotation. 
+                          Custom rates are preserved when changing other settings.
+                        </div>
                       </div>
                     </div>
                   )}
@@ -639,13 +887,17 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Order Type *
+                  Order Type * 
+                  <span className="text-xs text-gray-500 font-normal ml-2">
+                    (Auto-selected based on number of days)
+                  </span>
                 </label>
                 <select
                   value={formData.orderType}
                   onChange={(e) => handleInputChange('orderType', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 bg-gray-50"
                   required
+                  disabled={formData.numberOfDays > 0}
                 >
                   {orderTypeOptions.map(option => (
                     <option key={option.value} value={option.value}>
@@ -653,6 +905,11 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                     </option>
                   ))}
                 </select>
+                {formData.numberOfDays > 0 && (
+                  <p className="text-xs text-blue-600 mt-1">
+                    Order type automatically set based on {formData.numberOfDays} days
+                  </p>
+                )}
               </div>
               
               <div>
