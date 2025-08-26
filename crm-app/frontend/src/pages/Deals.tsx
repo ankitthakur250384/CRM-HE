@@ -292,10 +292,17 @@ export function Deals() {
   // Calculate total value of deals in a stage
   const calculateStageTotal = (stage: DealStage) => {
     try {
-      return getDealsByStage(stage).reduce((sum, deal) => {
+      const stageDeals = getDealsByStage(stage);
+      console.log(`Calculating total for stage ${stage}:`, stageDeals);
+      
+      const total = stageDeals.reduce((sum, deal) => {
         const value = typeof deal.value === 'number' ? deal.value : 0;
+        console.log(`Deal ${deal.id}: value = ${value}`);
         return sum + value;
       }, 0);
+      
+      console.log(`Stage ${stage} total: ${total}`);
+      return total;
     } catch (error) {
       console.error('Error calculating stage total:', error);
       return 0;

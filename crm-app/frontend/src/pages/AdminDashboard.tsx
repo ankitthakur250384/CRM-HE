@@ -4,10 +4,10 @@ import {
   Truck,
   Users,
   Activity,
-  TrendingUp,
   BarChart3,
   PieChart,
-  Zap
+  Zap,
+  TrendingUp
 } from 'lucide-react';
 
 // Services
@@ -112,9 +112,12 @@ export function AdminDashboard() {
   const totalRevenue = useMemo(() => {
     try {
       if (Array.isArray(deals) && deals.length > 0) {
-        return deals
-          .filter(deal => deal && deal.stage === 'won' && deal.value > 0)
-          .reduce((total, deal) => total + (deal.value || 0), 0);
+        console.log('Calculating revenue from deals:', deals);
+        const wonDeals = deals.filter(deal => deal && deal.stage === 'won' && deal.value > 0);
+        console.log('Won deals:', wonDeals);
+        const revenue = wonDeals.reduce((total, deal) => total + (deal.value || 0), 0);
+        console.log('Total revenue calculated:', revenue);
+        return revenue;
       }
     } catch (error) {
       console.error('Error calculating revenue:', error);
@@ -125,10 +128,16 @@ export function AdminDashboard() {
   const activeEquipmentCount = useMemo(() => {
     try {
       if (Array.isArray(equipment) && equipment.length > 0) {
-        return equipment.filter(eq => eq && eq.status === 'available').length;
+        const availableCount = equipment.filter(eq => eq && eq.status === 'available').length;
+        console.log('Equipment calculation:', { 
+          total: equipment.length, 
+          available: availableCount,
+          statuses: equipment.map(eq => eq?.status).filter(Boolean)
+        });
+        return availableCount;
       }
     } catch (error) {
-      console.error('Error calculating active equipment:', error);
+      console.error('Error calculating equipment count:', error);
     }
     return 0;
   }, [equipment]);

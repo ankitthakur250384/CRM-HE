@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { 
-  AlertCircle,
   ArrowLeft,
   Save,
   Calculator,
@@ -9,7 +8,6 @@ import {
   Users,
   Clock,
   IndianRupee,
-  AlertTriangle,
   Settings,
   Calendar
 } from 'lucide-react';
@@ -29,16 +27,6 @@ import { getEquipment, getEquipmentByCategory } from '../services/equipment';
 import { createQuotation, updateQuotation, getQuotationById } from '../services/quotation';
 import { formatCurrency } from '../utils/formatters';
 import { useQuotationConfig, useConfigChangeListener } from '../hooks/useQuotationConfig';
-
-
-
-// Equipment types with rates
-const EQUIPMENT_RATES = {
-  mobile_crane: 4000,
-  tower_crane: 3500,
-  crawler_crane: 5000,
-  pick_and_carry_crane: 3000
-};
 
 const SHIFT_OPTIONS = [
   { value: 'single', label: 'Single Shift' },
@@ -623,8 +611,8 @@ export function QuotationCreation() {
       return;
     }
 
-    if (formData.selectedMachines.length === 0 && !formData.selectedEquipment.id) {
-      showToast('Please select at least one machine', 'error');
+    if (formData.selectedMachines.length === 0) {
+      showToast('Please select at least one equipment', 'error');
       return;
     }
 
@@ -909,103 +897,73 @@ export function QuotationCreation() {
                   {formData.machineType && availableEquipment.length > 0 && (
                     <>
                       <Select
-                        label="Equipment"
-                        value={formData.selectedEquipment.id}
+                        label="Available Equipment"
+                        value=""
                         onChange={(value: string) => {
                           const selected = availableEquipment.find(eq => eq.id === value);
                           if (selected) {
-                            const baseRate = selected.baseRates[formData.orderType] || 0;
-                            setSelectedEquipmentBaseRate(baseRate);
-                            setFormData(prev => ({
-                              ...prev,
-                              selectedEquipment: {
+                            // Check if this machine is already selected
+                            const existingIndex = formData.selectedMachines.findIndex(m => m.id === selected.id);
+                            
+                            if (existingIndex >= 0) {
+                              // If already selected, increase quantity
+                              setFormData(prev => ({
+                                ...prev,
+                                selectedMachines: prev.selectedMachines.map((m, i) => 
+                                  i === existingIndex ? { ...m, quantity: m.quantity + 1 } : m
+                                )
+                              }));
+                            } else {
+                              // Add new machine to the list
+                              const newMachine = {
                                 id: selected.id,
+                                machineType: formData.machineType,
                                 equipmentId: selected.equipmentId,
                                 name: selected.name,
-                                baseRates: selected.baseRates
-                              },
-                              runningCostPerKm: selected.runningCostPerKm || 0
-                            }));
+                                baseRates: selected.baseRates,
+                                baseRate: selected.baseRates[formData.orderType] || 0,
+                                runningCostPerKm: selected.runningCostPerKm || 0,
+                                quantity: 1
+                              };
+                              
+                              setFormData(prev => ({
+                                ...prev,
+                                selectedMachines: [...prev.selectedMachines, newMachine]
+                              }));
+                            }
                           }
                         }}
                         options={[
-                          { value: '', label: 'Select equipment...' },
+                          { value: '', label: 'Select equipment to add...' },
                           ...availableEquipment.map(eq => ({ 
                             value: eq.id, 
-                            label: `${eq.name} (${formatCurrency(eq.baseRates[formData.orderType] || 0)}/hr)` 
+                            label: `${eq.name} - ${formatCurrency(eq.baseRates[formData.orderType] || 0)}/hr` 
                           }))
                         ]}
-                        required={formData.selectedMachines.length === 0}
-                        className="text-gray-900 mb-0"
+                        className="text-gray-900 mb-3"
                       />
-
-                      {/* Add to machines button */}
-                      {formData.selectedEquipment.id && (
-                        <div className="flex items-center gap-2 pt-2">
-                          <Button
-                            type="button"
-                            variant="outline"
-                            size="sm"
-                            onClick={() => {
-                              const selected = availableEquipment.find(eq => eq.id === formData.selectedEquipment.id);
-                              if (selected) {
-                                const newMachine = {
-                                  id: selected.id,
-                                  machineType: formData.machineType,
-                                  equipmentId: selected.equipmentId,
-                                  name: selected.name,
-                                  baseRates: selected.baseRates,
-                                  baseRate: selected.baseRates[formData.orderType] || 0,
-                                  runningCostPerKm: selected.runningCostPerKm || 0,
-                                  quantity: 1
-                                };
-
-                                // Check if machine already exists
-                                const existingIndex = formData.selectedMachines.findIndex(m => m.id === selected.id);
-                                if (existingIndex >= 0) {
-                                  // Update quantity
-                                  setFormData(prev => ({
-                                    ...prev,
-                                    selectedMachines: prev.selectedMachines.map((m, i) => 
-                                      i === existingIndex ? { ...m, quantity: m.quantity + 1 } : m
-                                    )
-                                  }));
-                                } else {
-                                  // Add new machine
-                                  setFormData(prev => ({
-                                    ...prev,
-                                    selectedMachines: [...prev.selectedMachines, newMachine],
-                                    selectedEquipment: { id: '', equipmentId: '', name: '', baseRates: { micro: 0, small: 0, monthly: 0, yearly: 0 } }
-                                  }));
-                                }
-                              }
-                            }}
-                            className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                          >
-                            Add Machine
-                          </Button>
-                          <span className="text-sm text-gray-500">Click to add this equipment to your quotation</span>
-                        </div>
-                      )}
 
                       {/* Selected machines list */}
                       {formData.selectedMachines.length > 0 && (
-                        <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                          <h4 className="text-sm font-medium text-blue-900 mb-2">Selected Equipment ({formData.selectedMachines.length})</h4>
-                          <div className="space-y-2">
+                        <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+                          <h4 className="text-sm font-medium text-gray-900 mb-3">
+                            Selected Equipment ({formData.selectedMachines.length} type{formData.selectedMachines.length !== 1 ? 's' : ''})
+                          </h4>
+                          <div className="space-y-3">
                             {formData.selectedMachines.map((machine, index) => (
-                              <div key={`${machine.id}-${index}`} className="flex items-center justify-between bg-white p-2 rounded border">
+                              <div key={`${machine.id}-${index}`} className="flex items-center justify-between bg-white p-3 rounded border border-gray-200">
                                 <div className="flex-1">
-                                  <span className="font-medium text-gray-900">{machine.name}</span>
-                                  <span className="text-sm text-gray-500 ml-2">
-                                    Qty: {machine.quantity} × {formatCurrency(machine.baseRate)}/hr
-                                  </span>
+                                  <div className="font-medium text-gray-900">{machine.name}</div>
+                                  <div className="text-sm text-gray-600">
+                                    {formatCurrency(machine.baseRate)}/hr × {machine.quantity} machine{machine.quantity !== 1 ? 's' : ''}
+                                  </div>
+                                  <div className="text-sm text-green-600 font-medium">
+                                    Subtotal: {formatCurrency(machine.baseRate * machine.quantity)}/hr
+                                  </div>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                  <Button
+                                  <button
                                     type="button"
-                                    variant="ghost"
-                                    size="xs"
                                     onClick={() => {
                                       setFormData(prev => ({
                                         ...prev,
@@ -1014,15 +972,13 @@ export function QuotationCreation() {
                                         )
                                       }));
                                     }}
-                                    className="text-gray-500 hover:text-gray-700"
+                                    className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600"
                                   >
                                     -
-                                  </Button>
-                                  <span className="text-sm font-medium min-w-[20px] text-center">{machine.quantity}</span>
-                                  <Button
+                                  </button>
+                                  <span className="text-sm font-medium min-w-[30px] text-center">{machine.quantity}</span>
+                                  <button
                                     type="button"
-                                    variant="ghost"
-                                    size="xs"
                                     onClick={() => {
                                       setFormData(prev => ({
                                         ...prev,
@@ -1031,27 +987,37 @@ export function QuotationCreation() {
                                         )
                                       }));
                                     }}
-                                    className="text-gray-500 hover:text-gray-700"
+                                    className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600"
                                   >
                                     +
-                                  </Button>
-                                  <Button
+                                  </button>
+                                  <button
                                     type="button"
-                                    variant="ghost"
-                                    size="xs"
                                     onClick={() => {
                                       setFormData(prev => ({
                                         ...prev,
                                         selectedMachines: prev.selectedMachines.filter((_, i) => i !== index)
                                       }));
                                     }}
-                                    className="text-red-500 hover:text-red-700 ml-2"
+                                    className="ml-2 w-8 h-8 rounded-full bg-red-100 hover:bg-red-200 flex items-center justify-center text-red-600"
                                   >
-                                    Remove
-                                  </Button>
+                                    ×
+                                  </button>
                                 </div>
                               </div>
                             ))}
+                          </div>
+                          <div className="mt-3 pt-3 border-t border-gray-200">
+                            <div className="flex justify-between items-center">
+                              <span className="font-medium text-gray-900">Total Equipment Cost:</span>
+                              <span className="font-bold text-blue-600">
+                                {formatCurrency(
+                                  formData.selectedMachines.reduce((total, machine) => 
+                                    total + (machine.baseRate * machine.quantity), 0
+                                  )
+                                )}/hr
+                              </span>
+                            </div>
                           </div>
                         </div>
                       )}
