@@ -113,7 +113,7 @@ export function AdminDashboard() {
     try {
       if (Array.isArray(deals) && deals.length > 0) {
         return deals
-          .filter(deal => deal && deal.stage === 'won')
+          .filter(deal => deal && deal.stage === 'won' && deal.value > 0)
           .reduce((total, deal) => total + (deal.value || 0), 0);
       }
     } catch (error) {
@@ -121,6 +121,28 @@ export function AdminDashboard() {
     }
     return 0;
   }, [deals]);
+
+  const activeEquipmentCount = useMemo(() => {
+    try {
+      if (Array.isArray(equipment) && equipment.length > 0) {
+        return equipment.filter(eq => eq && eq.status === 'available').length;
+      }
+    } catch (error) {
+      console.error('Error calculating active equipment:', error);
+    }
+    return 0;
+  }, [equipment]);
+
+  const activeJobsCount = useMemo(() => {
+    try {
+      if (Array.isArray(jobs) && jobs.length > 0) {
+        return jobs.filter(job => job && (job.status === 'in_progress' || job.status === 'scheduled')).length;
+      }
+    } catch (error) {
+      console.error('Error calculating active jobs:', error);
+    }
+    return 0;
+  }, [jobs]);
 
   const equipmentUtilization = useMemo(() => (
     Array.isArray(jobs)
@@ -289,8 +311,8 @@ export function AdminDashboard() {
           />
           <StatCard
             title="Equipment Fleet"
-            value={equipmentCount}
-            subtitle="Active units"
+            value={activeEquipmentCount}
+            subtitle="Available units"
             icon={<Truck className="h-5 w-5" />}
             variant="success"
             trend={{
@@ -301,7 +323,7 @@ export function AdminDashboard() {
           />
           <StatCard
             title="Active Jobs"
-            value={jobs.length}
+            value={activeJobsCount}
             subtitle="In progress"
             icon={<Activity className="h-5 w-5" />}
             variant="warning"

@@ -53,8 +53,11 @@ export function Select({
             ${className}
           `}
           style={{
-            backgroundColor: '#ffffff',
-            color: '#1a202c'
+            backgroundColor: '#ffffff !important',
+            color: '#1a202c !important',
+            WebkitTextFillColor: '#1a202c !important',
+            opacity: '1 !important',
+            backdropFilter: 'none !important'
           }}
           {...props}
         >

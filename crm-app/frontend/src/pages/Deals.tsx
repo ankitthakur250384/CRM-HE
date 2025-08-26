@@ -290,8 +290,17 @@ export function Deals() {
     filteredDeals.filter(deal => deal.stage === stage);
 
   // Calculate total value of deals in a stage
-  const calculateStageTotal = (stage: DealStage) =>
-    getDealsByStage(stage).reduce((sum, deal) => sum + deal.value, 0);
+  const calculateStageTotal = (stage: DealStage) => {
+    try {
+      return getDealsByStage(stage).reduce((sum, deal) => {
+        const value = typeof deal.value === 'number' ? deal.value : 0;
+        return sum + value;
+      }, 0);
+    } catch (error) {
+      console.error('Error calculating stage total:', error);
+      return 0;
+    }
+  };
 
   // Check permissions
   if (!user || (user.role !== 'sales_agent' && user.role !== 'admin')) {

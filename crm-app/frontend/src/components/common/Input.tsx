@@ -45,13 +45,15 @@ export function Input({ label, error, className = '', leftIcon, rightIcon, name,
             ${className}
           `}
           style={{ 
-            color: '#1a202c', 
-            WebkitTextFillColor: '#1a202c', 
-            background: '#ffffff', 
+            color: '#1a202c !important', 
+            WebkitTextFillColor: '#1a202c !important', 
+            background: '#ffffff !important', 
+            backgroundColor: '#ffffff !important',
             borderColor: '#e2e8f0', 
             fontWeight: 500,
             position: 'relative',
-            opacity: 1
+            opacity: '1 !important',
+            backdropFilter: 'none !important'
           }}
           placeholder={props.placeholder ? `${props.placeholder}${props.required ? ' *' : ''}` : ''}
           {...inputProps}
