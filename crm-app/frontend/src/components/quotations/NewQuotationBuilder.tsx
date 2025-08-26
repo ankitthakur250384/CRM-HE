@@ -18,12 +18,21 @@ interface NewQuotationBuilderProps {
   quotationData?: any;
 }
 
+interface SelectedMachine {
+  id: string;
+  type: string;
+  label: string;
+  baseRate: number;
+  quantity: number;
+}
+
 interface QuotationFormData {
   customerName: string;
   customerEmail: string;
   customerPhone: string;
   customerAddress: string;
   machineType: string;
+  selectedMachines: SelectedMachine[];
   orderType: string;
   numberOfDays: number;
   workingHours: number;
@@ -43,6 +52,7 @@ const initialFormData: QuotationFormData = {
   customerPhone: '',
   customerAddress: '',
   machineType: 'mobile_crane',
+  selectedMachines: [],
   orderType: 'rental',
   numberOfDays: 1,
   workingHours: 8,
@@ -131,6 +141,7 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
             customerPhone: quotationData.customer_phone || '',
             customerAddress: quotationData.customer_address || '',
             machineType: quotationData.machine_type || 'mobile_crane',
+            selectedMachines: quotationData.selected_machines || [],
             orderType: quotationData.order_type || 'rental',
             numberOfDays: quotationData.number_of_days || 1,
             workingHours: quotationData.working_hours || 8,
@@ -159,12 +170,15 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
   }, [formData]);
 
   const calculateCosts = () => {
-    const equipment = equipmentOptions.find(eq => eq.value === formData.machineType);
     const orderType = orderTypeOptions.find(ot => ot.value === formData.orderType);
     
-    if (!equipment || !orderType) return;
+    if (!orderType || formData.selectedMachines.length === 0) return;
 
-    const baseRate = equipment.baseRate * orderType.multiplier;
+    // Calculate total equipment cost from selected machines
+    const totalEquipmentRatePerHour = formData.selectedMachines.reduce((total, machine) => 
+      total + (machine.baseRate * machine.quantity), 0
+    );
+    const baseRate = totalEquipmentRatePerHour * orderType.multiplier;
     const totalRent = baseRate * formData.workingHours * formData.numberOfDays;
     
     // Mobilization/Demobilization based on distance
@@ -211,7 +225,7 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
       case 1:
         return !!(formData.customerName && formData.customerEmail && formData.customerPhone);
       case 2:
-        return !!(formData.machineType && formData.orderType && formData.numberOfDays > 0);
+        return !!(formData.machineType && formData.selectedMachines.length > 0 && formData.orderType && formData.numberOfDays > 0);
       case 3:
         return true; // Optional step
       default:
@@ -245,7 +259,8 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
         customerEmail: formData.customerEmail,
         customerPhone: formData.customerPhone,
         customerAddress: formData.customerAddress,
-        machineType: equipmentOptions.find(eq => eq.value === formData.machineType)?.label || formData.machineType,
+        machineType: formData.machineType,
+        selectedMachines: formData.selectedMachines,
         orderType: formData.orderType,
         numberOfDays: formData.numberOfDays,
         workingHours: formData.workingHours,
@@ -258,14 +273,12 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
         extraCharge: formData.extraCharge,
         totalCost: calculations.totalCost,
         gstRate: 18,
-        items: [
-          {
-            description: equipmentOptions.find(eq => eq.value === formData.machineType)?.label || 'Equipment',
-            qty: formData.numberOfDays,
-            price: calculations.baseRate * formData.workingHours,
-            equipmentId: null
-          }
-        ],
+        items: formData.selectedMachines.map(machine => ({
+          description: `${machine.label} x${machine.quantity}`,
+          qty: formData.numberOfDays,
+          price: machine.baseRate * machine.quantity * formData.workingHours,
+          equipmentId: machine.id
+        })),
         terms: [
           'Payment Terms: 50% advance payment required, balance to be paid on completion of work',
           'Equipment will be delivered within 2-3 working days from advance payment receipt',
@@ -384,16 +397,21 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              <div>
+              <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Equipment Type *
                 </label>
                 <select
                   value={formData.machineType}
-                  onChange={(e) => handleInputChange('machineType', e.target.value)}
+                  onChange={(e) => {
+                    handleInputChange('machineType', e.target.value);
+                    // Clear selected machines when changing type
+                    setFormData(prev => ({ ...prev, selectedMachines: [] }));
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   required
                 >
+                  <option value="">Select equipment type...</option>
                   {equipmentOptions.map(option => (
                     <option key={option.value} value={option.value}>
                       {option.label} (₹{option.baseRate.toLocaleString()}/hr)
@@ -401,6 +419,133 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                   ))}
                 </select>
               </div>
+
+              {formData.machineType && (
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Add Equipment to Quotation
+                  </label>
+                  <div className="flex gap-2">
+                    <select
+                      value=""
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          const option = equipmentOptions.find(opt => opt.value === e.target.value);
+                          if (option) {
+                            const existingIndex = formData.selectedMachines.findIndex(m => m.id === option.value);
+                            if (existingIndex >= 0) {
+                              // Increase quantity
+                              setFormData(prev => ({
+                                ...prev,
+                                selectedMachines: prev.selectedMachines.map((m, i) => 
+                                  i === existingIndex ? { ...m, quantity: m.quantity + 1 } : m
+                                )
+                              }));
+                            } else {
+                              // Add new machine
+                              const newMachine: SelectedMachine = {
+                                id: option.value,
+                                type: option.value,
+                                label: option.label,
+                                baseRate: option.baseRate,
+                                quantity: 1
+                              };
+                              setFormData(prev => ({
+                                ...prev,
+                                selectedMachines: [...prev.selectedMachines, newMachine]
+                              }));
+                            }
+                          }
+                        }
+                      }}
+                      className="flex-1 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                    >
+                      <option value="">Select equipment to add...</option>
+                      {equipmentOptions
+                        .filter(opt => opt.value === formData.machineType)
+                        .map(option => (
+                          <option key={option.value} value={option.value}>
+                            {option.label} - ₹{option.baseRate.toLocaleString()}/hr
+                          </option>
+                        ))}
+                    </select>
+                  </div>
+                  
+                  {formData.selectedMachines.length > 0 && (
+                    <div className="mt-4 space-y-3">
+                      <h4 className="text-sm font-medium text-gray-900">
+                        Selected Equipment ({formData.selectedMachines.length} item{formData.selectedMachines.length !== 1 ? 's' : ''})
+                      </h4>
+                      {formData.selectedMachines.map((machine, index) => (
+                        <div key={`${machine.id}-${index}`} className="flex items-center justify-between bg-gray-50 p-3 rounded-lg border">
+                          <div className="flex-1">
+                            <div className="font-medium text-gray-900">{machine.label}</div>
+                            <div className="text-sm text-gray-600">
+                              ₹{machine.baseRate.toLocaleString()}/hr × {machine.quantity} unit{machine.quantity !== 1 ? 's' : ''}
+                            </div>
+                            <div className="text-sm text-green-600 font-medium">
+                              Subtotal: ₹{(machine.baseRate * machine.quantity).toLocaleString()}/hr
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  selectedMachines: prev.selectedMachines.map((m, i) => 
+                                    i === index ? { ...m, quantity: Math.max(1, m.quantity - 1) } : m
+                                  )
+                                }));
+                              }}
+                              className="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-gray-600"
+                            >
+                              -
+                            </button>
+                            <span className="text-sm font-medium min-w-[30px] text-center">{machine.quantity}</span>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  selectedMachines: prev.selectedMachines.map((m, i) => 
+                                    i === index ? { ...m, quantity: m.quantity + 1 } : m
+                                  )
+                                }));
+                              }}
+                              className="w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-gray-600"
+                            >
+                              +
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  selectedMachines: prev.selectedMachines.filter((_, i) => i !== index)
+                                }));
+                              }}
+                              className="ml-2 w-8 h-8 rounded-full bg-red-100 hover:bg-red-200 flex items-center justify-center text-red-600"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      <div className="mt-3 pt-3 border-t border-gray-200 bg-blue-50 p-3 rounded-lg">
+                        <div className="flex justify-between items-center">
+                          <span className="font-medium text-gray-900">Total Equipment Cost:</span>
+                          <span className="font-bold text-blue-600 text-lg">
+                            ₹{formData.selectedMachines.reduce((total, machine) => 
+                              total + (machine.baseRate * machine.quantity), 0
+                            ).toLocaleString()}/hr
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
               
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
@@ -633,7 +778,17 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                   <span className="font-medium">Customer:</span> {formData.customerName}
                 </div>
                 <div>
-                  <span className="font-medium">Equipment:</span> {equipmentOptions.find(eq => eq.value === formData.machineType)?.label}
+                  <span className="font-medium">Equipment Type:</span> {equipmentOptions.find(eq => eq.value === formData.machineType)?.label}
+                </div>
+                <div className="md:col-span-2">
+                  <span className="font-medium">Selected Equipment:</span>
+                  <div className="mt-2 space-y-1">
+                    {formData.selectedMachines.map((machine, index) => (
+                      <div key={index} className="text-sm text-gray-600">
+                        • {machine.label} × {machine.quantity} (₹{(machine.baseRate * machine.quantity).toLocaleString()}/hr)
+                      </div>
+                    ))}
+                  </div>
                 </div>
                 <div>
                   <span className="font-medium">Duration:</span> {formData.numberOfDays} days

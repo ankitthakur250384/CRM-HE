@@ -110,17 +110,9 @@ export function AdminDashboard() {
   
   // Memoized calculations for performance
   const totalRevenue = useMemo(() => {
-    try {
-      if (Array.isArray(deals) && deals.length > 0) {
-        console.log('Calculating revenue from deals:', deals);
-        const wonDeals = deals.filter(deal => deal && deal.stage === 'won' && deal.value > 0);
-        console.log('Won deals:', wonDeals);
-        const revenue = wonDeals.reduce((total, deal) => total + (deal.value || 0), 0);
-        console.log('Total revenue calculated:', revenue);
-        return revenue;
-      }
-    } catch (error) {
-      console.error('Error calculating revenue:', error);
+    if (Array.isArray(deals) && deals.length > 0) {
+      const wonDeals = deals.filter(deal => deal && deal.stage === 'won');
+      return wonDeals.reduce((total, deal) => total + (deal.value || 0), 0);
     }
     return 0;
   }, [deals]);
