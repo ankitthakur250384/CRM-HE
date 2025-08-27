@@ -9,10 +9,7 @@ import { FloatingChatWidget } from './components/chat/FloatingChatWidget';
 import { AuthErrorBoundary } from './components/auth/AuthErrorBoundary';
 import { LoginPage } from './pages/LoginPage';
 import { AppShell } from './components/layout/AppShell';
-import { AdminDashboard } from './pages/AdminDashboard';
-import { SalesAgentDashboard } from './pages/SalesAgentDashboard';
-import { OperationsManagerDashboard } from './pages/OperationsManagerDashboard';
-import { OperatorDashboard } from './pages/OperatorDashboard';
+import { UnifiedDashboard } from './pages/UnifiedDashboard';
 import { LeadManagement } from './pages/LeadManagement';
 import ToastContainer from './components/common/ToastContainer';
 import QuotationManagement from './components/quotations/QuotationManagement';
@@ -58,31 +55,17 @@ function DashboardRouter() {
     console.error('❌ DashboardRouter: User authenticated but role is undefined!');
     console.error('📊 Full user object:', user);
     
-    // Try to show admin dashboard as fallback
-    console.log('🔄 Fallback: Showing AdminDashboard due to missing role');
-    return <AdminDashboard />;
+    // Try to show unified dashboard as fallback
+    console.log('🔄 Fallback: Showing UnifiedDashboard due to missing role');
+    return <UnifiedDashboard />;
   }
   
   console.log('✅ DashboardRouter: User role is', user.role);
   
-  // Return the appropriate dashboard based on role
-  switch (user.role) {
-    case 'admin':
-      console.log('📊 Rendering AdminDashboard');
-      return <AdminDashboard />;
-    case 'sales_agent':
-      console.log('📊 Rendering SalesAgentDashboard');
-      return <SalesAgentDashboard />;
-    case 'operations_manager':
-      console.log('📊 Rendering OperationsManagerDashboard');
-      return <OperationsManagerDashboard />;
-    case 'operator':
-      console.log('📊 Rendering OperatorDashboard');
-      return <OperatorDashboard />;
-    default:
-      console.log('❌ Unknown user role:', user.role, 'showing AdminDashboard as fallback');
-      return <AdminDashboard />;
-  }
+  // Use the unified dashboard for all roles - provides consistent experience
+  // with role-based data filtering handled by the backend API
+  console.log('📊 Rendering UnifiedDashboard for role:', user.role);
+  return <UnifiedDashboard />;
 }
 
 // Error fallback component for error boundaries
