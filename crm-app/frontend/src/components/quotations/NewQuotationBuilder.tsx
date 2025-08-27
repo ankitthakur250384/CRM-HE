@@ -116,14 +116,15 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
   // Fetch equipment data on mount
   useEffect(() => {
     const fetchEquipmentData = async () => {
-      // Set fallback equipment types immediately for better UX
-      const fallbackTypes = [
-        { value: 'mobile_crane', label: 'Mobile Crane', originalCategory: 'Mobile Crane' },
-        { value: 'tower_crane', label: 'Tower Crane', originalCategory: 'Tower Crane' },
-        { value: 'crawler_crane', label: 'Crawler Crane', originalCategory: 'Crawler Crane' },
-        { value: 'pick_and_carry_crane', label: 'Pick And Carry Crane', originalCategory: 'Pick And Carry Crane' }
+      // Set all possible equipment types immediately (from CATEGORY_OPTIONS in EquipmentManagement)
+      const allPossibleTypes = [
+        { value: 'mobile_crane', label: 'Mobile Crane', originalCategory: 'mobile_crane' },
+        { value: 'tower_crane', label: 'Tower Crane', originalCategory: 'tower_crane' },
+        { value: 'crawler_crane', label: 'Crawler Crane', originalCategory: 'crawler_crane' },
+        { value: 'pick_and_carry_crane', label: 'Pick & Carry Crane', originalCategory: 'pick_and_carry_crane' }
       ];
-      setEquipmentTypes(fallbackTypes);
+      console.log('📋 Setting all possible equipment types:', allPossibleTypes);
+      setEquipmentTypes(allPossibleTypes);
       
       try {
         console.log('🔄 Fetching equipment data...');
@@ -155,26 +156,7 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
         setAvailableEquipment(equipment);
         
         if (equipment && equipment.length > 0) {
-          // Extract unique equipment types - handle both formats (spaces and underscores)
-          const categories = [...new Set(equipment.map(e => e.category))];
-          const types = categories.map(category => {
-            // Normalize category to underscore format for value
-            const normalizedValue = category.toLowerCase().replace(/\s+/g, '_');
-            // Keep original format for label, or format it nicely
-            const formattedLabel = category.includes('_') 
-              ? category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
-              : category;
-            
-            return {
-              value: normalizedValue,
-              label: formattedLabel,
-              originalCategory: category // Keep original for lookup
-            };
-          });
-          console.log('📋 Equipment types extracted:', types);
-          setEquipmentTypes(types);
-          
-          // Group equipment by normalized type (underscore format)
+          // Group equipment by normalized type (underscore format) for easier lookup
           const grouped = equipment.reduce((acc, eq) => {
             const normalizedCategory = eq.category.toLowerCase().replace(/\s+/g, '_');
             if (!acc[normalizedCategory]) acc[normalizedCategory] = [];
@@ -183,12 +165,18 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
           }, {} as {[key: string]: Equipment[]});
           console.log('🏗️ Equipment grouped by type:', grouped);
           setEquipmentByType(grouped);
+          
+          // Show which categories have equipment and which don't
+          allPossibleTypes.forEach(type => {
+            const count = grouped[type.value]?.length || 0;
+            console.log(`📊 ${type.label}: ${count} equipment items`);
+          });
         } else {
-          console.warn('⚠️ No equipment data received, using fallback types');
+          console.warn('⚠️ No equipment data received');
         }
       } catch (error) {
         console.error('❌ Failed to fetch equipment:', error);
-        // Fallback types already set above
+        // Still keep all types available even if fetch fails
       }
     };
     
@@ -268,47 +256,59 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
         ...prev,
         selectedMachines: prev.selectedMachines.map(machine => {
           const equipmentDetails = availableEquipment.find(eq => eq.id === machine.id);
-          if (equipmentDetails?.baseRates && equipmentDetails.baseRates[formData.orderType as keyof typeof equipmentDetails.baseRates]) {
-            const newRate = equipmentDetails.baseRates[formData.orderType as keyof typeof equipmentDetails.baseRates];
-            console.log('✅ Using baseRates object:', {
-              equipmentId: machine.id,
-              orderType: formData.orderType,
-              newRate: newRate,
-              oldRate: machine.baseRate
-            });
-            return {
-              ...machine,
-              baseRate: newRate || machine.baseRate
-            };
-          } else if (equipmentDetails) {
-            // Fallback to direct properties
-            let newRate = machine.baseRate;
-            switch (formData.orderType) {
-              case 'micro':
-                newRate = equipmentDetails.baseRateMicro || machine.baseRate;
-                break;
-              case 'small':
-                newRate = equipmentDetails.baseRateSmall || machine.baseRate;
-                break;
-              case 'monthly':
-                newRate = equipmentDetails.baseRateMonthly || machine.baseRate;
-                break;
-              case 'yearly':
-                newRate = equipmentDetails.baseRateYearly || machine.baseRate;
-                break;
-            }
-            console.log('✅ Using direct properties:', {
-              equipmentId: machine.id,
-              orderType: formData.orderType,
-              newRate: newRate,
-              oldRate: machine.baseRate,
-              availableRates: {
-                micro: equipmentDetails.baseRateMicro,
-                small: equipmentDetails.baseRateSmall,
-                monthly: equipmentDetails.baseRateMonthly,
-                yearly: equipmentDetails.baseRateYearly
+          if (equipmentDetails) {
+            const orderType = formData.orderType as 'micro' | 'small' | 'monthly' | 'yearly';
+            let newRate = 0;
+            
+            // Enhanced rate fetching - try multiple methods
+            if (equipmentDetails.baseRates && equipmentDetails.baseRates[orderType]) {
+              newRate = Number(equipmentDetails.baseRates[orderType]) || 0;
+              console.log('✅ Using baseRates object for rate update:', {
+                equipmentId: machine.id,
+                orderType: orderType,
+                newRate: newRate,
+                oldRate: machine.baseRate
+              });
+            } else {
+              // Fallback to direct properties with Number conversion
+              switch (orderType) {
+                case 'micro':
+                  newRate = Number(equipmentDetails.baseRateMicro) || 0;
+                  break;
+                case 'small':
+                  newRate = Number(equipmentDetails.baseRateSmall) || 0;
+                  break;
+                case 'monthly':
+                  newRate = Number(equipmentDetails.baseRateMonthly) || 0;
+                  break;
+                case 'yearly':
+                  newRate = Number(equipmentDetails.baseRateYearly) || 0;
+                  break;
               }
-            });
+              console.log('✅ Using direct properties for rate update:', {
+                equipmentId: machine.id,
+                orderType: orderType,
+                newRate: newRate,
+                oldRate: machine.baseRate,
+                availableRates: {
+                  micro: equipmentDetails.baseRateMicro,
+                  small: equipmentDetails.baseRateSmall,
+                  monthly: equipmentDetails.baseRateMonthly,
+                  yearly: equipmentDetails.baseRateYearly
+                }
+              });
+            }
+            
+            // If still 0, keep the existing rate but warn
+            if (newRate === 0) {
+              console.warn('⚠️ Could not find rate for order type, keeping existing rate:', {
+                equipmentId: machine.id,
+                orderType,
+                existingRate: machine.baseRate
+              });
+              newRate = machine.baseRate;
+            }
+            
             return { ...machine, baseRate: newRate };
           }
           console.log('⚠️ No equipment details found for machine:', machine.id);
@@ -323,6 +323,12 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
     if (formData.numberOfDays > 0) {
       const autoOrderType = getOrderTypeByDays(formData.numberOfDays);
       if (autoOrderType !== formData.orderType) {
+        console.log('🔄 Auto-updating order type based on days:', {
+          numberOfDays: formData.numberOfDays,
+          currentOrderType: formData.orderType,
+          newOrderType: autoOrderType,
+          selectedMachines: formData.selectedMachines.length
+        });
         setFormData(prev => ({
           ...prev,
           orderType: autoOrderType
@@ -617,31 +623,40 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                               const orderType = formData.orderType as 'micro' | 'small' | 'monthly' | 'yearly';
                               let baseRate = 0;
                               
-                              // Get base rate based on order type - matching old implementation logic
+                              // Enhanced rate fetching logic - try multiple approaches
+                              console.log('🔍 Fetching rate for equipment:', {
+                                equipmentId: selectedEquipment.id,
+                                equipmentName: selectedEquipment.name,
+                                orderType: orderType,
+                                rawEquipment: selectedEquipment
+                              });
+                              
+                              // Method 1: Try baseRates object first
                               if (selectedEquipment.baseRates && selectedEquipment.baseRates[orderType as keyof typeof selectedEquipment.baseRates]) {
-                                baseRate = selectedEquipment.baseRates[orderType as keyof typeof selectedEquipment.baseRates];
+                                baseRate = Number(selectedEquipment.baseRates[orderType as keyof typeof selectedEquipment.baseRates]) || 0;
                                 console.log('✅ Rate from baseRates object:', {
                                   orderType,
                                   baseRate,
                                   baseRatesObject: selectedEquipment.baseRates
                                 });
-                              } else {
-                                // Fallback to direct properties
+                              } 
+                              // Method 2: Try direct property access
+                              else {
                                 switch (orderType) {
                                   case 'micro':
-                                    baseRate = selectedEquipment.baseRateMicro || 0;
+                                    baseRate = Number(selectedEquipment.baseRateMicro) || 0;
                                     break;
                                   case 'small':
-                                    baseRate = selectedEquipment.baseRateSmall || 0;
+                                    baseRate = Number(selectedEquipment.baseRateSmall) || 0;
                                     break;
                                   case 'monthly':
-                                    baseRate = selectedEquipment.baseRateMonthly || 0;
+                                    baseRate = Number(selectedEquipment.baseRateMonthly) || 0;
                                     break;
                                   case 'yearly':
-                                    baseRate = selectedEquipment.baseRateYearly || 0;
+                                    baseRate = Number(selectedEquipment.baseRateYearly) || 0;
                                     break;
                                   default:
-                                    baseRate = selectedEquipment.baseRateMicro || 0;
+                                    baseRate = Number(selectedEquipment.baseRateMicro) || 0;
                                 }
                                 console.log('✅ Rate from direct properties:', {
                                   orderType,
@@ -653,6 +668,27 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                                     yearly: selectedEquipment.baseRateYearly
                                   }
                                 });
+                              }
+                              
+                              // Method 3: If still 0, try looking for alternative field names
+                              if (baseRate === 0) {
+                                const altFields = [
+                                  `base_rate_${orderType}`,
+                                  `baseRate${orderType.charAt(0).toUpperCase() + orderType.slice(1)}`
+                                ];
+                                
+                                for (const field of altFields) {
+                                  if ((selectedEquipment as any)[field]) {
+                                    baseRate = Number((selectedEquipment as any)[field]) || 0;
+                                    if (baseRate > 0) {
+                                      console.log('✅ Rate from alternative field:', {
+                                        field,
+                                        baseRate
+                                      });
+                                      break;
+                                    }
+                                  }
+                                }
                               }
                               
                               console.log('📊 Adding equipment with rate:', {
@@ -707,21 +743,26 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                           const orderType = formData.orderType as 'micro' | 'small' | 'monthly' | 'yearly';
                           let baseRate = 0;
                           
-                          switch (orderType) {
-                            case 'micro':
-                              baseRate = equipment.baseRateMicro || equipment.baseRates?.micro || 0;
-                              break;
-                            case 'small':
-                              baseRate = equipment.baseRateSmall || equipment.baseRates?.small || 0;
-                              break;
-                            case 'monthly':
-                              baseRate = equipment.baseRateMonthly || equipment.baseRates?.monthly || 0;
-                              break;
-                            case 'yearly':
-                              baseRate = equipment.baseRateYearly || equipment.baseRates?.yearly || 0;
-                              break;
-                            default:
-                              baseRate = equipment.baseRateMicro || equipment.baseRates?.micro || 0;
+                          // Enhanced rate fetching for dropdown display
+                          if (equipment.baseRates && equipment.baseRates[orderType]) {
+                            baseRate = Number(equipment.baseRates[orderType]) || 0;
+                          } else {
+                            switch (orderType) {
+                              case 'micro':
+                                baseRate = Number(equipment.baseRateMicro) || 0;
+                                break;
+                              case 'small':
+                                baseRate = Number(equipment.baseRateSmall) || 0;
+                                break;
+                              case 'monthly':
+                                baseRate = Number(equipment.baseRateMonthly) || 0;
+                                break;
+                              case 'yearly':
+                                baseRate = Number(equipment.baseRateYearly) || 0;
+                                break;
+                              default:
+                                baseRate = Number(equipment.baseRateMicro) || 0;
+                            }
                           }
                           
                           console.log('🏗️ Equipment option:', {
@@ -733,7 +774,7 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                           
                           return (
                             <option key={equipment.id} value={equipment.id}>
-                              {equipment.name} - ₹{baseRate.toLocaleString()}/hr
+                              {equipment.name} - ₹{baseRate > 0 ? baseRate.toLocaleString() : 'No rate'}/hr
                             </option>
                           );
                         })
@@ -762,23 +803,23 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                                   const orderType = formData.orderType as 'micro' | 'small' | 'monthly' | 'yearly';
                                   let defaultRate = 0;
                                   
-                                  // Try baseRates object first
+                                  // Try baseRates object first with Number conversion
                                   if (equipment.baseRates && equipment.baseRates[orderType]) {
-                                    defaultRate = equipment.baseRates[orderType];
+                                    defaultRate = Number(equipment.baseRates[orderType]) || 0;
                                   } else {
-                                    // Fallback to direct properties
+                                    // Fallback to direct properties with Number conversion
                                     switch (orderType) {
                                       case 'micro':
-                                        defaultRate = equipment.baseRateMicro || 0;
+                                        defaultRate = Number(equipment.baseRateMicro) || 0;
                                         break;
                                       case 'small':
-                                        defaultRate = equipment.baseRateSmall || 0;
+                                        defaultRate = Number(equipment.baseRateSmall) || 0;
                                         break;
                                       case 'monthly':
-                                        defaultRate = equipment.baseRateMonthly || 0;
+                                        defaultRate = Number(equipment.baseRateMonthly) || 0;
                                         break;
                                       case 'yearly':
-                                        defaultRate = equipment.baseRateYearly || 0;
+                                        defaultRate = Number(equipment.baseRateYearly) || 0;
                                         break;
                                     }
                                   }
@@ -816,23 +857,23 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                                   const orderType = formData.orderType as 'micro' | 'small' | 'monthly' | 'yearly';
                                   let defaultRate = 0;
                                   
-                                  // Try baseRates object first
+                                  // Try baseRates object first with Number conversion
                                   if (equipment.baseRates && equipment.baseRates[orderType]) {
-                                    defaultRate = equipment.baseRates[orderType];
+                                    defaultRate = Number(equipment.baseRates[orderType]) || 0;
                                   } else {
-                                    // Fallback to direct properties
+                                    // Fallback to direct properties with Number conversion
                                     switch (orderType) {
                                       case 'micro':
-                                        defaultRate = equipment.baseRateMicro || 0;
+                                        defaultRate = Number(equipment.baseRateMicro) || 0;
                                         break;
                                       case 'small':
-                                        defaultRate = equipment.baseRateSmall || 0;
+                                        defaultRate = Number(equipment.baseRateSmall) || 0;
                                         break;
                                       case 'monthly':
-                                        defaultRate = equipment.baseRateMonthly || 0;
+                                        defaultRate = Number(equipment.baseRateMonthly) || 0;
                                         break;
                                       case 'yearly':
-                                        defaultRate = equipment.baseRateYearly || 0;
+                                        defaultRate = Number(equipment.baseRateYearly) || 0;
                                         break;
                                     }
                                   }
@@ -896,23 +937,23 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                                     const orderType = formData.orderType as 'micro' | 'small' | 'monthly' | 'yearly';
                                     let defaultRate = 0;
                                     
-                                    // Try baseRates object first
+                                    // Try baseRates object first with Number conversion
                                     if (equipment.baseRates && equipment.baseRates[orderType]) {
-                                      defaultRate = equipment.baseRates[orderType];
+                                      defaultRate = Number(equipment.baseRates[orderType]) || 0;
                                     } else {
-                                      // Fallback to direct properties
+                                      // Fallback to direct properties with Number conversion
                                       switch (orderType) {
                                         case 'micro':
-                                          defaultRate = equipment.baseRateMicro || 0;
+                                          defaultRate = Number(equipment.baseRateMicro) || 0;
                                           break;
                                         case 'small':
-                                          defaultRate = equipment.baseRateSmall || 0;
+                                          defaultRate = Number(equipment.baseRateSmall) || 0;
                                           break;
                                         case 'monthly':
-                                          defaultRate = equipment.baseRateMonthly || 0;
+                                          defaultRate = Number(equipment.baseRateMonthly) || 0;
                                           break;
                                         case 'yearly':
-                                          defaultRate = equipment.baseRateYearly || 0;
+                                          defaultRate = Number(equipment.baseRateYearly) || 0;
                                           break;
                                       }
                                     }
