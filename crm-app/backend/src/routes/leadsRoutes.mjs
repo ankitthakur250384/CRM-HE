@@ -153,4 +153,26 @@ router.put('/:id', devBypass, asyncHandler(async (req, res) => {
   res.json(updatedLead);
 }));
 
+/**
+ * PATCH /leads/:id - Update lead (partial update) 
+ * This is for general lead updates when using PATCH method
+ */
+router.patch('/:id', devBypass, asyncHandler(async (req, res) => {
+  const leadId = req.params.id;
+  const leadData = req.body;
+  
+  console.log(`🔄 PATCH request to update lead ${leadId}:`, leadData);
+  
+  // For PATCH requests, we don't require all fields, just update what's provided
+  const updatedLead = await leadRepository.updateLead(leadId, leadData);
+  
+  if (!updatedLead) {
+    console.log(`❌ Lead with ID ${leadId} not found`);
+    return res.status(404).json({ message: `Lead with ID ${leadId} not found` });
+  }
+  
+  console.log(`✅ Lead ${leadId} updated successfully`);
+  res.json(updatedLead);
+}));
+
 export default router;

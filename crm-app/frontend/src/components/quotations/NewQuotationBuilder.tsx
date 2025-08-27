@@ -1039,9 +1039,9 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                           </div>
                           
                           <div className="flex justify-between items-center pt-2 border-t border-gray-200">
-                            <span className="text-sm text-gray-600">Cost {getRateUnit(machine.rateType)}:</span>
+                            <span className="text-sm text-gray-600">Cost {getRateUnit(formData.orderType)}:</span>
                             <span className="text-sm font-medium text-gray-900">
-                              ₹{(machine.baseRate * machine.quantity).toLocaleString()}{getRateUnit(machine.rateType)}
+                              ₹{(machine.baseRate * machine.quantity).toLocaleString()}{getRateUnit(formData.orderType)}
                             </span>
                           </div>
                           <div className="flex justify-between items-center text-xs text-gray-500">
@@ -1067,7 +1067,7 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                         </div>
                         <div className="text-xs text-gray-600 mt-1">
                           {formData.orderType === 'monthly' 
-                            ? `For ${formData.numberOfDays} days (${Math.ceil(formData.numberOfDays / 26)} months)` 
+                            ? `For ${formData.numberOfDays} days (${Math.ceil(formData.numberOfDays / 26)} billing months at 26 working days/month)` 
                             : `For ${formData.numberOfDays} days × ${formData.workingHours} hrs = ${formData.numberOfDays * formData.workingHours} total hours`
                           }
                         </div>
@@ -1339,7 +1339,7 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                   <div className="mt-2 space-y-1">
                     {formData.selectedMachines.map((machine, index) => (
                       <div key={index} className="text-sm text-gray-700">
-                        • {machine.label} × {machine.quantity} (₹{(machine.baseRate * machine.quantity).toLocaleString()}{getRateUnit(machine.rateType)})
+                        • {machine.label} × {machine.quantity} (₹{(machine.baseRate * machine.quantity).toLocaleString()}{getRateUnit(formData.orderType)})
                       </div>
                     ))}
                   </div>
