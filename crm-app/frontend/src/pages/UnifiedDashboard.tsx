@@ -94,7 +94,7 @@ function MetricCard({ title, value, change, icon, color, subtitle }: MetricCardP
   );
 }
 
-// Notification Center Component
+// Enhanced Notification Center Component
 function NotificationCenter() {
   const [notifications] = useState([
     {
@@ -125,22 +125,22 @@ function NotificationCenter() {
 
   const getNotificationColor = (type: string) => {
     switch (type) {
-      case 'success': return 'bg-green-100 text-green-700 border-green-200';
-      case 'warning': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
-      case 'info': return 'bg-blue-100 text-blue-700 border-blue-200';
-      default: return 'bg-gray-100 text-gray-700 border-gray-200';
+      case 'success': return 'bg-green-50 text-green-800 border-green-200';
+      case 'warning': return 'bg-yellow-50 text-yellow-800 border-yellow-200';
+      case 'info': return 'bg-blue-50 text-blue-800 border-blue-200';
+      default: return 'bg-gray-50 text-gray-800 border-gray-200';
     }
   };
 
   return (
-    <Card>
+    <Card className="hover:shadow-lg transition-shadow duration-300">
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Bell className="h-5 w-5 text-blue-500" />
-            Live Updates
+            <span className="text-gray-900">Live Updates</span>
           </div>
-          <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+          <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full font-semibold">
             {notifications.length}
           </span>
         </CardTitle>
@@ -150,16 +150,16 @@ function NotificationCenter() {
           {notifications.map((notification) => (
             <div
               key={notification.id}
-              className={`p-3 rounded-lg border ${getNotificationColor(notification.type)}`}
+              className={`p-3 rounded-lg border-2 ${getNotificationColor(notification.type)} hover:shadow-md transition-shadow duration-200`}
             >
               <div className="flex items-start gap-3">
-                <div className="mt-0.5">
+                <div className="mt-0.5 text-current">
                   {notification.icon}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-medium text-sm">{notification.title}</p>
-                  <p className="text-sm opacity-80 mt-1">{notification.message}</p>
-                  <p className="text-xs opacity-60 mt-2">{notification.time}</p>
+                  <p className="font-semibold text-sm text-current">{notification.title}</p>
+                  <p className="text-sm text-current opacity-90 mt-1">{notification.message}</p>
+                  <p className="text-xs text-current opacity-70 mt-2 font-medium">{notification.time}</p>
                 </div>
               </div>
             </div>
@@ -170,41 +170,41 @@ function NotificationCenter() {
   );
 }
 
-// Quick Actions Component
+// Enhanced Quick Actions Component
 function QuickActions() {
   const actions = [
     {
       label: 'Add Lead',
       icon: <Plus className="h-4 w-4" />,
-      color: 'bg-blue-500 hover:bg-blue-600',
+      color: 'bg-blue-500 hover:bg-blue-600 shadow-blue-200',
       href: '/leads/create'
     },
     {
       label: 'New Deal',
       icon: <DollarSign className="h-4 w-4" />,
-      color: 'bg-green-500 hover:bg-green-600',
+      color: 'bg-green-500 hover:bg-green-600 shadow-green-200',
       href: '/deals/create'
     },
     {
       label: 'Schedule Call',
       icon: <Phone className="h-4 w-4" />,
-      color: 'bg-purple-500 hover:bg-purple-600',
+      color: 'bg-purple-500 hover:bg-purple-600 shadow-purple-200',
       href: '/calendar'
     },
     {
       label: 'Send Quote',
       icon: <FileText className="h-4 w-4" />,
-      color: 'bg-orange-500 hover:bg-orange-600',
+      color: 'bg-orange-500 hover:bg-orange-600 shadow-orange-200',
       href: '/quotations/create'
     }
   ];
 
   return (
-    <Card>
+    <Card className="hover:shadow-lg transition-shadow duration-300">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Zap className="h-5 w-5 text-yellow-500" />
-          Quick Actions
+          <span className="text-gray-900">Quick Actions</span>
         </CardTitle>
       </CardHeader>
       <CardContent>
@@ -212,11 +212,11 @@ function QuickActions() {
           {actions.map((action) => (
             <button
               key={action.label}
-              className={`${action.color} text-white p-3 rounded-lg transition-colors flex items-center gap-2 text-sm font-medium`}
+              className={`${action.color} text-white p-3 rounded-lg transition-all duration-200 flex items-center gap-2 text-sm font-semibold hover:shadow-lg hover:scale-105 transform`}
               onClick={() => window.location.href = action.href}
             >
               {action.icon}
-              {action.label}
+              <span>{action.label}</span>
             </button>
           ))}
         </div>
@@ -273,7 +273,7 @@ function PerformanceIndicators({ analytics }: { analytics: DashboardAnalytics })
   };
 
   return (
-    <Card>
+    <Card className="hover:shadow-lg transition-shadow duration-300">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Gauge className="h-5 w-5 text-purple-500" />
@@ -283,18 +283,18 @@ function PerformanceIndicators({ analytics }: { analytics: DashboardAnalytics })
       <CardContent>
         <div className="space-y-4">
           {indicators.map((indicator) => (
-            <div key={indicator.label} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            <div key={indicator.label} className="flex items-center justify-between p-4 bg-white border border-gray-100 rounded-lg hover:shadow-md transition-shadow duration-200">
               <div className="flex items-center gap-3">
                 <div className={`p-2 rounded-full ${getStatusColor(indicator.status)}`}>
                   {getStatusIcon(indicator.status)}
                 </div>
                 <div>
-                  <p className="font-medium text-sm">{indicator.label}</p>
-                  <p className="text-lg font-bold">{indicator.value}</p>
+                  <p className="font-medium text-sm text-gray-900">{indicator.label}</p>
+                  <p className="text-lg font-bold text-gray-800">{indicator.value}</p>
                 </div>
               </div>
               <div className="text-right">
-                <span className="text-green-600 text-sm font-medium">
+                <span className="text-green-600 text-sm font-semibold bg-green-50 px-2 py-1 rounded-full">
                   {indicator.change}
                 </span>
               </div>
@@ -333,7 +333,7 @@ function GoalTracking({ analytics }: { analytics: DashboardAnalytics }) {
   ];
 
   return (
-    <Card>
+    <Card className="hover:shadow-lg transition-shadow duration-300">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Target className="h-5 w-5 text-purple-500" />
@@ -347,18 +347,18 @@ function GoalTracking({ analytics }: { analytics: DashboardAnalytics }) {
             const isOnTrack = percentage >= 75;
             
             return (
-              <div key={goal.label} className="space-y-3">
+              <div key={goal.label} className="space-y-3 p-3 bg-white border border-gray-100 rounded-lg">
                 <div className="flex justify-between items-center">
-                  <span className="font-medium text-gray-700">{goal.label}</span>
-                  <span className="text-sm text-gray-500">
+                  <span className="font-semibold text-gray-900">{goal.label}</span>
+                  <span className="text-sm font-medium text-gray-700 bg-gray-100 px-2 py-1 rounded">
                     {goal.unit}{goal.current.toLocaleString()} / {goal.unit}{goal.target.toLocaleString()}
                   </span>
                 </div>
                 
                 <div className="relative">
-                  <div className="w-full bg-gray-200 rounded-full h-3">
+                  <div className="w-full bg-gray-200 rounded-full h-4">
                     <div 
-                      className={`${goal.color} h-3 rounded-full transition-all duration-1000 relative overflow-hidden`}
+                      className={`${goal.color} h-4 rounded-full transition-all duration-1000 relative overflow-hidden`}
                       style={{ width: `${percentage}%` }}
                     >
                       {/* Animated shine effect */}
@@ -367,14 +367,14 @@ function GoalTracking({ analytics }: { analytics: DashboardAnalytics }) {
                   </div>
                   
                   {/* Goal marker */}
-                  <div className="absolute right-0 top-0 h-3 w-1 bg-gray-400 rounded" />
+                  <div className="absolute right-0 top-0 h-4 w-1 bg-gray-400 rounded" />
                 </div>
                 
-                <div className="flex justify-between text-xs">
-                  <span className={`font-medium ${isOnTrack ? 'text-green-600' : 'text-orange-600'}`}>
+                <div className="flex justify-between text-sm">
+                  <span className={`font-semibold px-3 py-1 rounded-full ${isOnTrack ? 'text-green-800 bg-green-100' : 'text-orange-800 bg-orange-100'}`}>
                     {percentage.toFixed(1)}% complete
                   </span>
-                  <span className="text-gray-500">
+                  <span className={`font-medium ${isOnTrack ? 'text-green-700' : 'text-orange-700'}`}>
                     {isOnTrack ? '🎯 On track' : '⚠️ Needs attention'}
                   </span>
                 </div>

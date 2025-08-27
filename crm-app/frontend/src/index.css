@@ -117,6 +117,66 @@ a:hover, a:focus {
   border-color: rgba(56, 81, 159, 0.2);
 }
 
+/* Force text visibility in all contexts */
+.card *, .panel *, .surface *, 
+div[class*="bg-"], span[class*="text-"], p[class*="text-"], 
+h1, h2, h3, h4, h5, h6 {
+  color: inherit !important;
+}
+
+/* Specific text color overrides for dashboard components */
+.text-gray-900 {
+  color: #111827 !important;
+}
+
+.text-gray-800 {
+  color: #1f2937 !important;
+}
+
+.text-gray-700 {
+  color: #374151 !important;
+}
+
+.text-gray-600 {
+  color: #4b5563 !important;
+}
+
+.text-gray-500 {
+  color: #6b7280 !important;
+}
+
+/* Dashboard specific text visibility */
+[class*="Card"] * {
+  color: #1f2937 !important;
+}
+
+[class*="CardContent"] p,
+[class*="CardContent"] span,
+[class*="CardHeader"] * {
+  color: #111827 !important;
+}
+
+/* Performance indicators specific */
+.bg-green-50 * {
+  color: #065f46 !important;
+}
+
+.bg-blue-50 * {
+  color: #1e3a8a !important;
+}
+
+.bg-yellow-50 * {
+  color: #92400e !important;
+}
+
+.bg-orange-50 * {
+  color: #9a3412 !important;
+}
+
+.bg-gray-100 * {
+  color: #1f2937 !important;
+}
+
 /* Enhanced button styles */
 .btn-primary {
   background: var(--gradient-primary);
