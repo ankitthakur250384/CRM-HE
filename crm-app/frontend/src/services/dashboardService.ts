@@ -62,6 +62,16 @@ interface PipelineData {
   value: number;
 }
 
+interface Notification {
+  id: string;
+  type: 'success' | 'warning' | 'info' | 'error';
+  title: string;
+  message: string;
+  time: string;
+  icon: string;
+  priority: 'high' | 'medium' | 'low';
+}
+
 class DashboardService {
   private getAuthHeaders() {
     const token = localStorage.getItem('jwt-token');
@@ -142,7 +152,31 @@ class DashboardService {
       throw error;
     }
   }
+
+  async getNotifications(limit: number = 10): Promise<Notification[]> {
+    try {
+      const response = await fetch(`${API_BASE_URL}/notifications?limit=${limit}`, {
+        method: 'GET',
+        headers: this.getAuthHeaders(),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      
+      if (!result.success) {
+        throw new Error(result.message || 'Failed to fetch notifications');
+      }
+
+      return result.data;
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+      throw error;
+    }
+  }
 }
 
 export const dashboardService = new DashboardService();
-export type { DashboardAnalytics, RevenueChartData, PipelineData };
+export type { DashboardAnalytics, RevenueChartData, PipelineData, Notification };
