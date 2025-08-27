@@ -9,7 +9,21 @@ import {
   RefreshCw,
   AlertCircle,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  Bell,
+  Plus,
+  Calendar,
+  Phone,
+  Mail,
+  FileText,
+  Trophy,
+  Zap,
+  TrendingDown,
+  Clock,
+  CheckCircle,
+  XCircle,
+  Star,
+  Gauge
 } from 'lucide-react';
 
 // Store
@@ -31,7 +45,7 @@ interface MetricCardProps {
   subtitle?: string;
 }
 
-// Enhanced Metric Card Component
+// Enhanced Metric Card Component with hover effects
 function MetricCard({ title, value, change, icon, color, subtitle }: MetricCardProps) {
   const formatChange = (change: number) => {
     const isPositive = change >= 0;
@@ -40,19 +54,19 @@ function MetricCard({ title, value, change, icon, color, subtitle }: MetricCardP
   };
 
   return (
-    <Card className="relative overflow-hidden">
+    <Card className="relative overflow-hidden hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1 cursor-pointer group">
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
           <div className="space-y-2">
-            <p className="text-sm font-medium text-gray-600">{title}</p>
+            <p className="text-sm font-medium text-gray-600 group-hover:text-gray-700 transition-colors">{title}</p>
             <div className="space-y-1">
-              <p className="text-2xl font-bold text-gray-900">{value}</p>
+              <p className="text-2xl font-bold text-gray-900 group-hover:text-blue-600 transition-colors">{value}</p>
               {subtitle && (
                 <p className="text-xs text-gray-500">{subtitle}</p>
               )}
             </div>
           </div>
-          <div className={`w-12 h-12 rounded-lg ${color} flex items-center justify-center`}>
+          <div className={`w-12 h-12 rounded-lg ${color} flex items-center justify-center group-hover:scale-110 transition-transform duration-200`}>
             {icon}
           </div>
         </div>
@@ -72,6 +86,302 @@ function MetricCard({ title, value, change, icon, color, subtitle }: MetricCardP
             <span className="text-sm text-gray-500 ml-1">vs last period</span>
           </div>
         )}
+        
+        {/* Subtle gradient overlay on hover */}
+        <div className="absolute inset-0 bg-gradient-to-r from-blue-50 to-transparent opacity-0 group-hover:opacity-50 transition-opacity duration-300 pointer-events-none" />
+      </CardContent>
+    </Card>
+  );
+}
+
+// Notification Center Component
+function NotificationCenter() {
+  const [notifications] = useState([
+    {
+      id: 1,
+      type: 'success',
+      title: 'Deal Closed!',
+      message: 'John Construction deal worth $150,000 just closed',
+      time: '2 min ago',
+      icon: <Trophy className="h-4 w-4" />
+    },
+    {
+      id: 2,
+      type: 'warning',
+      title: 'Follow-up Required',
+      message: '3 leads need follow-up calls today',
+      time: '15 min ago',
+      icon: <Clock className="h-4 w-4" />
+    },
+    {
+      id: 3,
+      type: 'info',
+      title: 'New Lead',
+      message: 'ABC Manufacturing submitted inquiry',
+      time: '1 hour ago',
+      icon: <Users className="h-4 w-4" />
+    }
+  ]);
+
+  const getNotificationColor = (type: string) => {
+    switch (type) {
+      case 'success': return 'bg-green-100 text-green-700 border-green-200';
+      case 'warning': return 'bg-yellow-100 text-yellow-700 border-yellow-200';
+      case 'info': return 'bg-blue-100 text-blue-700 border-blue-200';
+      default: return 'bg-gray-100 text-gray-700 border-gray-200';
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Bell className="h-5 w-5 text-blue-500" />
+            Live Updates
+          </div>
+          <span className="bg-red-500 text-white text-xs px-2 py-1 rounded-full">
+            {notifications.length}
+          </span>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-3 max-h-64 overflow-y-auto">
+          {notifications.map((notification) => (
+            <div
+              key={notification.id}
+              className={`p-3 rounded-lg border ${getNotificationColor(notification.type)}`}
+            >
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5">
+                  {notification.icon}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium text-sm">{notification.title}</p>
+                  <p className="text-sm opacity-80 mt-1">{notification.message}</p>
+                  <p className="text-xs opacity-60 mt-2">{notification.time}</p>
+                </div>
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// Quick Actions Component
+function QuickActions() {
+  const actions = [
+    {
+      label: 'Add Lead',
+      icon: <Plus className="h-4 w-4" />,
+      color: 'bg-blue-500 hover:bg-blue-600',
+      href: '/leads/create'
+    },
+    {
+      label: 'New Deal',
+      icon: <DollarSign className="h-4 w-4" />,
+      color: 'bg-green-500 hover:bg-green-600',
+      href: '/deals/create'
+    },
+    {
+      label: 'Schedule Call',
+      icon: <Phone className="h-4 w-4" />,
+      color: 'bg-purple-500 hover:bg-purple-600',
+      href: '/calendar'
+    },
+    {
+      label: 'Send Quote',
+      icon: <FileText className="h-4 w-4" />,
+      color: 'bg-orange-500 hover:bg-orange-600',
+      href: '/quotations/create'
+    }
+  ];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Zap className="h-5 w-5 text-yellow-500" />
+          Quick Actions
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-2 gap-3">
+          {actions.map((action) => (
+            <button
+              key={action.label}
+              className={`${action.color} text-white p-3 rounded-lg transition-colors flex items-center gap-2 text-sm font-medium`}
+              onClick={() => window.location.href = action.href}
+            >
+              {action.icon}
+              {action.label}
+            </button>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// Performance Indicators Component
+function PerformanceIndicators({ analytics }: { analytics: DashboardAnalytics }) {
+  const indicators = [
+    {
+      label: 'Sales Velocity',
+      value: `$${(analytics.revenue.total / 30).toFixed(0)}K/day`,
+      status: 'good',
+      change: '+12%'
+    },
+    {
+      label: 'Lead Response Time',
+      value: '2.3 hours',
+      status: 'excellent',
+      change: '-15%'
+    },
+    {
+      label: 'Conversion Rate',
+      value: `${analytics.deals.winRate.toFixed(1)}%`,
+      status: analytics.deals.winRate > 60 ? 'excellent' : analytics.deals.winRate > 40 ? 'good' : 'needs-improvement',
+      change: '+8%'
+    },
+    {
+      label: 'Customer Satisfaction',
+      value: '4.8/5',
+      status: 'excellent',
+      change: '+2%'
+    }
+  ];
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'excellent': return 'text-green-600 bg-green-100';
+      case 'good': return 'text-blue-600 bg-blue-100';
+      case 'needs-improvement': return 'text-orange-600 bg-orange-100';
+      default: return 'text-gray-600 bg-gray-100';
+    }
+  };
+
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case 'excellent': return <CheckCircle className="h-4 w-4" />;
+      case 'good': return <Star className="h-4 w-4" />;
+      case 'needs-improvement': return <XCircle className="h-4 w-4" />;
+      default: return <Gauge className="h-4 w-4" />;
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Gauge className="h-5 w-5 text-purple-500" />
+          Performance Indicators
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-4">
+          {indicators.map((indicator) => (
+            <div key={indicator.label} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-full ${getStatusColor(indicator.status)}`}>
+                  {getStatusIcon(indicator.status)}
+                </div>
+                <div>
+                  <p className="font-medium text-sm">{indicator.label}</p>
+                  <p className="text-lg font-bold">{indicator.value}</p>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-green-600 text-sm font-medium">
+                  {indicator.change}
+                </span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+// Goal Tracking Component
+function GoalTracking({ analytics }: { analytics: DashboardAnalytics }) {
+  const goals = [
+    {
+      label: 'Monthly Revenue',
+      current: analytics.revenue.total,
+      target: 1000000,
+      unit: '$',
+      color: 'bg-green-500'
+    },
+    {
+      label: 'New Leads',
+      current: analytics.leads.total,
+      target: 100,
+      unit: '',
+      color: 'bg-blue-500'
+    },
+    {
+      label: 'Deals Closed',
+      current: analytics.deals.won,
+      target: 20,
+      unit: '',
+      color: 'bg-purple-500'
+    }
+  ];
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <Target className="h-5 w-5 text-purple-500" />
+          Goal Progress
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="space-y-6">
+          {goals.map((goal) => {
+            const percentage = Math.min((goal.current / goal.target) * 100, 100);
+            const isOnTrack = percentage >= 75;
+            
+            return (
+              <div key={goal.label} className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="font-medium text-gray-700">{goal.label}</span>
+                  <span className="text-sm text-gray-500">
+                    {goal.unit}{goal.current.toLocaleString()} / {goal.unit}{goal.target.toLocaleString()}
+                  </span>
+                </div>
+                
+                <div className="relative">
+                  <div className="w-full bg-gray-200 rounded-full h-3">
+                    <div 
+                      className={`${goal.color} h-3 rounded-full transition-all duration-1000 relative overflow-hidden`}
+                      style={{ width: `${percentage}%` }}
+                    >
+                      {/* Animated shine effect */}
+                      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white to-transparent opacity-30 -skew-x-12 animate-pulse" />
+                    </div>
+                  </div>
+                  
+                  {/* Goal marker */}
+                  <div className="absolute right-0 top-0 h-3 w-1 bg-gray-400 rounded" />
+                </div>
+                
+                <div className="flex justify-between text-xs">
+                  <span className={`font-medium ${isOnTrack ? 'text-green-600' : 'text-orange-600'}`}>
+                    {percentage.toFixed(1)}% complete
+                  </span>
+                  <span className="text-gray-500">
+                    {isOnTrack ? '🎯 On track' : '⚠️ Needs attention'}
+                  </span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </CardContent>
     </Card>
   );
@@ -119,37 +429,63 @@ function QuickStats({ analytics }: { analytics: DashboardAnalytics }) {
   );
 }
 
-// Revenue Chart Component
+// Enhanced Revenue Chart Component with hover effects
 function RevenueChart({ data }: { data: RevenueChartData[] }) {
   const maxRevenue = Math.max(...data.map(item => item.revenue));
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   return (
-    <Card>
+    <Card className="hover:shadow-lg transition-shadow duration-300">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <TrendingUp className="h-5 w-5 text-green-500" />
-          Revenue Trend (Last 6 Months)
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <TrendingUp className="h-5 w-5 text-green-500" />
+            Revenue Trend (Last 6 Months)
+          </div>
+          <div className="text-sm text-gray-500">
+            Total: ${data.reduce((sum, month) => sum + month.revenue, 0).toLocaleString()}
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
-          {data.slice(0, 6).map((month) => {
+          {data.slice(0, 6).map((month, index) => {
             const percentage = maxRevenue > 0 ? (month.revenue / maxRevenue) * 100 : 0;
+            const isHovered = hoveredIndex === index;
             
             return (
-              <div key={month.month} className="space-y-2">
+              <div 
+                key={month.month} 
+                className="space-y-2 p-2 rounded-lg transition-colors duration-200 hover:bg-gray-50 cursor-pointer"
+                onMouseEnter={() => setHoveredIndex(index)}
+                onMouseLeave={() => setHoveredIndex(null)}
+              >
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-600">{month.monthName}</span>
-                  <span className="font-semibold">${month.revenue.toLocaleString()}</span>
+                  <span className={`font-medium transition-colors ${isHovered ? 'text-green-600' : 'text-gray-600'}`}>
+                    {month.monthName}
+                  </span>
+                  <span className={`font-semibold transition-colors ${isHovered ? 'text-green-700' : 'text-gray-900'}`}>
+                    ${month.revenue.toLocaleString()}
+                  </span>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-2">
+                <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
                   <div 
-                    className="bg-green-500 h-2 rounded-full transition-all duration-500"
-                    style={{ width: `${percentage}%` }}
+                    className={`h-3 rounded-full transition-all duration-700 ${
+                      isHovered ? 'bg-green-600 shadow-lg' : 'bg-green-500'
+                    }`}
+                    style={{ 
+                      width: `${percentage}%`,
+                      transform: isHovered ? 'scale(1.02)' : 'scale(1)'
+                    }}
                   />
                 </div>
-                <div className="text-xs text-gray-500 text-right">
-                  {month.deals} deals
+                <div className="flex justify-between text-xs">
+                  <span className="text-gray-500">
+                    {month.deals} deals
+                  </span>
+                  <span className={`transition-colors ${isHovered ? 'text-green-600' : 'text-gray-400'}`}>
+                    {percentage.toFixed(1)}% of max
+                  </span>
                 </div>
               </div>
             );
@@ -160,39 +496,69 @@ function RevenueChart({ data }: { data: RevenueChartData[] }) {
   );
 }
 
-// Pipeline Overview Component
+// Enhanced Pipeline Overview Component
 function PipelineOverview({ data }: { data: PipelineData[] }) {
   const maxValue = Math.max(...data.map(stage => stage.value));
+  const totalValue = data.reduce((sum, stage) => sum + stage.value, 0);
   const colors = ['bg-blue-500', 'bg-yellow-500', 'bg-orange-500', 'bg-green-500'];
+  const hoverColors = ['hover:bg-blue-600', 'hover:bg-yellow-600', 'hover:bg-orange-600', 'hover:bg-green-600'];
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   return (
-    <Card>
+    <Card className="hover:shadow-lg transition-shadow duration-300">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
-          <BarChart3 className="h-5 w-5 text-blue-500" />
-          Sales Pipeline
+        <CardTitle className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <BarChart3 className="h-5 w-5 text-blue-500" />
+            Sales Pipeline
+          </div>
+          <div className="text-sm text-gray-500">
+            Total: ${totalValue.toLocaleString()}
+          </div>
         </CardTitle>
       </CardHeader>
       <CardContent>
         <div className="space-y-4">
           {data.map((stage, index) => {
             const percentage = maxValue > 0 ? (stage.value / maxValue) * 100 : 0;
+            const valuePercentage = totalValue > 0 ? (stage.value / totalValue) * 100 : 0;
             const color = colors[index % colors.length];
+            const hoverColor = hoverColors[index % hoverColors.length];
+            const isHovered = hoveredIndex === index;
             
             return (
-              <div key={stage.stage} className="space-y-2">
+              <div 
+                key={stage.stage} 
+                className="space-y-2 p-3 rounded-lg transition-colors duration-200 hover:bg-gray-50 cursor-pointer"
+                onMouseEnter={() => setHoveredIndex(index)}
+                onMouseLeave={() => setHoveredIndex(null)}
+              >
                 <div className="flex justify-between text-sm">
-                  <span className="font-medium text-gray-700">{stage.stage}</span>
+                  <span className={`font-medium transition-colors ${isHovered ? 'text-blue-600' : 'text-gray-700'}`}>
+                    {stage.stage}
+                  </span>
                   <div className="text-right">
-                    <div className="font-semibold">${stage.value.toLocaleString()}</div>
+                    <div className={`font-semibold transition-colors ${isHovered ? 'text-blue-700' : 'text-gray-900'}`}>
+                      ${stage.value.toLocaleString()}
+                    </div>
                     <div className="text-xs text-gray-500">{stage.count} deals</div>
                   </div>
                 </div>
-                <div className="w-full bg-gray-200 rounded-full h-3">
+                <div className="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
                   <div 
-                    className={`${color} h-3 rounded-full transition-all duration-500`}
+                    className={`${color} h-4 rounded-full transition-all duration-700 ${hoverColor} ${
+                      isHovered ? 'shadow-lg scale-y-110' : ''
+                    }`}
                     style={{ width: `${percentage}%` }}
                   />
+                </div>
+                <div className="flex justify-between text-xs">
+                  <span className={`transition-colors ${isHovered ? 'text-blue-600' : 'text-gray-500'}`}>
+                    {valuePercentage.toFixed(1)}% of total pipeline
+                  </span>
+                  <span className={`transition-colors ${isHovered ? 'text-blue-600' : 'text-gray-400'}`}>
+                    ${(stage.value / stage.count).toLocaleString()} avg deal
+                  </span>
                 </div>
               </div>
             );
@@ -394,63 +760,92 @@ export function UnifiedDashboard() {
   }
 
   return (
-    <div className="space-y-8">
-      {/* Header */}
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-900">
-            Welcome back, {user?.name || 'User'}!
-          </h1>
-          <p className="text-gray-600 mt-1">
-            Here's what's happening with your business today.
-          </p>
+    <div className="space-y-8 animate-fadeIn">
+      {/* Enhanced Header with Breadcrumbs */}
+      <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl p-6 border border-blue-100">
+        <div className="flex justify-between items-start mb-4">
+          {/* Breadcrumb */}
+          <nav className="text-sm">
+            <ol className="flex items-center space-x-2 text-gray-500">
+              <li>Home</li>
+              <li className="before:content-['/'] before:mx-2">Dashboard</li>
+              <li className="before:content-['/'] before:mx-2 text-blue-600 font-medium">Analytics</li>
+            </ol>
+          </nav>
+          
+          {/* Time Range & Actions */}
+          <div className="flex items-center gap-4">
+            {/* Time Range Selector */}
+            <div className="flex bg-white/80 backdrop-blur rounded-lg p-1 shadow-sm border">
+              {[
+                { label: '7D', days: 7 },
+                { label: '30D', days: 30 },
+                { label: '90D', days: 90 }
+              ].map(({ label, days }) => (
+                <button
+                  key={days}
+                  onClick={() => handleTimeRangeChange(days)}
+                  className={`px-3 py-1.5 rounded text-sm font-medium transition-all duration-200 ${
+                    timeRange === days
+                      ? 'bg-blue-500 text-white shadow-md transform scale-105'
+                      : 'text-gray-600 hover:text-gray-900 hover:bg-white/50'
+                  }`}
+                >
+                  {label}
+                </button>
+              ))}
+            </div>
+            
+            {/* Refresh Button */}
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              className="flex items-center gap-2 px-4 py-2 bg-white/80 backdrop-blur border border-gray-200 rounded-lg hover:bg-white hover:shadow-md transition-all duration-200 disabled:opacity-50"
+            >
+              <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">Refresh</span>
+            </button>
+          </div>
         </div>
         
-        <div className="flex items-center gap-4">
-          {/* Time Range Selector */}
-          <div className="flex bg-gray-100 rounded-lg p-1">
-            {[
-              { label: '7D', days: 7 },
-              { label: '30D', days: 30 },
-              { label: '90D', days: 90 }
-            ].map(({ label, days }) => (
-              <button
-                key={days}
-                onClick={() => handleTimeRangeChange(days)}
-                className={`px-3 py-1 rounded text-sm font-medium transition-colors ${
-                  timeRange === days
-                    ? 'bg-white text-brand-blue shadow-sm'
-                    : 'text-gray-600 hover:text-gray-900'
-                }`}
-              >
-                {label}
-              </button>
-            ))}
-          </div>
-          
-          {/* Refresh Button */}
-          <button
-            onClick={handleRefresh}
-            disabled={refreshing}
-            className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
-          >
-            <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-            Refresh
-          </button>
+        {/* Welcome Message */}
+        <div className="space-y-2">
+          <h1 className="text-3xl font-bold text-gray-900 bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+            Welcome back, {user?.name || 'User'}! 👋
+          </h1>
+          <p className="text-gray-600 text-lg">
+            Here's what's happening with your business today. 
+            <span className="ml-2 inline-flex items-center gap-1 text-sm bg-green-100 text-green-700 px-2 py-1 rounded-full">
+              <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
+              Live data
+            </span>
+          </p>
         </div>
       </div>
 
-      {/* Quick Stats */}
-      <QuickStats analytics={analytics} />
+      {/* Quick Stats with staggered animation */}
+      <div className="animate-slideInUp">
+        <QuickStats analytics={analytics} />
+      </div>
 
-      {/* Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      {/* Action Cards Row with staggered animation */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 animate-slideInUp" style={{ animationDelay: '0.1s' }}>
+        <QuickActions />
+        <NotificationCenter />
+        <PerformanceIndicators analytics={analytics} />
+        <GoalTracking analytics={analytics} />
+      </div>
+
+      {/* Charts Grid with staggered animation */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 animate-slideInUp" style={{ animationDelay: '0.2s' }}>
         <RevenueChart data={chartData.revenueData} />
         <PipelineOverview data={chartData.pipelineData} />
       </div>
 
-      {/* Recent Activities */}
-      <RecentActivities activities={analytics.recentActivities} />
+      {/* Recent Activities with staggered animation */}
+      <div className="animate-slideInUp" style={{ animationDelay: '0.3s' }}>
+        <RecentActivities activities={analytics.recentActivities} />
+      </div>
     </div>
   );
 }
