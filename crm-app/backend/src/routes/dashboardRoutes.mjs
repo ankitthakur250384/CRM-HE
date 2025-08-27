@@ -1,7 +1,18 @@
 /**
  * Dashboard Analytics API Routes
  * 
- * Provides aggregated data for dashboard analytics from existing database tables
+ * Provides aggregated data for d    ];
+
+    console.log('📊 Dashboard data aggregated successfully:', {
+      revenue: revenueData,
+      leads: leadsData,
+      deals: dealsData,
+      customers: customersData,
+      quotations: quotationsData,
+      activities: recentActivities.length
+    });
+
+    const analytics = {board analytics from existing database tables
  */
 
 import express from 'express';
@@ -52,6 +63,8 @@ const asyncHandler = (fn) => (req, res, next) => {
 router.get('/analytics', authenticateToken, asyncHandler(async (req, res) => {
   const { timeRange = '30' } = req.query; // days
   const days = parseInt(timeRange, 10);
+  
+  console.log(`📊 Dashboard analytics request - timeRange: ${days} days, user: ${req.user?.uid}`);
   
   try {
     // Get date range
@@ -107,6 +120,8 @@ router.get('/revenue-chart', authenticateToken, asyncHandler(async (req, res) =>
   const { months = '12' } = req.query;
   const monthsCount = parseInt(months, 10);
 
+  console.log(`📈 Revenue chart request - months: ${monthsCount}, user: ${req.user?.uid}`);
+
   const query = `
     SELECT 
       DATE_TRUNC('month', created_at) as month,
@@ -139,6 +154,8 @@ router.get('/revenue-chart', authenticateToken, asyncHandler(async (req, res) =>
  * Get sales pipeline overview
  */
 router.get('/pipeline-overview', authenticateToken, asyncHandler(async (req, res) => {
+  console.log(`🔄 Pipeline overview request - user: ${req.user?.uid}`);
+  
   const query = `
     SELECT 
       stage,
