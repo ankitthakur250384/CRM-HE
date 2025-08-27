@@ -1034,9 +1034,9 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                           </div>
                           
                           <div className="flex justify-between items-center pt-2 border-t border-gray-200">
-                            <span className="text-sm text-gray-600">Cost {getRateUnit(formData.orderType)}:</span>
+                            <span className="text-sm text-gray-600">Cost {getRateUnit(machine.rateType)}:</span>
                             <span className="text-sm font-medium text-gray-900">
-                              ₹{(machine.baseRate * machine.quantity).toLocaleString()}{getRateUnit(formData.orderType)}
+                              ₹{(machine.baseRate * machine.quantity).toLocaleString()}{getRateUnit(machine.rateType)}
                             </span>
                           </div>
                           <div className="flex justify-between items-center text-xs text-gray-500">
@@ -1280,65 +1280,65 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
             </div>
             
             <div className="bg-gray-50 rounded-lg p-6">
-              <h3 className="text-lg font-semibold mb-4">Cost Breakdown</h3>
+              <h3 className="text-lg font-semibold mb-4 text-gray-900">Cost Breakdown</h3>
               <div className="space-y-3">
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Equipment Rental ({formData.numberOfDays} days × {formData.workingHours} hrs)</span>
-                  <span className="font-medium">₹{calculations.totalRent.toLocaleString('en-IN')}</span>
+                  <span className="text-gray-700">Equipment Rental ({formData.numberOfDays} days × {formData.workingHours} hrs)</span>
+                  <span className="font-medium text-gray-900">₹{calculations.totalRent.toLocaleString('en-IN')}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Mobilization & Demobilization</span>
-                  <span className="font-medium">₹{calculations.mobDemobCost.toLocaleString('en-IN')}</span>
+                  <span className="text-gray-700">Mobilization & Demobilization</span>
+                  <span className="font-medium text-gray-900">₹{calculations.mobDemobCost.toLocaleString('en-IN')}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Food & Accommodation</span>
-                  <span className="font-medium">₹{calculations.foodAccomCost.toLocaleString('en-IN')}</span>
+                  <span className="text-gray-700">Food & Accommodation</span>
+                  <span className="font-medium text-gray-900">₹{calculations.foodAccomCost.toLocaleString('en-IN')}</span>
                 </div>
                 {formData.extraCharge > 0 && (
                   <div className="flex justify-between">
-                    <span className="text-gray-600">Extra Charges</span>
-                    <span className="font-medium">₹{formData.extraCharge.toLocaleString('en-IN')}</span>
+                    <span className="text-gray-700">Extra Charges</span>
+                    <span className="font-medium text-gray-900">₹{formData.extraCharge.toLocaleString('en-IN')}</span>
                   </div>
                 )}
                 <div className="flex justify-between border-t pt-3">
-                  <span className="text-gray-600">Subtotal</span>
-                  <span className="font-medium">₹{(calculations.totalCost - calculations.gstAmount).toLocaleString('en-IN')}</span>
+                  <span className="text-gray-700">Subtotal</span>
+                  <span className="font-medium text-gray-900">₹{(calculations.totalCost - calculations.gstAmount).toLocaleString('en-IN')}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">GST (18%)</span>
-                  <span className="font-medium">₹{calculations.gstAmount.toLocaleString('en-IN')}</span>
+                  <span className="text-gray-700">GST (18%)</span>
+                  <span className="font-medium text-gray-900">₹{calculations.gstAmount.toLocaleString('en-IN')}</span>
                 </div>
                 <div className="flex justify-between border-t pt-3 text-lg font-bold">
-                  <span>Total Amount</span>
+                  <span className="text-gray-900">Total Amount</span>
                   <span className="text-blue-600">₹{calculations.totalCost.toLocaleString('en-IN')}</span>
                 </div>
               </div>
             </div>
 
             <div className="bg-blue-50 rounded-lg p-6">
-              <h3 className="text-lg font-semibold mb-4">Quotation Summary</h3>
+              <h3 className="text-lg font-semibold mb-4 text-gray-900">Quotation Summary</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
-                <div>
-                  <span className="font-medium">Customer:</span> {formData.customerName}
+                <div className="text-gray-800">
+                  <span className="font-medium text-gray-900">Customer:</span> {formData.customerName}
                 </div>
-                <div>
-                  <span className="font-medium">Equipment Type:</span> {equipmentTypes.find(eq => eq.value === formData.machineType)?.label}
+                <div className="text-gray-800">
+                  <span className="font-medium text-gray-900">Equipment Type:</span> {equipmentTypes.find(eq => eq.value === formData.machineType)?.label}
                 </div>
                 <div className="md:col-span-2">
-                  <span className="font-medium">Selected Equipment:</span>
+                  <span className="font-medium text-gray-900">Selected Equipment:</span>
                   <div className="mt-2 space-y-1">
                     {formData.selectedMachines.map((machine, index) => (
-                      <div key={index} className="text-sm text-gray-600">
-                        • {machine.label} × {machine.quantity} (₹{(machine.baseRate * machine.quantity).toLocaleString()}/hr)
+                      <div key={index} className="text-sm text-gray-700">
+                        • {machine.label} × {machine.quantity} (₹{(machine.baseRate * machine.quantity).toLocaleString()}{getRateUnit(machine.rateType)})
                       </div>
                     ))}
                   </div>
                 </div>
-                <div>
-                  <span className="font-medium">Duration:</span> {formData.numberOfDays} days
+                <div className="text-gray-800">
+                  <span className="font-medium text-gray-900">Duration:</span> {formData.numberOfDays} days
                 </div>
-                <div>
-                  <span className="font-medium">Shift:</span> {formData.shift}
+                <div className="text-gray-800">
+                  <span className="font-medium text-gray-900">Shift:</span> {formData.shift}
                 </div>
               </div>
             </div>
