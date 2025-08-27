@@ -24,7 +24,14 @@ interface SelectedMachine {
   id: string;
   type: string;
   label: string;
-  baseRate: number;
+  baseRate: number; // Keep for backward compatibility
+  baseRates: {
+    micro?: number;
+    small?: number;
+    monthly?: number;
+    yearly?: number;
+  };
+  rateType: string;
   quantity: number;
 }
 
@@ -347,9 +354,11 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
     if (!orderType || formData.selectedMachines.length === 0) return;
 
     // Calculate total equipment cost from selected machines
-    const totalEquipmentRatePerHour = formData.selectedMachines.reduce((total, machine) => 
-      total + (machine.baseRate * machine.quantity), 0
-    );
+    const totalEquipmentRatePerHour = formData.selectedMachines.reduce((total, machine) => {
+      // Use effective hourly rate for accurate calculation
+      const effectiveHourlyRate = calculateEffectiveHourlyRate(machine.baseRates, machine.rateType);
+      return total + (effectiveHourlyRate * machine.quantity);
+    }, 0);
     const baseRate = totalEquipmentRatePerHour * orderType.multiplier;
     const totalRent = baseRate * formData.workingHours * formData.numberOfDays;
     
@@ -485,6 +494,62 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
       showNotification('error', error instanceof Error ? error.message : 'Failed to create quotation');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Helper function to calculate effective hourly rate based on baseRates object and rateType
+  const calculateEffectiveHourlyRate = (baseRates: { micro?: number; small?: number; monthly?: number; yearly?: number }, rateType: string, workingHoursPerDay: number = 8) => {
+    let baseRate = 0;
+    
+    // Get the appropriate rate based on rateType
+    switch (rateType) {
+      case 'micro':
+        baseRate = baseRates.micro || 0;
+        break;
+      case 'small':
+        baseRate = baseRates.small || 0;
+        break;
+      case 'monthly':
+        baseRate = baseRates.monthly || 0;
+        break;
+      case 'yearly':
+        baseRate = baseRates.yearly || 0;
+        break;
+      default:
+        // Fallback - find first available rate
+        baseRate = baseRates.micro || baseRates.small || baseRates.monthly || baseRates.yearly || 0;
+        break;
+    }
+    
+    // Convert to hourly rate based on rateType
+    switch (rateType) {
+      case 'micro':
+      case 'small':
+        // These are already per hour rates
+        return baseRate;
+      case 'monthly':
+        // Convert monthly rate to hourly (assuming 26 working days per month)
+        return baseRate / (26 * workingHoursPerDay);
+      case 'yearly':
+        // Convert yearly rate to hourly (assuming 312 working days per year)
+        return baseRate / (312 * workingHoursPerDay);
+      default:
+        return baseRate;
+    }
+  };
+
+  // Helper function to get rate unit display text
+  const getRateUnit = (orderType: string) => {
+    switch (orderType) {
+      case 'micro':
+      case 'small':
+        return '/hr';
+      case 'monthly':
+        return '/month';
+      case 'yearly':
+        return '/year';
+      default:
+        return '/hr';
     }
   };
 
@@ -660,6 +725,8 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                                   type: selectedEquipment.category,
                                   label: selectedEquipment.name,
                                   baseRate: baseRate,
+                                  baseRates: selectedEquipment.baseRates || {},
+                                  rateType: formData.orderType,
                                   quantity: 1
                                 }]
                               }));
@@ -967,9 +1034,15 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                           </div>
                           
                           <div className="flex justify-between items-center pt-2 border-t border-gray-200">
-                            <span className="text-sm text-gray-600">Cost per hour:</span>
+                            <span className="text-sm text-gray-600">Cost {getRateUnit(formData.orderType)}:</span>
                             <span className="text-sm font-medium text-gray-900">
-                              ₹{(machine.baseRate * machine.quantity).toLocaleString()}/hr
+                              ₹{(machine.baseRate * machine.quantity).toLocaleString()}{getRateUnit(formData.orderType)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between items-center text-xs text-gray-500">
+                            <span>Effective hourly cost:</span>
+                            <span>
+                              ₹{(calculateEffectiveHourlyRate(machine.baseRates, machine.rateType, formData.workingHours || 8) * machine.quantity).toLocaleString()}/hr
                             </span>
                           </div>
                         </div>
@@ -979,9 +1052,14 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                           <span className="font-medium text-gray-900">Total Equipment Cost:</span>
                           <span className="font-bold text-blue-600 text-lg">
                             ₹{formData.selectedMachines.reduce((total, machine) => 
-                              total + (machine.baseRate * machine.quantity), 0
+                              total + (calculateEffectiveHourlyRate(machine.baseRates, machine.rateType, formData.workingHours || 8) * machine.quantity), 0
                             ).toLocaleString()}/hr
                           </span>
+                        </div>
+                        <div className="text-xs text-gray-600 mt-1">
+                          Base rate total: ₹{formData.selectedMachines.reduce((total, machine) => 
+                            total + (machine.baseRate * machine.quantity), 0
+                          ).toLocaleString()}{getRateUnit(formData.orderType)}
                         </div>
                         <div className="mt-2 text-xs text-gray-600">
                           💡 <strong>Tip:</strong> You can adjust individual equipment rates above to customize pricing for this specific quotation. 
