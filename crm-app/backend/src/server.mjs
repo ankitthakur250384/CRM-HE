@@ -26,6 +26,7 @@ import jobRoutes from './routes/jobRoutes.mjs';
 import operatorRoutes from './routes/operatorRoutes.mjs';
 import activityRoutes from './routes/activityRoutes.mjs';
 import notificationRoutes from './routes/notificationRoutes.mjs';
+import dashboardRoutes from './routes/dashboardRoutes.mjs';
 
 import dbConfigRoutes from './routes/dbConfigRoutes.mjs';
 import templateRoutes from './routes/templateRoutes.mjs';
@@ -151,6 +152,7 @@ app.use('/api/jobs', jobRoutes);
 app.use('/api/operators', operatorRoutes);
 app.use('/api/activities', activityRoutes);
 app.use('/api/notifications', notificationRoutes);
+app.use('/api/dashboard', dashboardRoutes);
 
 // Mount template routes - ORDER MATTERS: more specific routes first
 console.log('🔧 Mounting /api/templates/modern route...');

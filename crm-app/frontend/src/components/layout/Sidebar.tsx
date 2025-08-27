@@ -289,8 +289,16 @@ export function Sidebar({ isMobileOpen = false, onMobileClose, isCollapsed: cont
           </Link>
         </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 py-6" role="navigation">
+        {/* Navigation - Made scrollable without visible scrollbar */}
+        <nav className="flex-1 py-6 overflow-y-auto hide-scrollbar" role="navigation" style={{
+          scrollbarWidth: 'none', /* Firefox */
+          msOverflowStyle: 'none', /* Internet Explorer 10+ */
+        }}>
+          <style>{`
+            .hide-scrollbar::-webkit-scrollbar {
+              display: none; /* Safari and Chrome */
+            }
+          `}</style>
           <ul className="space-y-1 px-3" role="list">
             {filteredNavItems.map((item) => {
               const active = isActive(item.href, item.end);
