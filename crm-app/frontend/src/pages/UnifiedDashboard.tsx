@@ -269,12 +269,14 @@ export function UnifiedDashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [connectionError, setConnectionError] = useState(false);
   const [authError, setAuthError] = useState(false);
+  const [serverError, setServerError] = useState(false);
 
   const fetchDashboardData = async () => {
     try {
       setError(null);
       setConnectionError(false);
       setAuthError(false);
+      setServerError(false);
       
       const [analyticsData, revenueData, pipelineData] = await Promise.all([
         dashboardService.getDashboardAnalytics(timeRange),
@@ -292,6 +294,11 @@ export function UnifiedDashboard() {
       if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
         setAuthError(true);
         setError('You need to log in to view the dashboard. Please sign in and try again.');
+      }
+      // Check if it's a server error
+      else if (errorMessage.includes('500') || errorMessage.includes('Internal Server Error')) {
+        setServerError(true);
+        setError('Server error occurred. The dashboard data might be temporarily unavailable. Please try refreshing.');
       }
       // Check if it's a connection error
       else if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError') || errorMessage.includes('ERR_CONNECTION_REFUSED')) {
@@ -334,7 +341,7 @@ export function UnifiedDashboard() {
       <div className="bg-white rounded-lg p-8 text-center">
         <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
         <h3 className="text-lg font-medium text-gray-900 mb-2">
-          {authError ? 'Authentication Required' : connectionError ? 'Connection Error' : 'Error Loading Dashboard'}
+          {authError ? 'Authentication Required' : serverError ? 'Server Error' : connectionError ? 'Connection Error' : 'Error Loading Dashboard'}
         </h3>
         <p className="text-gray-600 mb-4">{error}</p>
         {authError && (
@@ -348,6 +355,15 @@ export function UnifiedDashboard() {
             >
               Go to Login Page
             </a>
+          </div>
+        )}
+        {serverError && (
+          <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-4">
+            <p className="text-sm text-orange-800">
+              <strong>Server Issue:</strong> The backend database queries might have issues. 
+              This is likely due to database schema mismatches or missing data.
+              Try rebuilding the containers or check server logs.
+            </p>
           </div>
         )}
         {connectionError && (
