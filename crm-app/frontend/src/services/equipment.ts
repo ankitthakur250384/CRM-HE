@@ -117,52 +117,46 @@ export async function getEquipment(): Promise<Equipment[]> {
         console.log('📦 Auth First Equipment Item (RAW):', equipmentArray[0]);
         console.log('📦 Auth First Equipment Item Fields:', equipmentArray[0] ? Object.keys(equipmentArray[0]) : 'No items');
         
+        // Log all equipment names and IDs to see what's actually being returned in auth path
+        console.log('📋 All equipment from API (Auth Path):');
+        equipmentArray.forEach((item: any, index: number) => {
+          console.log(`  ${index + 1}. ID: ${item.id} | Name: ${item.name} | Category: ${item.category}`);
+        });
+        
         // Transform database format to match our interface
         const transformedEquipment = equipmentArray.map((item: any) => {
-          // Extract and convert rate values with debugging
-          const baseMicro = Number(item.base_rate_micro || item.baseRateMicro || 0);
-          const baseSmall = Number(item.base_rate_small || item.baseRateSmall || 0);
-          const baseMonthly = Number(item.base_rate_monthly || item.baseRateMonthly || 0);
-          const baseYearly = Number(item.base_rate_yearly || item.baseRateYearly || 0);
+          console.log(`🔧 Auth path - Processing equipment: ${item.name} (${item.id})`);
+          console.log(`🔧 Auth path - Raw baseRates:`, item.baseRates);
           
-          console.log(`🔧 Auth path - Transforming equipment ${item.name || item.id}:`, {
-            rawRates: {
-              base_rate_micro: item.base_rate_micro,
-              base_rate_small: item.base_rate_small,
-              base_rate_monthly: item.base_rate_monthly,
-              base_rate_yearly: item.base_rate_yearly
-            },
-            convertedRates: {
-              micro: baseMicro,
-              small: baseSmall,
-              monthly: baseMonthly,
-              yearly: baseYearly
-            }
-          });
+          // Use the backend's baseRates object directly if it exists, otherwise build it
+          const baseRates = item.baseRates || {
+            micro: parseFloat(item.base_rate_micro) || 0,
+            small: parseFloat(item.base_rate_small) || 0,
+            monthly: parseFloat(item.base_rate_monthly) || 0,
+            yearly: parseFloat(item.base_rate_yearly) || 0,
+          };
+          
+          console.log(`🔧 Auth path - Final baseRates for ${item.name}:`, baseRates);
           
           return {
             ...item,
-            // Convert snake_case to camelCase
+            // Ensure we have the baseRates object
+            baseRates,
+            // Also provide individual rate properties for backward compatibility
+            baseRateMicro: baseRates.micro,
+            baseRateSmall: baseRates.small,
+            baseRateMonthly: baseRates.monthly,
+            baseRateYearly: baseRates.yearly,
+            // Convert other snake_case fields if needed
             equipmentId: item.equipment_id || item.equipmentId,
             maxLiftingCapacity: item.max_lifting_capacity || item.maxLiftingCapacity,
             unladenWeight: item.unladen_weight || item.unladenWeight,
-            baseRateMicro: baseMicro,
-            baseRateSmall: baseSmall,
-            baseRateMonthly: baseMonthly,
-            baseRateYearly: baseYearly,
             runningCostPerKm: item.running_cost_per_km || item.runningCostPerKm,
             runningCost: item.running_cost || item.runningCost,
             manufacturingDate: item.manufacturing_date || item.manufacturingDate,
             registrationDate: item.registration_date || item.registrationDate,
             createdAt: item.created_at || item.createdAt,
             updatedAt: item.updated_at || item.updatedAt,
-            // Create backward-compatible baseRates object
-            baseRates: {
-              micro: baseMicro,
-              small: baseSmall,
-              monthly: baseMonthly,
-              yearly: baseYearly,
-            }
           };
         });
         
@@ -183,56 +177,52 @@ export async function getEquipment(): Promise<Equipment[]> {
     console.log('📦 First Equipment Item (RAW):', equipmentArray[0]);
     console.log('📦 First Equipment Item Fields:', equipmentArray[0] ? Object.keys(equipmentArray[0]) : 'No items');
     
+    // Log all equipment names and IDs to see what's actually being returned
+    console.log('📋 All equipment from API:');
+    equipmentArray.forEach((item: any, index: number) => {
+      console.log(`  ${index + 1}. ID: ${item.id} | Name: ${item.name} | Category: ${item.category}`);
+    });
+    
     // Transform database format to match our interface
     const transformedEquipment = equipmentArray.map((item: any) => {
-      // Extract and convert rate values with debugging
-      const baseMicro = Number(item.base_rate_micro || item.baseRateMicro || 0);
-      const baseSmall = Number(item.base_rate_small || item.baseRateSmall || 0);
-      const baseMonthly = Number(item.base_rate_monthly || item.baseRateMonthly || 0);
-      const baseYearly = Number(item.base_rate_yearly || item.baseRateYearly || 0);
-      
-      console.log(`🔧 Transforming equipment ${item.name || item.id}:`, {
-        rawRates: {
-          base_rate_micro: item.base_rate_micro,
-          base_rate_small: item.base_rate_small,
-          base_rate_monthly: item.base_rate_monthly,
-          base_rate_yearly: item.base_rate_yearly,
-          baseRateMicro: item.baseRateMicro,
-          baseRateSmall: item.baseRateSmall,
-          baseRateMonthly: item.baseRateMonthly,
-          baseRateYearly: item.baseRateYearly
-        },
-        convertedRates: {
-          micro: baseMicro,
-          small: baseSmall,
-          monthly: baseMonthly,
-          yearly: baseYearly
-        }
+      console.log(`🔧 Processing equipment: ${item.name} (${item.id})`);
+      console.log(`🔧 Raw baseRates:`, item.baseRates);
+      console.log(`🔧 Raw rate fields:`, {
+        base_rate_micro: item.base_rate_micro,
+        base_rate_small: item.base_rate_small,
+        base_rate_monthly: item.base_rate_monthly,
+        base_rate_yearly: item.base_rate_yearly
       });
+      
+      // Use the backend's baseRates object directly if it exists, otherwise build it
+      const baseRates = item.baseRates || {
+        micro: parseFloat(item.base_rate_micro) || 0,
+        small: parseFloat(item.base_rate_small) || 0,
+        monthly: parseFloat(item.base_rate_monthly) || 0,
+        yearly: parseFloat(item.base_rate_yearly) || 0,
+      };
+      
+      console.log(`🔧 Final baseRates for ${item.name}:`, baseRates);
       
       return {
         ...item,
-        // Convert snake_case to camelCase
+        // Ensure we have the baseRates object
+        baseRates,
+        // Also provide individual rate properties for backward compatibility
+        baseRateMicro: baseRates.micro,
+        baseRateSmall: baseRates.small,
+        baseRateMonthly: baseRates.monthly,
+        baseRateYearly: baseRates.yearly,
+        // Convert other snake_case fields if needed
         equipmentId: item.equipment_id || item.equipmentId,
         maxLiftingCapacity: item.max_lifting_capacity || item.maxLiftingCapacity,
         unladenWeight: item.unladen_weight || item.unladenWeight,
-        baseRateMicro: baseMicro,
-        baseRateSmall: baseSmall,
-        baseRateMonthly: baseMonthly,
-        baseRateYearly: baseYearly,
         runningCostPerKm: item.running_cost_per_km || item.runningCostPerKm,
         runningCost: item.running_cost || item.runningCost,
         manufacturingDate: item.manufacturing_date || item.manufacturingDate,
         registrationDate: item.registration_date || item.registrationDate,
         createdAt: item.created_at || item.createdAt,
         updatedAt: item.updated_at || item.updatedAt,
-        // Create backward-compatible baseRates object
-        baseRates: {
-          micro: baseMicro,
-          small: baseSmall,
-          monthly: baseMonthly,
-          yearly: baseYearly,
-        }
       };
     });
     

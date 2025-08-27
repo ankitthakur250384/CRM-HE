@@ -628,151 +628,40 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                                 )
                               }));
                             } else {
-                              // Add new machine - use direct base rate properties
+                              // Add new machine - simple approach like old implementation
                               const orderType = formData.orderType as 'micro' | 'small' | 'monthly' | 'yearly';
                               let baseRate = 0;
                               
-                              // Enhanced rate fetching logic - try multiple approaches
-                              console.log('🔍 Fetching rate for equipment:', {
-                                equipmentId: selectedEquipment.id,
-                                equipmentName: selectedEquipment.name,
+                              console.log('🎯 Equipment selection:', {
+                                equipment: selectedEquipment.name,
                                 orderType: orderType,
-                                rawEquipment: selectedEquipment
+                                baseRates: selectedEquipment.baseRates
                               });
                               
-                              // Method 1: Try baseRates object first
-                              if (selectedEquipment.baseRates && selectedEquipment.baseRates[orderType as keyof typeof selectedEquipment.baseRates]) {
-                                baseRate = Number(selectedEquipment.baseRates[orderType as keyof typeof selectedEquipment.baseRates]) || 0;
-                                console.log('✅ Rate from baseRates object:', {
-                                  orderType,
-                                  baseRate,
-                                  baseRatesObject: selectedEquipment.baseRates
-                                });
-                              } 
-                              // Method 2: Try direct property access
-                              else {
-                                switch (orderType) {
-                                  case 'micro':
-                                    baseRate = Number(selectedEquipment.baseRateMicro) || 0;
-                                    break;
-                                  case 'small':
-                                    baseRate = Number(selectedEquipment.baseRateSmall) || 0;
-                                    break;
-                                  case 'monthly':
-                                    baseRate = Number(selectedEquipment.baseRateMonthly) || 0;
-                                    break;
-                                  case 'yearly':
-                                    baseRate = Number(selectedEquipment.baseRateYearly) || 0;
-                                    break;
-                                  default:
-                                    baseRate = Number(selectedEquipment.baseRateMicro) || 0;
-                                }
-                                console.log('✅ Rate from direct properties:', {
-                                  orderType,
-                                  baseRate,
-                                  directRates: {
-                                    micro: selectedEquipment.baseRateMicro,
-                                    small: selectedEquipment.baseRateSmall,
-                                    monthly: selectedEquipment.baseRateMonthly,
-                                    yearly: selectedEquipment.baseRateYearly
-                                  }
-                                });
+                              // Use baseRates object from backend (simplified approach)
+                              if (selectedEquipment.baseRates && selectedEquipment.baseRates[orderType]) {
+                                baseRate = selectedEquipment.baseRates[orderType];
+                                console.log('✅ Got rate:', baseRate);
+                              } else {
+                                console.log('❌ No rate found for order type:', orderType);
+                                console.log('Available rates:', selectedEquipment.baseRates);
                               }
                               
-                              // Method 3: If still 0, try looking for alternative field names (database might use different naming)
+                              console.log('📊 Adding equipment with rate:', baseRate);
+                              
                               if (baseRate === 0) {
-                                const altFields = [
-                                  `base_rate_${orderType}`,
-                                  `baseRate${orderType.charAt(0).toUpperCase() + orderType.slice(1)}`,
-                                  `${orderType}_rate`,
-                                  `rate_${orderType}`,
-                                  `${orderType}Rate`
-                                ];
-                                
-                                console.log('🔍 Trying alternative field names:', {
-                                  orderType,
-                                  altFields,
-                                  availableFields: Object.keys(selectedEquipment).filter(key => key.toLowerCase().includes('rate'))
-                                });
-                                
-                                for (const field of altFields) {
-                                  if ((selectedEquipment as any)[field]) {
-                                    baseRate = Number((selectedEquipment as any)[field]) || 0;
-                                    if (baseRate > 0) {
-                                      console.log('✅ Rate from alternative field:', {
-                                        field,
-                                        baseRate
-                                      });
-                                      break;
-                                    }
-                                  }
-                                }
-                              }
-                              
-                              // Method 4: If still 0, try any field containing the order type and "rate"
-                              if (baseRate === 0) {
-                                const allFields = Object.keys(selectedEquipment);
-                                const rateFields = allFields.filter(key => 
-                                  key.toLowerCase().includes('rate') && 
-                                  key.toLowerCase().includes(orderType)
-                                );
-                                
-                                console.log('🔍 Trying any rate fields containing order type:', {
-                                  orderType,
-                                  rateFields,
-                                  allRateFields: allFields.filter(key => key.toLowerCase().includes('rate'))
-                                });
-                                
-                                for (const field of rateFields) {
-                                  const value = Number((selectedEquipment as any)[field]) || 0;
-                                  if (value > 0) {
-                                    baseRate = value;
-                                    console.log('✅ Rate found from field containing order type:', {
-                                      field,
-                                      baseRate
-                                    });
-                                    break;
-                                  }
-                                }
-                              }
-                              
-                              console.log('📊 Adding equipment with rate:', {
-                                equipmentName: selectedEquipment.name,
-                                orderType,
-                                finalBaseRate: baseRate,
-                                rawRates: {
-                                  micro: selectedEquipment.baseRateMicro,
-                                  small: selectedEquipment.baseRateSmall,
-                                  monthly: selectedEquipment.baseRateMonthly,
-                                  yearly: selectedEquipment.baseRateYearly
-                                },
-                                baseRatesObject: selectedEquipment.baseRates,
-                                usedBaseRatesObject: selectedEquipment.baseRates && selectedEquipment.baseRates[orderType as keyof typeof selectedEquipment.baseRates]
-                              });
-                              
-                              const newMachine: SelectedMachine = {
-                                id: selectedEquipment.id,
-                                type: selectedEquipment.category,
-                                label: selectedEquipment.name,
-                                baseRate: baseRate,
-                                quantity: 1
-                              };
-                              
-                              console.log('🎯 Final machine object:', newMachine);
-                              
-                              // Validate that we got a valid rate
-                              if (baseRate === 0) {
-                                console.error('❌ WARNING: Equipment added with 0 rate!', {
-                                  equipment: selectedEquipment,
-                                  orderType,
-                                  machine: newMachine
-                                });
-                                showNotification('error', `Warning: ${selectedEquipment.name} has no rate defined for ${orderType} order type`);
+                                console.warn('⚠️ WARNING: Equipment added with 0 rate!');
                               }
                               
                               setFormData(prev => ({
                                 ...prev,
-                                selectedMachines: [...prev.selectedMachines, newMachine]
+                                selectedMachines: [...prev.selectedMachines, {
+                                  id: selectedEquipment.id,
+                                  type: selectedEquipment.category,
+                                  label: selectedEquipment.name,
+                                  baseRate: baseRate,
+                                  quantity: 1
+                                }]
                               }));
                             }
                           } else {
