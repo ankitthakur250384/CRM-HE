@@ -114,7 +114,7 @@ router.get('/revenue-chart', authenticateToken, asyncHandler(async (req, res) =>
       COALESCE(SUM(CAST(value AS NUMERIC)), 0) as total_revenue
     FROM deals 
     WHERE created_at >= NOW() - INTERVAL '${monthsCount} months'
-      AND status = 'closed_won'
+      AND stage = 'won'
     GROUP BY DATE_TRUNC('month', created_at)
     ORDER BY month DESC
   `;
@@ -145,16 +145,15 @@ router.get('/pipeline-overview', authenticateToken, asyncHandler(async (req, res
       COUNT(*) as count,
       COALESCE(SUM(CAST(value AS NUMERIC)), 0) as total_value
     FROM deals 
-    WHERE status != 'closed_lost' AND status != 'closed_won'
+    WHERE stage != 'lost' AND stage != 'won'
     GROUP BY stage
     ORDER BY 
       CASE stage
-        WHEN 'prospecting' THEN 1
-        WHEN 'qualification' THEN 2
-        WHEN 'proposal' THEN 3
-        WHEN 'negotiation' THEN 4
-        WHEN 'closed_won' THEN 5
-        ELSE 6
+        WHEN 'qualification' THEN 1
+        WHEN 'proposal' THEN 2
+        WHEN 'negotiation' THEN 3
+        WHEN 'won' THEN 4
+        ELSE 5
       END
   `;
 
@@ -181,7 +180,7 @@ async function getRevenueMetrics(pool, startDate, endDate) {
       COUNT(*) as deals_count,
       COALESCE(AVG(CAST(value AS NUMERIC)), 0) as avg_deal_size
     FROM deals 
-    WHERE status = 'closed_won' 
+    WHERE stage = 'won' 
       AND created_at >= $1 
       AND created_at <= $2
   `;
@@ -198,7 +197,7 @@ async function getRevenueMetrics(pool, startDate, endDate) {
   const prevQuery = `
     SELECT COALESCE(SUM(CAST(value AS NUMERIC)), 0) as total_revenue
     FROM deals 
-    WHERE status = 'closed_won' 
+    WHERE stage = 'won' 
       AND created_at >= $1 
       AND created_at < $2
   `;
@@ -249,10 +248,10 @@ async function getDealsMetrics(pool, startDate, endDate) {
   const query = `
     SELECT 
       COUNT(*) as total_deals,
-      COUNT(CASE WHEN status = 'closed_won' THEN 1 END) as won_deals,
-      COUNT(CASE WHEN status = 'closed_lost' THEN 1 END) as lost_deals,
+      COUNT(CASE WHEN stage = 'won' THEN 1 END) as won_deals,
+      COUNT(CASE WHEN stage = 'lost' THEN 1 END) as lost_deals,
       COALESCE(AVG(
-        CASE WHEN status IN ('closed_won', 'closed_lost') 
+        CASE WHEN stage IN ('won', 'lost') 
         THEN EXTRACT(EPOCH FROM (updated_at - created_at))/86400 
         END
       ), 0) as avg_cycle_days
