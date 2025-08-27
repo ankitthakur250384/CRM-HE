@@ -14,7 +14,12 @@ import {
   Building2, 
   Handshake,
   LogOut,
-  Menu
+  Menu,
+  BarChart3,
+  CheckSquare,
+  Megaphone,
+  FileImage,
+  Users2
 } from 'lucide-react';
 import { useAuthStore } from '../../store/authStore';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -71,6 +76,36 @@ const navItems: NavItem[] = [
     icon: <Building2 size={18} />,
     href: '/customers',
     roles: ['admin', 'sales_agent', 'operations_manager'],
+  },
+  {
+    label: 'Analytics',
+    icon: <BarChart3 size={18} />,
+    href: '/analytics',
+    roles: ['admin', 'sales_agent', 'operations_manager'],
+  },
+  {
+    label: 'Contacts',
+    icon: <Users2 size={18} />,
+    href: '/contacts',
+    roles: ['admin', 'sales_agent', 'operations_manager'],
+  },
+  {
+    label: 'Tasks',
+    icon: <CheckSquare size={18} />,
+    href: '/tasks',
+    roles: ['admin', 'sales_agent', 'operations_manager', 'operator'],
+  },
+  {
+    label: 'Campaigns',
+    icon: <Megaphone size={18} />,
+    href: '/campaigns',
+    roles: ['admin', 'sales_agent', 'operations_manager'],
+  },
+  {
+    label: 'Documents',
+    icon: <FileImage size={18} />,
+    href: '/documents',
+    roles: ['admin', 'sales_agent', 'operations_manager', 'operator'],
   },
   {
     label: 'Job Scheduling',

@@ -349,9 +349,20 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
   }, [formData.numberOfDays, getOrderTypeByDays]);
 
   const calculateCosts = () => {
+    console.log('🧮 Calculating costs with data:', {
+      orderType: formData.orderType,
+      selectedMachines: formData.selectedMachines.length,
+      numberOfDays: formData.numberOfDays,
+      workingHours: formData.workingHours,
+      siteDistance: formData.siteDistance
+    });
+
     const orderType = orderTypeOptions.find(ot => ot.value === formData.orderType);
     
-    if (!orderType || formData.selectedMachines.length === 0) return;
+    if (!orderType) {
+      console.warn('❌ No order type found for:', formData.orderType);
+      return;
+    }
 
     // Calculate total equipment cost using EXACT logic from old implementation
     let totalRent = 0;
@@ -360,26 +371,45 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
     if (formData.selectedMachines.length > 0) {
       totalRent = formData.selectedMachines.reduce((total, machine) => {
         const baseRate = machine.baseRate * machine.quantity;
+        console.log('💰 Calculating for machine:', {
+          id: machine.id,
+          type: machine.type,
+          baseRate: machine.baseRate,
+          quantity: machine.quantity,
+          calculatedBaseRate: baseRate,
+          orderType: formData.orderType
+        });
+        
         if (formData.orderType === 'monthly') {
           // For monthly rates: multiply by number of months needed
-          return total + baseRate * Math.ceil(formData.numberOfDays / 26);
+          const months = Math.ceil(formData.numberOfDays / 26);
+          const machineTotal = baseRate * months;
+          console.log(`📅 Monthly calculation: ${baseRate} × ${months} = ${machineTotal}`);
+          return total + machineTotal;
         } else {
           // For hourly rates: multiply by total hours
-          return total + (baseRate * totalHours);
+          const machineTotal = baseRate * totalHours;
+          console.log(`⏰ Hourly calculation: ${baseRate} × ${totalHours} = ${machineTotal}`);
+          return total + machineTotal;
         }
       }, 0);
+    } else {
+      console.log('⚠️ No machines selected, equipment cost will be 0');
     }
     
     // Apply order type multiplier to the final rent
     const finalTotalRent = totalRent * orderType.multiplier;
+    console.log(`🔢 Order type multiplier: ${totalRent} × ${orderType.multiplier} = ${finalTotalRent}`);
     
     // Mobilization/Demobilization based on distance
     const mobDemobCost = Math.max(15000, formData.siteDistance * 200);
+    console.log(`🚚 Mob/Demob cost: max(15000, ${formData.siteDistance} × 200) = ${mobDemobCost}`);
     
     // Food and accommodation
     const foodCost = formData.foodResources === 'ASP Provided' ? 2500 * formData.numberOfDays : 0;
     const accomCost = formData.accomResources === 'ASP Provided' ? 4000 * formData.numberOfDays : 0;
     const foodAccomCost = foodCost + accomCost;
+    console.log(`🍽️ Food & Accommodation: ${foodCost} + ${accomCost} = ${foodAccomCost}`);
     
     // Risk factor adjustment
     const riskMultiplier = {
@@ -388,10 +418,22 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
       'High': 1.1,
       'Very High': 1.2
     }[formData.riskFactor] || 1.0;
-    
+    console.log(`⚠️ Risk multiplier: ${formData.riskFactor} = ${riskMultiplier}`);
+
     const subtotal = (finalTotalRent + mobDemobCost + foodAccomCost + formData.extraCharge) * riskMultiplier;
     const gstAmount = subtotal * 0.18;
     const totalCost = subtotal + gstAmount;
+
+    console.log('💰 Final calculations:', {
+      finalTotalRent,
+      mobDemobCost,
+      foodAccomCost,
+      extraCharge: formData.extraCharge,
+      riskMultiplier,
+      subtotal,
+      gstAmount,
+      totalCost
+    });
 
     setCalculations({
       baseRate: totalRent, // Raw equipment cost before multiplier

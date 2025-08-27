@@ -29,6 +29,11 @@ import { Deals } from './pages/Deals';
 import { DealDetails } from './pages/DealDetails';
 import { useAuthStore } from './store/authStore';
 import { TemplateManagement } from './pages/TemplateManagement';
+import { AnalyticsDashboard } from './components/dashboard/AnalyticsDashboard';
+import { TaskManagement } from './pages/TaskManagement';
+import { CampaignManagement } from './pages/CampaignManagement';
+import { DocumentManagement } from './pages/DocumentManagement';
+import { ContactManagement } from './pages/ContactManagement';
 import { AuthProvider } from './components/auth/SimpleAuthProvider';
 import { ProtectedRoute } from './components/auth/SimpleProtectedRoute';
 
@@ -169,6 +174,37 @@ function AppContent() {
             <Route path="admin/templates" element={
               <ProtectedRoute allowedRoles={['admin', 'sales_agent']}>
                 <TemplateManagement />
+              </ProtectedRoute>
+            } />
+            
+            {/* SuiteCRM-inspired enhancements */}
+            <Route path="analytics" element={
+              <ProtectedRoute allowedRoles={['admin', 'sales_agent', 'operations_manager']}>
+                <AnalyticsDashboard />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="tasks" element={
+              <ProtectedRoute allowedRoles={['admin', 'sales_agent', 'operations_manager', 'operator']}>
+                <TaskManagement />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="campaigns" element={
+              <ProtectedRoute allowedRoles={['admin', 'sales_agent', 'operations_manager']}>
+                <CampaignManagement />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="documents" element={
+              <ProtectedRoute allowedRoles={['admin', 'sales_agent', 'operations_manager', 'operator']}>
+                <DocumentManagement />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="contacts" element={
+              <ProtectedRoute allowedRoles={['admin', 'sales_agent', 'operations_manager']}>
+                <ContactManagement />
               </ProtectedRoute>
             } />
             

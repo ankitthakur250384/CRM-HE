@@ -110,6 +110,27 @@ export function LeadManagement() {
     console.log('Filtering leads. Current leads array:', leads);
     filterLeads();
   }, [leads, searchTerm, statusFilter]);
+  // Utility function to convert ISO date to yyyy-MM-dd format for HTML5 date inputs
+  const formatDateForInput = (dateValue: string | null | undefined): string => {
+    if (!dateValue) {
+      return new Date().toISOString().split('T')[0]; // Today's date as fallback
+    }
+    
+    // If it's already in yyyy-MM-dd format, return as is
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+      return dateValue;
+    }
+    
+    // If it's an ISO date string, convert it
+    try {
+      const date = new Date(dateValue);
+      return date.toISOString().split('T')[0];
+    } catch (error) {
+      console.warn('Invalid date format:', dateValue);
+      return new Date().toISOString().split('T')[0]; // Today's date as fallback
+    }
+  };
+
   // When opening the edit modal, populate the edit form with the selected lead's data
   useEffect(() => {
     if (isEditModalOpen && selectedLead) {
@@ -123,7 +144,7 @@ export function LeadManagement() {
         email: selectedLead.email || '',
         serviceNeeded: selectedLead.serviceNeeded || '',
         siteLocation: selectedLead.siteLocation || '',
-        startDate: selectedLead.startDate || today,
+        startDate: formatDateForInput(selectedLead.startDate) || today,
         rentalDays: selectedLead.rentalDays || 1,
         shiftTiming: selectedLead.shiftTiming || '',
         status: selectedLead.status || 'new',
