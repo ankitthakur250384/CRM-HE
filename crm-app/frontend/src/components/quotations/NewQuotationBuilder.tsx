@@ -129,6 +129,16 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
         console.log('🔄 Fetching equipment data...');
         const equipment = await getEquipment();
         console.log('✅ Equipment fetched:', equipment);
+        console.log('📊 Equipment details:', equipment.map(eq => ({
+          id: eq.id,
+          name: eq.name,
+          category: eq.category,
+          baseRateMicro: eq.baseRateMicro,
+          baseRateSmall: eq.baseRateSmall,
+          baseRateMonthly: eq.baseRateMonthly,
+          baseRateYearly: eq.baseRateYearly,
+          baseRates: eq.baseRates
+        })));
         setAvailableEquipment(equipment);
         
         if (equipment && equipment.length > 0) {
@@ -556,6 +566,14 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                       onChange={(e) => {
                         if (e.target.value) {
                           const selectedEquipment = availableEquipment.find(eq => eq.id === e.target.value);
+                          console.log('🎯 Equipment selection debug:', {
+                            selectedId: e.target.value,
+                            foundEquipment: selectedEquipment,
+                            currentOrderType: formData.orderType,
+                            availableEquipmentCount: availableEquipment.length,
+                            sampleEquipment: availableEquipment[0]
+                          });
+                          
                           if (selectedEquipment) {
                             const existingIndex = formData.selectedMachines.findIndex(m => m.id === selectedEquipment.id);
                             if (existingIndex >= 0) {
