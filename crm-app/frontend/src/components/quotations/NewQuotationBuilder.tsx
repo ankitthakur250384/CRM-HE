@@ -140,7 +140,11 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
           baseRateYearly: eq.baseRateYearly,
           baseRates: eq.baseRates,
           _hasValidRates: !!(eq.baseRateMicro || eq.baseRateSmall || eq.baseRateMonthly || eq.baseRateYearly),
-          _hasBaseRatesObject: !!eq.baseRates
+          _hasBaseRatesObject: !!eq.baseRates,
+          _allFields: Object.keys(eq).filter(key => key.includes('rate')).reduce((acc, key) => {
+            acc[key] = (eq as any)[key];
+            return acc;
+          }, {} as any)
         })));
         
         // Validate equipment data integrity
@@ -605,7 +609,12 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                             foundEquipment: selectedEquipment,
                             currentOrderType: formData.orderType,
                             availableEquipmentCount: availableEquipment.length,
-                            sampleEquipment: availableEquipment[0]
+                            sampleEquipment: availableEquipment[0],
+                            selectedEquipmentFullData: selectedEquipment ? {
+                              ...selectedEquipment,
+                              allKeys: Object.keys(selectedEquipment),
+                              rateKeys: Object.keys(selectedEquipment).filter(key => key.toLowerCase().includes('rate'))
+                            } : null
                           });
                           
                           if (selectedEquipment) {
@@ -670,12 +679,21 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                                 });
                               }
                               
-                              // Method 3: If still 0, try looking for alternative field names
+                              // Method 3: If still 0, try looking for alternative field names (database might use different naming)
                               if (baseRate === 0) {
                                 const altFields = [
                                   `base_rate_${orderType}`,
-                                  `baseRate${orderType.charAt(0).toUpperCase() + orderType.slice(1)}`
+                                  `baseRate${orderType.charAt(0).toUpperCase() + orderType.slice(1)}`,
+                                  `${orderType}_rate`,
+                                  `rate_${orderType}`,
+                                  `${orderType}Rate`
                                 ];
+                                
+                                console.log('🔍 Trying alternative field names:', {
+                                  orderType,
+                                  altFields,
+                                  availableFields: Object.keys(selectedEquipment).filter(key => key.toLowerCase().includes('rate'))
+                                });
                                 
                                 for (const field of altFields) {
                                   if ((selectedEquipment as any)[field]) {
@@ -687,6 +705,33 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                                       });
                                       break;
                                     }
+                                  }
+                                }
+                              }
+                              
+                              // Method 4: If still 0, try any field containing the order type and "rate"
+                              if (baseRate === 0) {
+                                const allFields = Object.keys(selectedEquipment);
+                                const rateFields = allFields.filter(key => 
+                                  key.toLowerCase().includes('rate') && 
+                                  key.toLowerCase().includes(orderType)
+                                );
+                                
+                                console.log('🔍 Trying any rate fields containing order type:', {
+                                  orderType,
+                                  rateFields,
+                                  allRateFields: allFields.filter(key => key.toLowerCase().includes('rate'))
+                                });
+                                
+                                for (const field of rateFields) {
+                                  const value = Number((selectedEquipment as any)[field]) || 0;
+                                  if (value > 0) {
+                                    baseRate = value;
+                                    console.log('✅ Rate found from field containing order type:', {
+                                      field,
+                                      baseRate
+                                    });
+                                    break;
                                   }
                                 }
                               }

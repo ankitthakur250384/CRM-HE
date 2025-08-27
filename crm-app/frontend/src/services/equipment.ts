@@ -108,33 +108,63 @@ export async function getEquipment(): Promise<Equipment[]> {
         
         const authData = await authResponse.json();
         console.log('📦 Equipment API Auth Data:', authData);
+        console.log('📦 Auth Data Type:', typeof authData);
+        console.log('📦 Auth Data is Array:', Array.isArray(authData));
+        console.log('📦 Auth Data Keys:', Object.keys(authData || {}));
+        
         const equipmentArray = Array.isArray(authData) ? authData : (authData.equipment || authData.data || []);
+        console.log('📦 Auth Equipment Array Length:', equipmentArray.length);
+        console.log('📦 Auth First Equipment Item (RAW):', equipmentArray[0]);
+        console.log('📦 Auth First Equipment Item Fields:', equipmentArray[0] ? Object.keys(equipmentArray[0]) : 'No items');
         
         // Transform database format to match our interface
-        const transformedEquipment = equipmentArray.map((item: any) => ({
-          ...item,
-          // Convert snake_case to camelCase
-          equipmentId: item.equipment_id || item.equipmentId,
-          maxLiftingCapacity: item.max_lifting_capacity || item.maxLiftingCapacity,
-          unladenWeight: item.unladen_weight || item.unladenWeight,
-          baseRateMicro: item.base_rate_micro || item.baseRateMicro || 0,
-          baseRateSmall: item.base_rate_small || item.baseRateSmall || 0,
-          baseRateMonthly: item.base_rate_monthly || item.baseRateMonthly || 0,
-          baseRateYearly: item.base_rate_yearly || item.baseRateYearly || 0,
-          runningCostPerKm: item.running_cost_per_km || item.runningCostPerKm,
-          runningCost: item.running_cost || item.runningCost,
-          manufacturingDate: item.manufacturing_date || item.manufacturingDate,
-          registrationDate: item.registration_date || item.registrationDate,
-          createdAt: item.created_at || item.createdAt,
-          updatedAt: item.updated_at || item.updatedAt,
-          // Create backward-compatible baseRates object
-          baseRates: {
-            micro: item.base_rate_micro || item.baseRateMicro || 0,
-            small: item.base_rate_small || item.baseRateSmall || 0,
-            monthly: item.base_rate_monthly || item.baseRateMonthly || 0,
-            yearly: item.base_rate_yearly || item.baseRateYearly || 0,
-          }
-        }));
+        const transformedEquipment = equipmentArray.map((item: any) => {
+          // Extract and convert rate values with debugging
+          const baseMicro = Number(item.base_rate_micro || item.baseRateMicro || 0);
+          const baseSmall = Number(item.base_rate_small || item.baseRateSmall || 0);
+          const baseMonthly = Number(item.base_rate_monthly || item.baseRateMonthly || 0);
+          const baseYearly = Number(item.base_rate_yearly || item.baseRateYearly || 0);
+          
+          console.log(`🔧 Auth path - Transforming equipment ${item.name || item.id}:`, {
+            rawRates: {
+              base_rate_micro: item.base_rate_micro,
+              base_rate_small: item.base_rate_small,
+              base_rate_monthly: item.base_rate_monthly,
+              base_rate_yearly: item.base_rate_yearly
+            },
+            convertedRates: {
+              micro: baseMicro,
+              small: baseSmall,
+              monthly: baseMonthly,
+              yearly: baseYearly
+            }
+          });
+          
+          return {
+            ...item,
+            // Convert snake_case to camelCase
+            equipmentId: item.equipment_id || item.equipmentId,
+            maxLiftingCapacity: item.max_lifting_capacity || item.maxLiftingCapacity,
+            unladenWeight: item.unladen_weight || item.unladenWeight,
+            baseRateMicro: baseMicro,
+            baseRateSmall: baseSmall,
+            baseRateMonthly: baseMonthly,
+            baseRateYearly: baseYearly,
+            runningCostPerKm: item.running_cost_per_km || item.runningCostPerKm,
+            runningCost: item.running_cost || item.runningCost,
+            manufacturingDate: item.manufacturing_date || item.manufacturingDate,
+            registrationDate: item.registration_date || item.registrationDate,
+            createdAt: item.created_at || item.createdAt,
+            updatedAt: item.updated_at || item.updatedAt,
+            // Create backward-compatible baseRates object
+            baseRates: {
+              micro: baseMicro,
+              small: baseSmall,
+              monthly: baseMonthly,
+              yearly: baseYearly,
+            }
+          };
+        });
         
         return transformedEquipment;
       }
@@ -144,34 +174,67 @@ export async function getEquipment(): Promise<Equipment[]> {
     
     const data = await response.json();
     console.log('📦 Equipment API Raw Data:', data);
+    console.log('📦 Raw Data Type:', typeof data);
+    console.log('📦 Raw Data is Array:', Array.isArray(data));
+    console.log('📦 Raw Data Keys:', Object.keys(data || {}));
     
     const equipmentArray = Array.isArray(data) ? data : (data.equipment || data.data || []);
+    console.log('📦 Equipment Array Length:', equipmentArray.length);
+    console.log('📦 First Equipment Item (RAW):', equipmentArray[0]);
+    console.log('📦 First Equipment Item Fields:', equipmentArray[0] ? Object.keys(equipmentArray[0]) : 'No items');
     
     // Transform database format to match our interface
-    const transformedEquipment = equipmentArray.map((item: any) => ({
-      ...item,
-      // Convert snake_case to camelCase
-      equipmentId: item.equipment_id || item.equipmentId,
-      maxLiftingCapacity: item.max_lifting_capacity || item.maxLiftingCapacity,
-      unladenWeight: item.unladen_weight || item.unladenWeight,
-      baseRateMicro: item.base_rate_micro || item.baseRateMicro || 0,
-      baseRateSmall: item.base_rate_small || item.baseRateSmall || 0,
-      baseRateMonthly: item.base_rate_monthly || item.baseRateMonthly || 0,
-      baseRateYearly: item.base_rate_yearly || item.baseRateYearly || 0,
-      runningCostPerKm: item.running_cost_per_km || item.runningCostPerKm,
-      runningCost: item.running_cost || item.runningCost,
-      manufacturingDate: item.manufacturing_date || item.manufacturingDate,
-      registrationDate: item.registration_date || item.registrationDate,
-      createdAt: item.created_at || item.createdAt,
-      updatedAt: item.updated_at || item.updatedAt,
-      // Create backward-compatible baseRates object
-      baseRates: {
-        micro: item.base_rate_micro || item.baseRateMicro || 0,
-        small: item.base_rate_small || item.baseRateSmall || 0,
-        monthly: item.base_rate_monthly || item.baseRateMonthly || 0,
-        yearly: item.base_rate_yearly || item.baseRateYearly || 0,
-      }
-    }));
+    const transformedEquipment = equipmentArray.map((item: any) => {
+      // Extract and convert rate values with debugging
+      const baseMicro = Number(item.base_rate_micro || item.baseRateMicro || 0);
+      const baseSmall = Number(item.base_rate_small || item.baseRateSmall || 0);
+      const baseMonthly = Number(item.base_rate_monthly || item.baseRateMonthly || 0);
+      const baseYearly = Number(item.base_rate_yearly || item.baseRateYearly || 0);
+      
+      console.log(`🔧 Transforming equipment ${item.name || item.id}:`, {
+        rawRates: {
+          base_rate_micro: item.base_rate_micro,
+          base_rate_small: item.base_rate_small,
+          base_rate_monthly: item.base_rate_monthly,
+          base_rate_yearly: item.base_rate_yearly,
+          baseRateMicro: item.baseRateMicro,
+          baseRateSmall: item.baseRateSmall,
+          baseRateMonthly: item.baseRateMonthly,
+          baseRateYearly: item.baseRateYearly
+        },
+        convertedRates: {
+          micro: baseMicro,
+          small: baseSmall,
+          monthly: baseMonthly,
+          yearly: baseYearly
+        }
+      });
+      
+      return {
+        ...item,
+        // Convert snake_case to camelCase
+        equipmentId: item.equipment_id || item.equipmentId,
+        maxLiftingCapacity: item.max_lifting_capacity || item.maxLiftingCapacity,
+        unladenWeight: item.unladen_weight || item.unladenWeight,
+        baseRateMicro: baseMicro,
+        baseRateSmall: baseSmall,
+        baseRateMonthly: baseMonthly,
+        baseRateYearly: baseYearly,
+        runningCostPerKm: item.running_cost_per_km || item.runningCostPerKm,
+        runningCost: item.running_cost || item.runningCost,
+        manufacturingDate: item.manufacturing_date || item.manufacturingDate,
+        registrationDate: item.registration_date || item.registrationDate,
+        createdAt: item.created_at || item.createdAt,
+        updatedAt: item.updated_at || item.updatedAt,
+        // Create backward-compatible baseRates object
+        baseRates: {
+          micro: baseMicro,
+          small: baseSmall,
+          monthly: baseMonthly,
+          yearly: baseYearly,
+        }
+      };
+    });
     
     console.log('🏗️ Processed Equipment Array:', transformedEquipment);
     
