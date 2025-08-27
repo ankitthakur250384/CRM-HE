@@ -68,11 +68,13 @@ export function AnalyticsDashboard() {
   const [timeRange, setTimeRange] = useState(30);
   const [refreshing, setRefreshing] = useState(false);
   const [connectionError, setConnectionError] = useState(false);
+  const [authError, setAuthError] = useState(false);
 
   const fetchDashboardData = async () => {
     try {
       setError(null);
       setConnectionError(false);
+      setAuthError(false);
       const [analyticsData, revenueData, pipelineData] = await Promise.all([
         dashboardService.getDashboardAnalytics(timeRange),
         dashboardService.getRevenueChart(12),
@@ -85,8 +87,13 @@ export function AnalyticsDashboard() {
       console.error('Error fetching dashboard data:', err);
       const errorMessage = err instanceof Error ? err.message : 'Failed to load dashboard data';
       
+      // Check if it's an authentication error
+      if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
+        setAuthError(true);
+        setError('You need to log in to view the dashboard. Please sign in and try again.');
+      }
       // Check if it's a connection error
-      if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError') || errorMessage.includes('ERR_CONNECTION_REFUSED')) {
+      else if (errorMessage.includes('Failed to fetch') || errorMessage.includes('NetworkError') || errorMessage.includes('ERR_CONNECTION_REFUSED')) {
         setConnectionError(true);
         setError('Unable to connect to server. Please check if the backend service is running.');
       } else {
@@ -126,9 +133,22 @@ export function AnalyticsDashboard() {
       <div className="bg-white rounded-lg p-8 text-center">
         <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
         <h3 className="text-lg font-medium text-gray-900 mb-2">
-          {connectionError ? 'Connection Error' : 'Error Loading Dashboard'}
+          {authError ? 'Authentication Required' : connectionError ? 'Connection Error' : 'Error Loading Dashboard'}
         </h3>
         <p className="text-gray-600 mb-4">{error}</p>
+        {authError && (
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+            <p className="text-sm text-blue-800 mb-3">
+              <strong>Please log in:</strong> The dashboard requires authentication to display your data.
+            </p>
+            <a 
+              href="/login" 
+              className="inline-flex items-center px-4 py-2 bg-brand-blue text-white rounded-lg hover:bg-brand-blue/90 transition-colors"
+            >
+              Go to Login Page
+            </a>
+          </div>
+        )}
         {connectionError && (
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mb-4">
             <p className="text-sm text-yellow-800">
