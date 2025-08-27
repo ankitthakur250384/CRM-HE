@@ -118,10 +118,8 @@ a:hover, a:focus {
 }
 
 /* Force text visibility in all contexts */
-.card *, .panel *, .surface *, 
-div[class*="bg-"], span[class*="text-"], p[class*="text-"], 
-h1, h2, h3, h4, h5, h6 {
-  color: inherit !important;
+.card *, .panel *, .surface * {
+  color: inherit;
 }
 
 /* Specific text color overrides for dashboard components */
@@ -145,15 +143,15 @@ h1, h2, h3, h4, h5, h6 {
   color: #6b7280 !important;
 }
 
-/* Dashboard specific text visibility */
-[class*="Card"] * {
-  color: #1f2937 !important;
-}
-
+/* Remove overly aggressive text hiding */
+[class*="Card"] p,
+[class*="Card"] span,
 [class*="CardContent"] p,
 [class*="CardContent"] span,
 [class*="CardHeader"] * {
   color: #111827 !important;
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
 /* Performance indicators specific */
