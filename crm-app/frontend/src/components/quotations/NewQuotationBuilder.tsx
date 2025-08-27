@@ -353,14 +353,25 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
     
     if (!orderType || formData.selectedMachines.length === 0) return;
 
-    // Calculate total equipment cost from selected machines
-    const totalEquipmentRatePerHour = formData.selectedMachines.reduce((total, machine) => {
-      // Use effective hourly rate for accurate calculation
-      const effectiveHourlyRate = calculateEffectiveHourlyRate(machine.baseRates, machine.rateType);
-      return total + (effectiveHourlyRate * machine.quantity);
-    }, 0);
-    const baseRate = totalEquipmentRatePerHour * orderType.multiplier;
-    const totalRent = baseRate * formData.workingHours * formData.numberOfDays;
+    // Calculate total equipment cost using EXACT logic from old implementation
+    let totalRent = 0;
+    const totalHours = formData.workingHours * formData.numberOfDays;
+    
+    if (formData.selectedMachines.length > 0) {
+      totalRent = formData.selectedMachines.reduce((total, machine) => {
+        const baseRate = machine.baseRate * machine.quantity;
+        if (formData.orderType === 'monthly') {
+          // For monthly rates: multiply by number of months needed
+          return total + baseRate * Math.ceil(formData.numberOfDays / 26);
+        } else {
+          // For hourly rates: multiply by total hours
+          return total + (baseRate * totalHours);
+        }
+      }, 0);
+    }
+    
+    // Apply order type multiplier to the final rent
+    const finalTotalRent = totalRent * orderType.multiplier;
     
     // Mobilization/Demobilization based on distance
     const mobDemobCost = Math.max(15000, formData.siteDistance * 200);
@@ -378,13 +389,13 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
       'Very High': 1.2
     }[formData.riskFactor] || 1.0;
     
-    const subtotal = (totalRent + mobDemobCost + foodAccomCost + formData.extraCharge) * riskMultiplier;
+    const subtotal = (finalTotalRent + mobDemobCost + foodAccomCost + formData.extraCharge) * riskMultiplier;
     const gstAmount = subtotal * 0.18;
     const totalCost = subtotal + gstAmount;
 
     setCalculations({
-      baseRate,
-      totalRent,
+      baseRate: totalRent, // Raw equipment cost before multiplier
+      totalRent: finalTotalRent, // Equipment cost after multiplier
       mobDemobCost,
       foodAccomCost,
       gstAmount,
@@ -398,7 +409,28 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
   };
 
   const handleInputChange = (field: keyof QuotationFormData, value: any) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    setFormData(prev => {
+      const updated = { ...prev, [field]: value };
+      
+      // Auto-detect order type based on number of days (like old implementation)
+      if (field === 'numberOfDays' && typeof value === 'number' && value > 0) {
+        let autoOrderType = 'micro';
+        if (value >= 1 && value <= 10) {
+          autoOrderType = 'micro';
+        } else if (value >= 11 && value <= 25) {
+          autoOrderType = 'small';
+        } else if (value >= 26 && value <= 365) {
+          autoOrderType = 'monthly';
+        } else if (value >= 366) {
+          autoOrderType = 'yearly';
+        }
+        updated.orderType = autoOrderType;
+        
+        console.log(`📅 Auto-detected order type: ${value} days → ${autoOrderType}`);
+      }
+      
+      return updated;
+    });
   };
 
   const validateStep = (step: number): boolean => {
@@ -455,12 +487,26 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
         extraCharge: formData.extraCharge,
         totalCost: calculations.totalCost,
         gstRate: 18,
-        items: formData.selectedMachines.map(machine => ({
-          description: `${machine.label} x${machine.quantity}`,
-          qty: formData.numberOfDays,
-          price: machine.baseRate * machine.quantity * formData.workingHours,
-          equipmentId: machine.id
-        })),
+        items: formData.selectedMachines.map(machine => {
+          // Use the same calculation logic as in the calculation function
+          const totalHours = formData.workingHours * formData.numberOfDays;
+          let itemPrice = 0;
+          
+          if (formData.orderType === 'monthly') {
+            // For monthly rates: multiply by number of months needed
+            itemPrice = machine.baseRate * machine.quantity * Math.ceil(formData.numberOfDays / 26);
+          } else {
+            // For hourly rates: multiply by total hours
+            itemPrice = machine.baseRate * machine.quantity * totalHours;
+          }
+          
+          return {
+            description: `${machine.label} x${machine.quantity}`,
+            qty: formData.numberOfDays,
+            price: itemPrice,
+            equipmentId: machine.id
+          };
+        }),
         terms: [
           'Payment Terms: 50% advance payment required, balance to be paid on completion of work',
           'Equipment will be delivered within 2-3 working days from advance payment receipt',
@@ -494,47 +540,6 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
       showNotification('error', error instanceof Error ? error.message : 'Failed to create quotation');
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  // Helper function to calculate effective hourly rate based on baseRates object and rateType
-  const calculateEffectiveHourlyRate = (baseRates: { micro?: number; small?: number; monthly?: number; yearly?: number }, rateType: string, workingHoursPerDay: number = 8) => {
-    let baseRate = 0;
-    
-    // Get the appropriate rate based on rateType
-    switch (rateType) {
-      case 'micro':
-        baseRate = baseRates.micro || 0;
-        break;
-      case 'small':
-        baseRate = baseRates.small || 0;
-        break;
-      case 'monthly':
-        baseRate = baseRates.monthly || 0;
-        break;
-      case 'yearly':
-        baseRate = baseRates.yearly || 0;
-        break;
-      default:
-        // Fallback - find first available rate
-        baseRate = baseRates.micro || baseRates.small || baseRates.monthly || baseRates.yearly || 0;
-        break;
-    }
-    
-    // Convert to hourly rate based on rateType
-    switch (rateType) {
-      case 'micro':
-      case 'small':
-        // These are already per hour rates
-        return baseRate;
-      case 'monthly':
-        // Convert monthly rate to hourly (assuming 26 working days per month)
-        return baseRate / (26 * workingHoursPerDay);
-      case 'yearly':
-        // Convert yearly rate to hourly (assuming 312 working days per year)
-        return baseRate / (312 * workingHoursPerDay);
-      default:
-        return baseRate;
     }
   };
 
@@ -775,7 +780,7 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                           
                           return (
                             <option key={equipment.id} value={equipment.id}>
-                              {equipment.name} - ₹{baseRate > 0 ? baseRate.toLocaleString() : 'No rate'}/hr
+                              {equipment.name} - ₹{baseRate > 0 ? baseRate.toLocaleString() : 'No rate'}{getRateUnit(orderType)}
                             </option>
                           );
                         })
@@ -911,7 +916,7 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                           <div className="grid grid-cols-2 gap-3">
                             <div>
                               <label className="block text-xs font-medium text-gray-700 mb-1">
-                                Rate per Hour (₹)
+                                Rate per {formData.orderType === 'monthly' ? 'Month' : formData.orderType === 'yearly' ? 'Year' : 'Hour'} (₹)
                               </label>
                               <input
                                 type="number"
@@ -1040,9 +1045,13 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                             </span>
                           </div>
                           <div className="flex justify-between items-center text-xs text-gray-500">
-                            <span>Effective hourly cost:</span>
+                            <span>Effective {formData.orderType === 'monthly' ? 'monthly' : 'hourly'} cost:</span>
                             <span>
-                              ₹{(calculateEffectiveHourlyRate(machine.baseRates, machine.rateType, formData.workingHours || 8) * machine.quantity).toLocaleString()}/hr
+                              {formData.orderType === 'monthly' ? (
+                                `₹${(machine.baseRate * machine.quantity).toLocaleString()}/month`
+                              ) : (
+                                `₹${(machine.baseRate * machine.quantity).toLocaleString()}/hr`
+                              )}
                             </span>
                           </div>
                         </div>
@@ -1052,14 +1061,15 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
                           <span className="font-medium text-gray-900">Total Equipment Cost:</span>
                           <span className="font-bold text-blue-600 text-lg">
                             ₹{formData.selectedMachines.reduce((total, machine) => 
-                              total + (calculateEffectiveHourlyRate(machine.baseRates, machine.rateType, formData.workingHours || 8) * machine.quantity), 0
-                            ).toLocaleString()}/hr
+                              total + (machine.baseRate * machine.quantity), 0
+                            ).toLocaleString()}{getRateUnit(formData.orderType)}
                           </span>
                         </div>
                         <div className="text-xs text-gray-600 mt-1">
-                          Base rate total: ₹{formData.selectedMachines.reduce((total, machine) => 
-                            total + (machine.baseRate * machine.quantity), 0
-                          ).toLocaleString()}{getRateUnit(formData.orderType)}
+                          {formData.orderType === 'monthly' 
+                            ? `For ${formData.numberOfDays} days (${Math.ceil(formData.numberOfDays / 26)} months)` 
+                            : `For ${formData.numberOfDays} days × ${formData.workingHours} hrs = ${formData.numberOfDays * formData.workingHours} total hours`
+                          }
                         </div>
                         <div className="mt-2 text-xs text-gray-600">
                           💡 <strong>Tip:</strong> You can adjust individual equipment rates above to customize pricing for this specific quotation. 
