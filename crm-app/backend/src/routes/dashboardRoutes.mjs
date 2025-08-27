@@ -293,20 +293,32 @@ async function getDealsMetrics(pool, startDate, endDate) {
 }
 
 async function getCustomersMetrics(pool, startDate, endDate) {
-  const query = `
-    SELECT 
-      COUNT(*) as total_customers,
-      COUNT(CASE WHEN status = 'active' THEN 1 END) as active_customers
+  // Get total customers created in the time range
+  const totalQuery = `
+    SELECT COUNT(*) as total_customers
     FROM customers 
     WHERE created_at >= $1 AND created_at <= $2
   `;
   
-  const result = await pool.query(query, [startDate, endDate]);
-  const data = result.rows[0];
+  // Get active customers (those with recent deals or leads in last 90 days)
+  const activeQuery = `
+    SELECT COUNT(DISTINCT c.id) as active_customers
+    FROM customers c
+    WHERE c.created_at >= $1 AND c.created_at <= $2
+      AND (
+        EXISTS (SELECT 1 FROM deals d WHERE d.customer_id = c.id AND d.created_at >= NOW() - INTERVAL '90 days')
+        OR EXISTS (SELECT 1 FROM leads l WHERE l.customer_id = c.id AND l.created_at >= NOW() - INTERVAL '90 days')
+      )
+  `;
+  
+  const [totalResult, activeResult] = await Promise.all([
+    pool.query(totalQuery, [startDate, endDate]),
+    pool.query(activeQuery, [startDate, endDate])
+  ]);
   
   return {
-    total: parseInt(data.total_customers),
-    active: parseInt(data.active_customers)
+    total: parseInt(totalResult.rows[0].total_customers),
+    active: parseInt(activeResult.rows[0].active_customers)
   };
 }
 
