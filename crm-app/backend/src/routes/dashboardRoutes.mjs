@@ -326,10 +326,10 @@ async function getQuotationsMetrics(pool, startDate, endDate) {
   const query = `
     SELECT 
       COUNT(*) as total_quotations,
-      COUNT(CASE WHEN status = 'approved' THEN 1 END) as approved_quotations,
+      COUNT(CASE WHEN status = 'accepted' THEN 1 END) as approved_quotations,
       COALESCE(SUM(
-        CASE WHEN status = 'approved' 
-        THEN CAST(total_amount AS NUMERIC) 
+        CASE WHEN status = 'accepted' 
+        THEN CAST(total_cost AS NUMERIC) 
         END
       ), 0) as approved_value
     FROM quotations 
@@ -354,21 +354,21 @@ async function getRecentActivities(pool, limit = 10) {
   // Combine recent activities from multiple tables
   const query = `
     (
-      SELECT 'lead' as type, id, company_name as title, status, created_at, created_by
+      SELECT 'lead' as type, id, company_name as title, status, created_at, assigned_to as created_by
       FROM leads 
       ORDER BY created_at DESC 
       LIMIT $1
     )
     UNION ALL
     (
-      SELECT 'deal' as type, id, title, status, created_at, created_by
+      SELECT 'deal' as type, id, title, stage as status, created_at, created_by
       FROM deals 
       ORDER BY created_at DESC 
       LIMIT $1
     )
     UNION ALL
     (
-      SELECT 'customer' as type, id, company_name as title, status, created_at, created_by
+      SELECT 'customer' as type, id, company_name as title, 'active' as status, created_at, 'system' as created_by
       FROM customers 
       ORDER BY created_at DESC 
       LIMIT $1
