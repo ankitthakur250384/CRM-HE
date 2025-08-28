@@ -446,23 +446,32 @@ export function QuotationCreation() {
 
   // Helper function to get base rate from equipment based on order type
   const getEquipmentBaseRate = (equipment: Equipment, orderType: OrderType): number => {
-    switch (orderType) {
-      case 'micro': return equipment.baseRateMicro || 0;
-      case 'small': return equipment.baseRateSmall || 0;
-      case 'monthly': return equipment.baseRateMonthly || 0;
-      case 'yearly': return equipment.baseRateYearly || 0;
-      default: return 0;
+    console.log(`🔧 Getting base rate for ${equipment.name} with order type: ${orderType}`);
+    console.log(`🔧 Equipment baseRates:`, equipment.baseRates);
+
+    // The backend should already provide the baseRates object
+    if (equipment.baseRates && equipment.baseRates[orderType] !== undefined) {
+      const rate = equipment.baseRates[orderType];
+      console.log(`🔧 Found rate from baseRates: ${rate}`);
+      return rate;
     }
+
+    console.log(`🔧 Warning: No baseRates found for ${equipment.name}, returning 0`);
+    return 0;
   };
 
   // Helper function to get base rates object from equipment
   const getEquipmentBaseRates = (equipment: Equipment): BaseRates => {
-    return {
-      micro: equipment.baseRateMicro || 0,
-      small: equipment.baseRateSmall || 0,
-      monthly: equipment.baseRateMonthly || 0,
-      yearly: equipment.baseRateYearly || 0
-    };
+    console.log(`🔧 Getting base rates object for ${equipment.name}`);
+    
+    // The backend should already provide the baseRates object
+    if (equipment.baseRates) {
+      console.log(`🔧 Using baseRates from backend:`, equipment.baseRates);
+      return equipment.baseRates;
+    }
+
+    console.log(`🔧 Warning: No baseRates found for ${equipment.name}, returning zeros`);
+    return { micro: 0, small: 0, monthly: 0, yearly: 0 };
   };
 
   const determineOrderType = (days: number): OrderType => {
@@ -924,10 +933,23 @@ export function QuotationCreation() {
                         selectedMachines: []
                       }));
                       if (value) {
+                        console.log(`🔍 Fetching equipment for category: ${value}`);
                         getEquipmentByCategory(value as CraneCategory).then(equipment => {
+                          console.log(`📦 Received equipment data:`, equipment);
+                          console.log(`📦 Equipment count: ${equipment?.length || 0}`);
+                          if (equipment && equipment.length > 0) {
+                            console.log(`📦 First equipment sample:`, equipment[0]);
+                            console.log(`📦 First equipment baseRates:`, equipment[0].baseRates);
+                            console.log(`📦 First equipment individual rates:`, {
+                              baseRateMicro: equipment[0].baseRateMicro,
+                              baseRateSmall: equipment[0].baseRateSmall,
+                              baseRateMonthly: equipment[0].baseRateMonthly,
+                              baseRateYearly: equipment[0].baseRateYearly
+                            });
+                          }
                           setAvailableEquipment(Array.isArray(equipment) ? equipment : []);
                         }).catch(error => {
-                          console.error('Error fetching equipment:', error);
+                          console.error('❌ Error fetching equipment:', error);
                           setAvailableEquipment([]);
                         });
                       }
