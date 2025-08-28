@@ -13,31 +13,7 @@ import {
   AlertCircle,
   Users
 } from 'lucide-react';
-
-interface Deal {
-  id: string;
-  title: string;
-  description: string;
-  value: number;
-  stage: string;
-  customer_id: string;
-  customer_name?: string;
-  customer_email?: string;
-  customer_phone?: string;
-  probability: number;
-  expected_close_date: string;
-  created_at: string;
-  assigned_to: string;
-  customer_contact?: any;
-  customer?: {
-    name: string;
-    email: string;
-    phone: string;
-    company: string;
-    address: string;
-    designation?: string;
-  };
-}
+import { getDeals, Deal, DealStage } from '../services/deal';
 
 const DealSelectionPage: React.FC = () => {
   const navigate = useNavigate();
@@ -56,20 +32,21 @@ const DealSelectionPage: React.FC = () => {
       setLoading(true);
       setError(null);
       
-      const response = await fetch('/api/deals');
-      if (!response.ok) {
-        throw new Error('Failed to fetch deals');
-      }
+      console.log('Fetching deals for quotation creation...');
       
-      const dealsData = await response.json();
+      // Use the proper deal service to get deals in eligible stages
+      const eligibleStages = ['qualification', 'proposal', 'negotiation'];
+      const dealsData = await getDeals(eligibleStages);
+      
       console.log('Fetched deals:', dealsData);
       
-      // Filter deals that are eligible for quotations (qualification, proposal, negotiation stages)
-      const eligibleDeals = dealsData.filter((deal: Deal) => 
-        ['qualification', 'proposal', 'negotiation'].includes(deal.stage?.toLowerCase())
-      );
-      
-      setDeals(Array.isArray(eligibleDeals) ? eligibleDeals : []);
+      // Ensure we have an array
+      if (Array.isArray(dealsData)) {
+        setDeals(dealsData);
+      } else {
+        console.warn('Deals service did not return an array:', dealsData);
+        setDeals([]);
+      }
     } catch (err) {
       console.error('Error fetching deals:', err);
       setError('Failed to load deals. Please try again.');
@@ -86,9 +63,9 @@ const DealSelectionPage: React.FC = () => {
         selectedDeal: deal,
         deal: deal,
         dealId: deal.id,
-        customerName: deal.customer?.name || deal.customer_name || '',
-        customerEmail: deal.customer?.email || deal.customer_email || '',
-        customerPhone: deal.customer?.phone || deal.customer_phone || '',
+        customerName: deal.customer?.name || '',
+        customerEmail: deal.customer?.email || '',
+        customerPhone: deal.customer?.phone || '',
         customerCompany: deal.customer?.company || '',
         customerAddress: deal.customer?.address || ''
       }
@@ -97,7 +74,7 @@ const DealSelectionPage: React.FC = () => {
 
   const filteredDeals = deals.filter(deal => {
     const matchesSearch = deal.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         (deal.customer?.name || deal.customer_name || '').toLowerCase().includes(searchTerm.toLowerCase());
+                         (deal.customer?.name || '').toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesStage = stageFilter === 'all' || 
                         stageFilter === 'eligible' && ['qualification', 'proposal', 'negotiation'].includes(deal.stage?.toLowerCase()) ||
@@ -259,7 +236,7 @@ const DealSelectionPage: React.FC = () => {
                   <div className="flex items-center space-x-2">
                     <Building className="h-4 w-4 text-gray-400" />
                     <span className="text-sm text-gray-700 font-medium">
-                      {deal.customer?.name || deal.customer_name || 'Unknown Customer'}
+                      {deal.customer?.name || 'Unknown Customer'}
                     </span>
                   </div>
 
@@ -280,7 +257,7 @@ const DealSelectionPage: React.FC = () => {
                   <div className="flex items-center space-x-2">
                     <Calendar className="h-4 w-4 text-gray-400" />
                     <span className="text-sm text-gray-600">
-                      Expected: {formatDate(deal.expected_close_date)}
+                      Expected: {formatDate(deal.expectedCloseDate)}
                     </span>
                   </div>
                 </div>
@@ -288,7 +265,7 @@ const DealSelectionPage: React.FC = () => {
                 <div className="mt-4 pt-4 border-t border-gray-100">
                   <div className="flex items-center justify-between">
                     <span className="text-xs text-gray-500">
-                      Created: {formatDate(deal.created_at)}
+                      Created: {formatDate(deal.createdAt)}
                     </span>
                     <div className="flex items-center space-x-1 text-blue-600 group-hover:text-blue-700">
                       <span className="text-sm font-medium">Select Deal</span>
