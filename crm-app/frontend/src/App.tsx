@@ -12,8 +12,7 @@ import { AppShell } from './components/layout/AppShell';
 import { UnifiedDashboard } from './pages/UnifiedDashboard';
 import { LeadManagement } from './pages/LeadManagement';
 import ToastContainer from './components/common/ToastContainer';
-import QuotationManagement from './components/quotations/QuotationManagement';
-import { QuotationCreation } from './pages/QuotationCreation';
+import QuotationManagementOld from './pages/QuotationManagementOld';
 import { JobScheduling } from './pages/JobScheduling';
 import { SiteAssessment } from './pages/SiteAssessment';
 import { JobSummaryFeedback } from './pages/JobSummaryFeedback';
@@ -218,13 +217,7 @@ function AppContent() {
             
             <Route path="quotations" element={
               <ProtectedRoute allowedRoles={['admin', 'sales_agent', 'operations_manager']}>
-                <QuotationManagement />
-              </ProtectedRoute>
-            } />
-            
-            <Route path="quotations/create" element={
-              <ProtectedRoute allowedRoles={['admin', 'sales_agent']}>
-                <QuotationCreation />
+                <QuotationManagementOld />
               </ProtectedRoute>
             } />
             
