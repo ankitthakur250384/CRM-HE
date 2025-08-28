@@ -21,33 +21,34 @@ import {
   Calendar,
   Zap
 } from 'lucide-react';
+import DealSelection from '../components/quotations/DealSelection';
 
 // Types
-// interface Deal {
-//   id: string;
-//   title: string;
-//   description: string;
-//   value: number;
-//   stage: string;
-//   customer_id: string;
-//   customer_name?: string;
-//   customer_email?: string;
-//   customer_phone?: string;
-//   customer_company?: string;
-//   customer_address?: string;
-//   probability: number;
-//   expected_close_date: string;
-//   created_at: string;
-//   assigned_to: string;
-//   customer?: {
-//     name: string;
-//     email: string;
-//     phone: string;
-//     company: string;
-//     address: string;
-//     designation?: string;
-//   };
-// }
+interface Deal {
+  id: string;
+  title: string;
+  description: string;
+  value: number;
+  stage: string;
+  customer_id: string;
+  customer_name?: string;
+  customer_email?: string;
+  customer_phone?: string;
+  customer_company?: string;
+  customer_address?: string;
+  probability: number;
+  expected_close_date: string;
+  created_at: string;
+  assigned_to: string;
+  customer?: {
+    name: string;
+    email: string;
+    phone: string;
+    company: string;
+    address: string;
+    designation?: string;
+  };
+}
 
 interface Quotation {
   id: string;
@@ -324,21 +325,22 @@ export function QuotationManagementOld() {
   };
 
   // Handle deal selection
-  // const handleDealSelect = (deal: Deal) => {
-  //   setShowDealSelection(false);
-  //   // Navigate to quotation creation page with the selected deal data
-  //   navigate('/quotation-creation', { 
-  //     state: { 
-  //       selectedDeal: deal,
-  //       dealId: deal.id,
-  //       customerName: deal.customer?.name || deal.customer_name || '',
-  //       customerEmail: deal.customer?.email || deal.customer_email || '',
-  //       customerPhone: deal.customer?.phone || deal.customer_phone || '',
-  //       customerCompany: deal.customer?.company || deal.customer_company || '',
-  //       customerAddress: deal.customer?.address || deal.customer_address || ''
-  //     }
-  //   });
-  // };
+  const handleDealSelect = (deal: Deal) => {
+    setShowDealSelection(false);
+    // Navigate to quotation creation page with the selected deal data
+    navigate('/quotation-creation', { 
+      state: { 
+        selectedDeal: deal,
+        deal: deal,
+        dealId: deal.id,
+        customerName: deal.customer?.name || deal.customer_name || '',
+        customerEmail: deal.customer?.email || deal.customer_email || '',
+        customerPhone: deal.customer?.phone || deal.customer_phone || '',
+        customerCompany: deal.customer?.company || deal.customer_company || '',
+        customerAddress: deal.customer?.address || deal.customer_address || ''
+      }
+    });
+  };
 
   // Edit quotation
   const handleEdit = (quotation: Quotation) => {
@@ -1140,30 +1142,10 @@ export function QuotationManagementOld() {
 
       {/* Deal Selection Modal */}
       {showDealSelection && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white p-8 rounded-lg shadow-xl max-w-md w-full mx-4">
-            <h2 className="text-xl font-bold mb-4">TEST MODAL</h2>
-            <p className="text-gray-600 mb-6">This is a test modal to see if the state is working!</p>
-            <div className="flex space-x-4">
-              <button
-                onClick={() => setShowDealSelection(false)}
-                className="bg-gray-500 text-white px-4 py-2 rounded hover:bg-gray-600"
-              >
-                Close
-              </button>
-              <button
-                onClick={() => {
-                  setShowDealSelection(false);
-                  // Test navigation
-                  navigate('/quotation-creation');
-                }}
-                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-              >
-                Go to Quotation Creation
-              </button>
-            </div>
-          </div>
-        </div>
+        <DealSelection
+          onClose={() => setShowDealSelection(false)}
+          onSelectDeal={handleDealSelect}
+        />
       )}
     </div>
   );

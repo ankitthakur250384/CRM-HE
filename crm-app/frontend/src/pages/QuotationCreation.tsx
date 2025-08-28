@@ -101,7 +101,8 @@ export function QuotationCreation() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const location = useLocation();
-  const dealId = searchParams.get('dealId') || '';
+  const navState = location.state as any;
+  const dealId = searchParams.get('dealId') || navState?.dealId || '';
   const quotationId = searchParams.get('quotationId');
 
   // Configuration management with auto-refresh
@@ -269,8 +270,8 @@ export function QuotationCreation() {
           existingQuotation = navState.quotation;
           console.log('[QuotationCreation] Found quotation in navigation state:', existingQuotation);
         }
-        if (navState.deal) {
-          dealData = navState.deal;
+        if (navState.deal || navState.selectedDeal) {
+          dealData = navState.deal || navState.selectedDeal;
           console.log('[QuotationCreation] Found deal in navigation state:', dealData);
           setDeal(dealData);
         }
