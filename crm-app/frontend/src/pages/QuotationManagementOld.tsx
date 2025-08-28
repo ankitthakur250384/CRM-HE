@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Search, 
   Plus, 
@@ -122,6 +123,7 @@ const RISK_FACTORS = [
 ];
 
 export function QuotationManagementOld() {
+  const navigate = useNavigate();
   const [quotations, setQuotations] = useState<Quotation[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -325,27 +327,18 @@ export function QuotationManagementOld() {
   // Handle deal selection
   const handleDealSelect = (deal: Deal) => {
     setShowDealSelection(false);
-    setFormData({
-      dealId: deal.id,
-      customerName: deal.customer?.name || deal.customer_name || '',
-      customerEmail: deal.customer?.email || deal.customer_email || '',
-      customerPhone: deal.customer?.phone || deal.customer_phone || '',
-      customerCompany: deal.customer?.company || deal.customer_company || '',
-      customerAddress: deal.customer?.address || deal.customer_address || '',
-      machineType: '',
-      orderType: 'micro',
-      numberOfDays: 1,
-      workingHours: 8,
-      siteDistance: 0,
-      usage: 'normal',
-      riskFactor: 'low',
-      foodResources: 0,
-      accomResources: 0,
-      mobDemob: 0,
-      notes: ''
+    // Navigate to quotation creation page with the selected deal data
+    navigate('/quotation-creation', { 
+      state: { 
+        selectedDeal: deal,
+        dealId: deal.id,
+        customerName: deal.customer?.name || deal.customer_name || '',
+        customerEmail: deal.customer?.email || deal.customer_email || '',
+        customerPhone: deal.customer?.phone || deal.customer_phone || '',
+        customerCompany: deal.customer?.company || deal.customer_company || '',
+        customerAddress: deal.customer?.address || deal.customer_address || ''
+      }
     });
-    setEditingQuotation(null);
-    setShowForm(true);
   };
 
   // Edit quotation
