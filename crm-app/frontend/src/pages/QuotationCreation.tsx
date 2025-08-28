@@ -444,6 +444,17 @@ export function QuotationCreation() {
     }
   };
 
+  // Helper function to get the correct rate unit based on order type
+  const getRateUnit = (orderType: OrderType): string => {
+    switch (orderType) {
+      case 'micro': return '/hr';
+      case 'small': return '/hr';
+      case 'monthly': return '/month';
+      case 'yearly': return '/year';
+      default: return '/hr';
+    }
+  };
+
   // Helper function to get base rate from equipment based on order type
   const getEquipmentBaseRate = (equipment: Equipment, orderType: OrderType): number => {
     console.log(`🔧 Getting base rate for ${equipment.name} with order type: ${orderType}`);
@@ -1009,7 +1020,7 @@ export function QuotationCreation() {
                           { value: '', label: 'Select equipment to add...' },
                           ...availableEquipment.map(eq => ({ 
                             value: eq.id, 
-                            label: `${eq.name} - ${formatCurrency(getEquipmentBaseRate(eq, formData.orderType))}/hr` 
+                            label: `${eq.name} - ${formatCurrency(getEquipmentBaseRate(eq, formData.orderType))}${getRateUnit(formData.orderType)}` 
                           }))
                         ]}
                         className="text-gray-900 mb-3"
@@ -1027,10 +1038,10 @@ export function QuotationCreation() {
                                 <div className="flex-1">
                                   <div className="font-medium text-gray-900">{machine.name}</div>
                                   <div className="text-sm text-gray-600">
-                                    {formatCurrency(machine.baseRate)}/hr × {machine.quantity} machine{machine.quantity !== 1 ? 's' : ''}
+                                    {formatCurrency(machine.baseRate)}{getRateUnit(formData.orderType)} × {machine.quantity} machine{machine.quantity !== 1 ? 's' : ''}
                                   </div>
                                   <div className="text-sm text-green-600 font-medium">
-                                    Subtotal: {formatCurrency(machine.baseRate * machine.quantity)}/hr
+                                    Subtotal: {formatCurrency(machine.baseRate * machine.quantity)}{getRateUnit(formData.orderType)}
                                   </div>
                                 </div>
                                 <div className="flex items-center gap-2">
@@ -1087,7 +1098,7 @@ export function QuotationCreation() {
                                   formData.selectedMachines.reduce((total, machine) => 
                                     total + (machine.baseRate * machine.quantity), 0
                                   )
-                                )}/hr
+                                )}{getRateUnit(formData.orderType)}
                               </span>
                             </div>
                           </div>
