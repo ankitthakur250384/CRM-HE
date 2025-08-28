@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Users, 
   TrendingUp, 
@@ -12,13 +13,11 @@ import {
   ArrowDownRight,
   Bell,
   Plus,
-  Calendar,
   Phone,
   Mail,
   FileText,
   Trophy,
   Zap,
-  TrendingDown,
   Clock,
   CheckCircle,
   XCircle,
@@ -31,6 +30,9 @@ import { useAuthStore } from '../store/authStore';
 
 // Services
 import { dashboardService, DashboardAnalytics, RevenueChartData, PipelineData, Notification } from '../services/dashboardService';
+
+// Components
+import DealSelection from '../components/quotations/DealSelection';
 
 // Components
 import { Card, CardHeader, CardTitle, CardContent } from '../components/common/Card';
@@ -246,6 +248,9 @@ function NotificationCenter() {
 
 // Enhanced Quick Actions Component
 function QuickActions() {
+  const navigate = useNavigate();
+  const [showDealSelection, setShowDealSelection] = useState(false);
+
   const handleNavigation = (href: string) => {
     // Check if we're in React Router context
     if (typeof window !== 'undefined') {
@@ -253,32 +258,56 @@ function QuickActions() {
     }
   };
 
+  const handleNewQuotation = () => {
+    setShowDealSelection(true);
+  };
+
+  const handleDealSelect = (deal: any) => {
+    // Navigate to quotation creation with the selected deal
+    navigate(`/quotation-creation?dealId=${deal.id}`, {
+      state: { deal }
+    });
+  };
+
   const actions = [
     {
       label: 'Add Lead',
       icon: <Plus className="h-4 w-4" />,
       color: 'bg-blue-500 hover:bg-blue-600 shadow-blue-200',
-      href: '/leads'
+      href: '/leads',
+      onClick: () => handleNavigation('/leads')
     },
     {
       label: 'New Deal',
       icon: <DollarSign className="h-4 w-4" />,
       color: 'bg-green-500 hover:bg-green-600 shadow-green-200',
-      href: '/deals'
+      href: '/deals',
+      onClick: () => handleNavigation('/deals')
     },
     {
       label: 'Schedule Call',
       icon: <Phone className="h-4 w-4" />,
       color: 'bg-purple-500 hover:bg-purple-600 shadow-purple-200',
-      href: '/activities'
+      href: '/activities',
+      onClick: () => handleNavigation('/activities')
     },
     {
-      label: 'Send Quote',
+      label: 'New Quotation',
       icon: <FileText className="h-4 w-4" />,
       color: 'bg-orange-500 hover:bg-orange-600 shadow-orange-200',
-      href: '/quotations'
+      href: '#',
+      onClick: handleNewQuotation
     }
   ];
+
+  if (showDealSelection) {
+    return (
+      <DealSelection
+        onClose={() => setShowDealSelection(false)}
+        onSelectDeal={handleDealSelect}
+      />
+    );
+  }
 
   return (
     <Card className="hover:shadow-lg transition-shadow duration-300 bg-white">
@@ -294,7 +323,7 @@ function QuickActions() {
             <button
               key={action.label}
               className={`${action.color} text-white p-3 rounded-lg transition-all duration-200 flex items-center gap-2 text-sm font-semibold hover:shadow-lg hover:scale-105 transform active:scale-95 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-opacity-50`}
-              onClick={() => handleNavigation(action.href)}
+              onClick={action.onClick}
             >
               {action.icon}
               <span>{action.label}</span>
