@@ -32,9 +32,6 @@ import { useAuthStore } from '../store/authStore';
 import { dashboardService, DashboardAnalytics, RevenueChartData, PipelineData, Notification } from '../services/dashboardService';
 
 // Components
-import DealSelection from '../components/quotations/DealSelection';
-
-// Components
 import { Card, CardHeader, CardTitle, CardContent } from '../components/common/Card';
 
 // Types
@@ -249,7 +246,6 @@ function NotificationCenter() {
 // Enhanced Quick Actions Component
 function QuickActions() {
   const navigate = useNavigate();
-  const [showDealSelection, setShowDealSelection] = useState(false);
 
   const handleNavigation = (href: string) => {
     // Check if we're in React Router context
@@ -259,14 +255,8 @@ function QuickActions() {
   };
 
   const handleNewQuotation = () => {
-    setShowDealSelection(true);
-  };
-
-  const handleDealSelect = (deal: any) => {
-    // Navigate to quotation creation with the selected deal
-    navigate(`/quotation-creation?dealId=${deal.id}`, {
-      state: { deal }
-    });
+    // Navigate directly to quotation creation page from dashboard
+    navigate('/quotation-creation');
   };
 
   const actions = [
@@ -299,15 +289,6 @@ function QuickActions() {
       onClick: handleNewQuotation
     }
   ];
-
-  if (showDealSelection) {
-    return (
-      <DealSelection
-        onClose={() => setShowDealSelection(false)}
-        onSelectDeal={handleDealSelect}
-      />
-    );
-  }
 
   return (
     <Card className="hover:shadow-lg transition-shadow duration-300 bg-white">

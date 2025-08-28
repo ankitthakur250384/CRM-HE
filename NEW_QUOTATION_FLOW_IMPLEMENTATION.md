@@ -7,8 +7,8 @@ Successfully implemented the requested quotation creation flow where users can s
 
 ### 1. UnifiedDashboard (`src/pages/UnifiedDashboard.tsx`)
 - **Modified QuickActions Component**: Changed "Send Quote" button to "New Quotation"
-- **Added Deal Selection Modal**: Integrated `DealSelection` component
-- **Added Navigation Logic**: When a deal is selected, user is navigated to `/quotation-creation` with deal data
+- **Direct Navigation**: "New Quotation" button directly navigates to `/quotation-creation`
+- **No Modal**: Removed deal selection modal from dashboard for streamlined UX
 - **Preserved Original Actions**: All other quick actions (Add Lead, New Deal, Schedule Call) remain unchanged
 
 ### 2. App.tsx (`src/App.tsx`)
@@ -23,21 +23,23 @@ Successfully implemented the requested quotation creation flow where users can s
 - **Preserved All Logic**: All existing functionality (edit, delete, print, calculations) remains intact
 
 ## Workflow
-1. **User clicks "New Quotation"** from either:
-   - UnifiedDashboard Quick Actions
-   - QuotationManagementOld header button
+1. **From UnifiedDashboard "New Quotation"**:
+   - Directly navigates to `/quotation-creation` page
+   - No deal selection modal - users can create quotations independently
 
-2. **Deal Selection Modal appears** showing:
+2. **From QuotationManagement "New Quotation"**:
+   - Shows Deal Selection Modal with eligible deals
+   - User selects a deal
+   - Form opens with customer information pre-filled from selected deal
+
+3. **Deal Selection Modal** (only from Quotation Management) shows:
    - Only deals in eligible stages (Qualification, Proposal, Negotiation)
    - Search and filter functionality
    - Deal details with customer information
 
-3. **User selects a deal** which triggers:
-   - Navigation to quotation creation page (from dashboard)
-   - OR pre-filled quotation form (from quotation management)
-
-4. **Quotation Creation Page** (`QuotationCreation.tsx`) opens with:
-   - Customer information auto-populated from selected deal
+4. **Quotation Creation Page** (`QuotationCreation.tsx`) works with:
+   - Customer information auto-populated (if coming from deal selection)
+   - OR blank form for new quotations (if coming from dashboard)
    - All existing machine selection logic
    - All existing calculation logic (base rates, mob/demob, food/accommodation, risk factors, etc.)
    - Multiple machine selection functionality
