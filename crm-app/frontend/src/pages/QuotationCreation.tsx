@@ -920,8 +920,8 @@ export function QuotationCreation() {
                                 machineType: formData.machineType,
                                 equipmentId: selected.equipmentId,
                                 name: selected.name,
-                                baseRates: selected.baseRates,
-                                baseRate: selected.baseRates[formData.orderType] || 0,
+                                baseRates: selected.baseRates || { micro: 0, small: 0, monthly: 0, yearly: 0 },
+                                baseRate: selected.baseRates?.[formData.orderType] || 0,
                                 runningCostPerKm: selected.runningCostPerKm || 0,
                                 quantity: 1
                               };
@@ -937,7 +937,7 @@ export function QuotationCreation() {
                           { value: '', label: 'Select equipment to add...' },
                           ...availableEquipment.map(eq => ({ 
                             value: eq.id, 
-                            label: `${eq.name} - ${formatCurrency(eq.baseRates[formData.orderType] || 0)}/hr` 
+                            label: `${eq.name} - ${formatCurrency(eq.baseRates?.[formData.orderType] || 0)}/hr` 
                           }))
                         ]}
                         className="text-gray-900 mb-3"
