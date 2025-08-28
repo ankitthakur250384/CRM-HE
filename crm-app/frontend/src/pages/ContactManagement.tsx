@@ -446,7 +446,7 @@ export function ContactManagement() {
 
                 <div className="flex justify-between text-sm text-gray-500 mb-4">
                   <span>{contact.totalDeals} deals</span>
-                  <span>${contact.totalRevenue.toLocaleString()}</span>
+                  <span>₹{contact.totalRevenue.toLocaleString()}</span>
                 </div>
 
                 <div className="flex gap-2 pt-3 border-t">
@@ -519,7 +519,7 @@ export function ContactManagement() {
                       </td>
                       <td className="py-3 px-4 text-sm">{contact.phone}</td>
                       <td className="py-3 px-4 text-sm">{contact.address.city}, {contact.address.state}</td>
-                      <td className="py-3 px-4 text-sm font-medium">${contact.totalRevenue.toLocaleString()}</td>
+                      <td className="py-3 px-4 text-sm font-medium">₹{contact.totalRevenue.toLocaleString()}</td>
                       <td className="py-3 px-4 text-right">
                         <div className="flex items-center justify-end gap-1">
                           <button 
@@ -650,7 +650,7 @@ export function ContactManagement() {
                       <div className="flex justify-between">
                         <span className="text-gray-600">Total Revenue:</span>
                         <span className="font-medium text-green-600">
-                          ${selectedContact.totalRevenue.toLocaleString()}
+                          ₹{selectedContact.totalRevenue.toLocaleString()}
                         </span>
                       </div>
                       <div className="flex justify-between">

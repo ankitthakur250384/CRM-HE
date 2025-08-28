@@ -149,7 +149,7 @@ export const mergeTemplate = asyncNull;
 export const mergeQuotationWithTemplate = (quotation, template) => template?.content || '';
 export const getAvailablePlaceholders = () => [];
 export const getHeaders = () => ({});
-export const formatCurrency = (value) => `$${value || 0}`;
+export const formatCurrency = (value) => `₹${value || 0}`;
 export const formatDate = (date) => date ? new Date(date).toLocaleDateString() : '';
 export const validateEmail = () => true;
 export const validatePhone = () => true;

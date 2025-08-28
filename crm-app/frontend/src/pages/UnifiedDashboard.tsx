@@ -352,7 +352,7 @@ function PerformanceIndicators({ analytics }: { analytics: DashboardAnalytics })
   const indicators = [
     {
       label: 'Sales Velocity',
-      value: `$${calculateSalesVelocity()}K/day`,
+      value: `₹${calculateSalesVelocity()}K/day`,
       status: analytics.revenue.growth > 0 ? 'good' : 'needs-improvement',
       change: getGrowthIndicator(analytics.revenue.growth)
     },
@@ -437,7 +437,7 @@ function GoalTracking({ analytics }: { analytics: DashboardAnalytics }) {
   const calculateMonthlyRevenueTarget = () => {
     // Base target on current performance with 20% growth target
     const baseTarget = analytics.revenue.total * 1.2;
-    return Math.max(baseTarget, 500000); // Minimum $500K target
+    return Math.max(baseTarget, 500000); // Minimum ₹500K target
   };
 
   const calculateLeadsTarget = () => {
@@ -555,7 +555,7 @@ function QuickStats({ analytics }: { analytics: DashboardAnalytics }) {
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
       <MetricCard
         title="Total Revenue"
-        value={`$${analytics.revenue.total.toLocaleString()}`}
+        value={`₹${analytics.revenue.total.toLocaleString()}`}
         change={analytics.revenue.growth}
         icon={<DollarSign className="text-white" size={20} />}
         color="bg-green-500"
@@ -582,7 +582,7 @@ function QuickStats({ analytics }: { analytics: DashboardAnalytics }) {
       
       <MetricCard
         title="Avg Deal Size"
-        value={`$${analytics.revenue.avgDealSize.toLocaleString()}`}
+        value={`₹${analytics.revenue.avgDealSize.toLocaleString()}`}
         icon={<BarChart3 className="text-white" size={20} />}
         color="bg-orange-500"
         subtitle={`${analytics.deals.avgCycleDays} days avg cycle`}
@@ -605,7 +605,7 @@ function RevenueChart({ data }: { data: RevenueChartData[] }) {
             Revenue Trend (Last 6 Months)
           </div>
           <div className="text-sm text-gray-500">
-            Total: ${data.reduce((sum, month) => sum + month.revenue, 0).toLocaleString()}
+            Total: ₹{data.reduce((sum, month) => sum + month.revenue, 0).toLocaleString()}
           </div>
         </CardTitle>
       </CardHeader>
@@ -627,7 +627,7 @@ function RevenueChart({ data }: { data: RevenueChartData[] }) {
                     {month.monthName}
                   </span>
                   <span className={`font-semibold transition-colors ${isHovered ? 'text-green-700' : 'text-gray-900'}`}>
-                    ${month.revenue.toLocaleString()}
+                    ₹{month.revenue.toLocaleString()}
                   </span>
                 </div>
                 <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
@@ -675,7 +675,7 @@ function PipelineOverview({ data }: { data: PipelineData[] }) {
             Sales Pipeline
           </div>
           <div className="text-sm text-gray-500">
-            Total: ${totalValue.toLocaleString()}
+            Total: ₹{totalValue.toLocaleString()}
           </div>
         </CardTitle>
       </CardHeader>
@@ -701,7 +701,7 @@ function PipelineOverview({ data }: { data: PipelineData[] }) {
                   </span>
                   <div className="text-right">
                     <div className={`font-semibold transition-colors ${isHovered ? 'text-blue-700' : 'text-gray-900'}`}>
-                      ${stage.value.toLocaleString()}
+                      ₹{stage.value.toLocaleString()}
                     </div>
                     <div className="text-xs text-gray-500">{stage.count} deals</div>
                   </div>
@@ -719,7 +719,7 @@ function PipelineOverview({ data }: { data: PipelineData[] }) {
                     {valuePercentage.toFixed(1)}% of total pipeline
                   </span>
                   <span className={`transition-colors ${isHovered ? 'text-blue-600' : 'text-gray-400'}`}>
-                    ${(stage.value / stage.count).toLocaleString()} avg deal
+                    ₹{(stage.value / stage.count).toLocaleString()} avg deal
                   </span>
                 </div>
               </div>

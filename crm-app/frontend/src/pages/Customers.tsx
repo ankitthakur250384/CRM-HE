@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   Plus, 
   Search, 
@@ -11,7 +11,12 @@ import {
   MapPin,
   ChevronDown,
   ChevronRight,
-  User
+  User,
+  Grid,
+  List,
+  ChevronLeft,
+  ChevronFirst,
+  ChevronLast
 } from 'lucide-react';
 import { Card, CardContent } from '../components/common/Card';
 import { Button } from '../components/common/Button';
@@ -37,6 +42,15 @@ export function Customers() {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [expandedCustomers, setExpandedCustomers] = useState<Set<string>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Enhanced filtering and pagination state
+  const [viewMode, setViewMode] = useState<'cards' | 'table'>('cards');
+  const [sortBy, setSortBy] = useState<'name' | 'company' | 'type' | 'contacts'>('company');
+  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
+  const [typeFilter, setTypeFilter] = useState<string>('all');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
+  
   const [toast, setToast] = useState<{
     show: boolean;
     title: string;
@@ -85,46 +99,105 @@ export function Customers() {
   };
 
   // Group customers by company name to eliminate duplicates
-  const groupedCustomers = customers.reduce((acc, customer) => {
-    const companyKey = customer.companyName || customer.name;
-    if (!acc[companyKey]) {
-      acc[companyKey] = {
-        company: companyKey,
-        type: customer.type,
-        address: customer.address,
-        contacts: []
-      };
-    }
-    acc[companyKey].contacts.push({
-      id: customer.id,
-      name: customer.contactName || customer.name,
-      email: customer.email,
-      phone: customer.phone,
-      designation: customer.designation,
-      notes: customer.notes
-    });
-    return acc;
-  }, {} as Record<string, {
-    company: string;
-    type: string;
-    address: string;
-    contacts: Array<{
-      id: string;
-      name: string;
-      email: string;
-      phone: string;
-      designation?: string;
-      notes?: string;
-    }>;
-  }>);
+  const groupedCustomers = useMemo(() => {
+    return customers.reduce((acc, customer) => {
+      const companyKey = customer.companyName || customer.name;
+      if (!acc[companyKey]) {
+        acc[companyKey] = {
+          company: companyKey,
+          type: customer.type,
+          address: customer.address,
+          contacts: []
+        };
+      }
+      acc[companyKey].contacts.push({
+        id: customer.id,
+        name: customer.contactName || customer.name,
+        email: customer.email,
+        phone: customer.phone,
+        designation: customer.designation,
+        notes: customer.notes
+      });
+      return acc;
+    }, {} as Record<string, {
+      company: string;
+      type: string;
+      address: string;
+      contacts: Array<{
+        id: string;
+        name: string;
+        email: string;
+        phone: string;
+        designation?: string;
+        notes?: string;
+      }>;
+    }>);
+  }, [customers]);
 
-  const filteredCompanies = Object.values(groupedCustomers).filter(company =>
-    company.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    company.contacts.some(contact => 
-      contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      contact.email.toLowerCase().includes(searchTerm.toLowerCase())
-    )
-  );
+  // Enhanced filtering and sorting
+  const filteredAndSortedCompanies = useMemo(() => {
+    let companies = Object.values(groupedCustomers);
+
+    // Apply search filter
+    if (searchTerm) {
+      companies = companies.filter(company =>
+        company.company.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        company.contacts.some(contact => 
+          contact.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          contact.email.toLowerCase().includes(searchTerm.toLowerCase())
+        )
+      );
+    }
+
+    // Apply type filter
+    if (typeFilter !== 'all') {
+      companies = companies.filter(company => company.type === typeFilter);
+    }
+
+    // Apply sorting
+    companies.sort((a, b) => {
+      let aValue, bValue;
+      
+      switch (sortBy) {
+        case 'company':
+          aValue = a.company.toLowerCase();
+          bValue = b.company.toLowerCase();
+          break;
+        case 'type':
+          aValue = a.type;
+          bValue = b.type;
+          break;
+        case 'contacts':
+          aValue = a.contacts.length;
+          bValue = b.contacts.length;
+          break;
+        default:
+          aValue = a.company.toLowerCase();
+          bValue = b.company.toLowerCase();
+      }
+
+      if (sortOrder === 'asc') {
+        return aValue < bValue ? -1 : aValue > bValue ? 1 : 0;
+      } else {
+        return aValue > bValue ? -1 : aValue < bValue ? 1 : 0;
+      }
+    });
+
+    return companies;
+  }, [groupedCustomers, searchTerm, typeFilter, sortBy, sortOrder]);
+
+  // Pagination
+  const totalItems = filteredAndSortedCompanies.length;
+  const totalPages = Math.ceil(totalItems / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedCompanies = filteredAndSortedCompanies.slice(startIndex, endIndex);
+
+  // Utility functions
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+    setExpandedCustomers(new Set()); // Collapse all when changing pages
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -204,38 +277,128 @@ export function Customers() {
 
   return (
     <div className="p-6 space-y-6">
-      {/* Header Section */}
+      {/* Enhanced Header Section */}
       <div className="bg-white rounded-lg border border-gray-200 p-6 shadow-sm">
-        <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 flex items-center">
-              <Building2 className="mr-3 text-blue-600" size={28} />
-              Customer Management
-            </h1>
-            <p className="text-gray-600 mt-1">Manage your business relationships and contacts</p>
+        <div className="flex flex-col space-y-4">
+          {/* Title and Summary */}
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-4">
+            <div>
+              <h1 className="text-2xl font-bold text-gray-900 flex items-center">
+                <Building2 className="mr-3 text-blue-600" size={28} />
+                Customer Management
+              </h1>
+              <p className="text-gray-600 mt-1">
+                {totalItems} {totalItems === 1 ? 'company' : 'companies'} • 
+                {customers.length} total contacts
+              </p>
+            </div>
+            
+            <div className="flex flex-col sm:flex-row gap-3">
+              {/* View Mode Toggle */}
+              <div className="flex rounded-lg border border-gray-200 p-1">
+                <button
+                  onClick={() => setViewMode('cards')}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    viewMode === 'cards' 
+                      ? 'bg-blue-500 text-white' 
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  <Grid size={16} className="mr-1" />
+                  Cards
+                </button>
+                <button
+                  onClick={() => setViewMode('table')}
+                  className={`px-3 py-2 rounded-md text-sm font-medium transition-colors ${
+                    viewMode === 'table' 
+                      ? 'bg-blue-500 text-white' 
+                      : 'text-gray-500 hover:text-gray-700'
+                  }`}
+                >
+                  <List size={16} className="mr-1" />
+                  Table
+                </button>
+              </div>
+              
+              <Button
+                onClick={() => {
+                  resetForm();
+                  setIsModalOpen(true);
+                }}
+                leftIcon={<Plus size={16} />}
+                variant="accent"
+                className="w-full sm:w-auto flex-shrink-0"
+              >
+                Add Customer
+              </Button>
+            </div>
           </div>
-          
+
+          {/* Search and Filters */}
           <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative">
+            <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-5 w-5" />
               <FormInput
-                placeholder="Search companies or contacts..."
+                placeholder="Search companies, contacts, or emails..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10 w-full sm:w-80"
+                onChange={(e) => {
+                  setSearchTerm(e.target.value);
+                  setCurrentPage(1); // Reset to first page when searching
+                }}
+                className="pl-10 w-full"
               />
             </div>
-            <Button
-              onClick={() => {
-                resetForm();
-                setIsModalOpen(true);
-              }}
-              leftIcon={<Plus size={16} />}
-              variant="accent"
-              className="w-full sm:w-auto flex-shrink-0"
-            >
-              Add Customer
-            </Button>
+            
+            <div className="flex gap-2">
+              {/* Type Filter */}
+              <select
+                value={typeFilter}
+                onChange={(e) => {
+                  setTypeFilter(e.target.value);
+                  setCurrentPage(1);
+                }}
+                className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="all">All Types</option>
+                <option value="construction">Construction</option>
+                <option value="property_developer">Property Developer</option>
+                <option value="manufacturing">Manufacturing</option>
+                <option value="government">Government</option>
+                <option value="other">Other</option>
+              </select>
+
+              {/* Sort Options */}
+              <select
+                value={`${sortBy}-${sortOrder}`}
+                onChange={(e) => {
+                  const [field, order] = e.target.value.split('-');
+                  setSortBy(field as typeof sortBy);
+                  setSortOrder(order as 'asc' | 'desc');
+                }}
+                className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="company-asc">Company A-Z</option>
+                <option value="company-desc">Company Z-A</option>
+                <option value="type-asc">Type A-Z</option>
+                <option value="contacts-desc">Most Contacts</option>
+                <option value="contacts-asc">Least Contacts</option>
+              </select>
+
+              {/* Items per page */}
+              <select
+                value={itemsPerPage}
+                onChange={(e) => {
+                  setItemsPerPage(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value={10}>10 per page</option>
+                <option value={20}>20 per page</option>
+                <option value={50}>50 per page</option>
+                <option value={100}>100 per page</option>
+              </select>
+            </div>
           </div>
         </div>
       </div>
@@ -244,111 +407,97 @@ export function Customers() {
         <CardContent>
           {isLoading ? (
             <div className="text-center py-8">Loading customers...</div>
-          ) : filteredCompanies.length === 0 ? (
+          ) : paginatedCompanies.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
-              No customers found. Add new customers to get started.
+              {filteredAndSortedCompanies.length === 0 ? (
+                searchTerm || typeFilter !== 'all' ? (
+                  <>
+                    <Building2 size={48} className="mx-auto text-gray-300 mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No customers found</h3>
+                    <p className="text-gray-500 mb-4">
+                      Try adjusting your search terms or filters.
+                    </p>
+                    <Button
+                      onClick={() => {
+                        setSearchTerm('');
+                        setTypeFilter('all');
+                        setCurrentPage(1);
+                      }}
+                      variant="outline"
+                    >
+                      Clear Filters
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Building2 size={48} className="mx-auto text-gray-300 mb-4" />
+                    <h3 className="text-lg font-medium text-gray-900 mb-2">No customers yet</h3>
+                    <p className="text-gray-500 mb-4">
+                      Get started by adding your first customer.
+                    </p>
+                    <Button
+                      onClick={() => {
+                        resetForm();
+                        setIsModalOpen(true);
+                      }}
+                      leftIcon={<Plus size={16} />}
+                      variant="accent"
+                    >
+                      Add Customer
+                    </Button>
+                  </>
+                )
+              ) : (
+                'No customers found for this page.'
+              )}
             </div>
           ) : (
-            <div className="space-y-4">
-              {filteredCompanies.map((company) => (
-                <div key={company.company} className="border border-gray-200 rounded-lg bg-white shadow-sm">
-                  {/* Company Header */}
-                  <div className="p-4 border-b border-gray-100 bg-gray-50">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-3">
-                        <button
-                          onClick={() => toggleCustomerExpansion(company.company)}
-                          className="p-1 hover:bg-gray-200 rounded transition-colors"
-                        >
-                          {expandedCustomers.has(company.company) ? (
-                            <ChevronDown size={16} className="text-gray-600" />
-                          ) : (
-                            <ChevronRight size={16} className="text-gray-600" />
-                          )}
-                        </button>
-                        <Building2 size={20} className="text-blue-600" />
-                        <div>
-                          <h3 className="font-semibold text-gray-900">{company.company}</h3>
-                          <div className="flex items-center space-x-4 text-sm text-gray-500 mt-1">
-                            <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                              {company.type}
-                            </span>
-                            <span className="flex items-center">
-                              <Users size={14} className="mr-1" />
-                              {company.contacts.length} contact{company.contacts.length !== 1 ? 's' : ''}
-                            </span>
-                            {company.address && (
-                              <span className="flex items-center">
-                                <MapPin size={14} className="mr-1" />
-                                {company.address}
-                              </span>
+            <>
+              <div className="space-y-4">
+                {paginatedCompanies.map((company) => (
+                  <div key={company.company} className="border border-gray-200 rounded-lg bg-white shadow-sm">
+                    {/* Company Header */}
+                    <div className="p-4 border-b border-gray-100 bg-gray-50">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-3">
+                          <button
+                            onClick={() => toggleCustomerExpansion(company.company)}
+                            className="p-1 hover:bg-gray-200 rounded transition-colors"
+                          >
+                            {expandedCustomers.has(company.company) ? (
+                              <ChevronDown size={16} className="text-gray-600" />
+                            ) : (
+                              <ChevronRight size={16} className="text-gray-600" />
                             )}
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => {
-                            const firstContact = company.contacts[0];
-                            if (firstContact) {
-                              const customer = customers.find(c => c.id === firstContact.id);
-                              if (customer) {
-                                setSelectedCustomer(customer);
-                                setFormData({
-                                  name: customer.name,
-                                  companyName: customer.companyName,
-                                  contactName: customer.contactName,
-                                  email: customer.email,
-                                  phone: customer.phone,
-                                  address: customer.address,
-                                  type: customer.type,
-                                  designation: customer.designation || '',
-                                  notes: customer.notes || ''
-                                });
-                                setIsModalOpen(true);
-                              }
-                            }
-                          }}
-                          title="Edit Company"
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Contacts List (Expandable) */}
-                  {expandedCustomers.has(company.company) && (
-                    <div className="p-4 space-y-3">
-                      {company.contacts.map((contact) => (
-                        <div key={contact.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
-                          <div className="flex items-center space-x-3">
-                            <User size={16} className="text-gray-400" />
-                            <div>
-                              <h4 className="font-medium text-gray-900">{contact.name}</h4>
-                              <div className="flex items-center space-x-4 text-sm text-gray-500">
-                                {contact.designation && (
-                                  <span>{contact.designation}</span>
-                                )}
-                                <a href={`mailto:${contact.email}`} className="flex items-center hover:text-blue-600 transition-colors">
-                                  <Mail size={14} className="mr-1" />
-                                  {contact.email}
-                                </a>
-                                <a href={`tel:${contact.phone}`} className="flex items-center hover:text-blue-600 transition-colors">
-                                  <Phone size={14} className="mr-1" />
-                                  {contact.phone}
-                                </a>
-                              </div>
+                          </button>
+                          <Building2 size={20} className="text-blue-600" />
+                          <div>
+                            <h3 className="font-semibold text-gray-900">{company.company}</h3>
+                            <div className="flex items-center space-x-4 text-sm text-gray-500 mt-1">
+                              <span className="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                {company.type}
+                              </span>
+                              <span className="flex items-center">
+                                <Users size={14} className="mr-1" />
+                                {company.contacts.length} contact{company.contacts.length !== 1 ? 's' : ''}
+                              </span>
+                              {company.address && (
+                                <span className="flex items-center">
+                                  <MapPin size={14} className="mr-1" />
+                                  {company.address}
+                                </span>
+                              )}
                             </div>
                           </div>
-                          <div className="flex items-center space-x-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => {
-                                const customer = customers.find(c => c.id === contact.id);
+                        </div>
+                        <div className="flex items-center space-x-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              const firstContact = company.contacts[0];
+                              if (firstContact) {
+                                const customer = customers.find(c => c.id === firstContact.id);
                                 if (customer) {
                                   setSelectedCustomer(customer);
                                   setFormData({
@@ -364,34 +513,168 @@ export function Customers() {
                                   });
                                   setIsModalOpen(true);
                                 }
-                              }}
-                              title="Edit Contact"
-                            >
-                              <Edit2 className="h-3 w-3" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                              onClick={() => {
-                                const customer = customers.find(c => c.id === contact.id);
-                                if (customer) {
-                                  setSelectedCustomer(customer);
-                                  setIsDeleteModalOpen(true);
-                                }
-                              }}
-                              title="Delete Contact"
-                            >
-                              <Trash2 className="h-3 w-3" />
-                            </Button>
-                          </div>
+                              }
+                            }}
+                            title="Edit Company"
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
                         </div>
-                      ))}
+                      </div>
                     </div>
-                  )}
+
+                    {/* Contacts List (Expandable) */}
+                    {expandedCustomers.has(company.company) && (
+                      <div className="p-4 space-y-3">
+                        {company.contacts.map((contact) => (
+                          <div key={contact.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                            <div className="flex items-center space-x-3">
+                              <User size={16} className="text-gray-400" />
+                              <div>
+                                <h4 className="font-medium text-gray-900">{contact.name}</h4>
+                                <div className="flex items-center space-x-4 text-sm text-gray-500">
+                                  {contact.designation && (
+                                    <span>{contact.designation}</span>
+                                  )}
+                                  <a href={`mailto:${contact.email}`} className="flex items-center hover:text-blue-600 transition-colors">
+                                    <Mail size={14} className="mr-1" />
+                                    {contact.email}
+                                  </a>
+                                  <a href={`tel:${contact.phone}`} className="flex items-center hover:text-blue-600 transition-colors">
+                                    <Phone size={14} className="mr-1" />
+                                    {contact.phone}
+                                  </a>
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => {
+                                  const customer = customers.find(c => c.id === contact.id);
+                                  if (customer) {
+                                    setSelectedCustomer(customer);
+                                    setFormData({
+                                      name: customer.name,
+                                      companyName: customer.companyName,
+                                      contactName: customer.contactName,
+                                      email: customer.email,
+                                      phone: customer.phone,
+                                      address: customer.address,
+                                      type: customer.type,
+                                      designation: customer.designation || '',
+                                      notes: customer.notes || ''
+                                    });
+                                    setIsModalOpen(true);
+                                  }
+                                }}
+                                title="Edit Contact"
+                              >
+                                <Edit2 className="h-3 w-3" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                                onClick={() => {
+                                  const customer = customers.find(c => c.id === contact.id);
+                                  if (customer) {
+                                    setSelectedCustomer(customer);
+                                    setIsDeleteModalOpen(true);
+                                  }
+                                }}
+                                title="Delete Contact"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="mt-6 flex items-center justify-between border-t border-gray-200 pt-4">
+                  <div className="text-sm text-gray-700">
+                    Showing {startIndex + 1} to {Math.min(endIndex, totalItems)} of {totalItems} companies
+                  </div>
+                  
+                  <div className="flex items-center space-x-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(1)}
+                      disabled={currentPage === 1}
+                      title="First page"
+                    >
+                      <ChevronFirst size={16} />
+                    </Button>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage - 1)}
+                      disabled={currentPage === 1}
+                      title="Previous page"
+                    >
+                      <ChevronLeft size={16} />
+                    </Button>
+                    
+                    <div className="flex space-x-1">
+                      {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
+                        let pageNum;
+                        if (totalPages <= 5) {
+                          pageNum = i + 1;
+                        } else if (currentPage <= 3) {
+                          pageNum = i + 1;
+                        } else if (currentPage >= totalPages - 2) {
+                          pageNum = totalPages - 4 + i;
+                        } else {
+                          pageNum = currentPage - 2 + i;
+                        }
+                        
+                        return (
+                          <Button
+                            key={pageNum}
+                            variant={currentPage === pageNum ? "accent" : "outline"}
+                            size="sm"
+                            onClick={() => handlePageChange(pageNum)}
+                            className="w-10"
+                          >
+                            {pageNum}
+                          </Button>
+                        );
+                      })}
+                    </div>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(currentPage + 1)}
+                      disabled={currentPage === totalPages}
+                      title="Next page"
+                    >
+                      <ChevronRight size={16} />
+                    </Button>
+                    
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handlePageChange(totalPages)}
+                      disabled={currentPage === totalPages}
+                      title="Last page"
+                    >
+                      <ChevronLast size={16} />
+                    </Button>
+                  </div>
                 </div>
-              ))}
-            </div>
+              )}
+            </>
           )}
         </CardContent>
       </Card>
