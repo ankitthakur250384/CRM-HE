@@ -21,35 +21,8 @@ import {
   Calendar,
   Zap
 } from 'lucide-react';
-import DealSelection from '../components/quotations/DealSelection';
 
 // Types
-interface Deal {
-  id: string;
-  title: string;
-  description: string;
-  value: number;
-  stage: string;
-  customer_id: string;
-  customer_name?: string;
-  customer_email?: string;
-  customer_phone?: string;
-  customer_company?: string;
-  customer_address?: string;
-  probability: number;
-  expected_close_date: string;
-  created_at: string;
-  assigned_to: string;
-  customer?: {
-    name: string;
-    email: string;
-    phone: string;
-    company: string;
-    address: string;
-    designation?: string;
-  };
-}
-
 interface Quotation {
   id: string;
   dealId?: string;
@@ -128,7 +101,6 @@ export function QuotationManagementOld() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [showForm, setShowForm] = useState(false);
-  const [showDealSelection, setShowDealSelection] = useState(false);
   const [editingQuotation, setEditingQuotation] = useState<Quotation | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -321,24 +293,6 @@ export function QuotationManagementOld() {
       accomResources: 0,
       mobDemob: 0,
       notes: ''
-    });
-  };
-
-  // Handle deal selection
-  const handleDealSelect = (deal: Deal) => {
-    setShowDealSelection(false);
-    // Navigate to quotation creation page with the selected deal data
-    navigate('/quotation-creation', { 
-      state: { 
-        selectedDeal: deal,
-        deal: deal,
-        dealId: deal.id,
-        customerName: deal.customer?.name || deal.customer_name || '',
-        customerEmail: deal.customer?.email || deal.customer_email || '',
-        customerPhone: deal.customer?.phone || deal.customer_phone || '',
-        customerCompany: deal.customer?.company || deal.customer_company || '',
-        customerAddress: deal.customer?.address || deal.customer_address || ''
-      }
     });
   };
 
@@ -558,10 +512,8 @@ export function QuotationManagementOld() {
             </div>
             <button
               onClick={() => {
-                console.log('New Quotation button clicked!');
-                console.log('Current showDealSelection state:', showDealSelection);
-                setShowDealSelection(true);
-                console.log('showDealSelection set to true');
+                console.log('New Quotation button clicked! Navigating to deal selection page...');
+                navigate('/select-deal');
               }}
               className="bg-blue-600 text-white px-6 py-3 rounded-lg hover:bg-blue-700 flex items-center space-x-2 shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5"
             >
@@ -1138,14 +1090,6 @@ export function QuotationManagementOld() {
             </div>
           </div>
         </div>
-      )}
-
-      {/* Deal Selection Modal */}
-      {showDealSelection && (
-        <DealSelection
-          onClose={() => setShowDealSelection(false)}
-          onSelectDeal={handleDealSelect}
-        />
       )}
     </div>
   );
