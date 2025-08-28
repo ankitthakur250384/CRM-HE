@@ -216,8 +216,8 @@ export function QuotationCreation() {
   useEffect(() => {
     if (formData.orderType && formData.selectedEquipment?.id && Array.isArray(availableEquipment) && availableEquipment.length > 0) {
       const selected = availableEquipment.find(eq => eq.id === formData.selectedEquipment.id);
-      if (selected?.baseRates) {
-        const baseRate = selected.baseRates[formData.orderType];
+      if (selected) {
+        const baseRate = getEquipmentBaseRate(selected, formData.orderType);
         setSelectedEquipmentBaseRate(baseRate);
       }
     }
@@ -227,10 +227,11 @@ export function QuotationCreation() {
         ...prev,
         selectedMachines: prev.selectedMachines.map(machine => {
           const equipmentDetails = availableEquipment.find(eq => eq.id === machine.id);
-          if (equipmentDetails?.baseRates) {
+          if (equipmentDetails) {
             return {
               ...machine,
-              baseRate: equipmentDetails.baseRates[formData.orderType] || machine.baseRate
+              baseRate: getEquipmentBaseRate(equipmentDetails, formData.orderType),
+              baseRates: getEquipmentBaseRates(equipmentDetails)
             };
           }
           return machine;
@@ -403,8 +404,8 @@ export function QuotationCreation() {
 
           if (quotationToLoad.selectedEquipment?.id && equipmentData) {
             const selected = equipmentData.find((eq: any) => eq.id === quotationToLoad.selectedEquipment.id);
-            if (selected?.baseRates) {
-              const baseRate = selected.baseRates[quotationToLoad.orderType as keyof typeof selected.baseRates || 'micro'];
+            if (selected) {
+              const baseRate = getEquipmentBaseRate(selected, quotationToLoad.orderType as OrderType || 'micro');
               setSelectedEquipmentBaseRate(baseRate);
             }
           }
@@ -441,6 +442,27 @@ export function QuotationCreation() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  // Helper function to get base rate from equipment based on order type
+  const getEquipmentBaseRate = (equipment: Equipment, orderType: OrderType): number => {
+    switch (orderType) {
+      case 'micro': return equipment.baseRateMicro || 0;
+      case 'small': return equipment.baseRateSmall || 0;
+      case 'monthly': return equipment.baseRateMonthly || 0;
+      case 'yearly': return equipment.baseRateYearly || 0;
+      default: return 0;
+    }
+  };
+
+  // Helper function to get base rates object from equipment
+  const getEquipmentBaseRates = (equipment: Equipment): BaseRates => {
+    return {
+      micro: equipment.baseRateMicro || 0,
+      small: equipment.baseRateSmall || 0,
+      monthly: equipment.baseRateMonthly || 0,
+      yearly: equipment.baseRateYearly || 0
+    };
   };
 
   const determineOrderType = (days: number): OrderType => {
@@ -823,10 +845,21 @@ export function QuotationCreation() {
                         const orderTypeChanged = days > 0 && newOrderType !== prev.orderType;
                         let updatedMachines = [...prev.selectedMachines];
                         if (orderTypeChanged) {
-                          updatedMachines = prev.selectedMachines.map(machine => ({
-                            ...machine,
-                            baseRate: machine.baseRates?.[newOrderType] || machine.baseRate
-                          }));
+                          updatedMachines = prev.selectedMachines.map(machine => {
+                            // Find the equipment in availableEquipment to get updated rates
+                            const equipment = availableEquipment.find(eq => eq.id === machine.id);
+                            if (equipment) {
+                              return {
+                                ...machine,
+                                baseRate: getEquipmentBaseRate(equipment, newOrderType),
+                                baseRates: getEquipmentBaseRates(equipment)
+                              };
+                            }
+                            return {
+                              ...machine,
+                              baseRate: machine.baseRates?.[newOrderType] || machine.baseRate
+                            };
+                          });
                         }
                         
                         return {
@@ -901,10 +934,10 @@ export function QuotationCreation() {
                     }}
                     options={[
                       { value: '', label: 'Select machine type...' },
-                      { value: 'mobile_crane', label: 'Mobile Crane (₹4,000/hr)' },
-                      { value: 'tower_crane', label: 'Tower Crane (₹3,500/hr)' },
-                      { value: 'crawler_crane', label: 'Crawler Crane (₹5,000/hr)' },
-                      { value: 'pick_and_carry_crane', label: 'Pick & Carry Crane (₹3,000/hr)' },
+                      { value: 'mobile_crane', label: 'Mobile Crane' },
+                      { value: 'tower_crane', label: 'Tower Crane' },
+                      { value: 'crawler_crane', label: 'Crawler Crane' },
+                      { value: 'pick_and_carry_crane', label: 'Pick & Carry Crane' },
                     ]}
                     required
                     className="text-gray-900"
@@ -931,13 +964,14 @@ export function QuotationCreation() {
                               }));
                             } else {
                               // Add new machine to the list
+                              const baseRates = getEquipmentBaseRates(selected);
                               const newMachine = {
                                 id: selected.id,
                                 machineType: formData.machineType,
                                 equipmentId: selected.equipmentId,
                                 name: selected.name,
-                                baseRates: selected.baseRates || { micro: 0, small: 0, monthly: 0, yearly: 0 },
-                                baseRate: selected.baseRates?.[formData.orderType] || 0,
+                                baseRates: baseRates,
+                                baseRate: getEquipmentBaseRate(selected, formData.orderType),
                                 runningCostPerKm: selected.runningCostPerKm || 0,
                                 quantity: 1
                               };
@@ -953,7 +987,7 @@ export function QuotationCreation() {
                           { value: '', label: 'Select equipment to add...' },
                           ...availableEquipment.map(eq => ({ 
                             value: eq.id, 
-                            label: `${eq.name} - ${formatCurrency(eq.baseRates?.[formData.orderType] || 0)}/hr` 
+                            label: `${eq.name} - ${formatCurrency(getEquipmentBaseRate(eq, formData.orderType))}/hr` 
                           }))
                         ]}
                         className="text-gray-900 mb-3"
