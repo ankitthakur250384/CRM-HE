@@ -842,6 +842,21 @@ export function QuotationCreation() {
                     placeholder="Enter days"
                     className="text-gray-900"
                   />
+                  
+                  {/* Order Type Display */}
+                  {formData.numberOfDays > 0 && (
+                    <div className="p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="text-sm font-medium text-blue-900">Order Type</div>
+                      <div className="text-lg font-bold text-blue-700 capitalize">
+                        {formData.orderType}
+                        {formData.orderType === 'micro' && ' (≤ 7 days)'}
+                        {formData.orderType === 'small' && ' (8-25 days)'}
+                        {formData.orderType === 'monthly' && ' (26-300 days)'}
+                        {formData.orderType === 'yearly' && ' (≥ 300 days)'}
+                      </div>
+                    </div>
+                  )}
+                  
                   <FormInput
                     type="number"
                     label="Working Hours/Day"
@@ -1211,31 +1226,6 @@ export function QuotationCreation() {
               </CardContent>
             </Card>
 
-            {/* Action Buttons */}
-            <div className="flex flex-col sm:flex-row gap-3">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => navigate('/quotations')}
-                className="sm:flex-1"
-              >
-                Cancel
-              </Button>
-              <Button 
-                type="submit"
-                disabled={isSaving || (formData.selectedMachines.length === 0 && !formData.selectedEquipment.id)}
-                className="sm:flex-1 bg-primary-600 hover:bg-primary-700"
-                leftIcon={isSaving ? <Clock className="animate-spin" /> : <Save />}
-                variant="accent"
-              >
-                {isSaving ? 'Saving...' : quotationId ? 'Update Quotation' : 'Create Quotation'}
-              </Button>
-              {formData.selectedMachines.length === 0 && !formData.selectedEquipment.id && (
-                <div className="text-xs text-center text-amber-600 col-span-2">
-                  Please add at least one machine
-                </div>
-              )}
-            </div>
           </div>
 
           {/* Right Column - Summary */}
@@ -1268,6 +1258,32 @@ export function QuotationCreation() {
                         </div>
                       </div>
                     </label>
+                  </div>
+
+                  {/* Action Buttons - Moved below QuotationSummary */}
+                  <div className="flex flex-col gap-3 mt-6 pt-4 border-t border-gray-100">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => navigate('/quotations')}
+                      className="w-full"
+                    >
+                      Cancel
+                    </Button>
+                    <Button 
+                      type="submit"
+                      disabled={isSaving || (formData.selectedMachines.length === 0 && !formData.selectedEquipment.id)}
+                      className="w-full bg-primary-600 hover:bg-primary-700"
+                      leftIcon={isSaving ? <Clock className="animate-spin" /> : <Save />}
+                      variant="accent"
+                    >
+                      {isSaving ? 'Saving...' : quotationId ? 'Update Quotation' : 'Create Quotation'}
+                    </Button>
+                    {formData.selectedMachines.length === 0 && !formData.selectedEquipment.id && (
+                      <div className="text-xs text-center text-amber-600">
+                        Please add at least one machine
+                      </div>
+                    )}
                   </div>
                 </CardContent>
               </Card>
