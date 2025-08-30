@@ -8,6 +8,7 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import * as leadRepository from '../services/postgres/leadRepository.js';
+import { sendLeadCreatedNotification } from '../services/notificationService.js';
 
 const router = express.Router();
 
@@ -83,6 +84,16 @@ router.post('/', devBypass, asyncHandler(async (req, res) => {
   };
   
   const lead = await leadRepository.createLead(leadData);
+  
+  // Send lead created notification
+  try {
+    await sendLeadCreatedNotification(lead);
+    console.log(`📧 Lead created notification sent for lead ${lead.id}`);
+  } catch (notificationError) {
+    console.error('Error sending lead created notification:', notificationError);
+    // Don't fail lead creation if notification fails
+  }
+  
   res.status(201).json(lead);
 }));
 

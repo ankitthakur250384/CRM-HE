@@ -35,6 +35,7 @@ const QuotationPrintSystem: React.FC<QuotationPrintSystemProps> = ({
 }) => {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<number | null>(null);
+  const [configDefaultTemplateId, setConfigDefaultTemplateId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [isEmailDialogOpen, setIsEmailDialogOpen] = useState(false);
@@ -69,12 +70,44 @@ const QuotationPrintSystem: React.FC<QuotationPrintSystemProps> = ({
       if (data.success) {
         setTemplates(data.templates);
         
-        // Auto-select default template
-        const defaultTemplate = data.templates.find((t: Template) => t.is_default);
-        if (defaultTemplate) {
-          setSelectedTemplate(defaultTemplate.id);
-        } else if (data.templates.length > 0) {
-          setSelectedTemplate(data.templates[0].id);
+        // First, try to get the default template from config system
+        let defaultTemplateId = null;
+        try {
+          const configResponse = await fetch('/api/config/templates');
+          const configData = await configResponse.json();
+          if (configData.success && configData.data.defaultQuotationTemplate) {
+            defaultTemplateId = configData.data.defaultQuotationTemplate;
+            setConfigDefaultTemplateId(defaultTemplateId);
+          }
+        } catch (configError) {
+          console.warn('Could not load template config, falling back to database default:', configError);
+        }
+        
+        // Auto-select default template based on config or database flag
+        if (defaultTemplateId) {
+          const configTemplate = data.templates.find((t: Template) => t.id === defaultTemplateId);
+          if (configTemplate) {
+            setSelectedTemplate(configTemplate.id);
+            console.log('Using config-based default template:', configTemplate.name);
+          } else {
+            console.warn('Config default template not found, falling back to database default');
+            const defaultTemplate = data.templates.find((t: Template) => t.is_default);
+            if (defaultTemplate) {
+              setSelectedTemplate(defaultTemplate.id);
+            } else if (data.templates.length > 0) {
+              setSelectedTemplate(data.templates[0].id);
+            }
+          }
+        } else {
+          // Fallback to database is_default flag
+          const defaultTemplate = data.templates.find((t: Template) => t.is_default);
+          if (defaultTemplate) {
+            setSelectedTemplate(defaultTemplate.id);
+            console.log('Using database-based default template:', defaultTemplate.name);
+          } else if (data.templates.length > 0) {
+            setSelectedTemplate(data.templates[0].id);
+            console.log('No default template found, using first available template');
+          }
         }
       } else {
         throw new Error(data.error || 'Failed to load templates');
@@ -353,12 +386,33 @@ const QuotationPrintSystem: React.FC<QuotationPrintSystemProps> = ({
               className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">Select a template</option>
-              {templates.map((template) => (
-                <option key={template.id} value={template.id.toString()}>
-                  {template.name} {template.is_default ? '(Default)' : ''}
-                </option>
-              ))}
+              {templates.map((template) => {
+                const isConfigDefault = configDefaultTemplateId && template.id.toString() === configDefaultTemplateId;
+                const isDatabaseDefault = template.is_default;
+                let defaultLabel = '';
+                
+                if (isConfigDefault) {
+                  defaultLabel = ' (Default - Config)';
+                } else if (isDatabaseDefault) {
+                  defaultLabel = ' (Default - DB)';
+                }
+                
+                return (
+                  <option key={template.id} value={template.id.toString()}>
+                    {template.name}{defaultLabel}
+                  </option>
+                );
+              })}
             </select>
+
+            {configDefaultTemplateId && (
+              <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded-md">
+                <p className="text-xs text-blue-700">
+                  <strong>Template Priority:</strong> "Default - Config" templates are set in Configuration and have highest priority. 
+                  "Default - DB" are fallback defaults. This ensures your configured default template is always used.
+                </p>
+              </div>
+            )}
 
             {templates.length === 0 && !isLoading && (
               <p className="text-sm text-gray-500">

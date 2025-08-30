@@ -4,7 +4,10 @@
 import express from 'express';
 import { getJobs, getJobById, createJob, updateJob, deleteJob, getJobEquipment, addJobEquipment, removeJobEquipment, getJobOperators, addJobOperator, removeJobOperator } from '../services/postgres/jobRepository.js';
 import { createJobActivity } from '../services/activityService.js';
-import { createNotification } from '../services/notificationService.js';
+import { 
+  sendJobAssignedNotification, 
+  sendJobCompletedNotification 
+} from '../services/notificationService.js';
 
 const router = express.Router();
 
@@ -51,32 +54,15 @@ router.post('/', async (req, res) => {
       // Don't fail the job creation if activity creation fails
     }
     
-    // Create notification for operations manager and assigned operator
+    // Send notifications for job assignment
     try {
-      // Notify operations manager
-      await createNotification({
-        userId: job.createdBy || 'admin', // Could be improved to find actual ops manager
-        type: 'job_created',
-        title: 'Job Created',
-        message: `New job scheduled for ${job.customerName}`,
-        link: `/jobs/${job.id}`
-      });
-      
-      // Notify assigned operators
       if (job.operatorIds && job.operatorIds.length > 0) {
-        for (const operatorId of job.operatorIds) {
-          await createNotification({
-            userId: operatorId,
-            type: 'job_assigned',
-            title: 'Job Assigned',
-            message: `You have been assigned to a job for ${job.customerName}`,
-            link: `/jobs/${job.id}`
-          });
-        }
+        await sendJobAssignedNotification(job, job.operatorIds);
+        console.log(`📧 Job assignment notifications sent for job ${job.id}`);
       }
     } catch (notificationError) {
-      console.error('Error creating notifications:', notificationError);
-      // Don't fail the job creation if notification creation fails
+      console.error('Error sending job assignment notifications:', notificationError);
+      // Don't fail the job creation if notification sending fails
     }
     
     res.status(201).json(job);
@@ -90,6 +76,28 @@ router.put('/:id', async (req, res) => {
   try {
     const job = await updateJob(req.params.id, req.body);
     if (!job) return res.status(404).json({ error: 'Job not found' });
+    
+    // Check if job status changed to completed
+    if (req.body.status === 'completed' && job.status === 'completed') {
+      try {
+        await sendJobCompletedNotification(job);
+        console.log(`📧 Job completion notification sent for job ${job.id}`);
+      } catch (notificationError) {
+        console.error('Error sending job completion notification:', notificationError);
+      }
+    }
+    
+    // Check if new operators were assigned
+    if (req.body.operatorIds && req.body.operatorIds.length > 0) {
+      // Find newly assigned operators (this is a simplified check)
+      try {
+        await sendJobAssignedNotification(job, req.body.operatorIds);
+        console.log(`📧 Job assignment notifications sent for updated job ${job.id}`);
+      } catch (notificationError) {
+        console.error('Error sending job assignment notifications:', notificationError);
+      }
+    }
+    
     res.json(job);
   } catch (error) {
     res.status(500).json({ error: getErrorMessage(error) });

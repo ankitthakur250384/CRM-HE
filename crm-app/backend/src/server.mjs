@@ -30,9 +30,13 @@ import dashboardRoutes from './routes/dashboardRoutes.mjs';
 
 import dbConfigRoutes from './routes/dbConfigRoutes.mjs';
 import templateRoutes from './routes/templateRoutes.mjs';
+import templateConfigRoutes from './routes/templateConfigRoutes.mjs';
 
 import modernTemplateRoutes from './routes/modernTemplateRoutes.mjs';
 console.log('DEBUG: modernTemplateRoutes import:', modernTemplateRoutes);
+
+// Import notification engine
+import notificationEngine from './services/notificationEngine.js';
 
 // Load environment variables
 dotenv.config();
@@ -147,6 +151,7 @@ app.use('/api/quotations', quotationRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/equipment', equipmentRoutes);
 app.use('/api/config', configRoutes);
+app.use('/api/config', templateConfigRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/operators', operatorRoutes);
@@ -190,9 +195,18 @@ app.use((err, req, res, next) => {
 });
 
 // Start the server
-app.listen(PORT, () => {
+const server = app.listen(PORT, async () => {
   console.log(`🚀 API server running at http://localhost:${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
+  
+  // Initialize Notification Engine
+  try {
+    await notificationEngine.initialize(server);
+    await notificationEngine.startScheduledProcessor();
+    console.log('✅ Notification Engine initialized successfully');
+  } catch (error) {
+    console.error('❌ Failed to initialize Notification Engine:', error.message);
+  }
   
   if (!isProduction) {
     console.log('\nAvailable endpoints:');
@@ -208,5 +222,7 @@ app.listen(PORT, () => {
     console.log(`- Job routes: http://localhost:${PORT}/api/jobs`);
     console.log(`- Operator routes: http://localhost:${PORT}/api/operators`);
     console.log(`- Activity routes: http://localhost:${PORT}/api/activities`);
+    console.log(`- Notifications: http://localhost:${PORT}/api/notifications`);
+    console.log(`- WebSocket: ws://localhost:${PORT} (real-time notifications)`);
   }
 });
