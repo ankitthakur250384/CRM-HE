@@ -292,11 +292,20 @@ export function Deals() {
   // Calculate total value of deals in a stage
   const calculateStageTotal = (stage: DealStage) => {
     const stageDeals = getDealsByStage(stage);
-    const total = stageDeals.reduce((sum, deal) => sum + (deal.value || 0), 0);
+    const total = stageDeals.reduce((sum, deal) => {
+      const dealValue = typeof deal.value === 'string' ? parseFloat(deal.value) : (deal.value || 0);
+      return sum + dealValue;
+    }, 0);
     
     console.log(`💰 Stage ${stage} total calculation:`, {
       dealsCount: stageDeals.length,
-      dealValues: stageDeals.map(d => ({ id: d.id, title: d.title, value: d.value })),
+      dealValues: stageDeals.map(d => ({ 
+        id: d.id, 
+        title: d.title, 
+        value: d.value, 
+        valueType: typeof d.value,
+        parsedValue: typeof d.value === 'string' ? parseFloat(d.value) : d.value
+      })),
       total
     });
     
