@@ -15,7 +15,7 @@ import { useNavigate } from 'react-router-dom';
 // import { DynamicTemplateBuilder } from '../components/quotations/DynamicTemplateBuilder';
 import { Input } from '../components/common/Input';
 import { TextArea } from '../components/common/TextArea';
-import { PreviewModal } from '../components/quotations/PreviewModal';
+import TemplatePreviewModal from '../components/templates/TemplatePreviewModal';
 import { TemplateCard } from '../components/quotations/TemplateCard';
 import { useToast } from '../hooks/useToast';
 
@@ -418,6 +418,185 @@ export function QuotationTemplates() {
             <Plus className="w-4 h-4" />
             Create Professional Template
           </Button>
+          <Button 
+            onClick={() => {
+              setIsCreateModalOpen(true);
+              setEditMode('new');
+              setEditorMode('html');
+              setTemplateForm({
+                id: '',
+                name: 'Responsive Quotation Template',
+                description: 'Mobile-friendly responsive quotation template with modern design',
+                content: `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quotation</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 20px;
+      color: #333;
+      background-color: #f9f9f9;
+    }
+    .header {
+      text-align: center;
+      border-bottom: 3px solid #444;
+      padding-bottom: 10px;
+      margin-bottom: 20px;
+    }
+    .header h1 {
+      margin: 0;
+      font-size: 24px;
+      color: #222;
+    }
+    .company-info, .customer-info {
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+    .meta {
+      margin-bottom: 20px;
+      background: #eef;
+      padding: 10px;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+      background: #fff;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+      font-size: 14px;
+    }
+    table, th, td {
+      border: 1px solid #ccc;
+    }
+    th {
+      background: #444;
+      color: #fff;
+      text-align: center;
+      font-size: 14px;
+      padding: 8px;
+    }
+    td {
+      padding: 8px;
+      word-wrap: break-word;
+    }
+    tbody tr:nth-child(even) {
+      background: #f2f2f2;
+    }
+    .terms {
+      margin-top: 20px;
+      background: #fef7e0;
+      padding: 15px;
+      border-left: 4px solid #f1c40f;
+      font-size: 13px;
+    }
+    .footer {
+      margin-top: 40px;
+      text-align: right;
+      font-style: italic;
+      font-size: 14px;
+    }
+    /* Responsive Styling */
+    @media (max-width: 768px) {
+      body { margin: 10px; }
+      table, th, td { font-size: 12px; }
+      .header h1 { font-size: 20px; }
+    }
+    @media (max-width: 480px) {
+      table, thead, tbody, th, td, tr {
+        display: block;
+        width: 100%;
+      }
+      thead tr { display: none; }
+      td {
+        display: flex;
+        justify-content: space-between;
+        border: none;
+        border-bottom: 1px solid #ccc;
+        padding: 8px 5px;
+      }
+      td:before {
+        content: attr(data-label);
+        font-weight: bold;
+        flex-basis: 50%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>QUOTATION</h1>
+  </div>
+
+  <div class="company-info">
+    <strong>{{company.name}}</strong><br>
+    {{company.address}}<br>
+    Phone: {{company.phone}} | Email: {{company.email}}
+  </div>
+
+  <div class="meta">
+    <p><strong>Quotation No:</strong> {{quotation.number}}</p>
+    <p><strong>Date:</strong> {{quotation.date}}</p>
+    <p><strong>Validity:</strong> {{quotation.validity}}</p>
+  </div>
+
+  <div class="customer-info">
+    <p><strong>To:</strong></p>
+    <p>{{customer.name}}<br>
+       {{customer.company}}<br>
+       {{customer.email}}</p>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Description</th>
+        <th>Qty</th>
+        <th>Unit Price</th>
+        <th>Total</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td data-label="Description">{{equipment.name}}</td>
+        <td data-label="Qty">{{equipment.quantity}}</td>
+        <td data-label="Unit Price">₹{{equipment.rate}}</td>
+        <td data-label="Total">₹{{equipment.total}}</td>
+      </tr>
+      <tr>
+        <td colspan="3" style="text-align:right;"><strong>Grand Total</strong></td>
+        <td><strong>₹{{quotation.total}}</strong></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <div class="terms">
+    <p><strong>Terms & Conditions:</strong></p>
+    <p>{{terms}}</p>
+  </div>
+
+  <div class="footer">
+    <p>Authorized Signatory</p>
+    <p>[Company Stamp / Signature]</p>
+  </div>
+</body>
+</html>`,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                createdBy: user?.email || 'unknown',
+                isDefault: false
+              });
+            }}
+            variant="outline"
+            className="w-full sm:w-auto flex items-center gap-2"
+          >
+            <FileText className="w-4 h-4" />
+            Use Responsive Template
+          </Button>
         </div>
       </div>
 
@@ -458,9 +637,10 @@ export function QuotationTemplates() {
                   });
                 }}
                 variant="outline"
+                className="flex-1"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Create Basic Template
+                Basic Template
               </Button>
               <Button
                 onClick={() => {
@@ -478,9 +658,68 @@ export function QuotationTemplates() {
                     isDefault: false
                   });
                 }}
+                className="flex-1"
               >
                 <Plus className="w-4 h-4 mr-2" />
-                Create Professional Template
+                Professional
+              </Button>
+              <Button
+                onClick={() => {
+                  setIsCreateModalOpen(true);
+                  setEditMode('new');
+                  setEditorMode('html');
+                  setTemplateForm({
+                    id: '',
+                    name: 'Responsive Quotation Template',
+                    description: 'Mobile-friendly responsive quotation template',
+                    content: `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quotation</title>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; margin: 20px; color: #333; }
+    .header { text-align: center; border-bottom: 3px solid #444; padding-bottom: 10px; }
+    .header h1 { margin: 0; font-size: 24px; color: #222; }
+    table { width: 100%; border-collapse: collapse; background: #fff; }
+    th, td { border: 1px solid #ccc; padding: 8px; }
+    th { background: #444; color: #fff; }
+    @media (max-width: 480px) {
+      table, thead, tbody, th, td, tr { display: block; width: 100%; }
+      thead tr { display: none; }
+      td { display: flex; justify-content: space-between; }
+      td:before { content: attr(data-label); font-weight: bold; }
+    }
+  </style>
+</head>
+<body>
+  <div class="header"><h1>QUOTATION</h1></div>
+  <div><strong>{{company.name}}</strong><br>{{company.address}}</div>
+  <table>
+    <thead><tr><th>Description</th><th>Qty</th><th>Price</th><th>Total</th></tr></thead>
+    <tbody>
+      <tr>
+        <td data-label="Description">{{equipment.name}}</td>
+        <td data-label="Qty">{{equipment.quantity}}</td>
+        <td data-label="Price">₹{{equipment.rate}}</td>
+        <td data-label="Total">₹{{equipment.total}}</td>
+      </tr>
+    </tbody>
+  </table>
+</body>
+</html>`,
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString(),
+                    createdBy: user?.email || 'unknown',
+                    isDefault: false
+                  });
+                }}
+                variant="outline"
+                className="flex-1"
+              >
+                <FileText className="w-4 h-4 mr-2" />
+                Responsive
               </Button>
             </div>
           </CardContent>
@@ -605,10 +844,11 @@ export function QuotationTemplates() {
       </Modal>
 
       {/* Preview Modal */}
-      <PreviewModal
+      <TemplatePreviewModal
         isOpen={isPreviewOpen}
         onClose={() => setIsPreviewOpen(false)}
-        template={previewTemplate}
+        elements={previewTemplate?.elements || []}
+        templateName={previewTemplate?.name}
       />
 
       {/* Toast */}

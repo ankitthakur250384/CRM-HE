@@ -326,6 +326,73 @@ const templateThemes = [
 // Element templates for quick insertion
 const elementTemplates = [
   {
+    id: 'responsive_professional',
+    name: 'Responsive Professional Template',
+    description: 'Complete responsive professional quotation template',
+    elements: [
+      {
+        type: 'header',
+        content: 'QUOTATION',
+        style: { 
+          fontSize: '24px', 
+          fontWeight: 'bold', 
+          color: '#222', 
+          textAlign: 'center', 
+          margin: '0 0 20px 0', 
+          padding: '10px 0', 
+          borderBottom: '3px solid #444' 
+        }
+      },
+      {
+        type: 'image',
+        content: 'Company Logo',
+        config: { src: '/logo-placeholder.png', alt: 'Company Logo', maxWidth: '100px' },
+        style: { textAlign: 'center', margin: '0 0 10px 0' }
+      },
+      {
+        type: 'text',
+        content: '<strong>{{company.name}}</strong><br>{{company.address}}<br>Phone: {{company.phone}} | Email: {{company.email}} | Website: {{company.website}}',
+        style: { fontSize: '14px', margin: '0 0 20px 0', padding: '10px', backgroundColor: '#f9f9f9' }
+      },
+      {
+        type: 'text',
+        content: '<p><strong>Quotation No:</strong> {{quotation.number}}</p><p><strong>Date:</strong> {{quotation.date}}</p><p><strong>Validity:</strong> {{quotation.validity}}</p>',
+        style: { fontSize: '14px', margin: '0 0 20px 0', padding: '10px', backgroundColor: '#eef', borderRadius: '6px' }
+      },
+      {
+        type: 'text',
+        content: '<p><strong>To:</strong></p><p>{{customer.name}}<br>{{customer.company}}<br>{{customer.email}}</p>',
+        style: { fontSize: '14px', margin: '0 0 20px 0' }
+      },
+      {
+        type: 'table',
+        content: 'Equipment & Services',
+        config: {
+          columns: ['Description', 'Quantity', 'Unit Price', 'Total'],
+          rows: [['{{equipment.name}}', '{{equipment.quantity}}', '{{equipment.rate}}', '{{equipment.total}}']],
+          showHeader: true,
+          responsive: true
+        },
+        style: { width: '100%', margin: '0 0 20px 0', backgroundColor: '#fff', border: '1px solid #ccc', borderRadius: '4px' }
+      },
+      {
+        type: 'text',
+        content: '<div style="text-align: right; font-weight: bold; font-size: 16px; padding: 10px; background: #f8f9fa; border: 1px solid #dee2e6;"><strong>Grand Total: ₹{{quotation.total}}</strong></div>',
+        style: { margin: '10px 0 20px 0' }
+      },
+      {
+        type: 'text',
+        content: '<div style="background: #fef7e0; padding: 15px; border-left: 4px solid #f1c40f; font-size: 13px;"><p><strong>Terms & Conditions:</strong></p><p>{{terms}}</p></div>',
+        style: { margin: '20px 0' }
+      },
+      {
+        type: 'text',
+        content: '<div style="margin-top: 40px; text-align: right; font-style: italic; font-size: 14px;"><p>Authorized Signatory</p><p>[Company Stamp / Signature]</p></div>',
+        style: { margin: '40px 0 0 0' }
+      }
+    ]
+  },
+  {
     id: 'company_header',
     name: 'Company Header Block',
     description: 'Complete company header with logo and details',

@@ -351,9 +351,10 @@ function renderTemplateBuilderTable(
     // Render rows with placeholder replacement
     rows.forEach((row: string[]) => {
       tableHtml += '<tr>';
-      row.forEach((cell: string) => {
+      row.forEach((cell: string, index: number) => {
         const processedCell = replaceTemplatePlaceholders(cell, quotation, '', '');
-        tableHtml += `<td>${processedCell}</td>`;
+        const columnLabel = columns[index] || `Column ${index + 1}`;
+        tableHtml += `<td data-label="${columnLabel}">${processedCell}</td>`;
       });
       tableHtml += '</tr>';
     });
@@ -608,6 +609,77 @@ function getBaseStyles(): string {
     .text-content {
       margin: 15px 0;
       line-height: 1.6;
+    }
+    
+    /* Responsive Styles */
+    @media (max-width: 768px) {
+      .quotation-container {
+        padding: 10px;
+        margin: 10px;
+      }
+      
+      .template-header {
+        flex-direction: column;
+        text-align: center;
+        gap: 15px;
+      }
+      
+      .company-section {
+        flex-direction: column;
+        text-align: center;
+      }
+      
+      .equipment-table, .equipment-table th, .equipment-table td {
+        font-size: 12px;
+        padding: 6px 4px;
+      }
+      
+      .quote-details {
+        font-size: 12px;
+      }
+      
+      .company-info, .customer-info {
+        font-size: 12px;
+      }
+    }
+    
+    @media (max-width: 480px) {
+      .equipment-table, .equipment-table thead, .equipment-table tbody, 
+      .equipment-table th, .equipment-table td, .equipment-table tr {
+        display: block;
+        width: 100%;
+      }
+      
+      .equipment-table thead tr {
+        display: none;
+      }
+      
+      .equipment-table td {
+        display: flex;
+        justify-content: space-between;
+        border: none;
+        border-bottom: 1px solid #ccc;
+        padding: 8px 5px;
+        position: relative;
+      }
+      
+      .equipment-table td:before {
+        content: attr(data-label);
+        font-weight: bold;
+        flex-basis: 50%;
+        text-align: left;
+      }
+      
+      .cost-row {
+        flex-direction: column;
+        gap: 5px;
+        text-align: center;
+      }
+      
+      .quotation-container {
+        margin: 5px;
+        padding: 8px;
+      }
     }
     
     @media print {

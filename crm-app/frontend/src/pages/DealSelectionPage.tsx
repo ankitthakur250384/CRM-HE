@@ -13,7 +13,7 @@ import {
   AlertCircle,
   Users
 } from 'lucide-react';
-import { getDeals, Deal, DealStage } from '../services/deal';
+import { getDeals, Deal } from '../services/deal';
 
 const DealSelectionPage: React.FC = () => {
   const navigate = useNavigate();
