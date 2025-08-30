@@ -25,8 +25,8 @@ router.post('/preview', async (req, res) => {
     if (!templateId) {
       const firstTemplateQuery = `
         SELECT id FROM quotation_templates 
-        WHERE is_active = true 
-        ORDER BY created_at DESC 
+        WHERE (is_active = true OR is_active IS NULL)
+        ORDER BY is_default DESC NULLS LAST, created_at DESC 
         LIMIT 1
       `;
       const firstTemplateResult = await db.query(firstTemplateQuery);
@@ -87,7 +87,7 @@ router.post('/preview', async (req, res) => {
     // Get template
     const templateQuery = `
       SELECT * FROM quotation_templates 
-      WHERE id = $1 AND is_active = true
+      WHERE id = $1 AND (is_active = true OR is_active IS NULL)
     `;
     
     const templateResult = await db.query(templateQuery, [templateId]);
@@ -97,6 +97,8 @@ router.post('/preview', async (req, res) => {
 
     const template = templateResult.rows[0];
     console.log('🎨 Template:', template.name);
+    console.log('📄 Template content length:', template.content ? template.content.length : 0);
+    console.log('🔍 Template content preview:', template.content ? template.content.substring(0, 200) + '...' : 'No content');
 
     // Generate HTML from template
     const html = await generateQuotationHtml(quotation, machines, template);
@@ -239,10 +241,174 @@ router.post('/email-pdf', async (req, res) => {
 
 // Helper function to generate HTML from template
 async function generateQuotationHtml(quotation, machines, template) {
-  const elements = template.elements || [];
-  const styles = template.styles || {};
+  console.log('🔧 Generating HTML from template:', template.name);
+  console.log('� Template content length:', template.content ? template.content.length : 0);
+  console.log('🔧 Template elements count:', template.elements ? (Array.isArray(template.elements) ? template.elements.length : 'Not array') : 0);
   
-  console.log('🔧 Generating HTML with', elements.length, 'elements');
+  // First, try to use template content (HTML)
+  if (template.content && template.content.trim().length > 0) {
+    console.log('✅ Using template content (HTML)');
+    let html = template.content;
+    
+    // Replace template variables with actual data
+    const replacements = {
+      // Company information
+      '{{company.name}}': 'ASP Cranes',
+      '{{company_name}}': 'ASP Cranes',
+      '{{company.address}}': 'Professional Crane Services & Equipment Rental',
+      '{{company_address}}': 'Professional Crane Services & Equipment Rental',
+      '{{company.phone}}': '+91-XXXXXXXXXX',
+      '{{company_phone}}': '+91-XXXXXXXXXX',
+      '{{company.email}}': 'info@aspcranes.com',
+      '{{company_email}}': 'info@aspcranes.com',
+      '{{company.website}}': 'www.aspcranes.com',
+      '{{company_website}}': 'www.aspcranes.com',
+      '{{company_gst}}': 'GST123456789',
+      
+      // Quotation information
+      '{{quotation.number}}': quotation.id || '',
+      '{{quotation_number}}': quotation.id || '',
+      '{{quotation.date}}': formatDate(quotation.created_at),
+      '{{quotation_date}}': formatDate(quotation.created_at),
+      '{{quotation.validity}}': quotation.validity || '30 days',
+      '{{validity_period}}': quotation.validity || '30 days',
+      '{{quotation.id}}': quotation.id || '',
+      '{{valid_until}}': new Date(Date.now() + 30*24*60*60*1000).toLocaleDateString(),
+      '{{order_type}}': quotation.order_type || 'Equipment Rental',
+      
+      // Customer information
+      '{{customer.name}}': quotation.customer_name || '',
+      '{{customer_name}}': quotation.customer_name || '',
+      '{{customer.company}}': quotation.customer_company || 'N/A',
+      '{{customer_company}}': quotation.customer_company || 'N/A',
+      '{{customer.email}}': quotation.customer_email || '',
+      '{{customer_email}}': quotation.customer_email || '',
+      '{{customer.phone}}': quotation.customer_phone || '',
+      '{{customer_phone}}': quotation.customer_phone || '',
+      '{{customer.address}}': quotation.customer_address || 'N/A',
+      '{{customer_address}}': quotation.customer_address || 'N/A',
+      '{{customer_designation}}': 'Manager',
+      
+      // Project details
+      '{{project.equipment}}': quotation.machine_type || '',
+      '{{equipment_name}}': quotation.machine_type || '',
+      '{{project.duration}}': `${quotation.number_of_days} days`,
+      '{{project_duration}}': `${quotation.number_of_days} days`,
+      '{{project.workingHours}}': `${quotation.working_hours} hours/day`,
+      '{{working_hours}}': `${quotation.working_hours} hours/day`,
+      '{{project.totalHours}}': `${(quotation.number_of_days || 0) * (quotation.working_hours || 0)} hours`,
+      '{{project.siteDistance}}': `${quotation.site_distance} km`,
+      '{{project.usageType}}': quotation.usage || '',
+      '{{project.riskFactor}}': quotation.risk_factor || '',
+      '{{shift_type}}': quotation.shift || 'Single Shift',
+      '{{base_rate}}': formatCurrency(quotation.working_cost || 0),
+      
+      // Cost information
+      '{{cost.working}}': formatCurrency(quotation.working_cost || 0),
+      '{{cost.transportation}}': formatCurrency(quotation.transportation_cost || 0),
+      '{{cost.food}}': quotation.food_resources === 'Company will arrange' ? '₹NaN' : '₹0',
+      '{{cost.subtotal}}': formatCurrency((quotation.working_cost || 0) + (quotation.transportation_cost || 0)),
+      '{{subtotal}}': formatCurrency((quotation.working_cost || 0) + (quotation.transportation_cost || 0)),
+      '{{cost.gst}}': formatCurrency(((quotation.working_cost || 0) + (quotation.transportation_cost || 0)) * 0.18),
+      '{{cost.total}}': formatCurrency(quotation.total_amount || 0),
+      '{{total_amount}}': formatCurrency(quotation.total_amount || 0),
+      
+      // Equipment table specific
+      '{{equipment.quantity}}': machines && machines.length > 0 ? machines[0].quantity || 1 : '1',
+      '{{equipment.rate}}': machines && machines.length > 0 ? formatCurrency(machines[0].base_rate || 0) : '₹0',
+      '{{equipment.total}}': machines && machines.length > 0 ? formatCurrency((machines[0].quantity || 1) * (machines[0].base_rate || 0)) : '₹0',
+      
+      // Quotation total
+      '{{quotation.total}}': formatCurrency(quotation.total_amount || 0)
+    };
+    
+    // Apply replacements
+    for (const [placeholder, value] of Object.entries(replacements)) {
+      const regex = new RegExp(placeholder.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'g');
+      html = html.replace(regex, value);
+    }
+    
+    // Generate equipment table if needed
+    if (html.includes('{{equipment.table}}') && machines && machines.length > 0) {
+      const equipmentTable = `
+        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+          <thead>
+            <tr style="background: #2563eb; color: white;">
+              <th style="padding: 12px; border: 1px solid #ddd;">Equipment</th>
+              <th style="padding: 12px; border: 1px solid #ddd;">Description</th>
+              <th style="padding: 12px; border: 1px solid #ddd;">Quantity</th>
+              <th style="padding: 12px; border: 1px solid #ddd;">Rate</th>
+              <th style="padding: 12px; border: 1px solid #ddd;">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${machines.map(machine => {
+              const total = (machine.quantity || 0) * (machine.base_rate || 0);
+              return `
+                <tr>
+                  <td style="padding: 12px; border: 1px solid #ddd;">${machine.equipment_name || 'Equipment'}</td>
+                  <td style="padding: 12px; border: 1px solid #ddd;">${machine.equipment_description || machine.specifications || 'N/A'}</td>
+                  <td style="padding: 12px; border: 1px solid #ddd; text-align: center;">${machine.quantity || 0}</td>
+                  <td style="padding: 12px; border: 1px solid #ddd; text-align: right;">${formatCurrency(machine.base_rate || 0)}</td>
+                  <td style="padding: 12px; border: 1px solid #ddd; text-align: right;">${formatCurrency(total)}</td>
+                </tr>
+              `;
+            }).join('')}
+          </tbody>
+        </table>
+      `;
+      html = html.replace(/\{\{equipment\.table\}\}/g, equipmentTable);
+    }
+    
+    console.log('✅ Template variables replaced successfully');
+    console.log('📝 Final HTML length:', html.length);
+    return html;
+  }
+  
+  // Second, try to use template elements (Template Builder format)
+  if (template.elements && Array.isArray(template.elements) && template.elements.length > 0) {
+    console.log('✅ Using template elements (Template Builder)');
+    // For now, convert elements to basic HTML
+    // This would need full Template Builder renderer implementation
+    let html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Quotation ${quotation.id}</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 20px; }
+          .header { text-align: center; margin-bottom: 20px; }
+          .content { margin: 20px 0; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <h1>ASP Cranes - Quotation</h1>
+          <p>Professional Crane Services</p>
+        </div>
+        <div class="content">
+          <p><strong>Quotation ID:</strong> ${quotation.id}</p>
+          <p><strong>Customer:</strong> ${quotation.customer_name}</p>
+          <p><strong>Equipment:</strong> ${quotation.machine_type}</p>
+          <p><strong>Total Amount:</strong> ${formatCurrency(quotation.total_amount || 0)}</p>
+        </div>
+      </body>
+      </html>
+    `;
+    return html;
+  }
+  
+  // Fallback to hardcoded template if no content (backward compatibility)
+  console.log('⚠️ No usable template content found, using fallback template');
+  console.warn('Template structure:', {
+    hasContent: !!template.content,
+    contentLength: template.content ? template.content.length : 0,
+    hasElements: !!template.elements,
+    elementsType: typeof template.elements,
+    elementsIsArray: Array.isArray(template.elements),
+    elementsLength: template.elements ? template.elements.length : 0
+  });
   
   let html = `
     <!DOCTYPE html>
