@@ -33,7 +33,12 @@
     "html-pdf": "^3.0.1",
     "pdf-lib": "^1.17.1",
     "twilio": "^4.19.0",
-    "ws": "^8.14.2"
+    "ws": "^8.14.2",
+    "openai": "^4.20.1",
+    "axios": "^1.6.0",
+    "langchain": "^0.0.208",
+    "@langchain/openai": "^0.0.14",
+    "crewai": "^0.1.0"
   },
   "devDependencies": {
     "nodemon": "^3.1.10"

@@ -35,6 +35,10 @@ import templateConfigRoutes from './routes/templateConfigRoutes.mjs';
 import modernTemplateRoutes from './routes/modernTemplateRoutes.mjs';
 console.log('DEBUG: modernTemplateRoutes import:', modernTemplateRoutes);
 
+// Import AI routes for CrewAI integration
+import aiRoutes from './routes/aiRoutes.mjs';
+import crewaiCloudRoutes from './routes/crewaiCloudRoutes.mjs';
+
 // Import notification engine
 import notificationEngine from './services/notificationEngine.js';
 
@@ -124,7 +128,8 @@ app.get('/api', (req, res) => {
       config: '/api/config',
       users: '/api/users',
       jobs: '/api/jobs',
-      operators: '/api/operators'
+      operators: '/api/operators',
+      ai: '/api/ai'
     }
   });
 });
@@ -158,6 +163,12 @@ app.use('/api/operators', operatorRoutes);
 app.use('/api/activities', activityRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/dashboard', dashboardRoutes);
+
+// Mount AI routes for CrewAI integration
+app.use('/api/ai', aiRoutes);
+
+// Mount CrewAI Cloud Platform routes
+app.use('/api/crewai', crewaiCloudRoutes);
 
 // Mount template routes - ORDER MATTERS: more specific routes first
 console.log('🔧 Mounting /api/templates/modern route...');
@@ -223,6 +234,7 @@ const server = app.listen(PORT, async () => {
     console.log(`- Operator routes: http://localhost:${PORT}/api/operators`);
     console.log(`- Activity routes: http://localhost:${PORT}/api/activities`);
     console.log(`- Notifications: http://localhost:${PORT}/api/notifications`);
+    console.log(`- AI System: http://localhost:${PORT}/api/ai`);
     console.log(`- WebSocket: ws://localhost:${PORT} (real-time notifications)`);
   }
 });

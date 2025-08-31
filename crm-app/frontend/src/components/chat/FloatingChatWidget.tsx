@@ -54,7 +54,7 @@ export const FloatingChatWidget: React.FC = () => {
     setMessages((msgs) => [...msgs, userMessage]);
     setInput('');
     try {
-      const res = await fetch('/agent/chat', {
+      const res = await fetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: input }),
@@ -63,7 +63,7 @@ export const FloatingChatWidget: React.FC = () => {
       const data = await res.json();
       setMessages((msgs) => [
         ...msgs,
-        { sender: 'ai', text: data.reply || 'No response from agent.' },
+        { sender: 'ai', text: data.response || 'No response from agent.' },
       ]);
     } catch (err) {
       setMessages((msgs) => [
