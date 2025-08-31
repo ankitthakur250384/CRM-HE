@@ -1,211 +1,64 @@
 /**
- * AI System Initialization
- * Bootstraps the CrewAI multi-agent system for ASP Cranes CRM
+ * AI System Manager - CrewAI Cloud Integration
+ * Manages the CrewAI cloud platform integration for ASP Cranes CRM
  */
-import { AgentCommunicationHub } from './AgentCommunicationHub.js';
-import { NLPSalesAssistant } from './agents/NLPSalesAssistant.js';
-import { MasterAgent } from './agents/MasterAgent.js';
-import { LeadAgent } from './agents/LeadAgent.js';
-import { DealAgent } from './agents/DealAgent.js';
-import { QuotationAgent } from './agents/QuotationAgent.js';
-import { CompanyIntelligenceAgent } from './agents/CompanyIntelligenceAgent.js';
-import { openaiService } from './services/OpenAIService.js';
-import { crmTestTool } from './tools/CRMTools.js';
+import { CrewAICloudService } from './services/CrewAICloudService.js';
 
 export class AISystemManager {
   constructor() {
-    this.hub = null;
-    this.agents = new Map();
+    this.crewAIService = new CrewAICloudService();
     this.isInitialized = false;
     this.startTime = null;
     
-    console.log('🚀 AI System Manager initialized');
+    console.log('🚀 AI System Manager initialized - CrewAI Cloud Platform');
   }
 
   /**
-   * Initialize the complete AI system
+   * Initialize the AI system
    */
   async initialize() {
     try {
-      console.log('🔄 Starting AI system initialization...');
+      console.log('🔄 Starting CrewAI cloud integration...');
       this.startTime = Date.now();
 
-      // Step 1: Initialize the communication hub
-      await this.initializeHub();
-      
-      // Step 2: Test external dependencies
-      await this.testDependencies();
-      
-      // Step 3: Create and register all agents
-      await this.initializeAgents();
-      
-      // Step 4: Start all agents
-      await this.startAgents();
-      
-      // Step 5: Verify system health
-      await this.verifySystemHealth();
+      // Test CrewAI connectivity
+      await this.testCrewAIConnectivity();
       
       this.isInitialized = true;
       const initTime = Date.now() - this.startTime;
       
-      console.log(`✅ AI System initialized successfully in ${initTime}ms`);
-      console.log(`🤖 Agents active: ${this.agents.size}`);
+      console.log(`✅ CrewAI cloud integration initialized successfully in ${initTime}ms`);
       
       return {
         success: true,
         initializationTime: initTime,
-        agentsActive: this.agents.size,
-        hubActive: this.hub.isHealthy(),
+        platform: 'CrewAI Cloud',
         timestamp: new Date().toISOString()
       };
       
     } catch (error) {
-      console.error('❌ AI System initialization failed:', error.message);
-      await this.cleanup();
+      console.error('❌ CrewAI cloud integration failed:', error.message);
       throw error;
     }
   }
 
   /**
-   * Initialize the communication hub
+   * Test CrewAI connectivity
    */
-  async initializeHub() {
-    console.log('🌐 Initializing Agent Communication Hub...');
+  async testCrewAIConnectivity() {
+    console.log('🧪 Testing CrewAI cloud connectivity...');
     
-    this.hub = new AgentCommunicationHub();
-    await this.hub.initialize();
-    
-    console.log('✅ Hub initialized and ready');
-  }
-
-  /**
-   * Test external dependencies
-   */
-  async testDependencies() {
-    console.log('🧪 Testing external dependencies...');
-    
-    // Test OpenAI connectivity
-    console.log('Testing OpenAI connectivity...');
-    const openaiTest = await openaiService.chat([
-      { role: 'user', content: 'Test connection' }
-    ], { agentType: 'system_test', maxTokens: 10 });
-    
-    if (!openaiTest.success) {
-      throw new Error('OpenAI connectivity test failed');
-    }
-    
-    // Test CRM API connectivity
-    console.log('Testing CRM API connectivity...');
-    const crmTest = await crmTestTool.testConnectivity();
-    
-    const failedEndpoints = Object.entries(crmTest)
-      .filter(([, result]) => !result.success)
-      .map(([endpoint]) => endpoint);
-    
-    if (failedEndpoints.length > 0) {
-      console.warn(`⚠️ Some CRM endpoints failed: ${failedEndpoints.join(', ')}`);
-      // Don't fail initialization for CRM issues, but log them
-    }
-    
-    // Test leads endpoint authentication
-    console.log('Testing leads endpoint authentication...');
-    const leadsAuthTest = await crmTestTool.testLeadsAuthentication();
-    console.log('Leads auth test result:', leadsAuthTest.test_result.success ? '✅' : '❌');
-    
-    console.log('✅ Dependency tests completed');
-  }
-
-  /**
-   * Initialize all agents
-   */
-  async initializeAgents() {
-    console.log('🤖 Initializing AI agents...');
-    
-    const agentConfigs = [
-      { name: 'nlp_sales_assistant', class: NLPSalesAssistant, priority: 1 },
-      { name: 'master_agent', class: MasterAgent, priority: 1 },
-      { name: 'lead_agent', class: LeadAgent, priority: 2 },
-      { name: 'deal_agent', class: DealAgent, priority: 2 },
-      { name: 'quotation_agent', class: QuotationAgent, priority: 2 },
-      { name: 'company_intelligence', class: CompanyIntelligenceAgent, priority: 3 }
-    ];
-
-    // Initialize agents in priority order
-    const sortedConfigs = agentConfigs.sort((a, b) => a.priority - b.priority);
-    
-    for (const config of sortedConfigs) {
-      try {
-        console.log(`Creating ${config.name}...`);
-        const agent = new config.class(this.hub);
-        this.agents.set(config.name, agent);
-        console.log(`✅ ${config.name} created`);
-      } catch (error) {
-        console.error(`❌ Failed to create ${config.name}:`, error.message);
-        throw error;
+    try {
+      const testResult = await this.crewAIService.processChat('Test connection');
+      if (testResult.success) {
+        console.log('✅ CrewAI cloud connectivity verified');
+      } else {
+        throw new Error('CrewAI test failed');
       }
+    } catch (error) {
+      console.error('❌ CrewAI connectivity test failed:', error.message);
+      throw error;
     }
-    
-    console.log(`✅ All ${this.agents.size} agents initialized`);
-  }
-
-  /**
-   * Start all agents
-   */
-  async startAgents() {
-    console.log('▶️ Starting AI agents...');
-    
-    const startPromises = Array.from(this.agents.entries()).map(async ([name, agent]) => {
-      try {
-        await agent.start();
-        console.log(`✅ ${name} started`);
-        return { name, success: true };
-      } catch (error) {
-        console.error(`❌ Failed to start ${name}:`, error.message);
-        return { name, success: false, error: error.message };
-      }
-    });
-
-    const results = await Promise.all(startPromises);
-    const failed = results.filter(r => !r.success);
-    
-    if (failed.length > 0) {
-      throw new Error(`Failed to start agents: ${failed.map(f => f.name).join(', ')}`);
-    }
-    
-    console.log('✅ All agents started successfully');
-  }
-
-  /**
-   * Verify system health
-   */
-  async verifySystemHealth() {
-    console.log('🏥 Verifying system health...');
-    
-    // Check hub health
-    const hubHealth = this.hub.getHealthStatus();
-    if (!hubHealth.healthy) {
-      throw new Error('Hub health check failed');
-    }
-    
-    // Check agent health
-    const agentHealthPromises = Array.from(this.agents.entries()).map(async ([name, agent]) => {
-      try {
-        const health = await agent.healthCheck();
-        return { name, health, healthy: health.healthy };
-      } catch (error) {
-        return { name, healthy: false, error: error.message };
-      }
-    });
-
-    const healthResults = await Promise.all(agentHealthPromises);
-    const unhealthyAgents = healthResults.filter(r => !r.healthy);
-    
-    if (unhealthyAgents.length > 0) {
-      console.warn(`⚠️ Some agents reported health issues: ${unhealthyAgents.map(a => a.name).join(', ')}`);
-      // Don't fail for health warnings, but log them
-    }
-    
-    console.log('✅ System health verification completed');
   }
 
   /**
@@ -214,11 +67,8 @@ export class AISystemManager {
   getSystemStatus() {
     return {
       initialized: this.isInitialized,
-      hubActive: this.hub ? this.hub.isHealthy() : false,
-      agentsCount: this.agents.size,
-      agents: Array.from(this.agents.keys()),
+      platform: 'CrewAI Cloud',
       uptime: this.startTime ? Date.now() - this.startTime : 0,
-      openaiConnected: true, // Would check actual status
       timestamp: new Date().toISOString()
     };
   }
@@ -231,29 +81,21 @@ export class AISystemManager {
       throw new Error('AI System not initialized');
     }
 
-    console.log('💬 Handling customer interaction...');
+    console.log('💬 Handling customer interaction via CrewAI...');
     
     try {
-      // Route to NLP Sales Assistant first
-      const result = await this.hub.routeRequest(
-        'nlp_sales_assistant',
-        'handleCustomerQuery',
-        interaction.query,
-        interaction.context
-      );
+      const result = await this.crewAIService.processChat(interaction.query, interaction.context);
 
       return {
-        success: true,
+        success: result.success,
         response: result.response,
-        agentUsed: 'nlp_sales_assistant',
-        processingTime: result.responseTime,
-        conversationId: result.conversationId
+        platform: 'CrewAI Cloud',
+        processingTime: result.responseTime || 0
       };
       
     } catch (error) {
       console.error('❌ Customer interaction handling failed:', error.message);
       
-      // Fallback response
       return {
         success: false,
         error: error.message,
@@ -270,27 +112,30 @@ export class AISystemManager {
       throw new Error('AI System not initialized');
     }
 
-    console.log(`🔄 Processing business workflow: ${workflowType}`);
+    console.log(`🔄 Processing business workflow via CrewAI: ${workflowType}`);
     
     try {
-      // Route to Master Agent for orchestration
-      const result = await this.hub.routeRequest(
-        'master_agent',
-        'orchestrateWorkflow',
-        {
-          type: workflowType,
-          data,
-          context: {
-            source: 'business_process',
-            timestamp: Date.now()
-          }
-        }
-      );
+      let result;
+      
+      switch (workflowType) {
+        case 'lead_analysis':
+          result = await this.crewAIService.analyzeLead(data);
+          break;
+        case 'quotation_generation':
+          result = await this.crewAIService.generateQuotation(data);
+          break;
+        case 'company_research':
+          result = await this.crewAIService.researchCompany(data);
+          break;
+        default:
+          result = await this.crewAIService.processChat(`Process ${workflowType} workflow`, data);
+      }
 
       return {
-        success: true,
+        success: result.success,
         workflowResult: result,
-        processingTime: result.responseTime
+        platform: 'CrewAI Cloud',
+        processingTime: result.responseTime || 0
       };
       
     } catch (error) {
@@ -300,71 +145,37 @@ export class AISystemManager {
   }
 
   /**
-   * Get comprehensive system metrics
+   * Get system metrics
    */
   async getSystemMetrics() {
     if (!this.isInitialized) {
       return { error: 'System not initialized' };
     }
 
-    const metrics = {
+    return {
       system: this.getSystemStatus(),
-      hub: this.hub.getMetrics(),
-      openai: openaiService.getMetrics(),
-      agents: {}
+      platform: 'CrewAI Cloud',
+      service: this.crewAIService.getMetrics(),
+      timestamp: new Date().toISOString()
     };
-
-    // Get metrics from each agent
-    for (const [name, agent] of this.agents.entries()) {
-      try {
-        metrics.agents[name] = agent.getMetrics();
-      } catch (error) {
-        metrics.agents[name] = { error: error.message };
-      }
-    }
-
-    return metrics;
   }
 
   /**
-   * Cleanup and shutdown
+   * Cleanup (minimal for cloud service)
    */
   async cleanup() {
     console.log('🧹 Cleaning up AI system...');
-    
-    // Stop all agents
-    const stopPromises = Array.from(this.agents.values()).map(async (agent) => {
-      try {
-        await agent.stop();
-      } catch (error) {
-        console.error('Error stopping agent:', error.message);
-      }
-    });
-
-    await Promise.all(stopPromises);
-    
-    // Clear agents
-    this.agents.clear();
-    
-    // Cleanup hub
-    if (this.hub) {
-      await this.hub.cleanup();
-      this.hub = null;
-    }
-    
     this.isInitialized = false;
     console.log('✅ AI system cleanup completed');
   }
 
   /**
-   * Restart the entire system
+   * Restart the system
    */
   async restart() {
     console.log('🔄 Restarting AI system...');
-    
     await this.cleanup();
     await this.initialize();
-    
     console.log('✅ AI system restarted successfully');
   }
 }

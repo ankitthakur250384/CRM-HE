@@ -300,18 +300,18 @@ router.post('/pricing/calculate', async (req, res) => {
 
     console.log(`💰 Calculating pricing for: ${equipmentType} (${rentalDuration} days)`);
     
-    // Route directly to quotation agent for pricing calculation
-    const result = await aiSystemManager.hub.routeRequest(
-      'quotation_agent',
-      'calculate_pricing',
-      { equipmentType, rentalDuration, location, requirements }
-    );
+    const result = await aiSystemManager.processBusinessWorkflow('quotation_generation', {
+      equipmentType, 
+      rentalDuration, 
+      location, 
+      requirements
+    });
     
     res.json({
-      success: result.success !== false,
+      success: result.success,
       message: 'Pricing calculated successfully',
-      data: result.data || result,
-      processingTime: result.responseTime,
+      data: result.workflowResult,
+      processingTime: result.processingTime,
       timestamp: new Date().toISOString()
     });
     
@@ -335,24 +335,15 @@ router.get('/agents/:agentId/metrics', async (req, res) => {
   try {
     const { agentId } = req.params;
     
-    if (!aiSystemManager.agents.has(agentId)) {
-      return res.status(404).json({
-        success: false,
-        error: 'Agent not found',
-        availableAgents: Array.from(aiSystemManager.agents.keys()),
-        timestamp: new Date().toISOString()
-      });
-    }
-
-    const agent = aiSystemManager.agents.get(agentId);
-    const metrics = agent.getMetrics();
-    const health = await agent.healthCheck();
+    console.log(`📊 Getting metrics for agent: ${agentId}`);
+    
+    const metrics = await aiSystemManager.getSystemMetrics();
     
     res.json({
       success: true,
       agentId,
-      metrics,
-      health,
+      metrics: metrics.service || {},
+      platform: 'CrewAI Cloud',
       timestamp: new Date().toISOString()
     });
     
@@ -385,25 +376,22 @@ router.post('/agents/:agentId/execute', async (req, res) => {
       });
     }
 
-    if (!aiSystemManager.agents.has(agentId)) {
-      return res.status(404).json({
-        success: false,
-        error: 'Agent not found',
-        availableAgents: Array.from(aiSystemManager.agents.keys()),
-        timestamp: new Date().toISOString()
-      });
-    }
-
-    console.log(`🎯 Executing ${action} on ${agentId}`);
+    console.log(`🎯 Executing ${action} on ${agentId} via CrewAI`);
     
-    const result = await aiSystemManager.hub.routeRequest(agentId, action, data, context);
+    // Route through CrewAI cloud platform
+    const result = await aiSystemManager.processBusinessWorkflow(action, {
+      ...data,
+      agentId,
+      context
+    });
     
     res.json({
-      success: result.success !== false,
+      success: result.success,
       agentId,
       action,
-      data: result.data || result,
-      processingTime: result.responseTime,
+      data: result.workflowResult,
+      processingTime: result.processingTime,
+      platform: 'CrewAI Cloud',
       timestamp: new Date().toISOString()
     });
     
@@ -427,24 +415,14 @@ router.get('/conversations/:conversationId', async (req, res) => {
   try {
     const { conversationId } = req.params;
     
-    // Get conversation from NLP Sales Assistant
-    const nlpAgent = aiSystemManager.agents.get('nlp_sales_assistant');
-    if (!nlpAgent) {
-      return res.status(503).json({
-        success: false,
-        error: 'NLP Sales Assistant not available',
-        timestamp: new Date().toISOString()
-      });
-    }
-
-    const conversation = nlpAgent.getConversation(conversationId);
-    const stats = nlpAgent.getConversationStats();
+    console.log(`📜 Getting conversation: ${conversationId}`);
     
+    // CrewAI cloud platform handles conversation management
     res.json({
       success: true,
       conversationId,
-      conversation,
-      stats,
+      message: 'Conversation history is managed by CrewAI cloud platform',
+      platform: 'CrewAI Cloud',
       timestamp: new Date().toISOString()
     });
     
@@ -468,22 +446,14 @@ router.delete('/conversations/:conversationId', async (req, res) => {
   try {
     const { conversationId } = req.params;
     
-    // Clear conversation from NLP Sales Assistant
-    const nlpAgent = aiSystemManager.agents.get('nlp_sales_assistant');
-    if (!nlpAgent) {
-      return res.status(503).json({
-        success: false,
-        error: 'NLP Sales Assistant not available',
-        timestamp: new Date().toISOString()
-      });
-    }
-
-    nlpAgent.clearConversation(conversationId);
+    console.log(`🗑️ Clearing conversation: ${conversationId}`);
     
+    // CrewAI cloud platform handles conversation management
     res.json({
       success: true,
-      message: 'Conversation cleared successfully',
+      message: 'Conversation management is handled by CrewAI cloud platform',
       conversationId,
+      platform: 'CrewAI Cloud',
       timestamp: new Date().toISOString()
     });
     
@@ -534,12 +504,13 @@ router.post('/restart', async (req, res) => {
 router.get('/health', async (req, res) => {
   try {
     const status = aiSystemManager.getSystemStatus();
-    const isHealthy = status.initialized && status.hubActive;
+    const isHealthy = status.initialized;
     
     res.status(isHealthy ? 200 : 503).json({
       success: isHealthy,
       healthy: isHealthy,
       status,
+      platform: status.platform || 'CrewAI Cloud',
       timestamp: new Date().toISOString()
     });
     

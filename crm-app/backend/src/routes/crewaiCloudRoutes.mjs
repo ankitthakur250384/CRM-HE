@@ -4,10 +4,11 @@
  */
 
 import express from 'express';
-import { crewaiCloudService } from '../services/CrewAICloudService.js';
-import { aiSystemManager } from '../ai/AISystemManager.js'; // Fallback to local
+import { CrewAICloudService } from '../ai/services/CrewAICloudService.js';
+import { aiSystemManager } from '../ai/AISystemManager.js';
 
 const router = express.Router();
+const crewaiCloudService = new CrewAICloudService();
 
 /**
  * Health check for CrewAI cloud platform
@@ -41,25 +42,12 @@ router.post('/chat', async (req, res) => {
 
     console.log('🌐 Processing chat via CrewAI Cloud:', message);
     
-    let result;
-    try {
-      // Try CrewAI cloud first
-      result = await crewaiCloudService.processChat(message, context);
-    } catch (error) {
-      // Fallback to local AI if enabled
-      if (process.env.ENABLE_FALLBACK_TO_LOCAL === 'true') {
-        console.log('🔄 Falling back to local AI system...');
-        result = await aiSystemManager.processQuery(message, context);
-        result.source = 'local-fallback';
-      } else {
-        throw error;
-      }
-    }
+    const result = await crewaiCloudService.processChat(message, context);
 
     res.json({
       success: true,
       response: result.response,
-      source: result.source || 'crewai-cloud',
+      source: 'crewai-cloud',
       metadata: {
         agentId: result.agentId,
         confidence: result.confidence,
@@ -86,18 +74,7 @@ router.post('/leads/process', async (req, res) => {
     
     console.log('🎯 Processing lead via CrewAI Cloud:', leadData.customerName);
     
-    let result;
-    try {
-      result = await crewaiCloudService.processLead(leadData);
-    } catch (error) {
-      if (process.env.ENABLE_FALLBACK_TO_LOCAL === 'true') {
-        console.log('🔄 Falling back to local lead processing...');
-        result = await aiSystemManager.processLead(leadData);
-        result.source = 'local-fallback';
-      } else {
-        throw error;
-      }
-    }
+    const result = await crewaiCloudService.analyzeLead(leadData);
 
     res.json({
       success: true,
@@ -105,7 +82,7 @@ router.post('/leads/process', async (req, res) => {
       qualification: result.qualification,
       recommendations: result.recommendations,
       nextActions: result.nextActions,
-      source: result.source || 'crewai-cloud'
+      source: 'crewai-cloud'
     });
 
   } catch (error) {
@@ -127,18 +104,7 @@ router.post('/quotations/generate', async (req, res) => {
     
     console.log('💰 Generating quotation via CrewAI Cloud:', quotationData.equipmentType);
     
-    let result;
-    try {
-      result = await crewaiCloudService.generateQuotation(quotationData);
-    } catch (error) {
-      if (process.env.ENABLE_FALLBACK_TO_LOCAL === 'true') {
-        console.log('🔄 Falling back to local quotation generation...');
-        result = await aiSystemManager.generateQuotation(quotationData);
-        result.source = 'local-fallback';
-      } else {
-        throw error;
-      }
-    }
+    const result = await crewaiCloudService.generateQuotation(quotationData);
 
     res.json({
       success: true,
@@ -146,7 +112,7 @@ router.post('/quotations/generate', async (req, res) => {
       pricing: result.pricing,
       terms: result.terms,
       validUntil: result.validUntil,
-      source: result.source || 'crewai-cloud'
+      source: 'crewai-cloud'
     });
 
   } catch (error) {
@@ -168,18 +134,7 @@ router.post('/intelligence/research-company', async (req, res) => {
     
     console.log('🔍 Researching company via CrewAI Cloud:', companyData.companyName);
     
-    let result;
-    try {
-      result = await crewaiCloudService.researchCompany(companyData);
-    } catch (error) {
-      if (process.env.ENABLE_FALLBACK_TO_LOCAL === 'true') {
-        console.log('🔄 Falling back to local company research...');
-        result = await aiSystemManager.researchCompany(companyData);
-        result.source = 'local-fallback';
-      } else {
-        throw error;
-      }
-    }
+    const result = await crewaiCloudService.researchCompany(companyData);
 
     res.json({
       success: true,
@@ -188,7 +143,7 @@ router.post('/intelligence/research-company', async (req, res) => {
       industryInsights: result.industryInsights,
       riskAssessment: result.riskAssessment,
       opportunities: result.opportunities,
-      source: result.source || 'crewai-cloud'
+      source: 'crewai-cloud'
     });
 
   } catch (error) {
@@ -319,7 +274,7 @@ router.post('/webhook', async (req, res) => {
 router.get('/status', async (req, res) => {
   try {
     const health = await crewaiCloudService.healthCheck();
-    const metrics = await crewaiCloudService.getAgentMetrics();
+    const metrics = await crewaiCloudService.getMetrics();
     
     res.json({
       success: true,
@@ -327,17 +282,13 @@ router.get('/status', async (req, res) => {
       status: health.status,
       agents: {
         total: 6,
-        active: metrics.performance?.active || 0,
-        healthy: metrics.performance?.healthy || 0
+        active: metrics.agents?.active || 0,
+        healthy: metrics.agents?.healthy || 0
       },
       performance: {
         latency: health.latency,
-        uptime: metrics.performance?.uptime || 'N/A',
-        requestsToday: metrics.usage?.requestsToday || 0
-      },
-      fallback: {
-        enabled: process.env.ENABLE_FALLBACK_TO_LOCAL === 'true',
-        endpoint: process.env.LOCAL_AI_ENDPOINT
+        uptime: metrics.uptime || 'N/A',
+        requestsToday: metrics.requestsToday || 0
       },
       timestamp: new Date().toISOString()
     });
