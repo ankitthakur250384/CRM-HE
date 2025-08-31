@@ -45,6 +45,22 @@ import notificationEngine from './services/notificationEngine.js';
 // Load environment variables
 dotenv.config();
 
+// Load CrewAI configuration if available
+import fs from 'fs';
+import path from 'path';
+
+try {
+  if (fs.existsSync('.env.crewai')) {
+    console.log('🔧 Loading CrewAI configuration...');
+    dotenv.config({ path: '.env.crewai' });
+    console.log('✅ CrewAI configuration loaded');
+  } else {
+    console.warn('⚠️ No .env.crewai file found - using fallback mode');
+  }
+} catch (error) {
+  console.warn('⚠️ Failed to load CrewAI config:', error.message);
+}
+
 // Create Express app
 const app = express();
 const PORT = process.env.PORT || 3001;

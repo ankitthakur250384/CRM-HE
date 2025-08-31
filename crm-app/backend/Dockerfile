@@ -13,6 +13,9 @@ RUN npm cache clean --force && npm install
 # Copy source code
 COPY . .
 
+# Copy CrewAI environment file if it exists
+COPY .env.crewai* ./
+
 # Expose port
 EXPOSE 3001
 
