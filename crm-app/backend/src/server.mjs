@@ -46,9 +46,6 @@ import notificationEngine from './services/notificationEngine.js';
 dotenv.config();
 
 // Load CrewAI configuration if available
-import fs from 'fs';
-import path from 'path';
-
 try {
   if (fs.existsSync('.env.crewai')) {
     console.log('🔧 Loading CrewAI configuration...');
