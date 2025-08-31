@@ -8,7 +8,7 @@ RUN apk add --no-cache python3 make g++ wget
 COPY package*.json ./
 
 # Clear npm cache and install dependencies
-RUN npm cache clean --force && npm install --build-from-source
+RUN npm cache clean --force && npm install
 
 # Copy source code
 COPY . .
