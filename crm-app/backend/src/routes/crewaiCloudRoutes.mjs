@@ -4,7 +4,7 @@
  */
 
 import express from 'express';
-import { CrewAICloudService } from '../ai/services/CrewAICloudService.js';
+import { CrewAICloudService } from '../services/CrewAICloudService.js';
 import { aiSystemManager } from '../ai/AISystemManager.js';
 
 const router = express.Router();
