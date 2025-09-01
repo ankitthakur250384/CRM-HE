@@ -256,7 +256,7 @@ function QuickActions() {
 
   const handleNewQuotation = () => {
     // Navigate directly to quotation creation page from dashboard
-    navigate('/quotation-creation');
+    navigate('/quotations');
   };
 
   const actions = [

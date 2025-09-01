@@ -1,10 +1,4 @@
 /**
- * AI System Manager - CrewAI Cloud Integration
- * Manages the CrewAI cloud platform integration for ASP Cranes CRM
- */
-import { CrewAICloudService } from '../services/CrewAICloudService.js';
-
-/**
  * AI System Manager - CrewAI Hosted Platform Integration
  * Simple manager for CrewAI hosted platform integration for ASP Cranes CRM
  */

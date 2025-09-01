@@ -58,7 +58,7 @@ const DealSelectionPage: React.FC = () => {
 
   const handleSelectDeal = (deal: Deal) => {
     // Navigate to quotation creation page with the selected deal data
-    navigate('/quotation-creation', { 
+    navigate('/quotations', { 
       state: { 
         selectedDeal: deal,
         deal: deal,
