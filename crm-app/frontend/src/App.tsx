@@ -13,6 +13,7 @@ import { UnifiedDashboard } from './pages/UnifiedDashboard';
 import { LeadManagement } from './pages/LeadManagement';
 import ToastContainer from './components/common/ToastContainer';
 import QuotationManagementOld from './pages/QuotationManagementOld';
+import { QuotationCreation } from './pages/QuotationCreation';
 import DealSelectionPage from './pages/DealSelectionPage';
 import { JobScheduling } from './pages/JobScheduling';
 import { SiteAssessment } from './pages/SiteAssessment';
@@ -219,6 +220,12 @@ function AppContent() {
             <Route path="quotations" element={
               <ProtectedRoute allowedRoles={['admin', 'sales_agent', 'operations_manager']}>
                 <QuotationManagementOld />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="quotation-creation" element={
+              <ProtectedRoute allowedRoles={['admin', 'sales_agent', 'operations_manager']}>
+                <QuotationCreation />
               </ProtectedRoute>
             } />
             

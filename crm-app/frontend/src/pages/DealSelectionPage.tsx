@@ -58,7 +58,7 @@ const DealSelectionPage: React.FC = () => {
 
   const handleSelectDeal = (deal: Deal) => {
     // Navigate to quotation creation page with the selected deal data
-    navigate('/quotations', { 
+    navigate('/quotation-creation', { 
       state: { 
         selectedDeal: deal,
         deal: deal,
@@ -129,7 +129,7 @@ const DealSelectionPage: React.FC = () => {
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center space-x-4">
               <button
-                onClick={() => navigate('/quotations')}
+                onClick={() => navigate('/dashboard')}
                 className="flex items-center space-x-2 text-gray-600 hover:text-gray-900 transition-colors"
               >
                 <ArrowLeft className="h-5 w-5" />

@@ -255,8 +255,8 @@ function QuickActions() {
   };
 
   const handleNewQuotation = () => {
-    // Navigate directly to quotation creation page from dashboard
-    navigate('/quotations');
+    // Navigate to deal selection page first, then to quotation creation
+    navigate('/select-deal');
   };
 
   const actions = [
