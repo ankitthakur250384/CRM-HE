@@ -4,13 +4,19 @@
  */
 import { CrewAICloudService } from '../services/CrewAICloudService.js';
 
+/**
+ * AI System Manager - CrewAI Hosted Platform Integration
+ * Simple manager for CrewAI hosted platform integration for ASP Cranes CRM
+ */
+import { CrewAICloudService } from '../services/CrewAICloudService.js';
+
 export class AISystemManager {
   constructor() {
     this.crewAIService = new CrewAICloudService();
     this.isInitialized = false;
     this.startTime = null;
     
-    console.log('🚀 AI System Manager initialized - CrewAI Cloud Platform');
+    console.log('🚀 AI System Manager initialized - CrewAI Hosted Platform');
   }
 
   /**
@@ -18,27 +24,37 @@ export class AISystemManager {
    */
   async initialize() {
     try {
-      console.log('🔄 Starting CrewAI cloud integration...');
+      console.log('🔄 Initializing CrewAI hosted platform integration...');
       this.startTime = Date.now();
 
       // Test CrewAI connectivity
-      await this.testCrewAIConnectivity();
+      if (this.crewAIService.isConfigured) {
+        await this.testCrewAIConnectivity();
+      }
       
       this.isInitialized = true;
       const initTime = Date.now() - this.startTime;
       
-      console.log(`✅ CrewAI cloud integration initialized successfully in ${initTime}ms`);
+      console.log(`✅ CrewAI hosted platform integration initialized in ${initTime}ms`);
       
       return {
         success: true,
         initializationTime: initTime,
-        platform: 'CrewAI Cloud',
+        platform: 'CrewAI Hosted Platform',
+        configured: this.crewAIService.isConfigured,
         timestamp: new Date().toISOString()
       };
       
     } catch (error) {
-      console.error('❌ CrewAI cloud integration failed:', error.message);
-      throw error;
+      console.error('❌ CrewAI hosted platform integration failed:', error.message);
+      // Don't throw error - still initialize in fallback mode
+      this.isInitialized = true;
+      return {
+        success: false,
+        error: error.message,
+        platform: 'CrewAI Hosted Platform (Fallback)',
+        timestamp: new Date().toISOString()
+      };
     }
   }
 
@@ -46,14 +62,14 @@ export class AISystemManager {
    * Test CrewAI connectivity
    */
   async testCrewAIConnectivity() {
-    console.log('🧪 Testing CrewAI cloud connectivity...');
+    console.log('🧪 Testing CrewAI hosted platform connectivity...');
     
     try {
-      const testResult = await this.crewAIService.processChat('Test connection');
+      const testResult = await this.crewAIService.processChat('Test connection - please respond with success');
       if (testResult.success) {
-        console.log('✅ CrewAI cloud connectivity verified');
+        console.log('✅ CrewAI hosted platform connectivity verified');
       } else {
-        throw new Error('CrewAI test failed');
+        console.warn('⚠️ CrewAI test returned non-success result');
       }
     } catch (error) {
       console.error('❌ CrewAI connectivity test failed:', error.message);
@@ -67,7 +83,9 @@ export class AISystemManager {
   getSystemStatus() {
     return {
       initialized: this.isInitialized,
-      platform: 'CrewAI Cloud',
+      platform: 'CrewAI Hosted Platform',
+      configured: this.crewAIService.isConfigured,
+      mode: this.crewAIService.isConfigured ? 'hosted' : 'fallback',
       uptime: this.startTime ? Date.now() - this.startTime : 0,
       timestamp: new Date().toISOString()
     };
@@ -81,7 +99,7 @@ export class AISystemManager {
       throw new Error('AI System not initialized');
     }
 
-    console.log('💬 Handling customer interaction via CrewAI...');
+    console.log('💬 Handling customer interaction via CrewAI hosted platform...');
     
     try {
       const result = await this.crewAIService.processChat(interaction.query, interaction.context);
@@ -89,8 +107,9 @@ export class AISystemManager {
       return {
         success: result.success,
         response: result.response,
-        platform: 'CrewAI Cloud',
-        processingTime: result.responseTime || 0
+        platform: 'CrewAI Hosted Platform',
+        processingTime: result.responseTime || 0,
+        source: result.source
       };
       
     } catch (error) {
@@ -99,42 +118,45 @@ export class AISystemManager {
       return {
         success: false,
         error: error.message,
-        fallbackResponse: "I apologize, but I'm experiencing technical difficulties. Please contact our sales team directly."
+        fallbackResponse: "I apologize, but I'm experiencing technical difficulties. Please contact our sales team directly at sales@aspcranes.com or call us."
       };
     }
   }
 
   /**
-   * Process business workflow
+   * Process business workflow - delegated to CrewAI
    */
   async processBusinessWorkflow(workflowType, data) {
     if (!this.isInitialized) {
       throw new Error('AI System not initialized');
     }
 
-    console.log(`🔄 Processing business workflow via CrewAI: ${workflowType}`);
+    console.log(`🔄 Processing business workflow via CrewAI hosted platform: ${workflowType}`);
     
     try {
       let result;
       
       switch (workflowType) {
         case 'lead_analysis':
+        case 'lead_processing':
           result = await this.crewAIService.analyzeLead(data);
           break;
         case 'quotation_generation':
+        case 'quotation_processing':
           result = await this.crewAIService.generateQuotation(data);
           break;
         case 'company_research':
           result = await this.crewAIService.researchCompany(data);
           break;
         default:
-          result = await this.crewAIService.processChat(`Process ${workflowType} workflow`, data);
+          // For any other workflow, send as chat
+          result = await this.crewAIService.processChat(`Process ${workflowType} workflow with this data: ${JSON.stringify(data)}`, { workflowType });
       }
 
       return {
         success: result.success,
         workflowResult: result,
-        platform: 'CrewAI Cloud',
+        platform: 'CrewAI Hosted Platform',
         processingTime: result.responseTime || 0
       };
       
@@ -154,14 +176,14 @@ export class AISystemManager {
 
     return {
       system: this.getSystemStatus(),
-      platform: 'CrewAI Cloud',
+      platform: 'CrewAI Hosted Platform',
       service: this.crewAIService.getMetrics(),
       timestamp: new Date().toISOString()
     };
   }
 
   /**
-   * Cleanup (minimal for cloud service)
+   * Cleanup (minimal for hosted service)
    */
   async cleanup() {
     console.log('🧹 Cleaning up AI system...');
