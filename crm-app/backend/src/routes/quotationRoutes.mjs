@@ -7,7 +7,7 @@
 import express from 'express';
 import pg from 'pg';
 import { v4 as uuidv4 } from 'uuid';
-import { authenticateToken } from '../middleware/authMiddleware.ts';
+import { authenticateToken } from '../middleware/authMiddleware.mjs';
 import { generateQuotationTemplate } from '../utils/pdfGenerator.js';
 
 const router = express.Router();

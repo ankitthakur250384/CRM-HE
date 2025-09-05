@@ -7,7 +7,7 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import pg from 'pg';
 import dotenv from 'dotenv';
-import { authenticateToken } from '../middleware/authMiddleware.ts';
+import { authenticateToken } from '../middleware/authMiddleware.mjs';
 
 dotenv.config();
 

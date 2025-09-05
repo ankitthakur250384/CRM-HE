@@ -2,7 +2,7 @@
  * API routes for job scheduling (jobs, job_equipment, job_operators)
  */
 import express from 'express';
-import { authenticateToken } from '../middleware/authMiddleware.ts';
+import { authenticateToken } from '../middleware/authMiddleware.mjs';
 import { getJobs, getJobById, createJob, updateJob, deleteJob, getJobEquipment, addJobEquipment, removeJobEquipment, getJobOperators, addJobOperator, removeJobOperator } from '../services/postgres/jobRepository.js';
 import { createJobActivity } from '../services/activityService.js';
 import { 

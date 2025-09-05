@@ -3,7 +3,7 @@
  * Provides REST API access to the AI agent network
  */
 import express from 'express';
-import { authenticateToken } from '../middleware/authMiddleware.ts';
+import { authenticateToken } from '../middleware/authMiddleware.mjs';
 import { aiSystemManager } from '../ai/AISystemManager.js';
 
 const router = express.Router();

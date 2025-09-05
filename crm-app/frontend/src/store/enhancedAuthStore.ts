@@ -6,7 +6,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { AuthState } from '../types/auth';
-import { tokenManager } from '../services/tokenManager';
+// Note: tokenManager will be used for automatic refresh functionality
 
 interface AuthStore extends AuthState {
   login: (email: string, password: string, remember?: boolean) => Promise<void>;

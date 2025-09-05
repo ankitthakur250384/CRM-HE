@@ -29,7 +29,7 @@ BEGIN
     END IF;
     
     -- Add mfa_enabled_at column
-    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'mfa_enabled_at' AND column_name = 'mfa_enabled_at') THEN
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'users' AND column_name = 'mfa_enabled_at') THEN
         ALTER TABLE users ADD COLUMN mfa_enabled_at TIMESTAMP;
         RAISE NOTICE 'Added mfa_enabled_at column to users table';
     END IF;

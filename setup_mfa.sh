@@ -14,7 +14,7 @@ fi
 
 # Run the MFA schema setup
 echo "📊 Creating MFA tables and columns..."
-docker-compose exec -T postgres psql -U postgres -d asp_crm < setup_mfa_database.sql
+docker-compose exec -T postgres psql -U postgres -d aspcranes_crm < setup_mfa_database.sql
 
 if [ $? -eq 0 ]; then
     echo "✅ MFA database schema setup complete!"

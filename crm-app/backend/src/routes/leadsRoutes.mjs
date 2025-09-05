@@ -9,14 +9,7 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import * as leadRepository from '../services/postgres/leadRepository.js';
 import { sendLeadCreatedNotification } from '../services/notificationService.js';
-
-const router = express.Router();
-
-// Import authentication middleware from central file
-// If the file doesn't exist yet, implement inline
-import express from 'express';
-import { authenticateToken } from '../middleware/authMiddleware.ts';
-import { leadsRepository } from '../db-connection.js';
+import { authenticateToken } from '../middleware/authMiddleware.mjs';
 
 const router = express.Router();
 
@@ -41,19 +34,6 @@ const asyncHandler = (fn) => (req, res, next) => {
     }
     
     // Generic error handling
-    res.status(500).json({
-      message: 'An unexpected error occurred',
-      error: process.env.NODE_ENV !== 'production' ? error.message : 'Internal server error',
-    });
-  });
-};
-
-/**
- * Wrap all repository calls in try/catch with proper error handling
- */
-const asyncHandler = (fn) => (req, res, next) => {
-  Promise.resolve(fn(req, res, next)).catch((error) => {
-    console.error(`API Error: ${error.message}`, error);
     res.status(500).json({
       message: 'An unexpected error occurred',
       error: process.env.NODE_ENV !== 'production' ? error.message : 'Internal server error',
