@@ -7,7 +7,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 
 // Import enhanced authentication middleware
-import { authenticateToken, authorize } from '../middleware/authMiddleware.mjs';
+import { authenticateToken, authorizeRoles } from '../middleware/authMiddleware.mjs';
 import * as equipmentRepository from '../services/postgres/equipmentRepository.js';
 
 // Load environment variables
@@ -40,7 +40,7 @@ const asyncHandler = (fn) => (req, res, next) => {
 };
 
 // GET all equipment (with optional category filter) - Protected Route
-router.get('/', authenticateToken, authorize(EQUIPMENT_READ_ROLES), asyncHandler(async (req, res, next) => {
+router.get('/', authenticateToken, authorizeRoles(EQUIPMENT_READ_ROLES), asyncHandler(async (req, res, next) => {
   console.log(`🔍 [EQUIPMENT] User ${req.user.email} (${req.user.role}) accessing equipment list`);
 
   const { category } = req.query;
@@ -78,7 +78,7 @@ router.get('/:id', asyncHandler(async (req, res, next) => {
 }));
 
 // CREATE equipment - Admin and Operations Manager only
-router.post('/', authenticateToken, authorize(EQUIPMENT_WRITE_ROLES), asyncHandler(async (req, res, next) => {
+router.post('/', authenticateToken, authorizeRoles(EQUIPMENT_WRITE_ROLES), asyncHandler(async (req, res, next) => {
   console.log(`🔍 [EQUIPMENT] User ${req.user.email} (${req.user.role}) creating equipment`);
 
   // Validate required fields according to schema
