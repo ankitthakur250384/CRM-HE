@@ -3,7 +3,7 @@
  * Database operations for Multi-Factor Authentication
  */
 
-import { pool } from '../dbConnection.js';
+import { pool } from '../../lib/dbConnection.js';
 import bcrypt from 'bcrypt';
 
 /**
