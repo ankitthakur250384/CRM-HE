@@ -2,43 +2,35 @@
  * API Headers Utility
  * 
  * Shared utility for creating API request headers with authentication tokens
- * Production-ready implementation with proper environment handling for private cloud deployment
+ * Production-ready implementation for secure private cloud deployment
  */
 
-import { isProd, isDev, logDebug, getAuthHeaders, logError, logWarning } from './envConfig';
+import { isDev, logDebug, logError } from './envConfig';
 
 /**
  * Get auth headers for API requests
- * Sets up Content-Type, Authorization with JWT token, and dev bypass headers when needed
- * 
- * @param includeDevBypass Whether to include development bypass headers (use with caution)
+ * Sets up Content-Type and Authorization with JWT token
  */
-export const getHeaders = (includeDevBypass: boolean = true): HeadersInit => {
-  // DEVELOPMENT/TESTING: Always include dev bypass for hostname-based detection
-  includeDevBypass = includeDevBypass || (typeof window !== 'undefined' && (
-    window.location.hostname === 'localhost' ||
-    window.location.hostname === '127.0.0.1' ||
-    window.location.port === '3000' ||
-    window.location.hostname.includes('.local')
-  ));
-  
-  const headers = getAuthHeaders(includeDevBypass);
-  const typedHeaders = headers as Record<string, string>;
-  
-  // Add production-specific security headers
-  if (isProd() && !includeDevBypass) {
-    typedHeaders['X-Requested-With'] = 'XMLHttpRequest'; // CSRF protection
-    typedHeaders['X-Application-Type'] = 'asp-cranes-crm';
+export const getHeaders = (): HeadersInit => {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    'X-Requested-With': 'XMLHttpRequest', // CSRF protection
+    'X-Application-Type': 'asp-cranes-crm'
+  };
+
+  // Add JWT token if available
+  const token = localStorage.getItem('jwt-token');
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
   }
   
   // Log header usage in development only
-  if (isDev() || includeDevBypass) {
-    const hasToken = !!typedHeaders['Authorization'];
-    const hasBypass = !!typedHeaders['x-bypass-auth'];
-    logDebug(`API headers prepared: Auth token ${hasToken ? 'present' : 'missing'}, bypass ${hasBypass ? 'enabled' : 'disabled'}`);
+  if (isDev()) {
+    const hasToken = !!headers['Authorization'];
+    logDebug(`API headers prepared: Auth token ${hasToken ? 'present' : 'missing'}`);
   }
   
-  return typedHeaders;
+  return headers;
 };
 
 /**
@@ -46,8 +38,7 @@ export const getHeaders = (includeDevBypass: boolean = true): HeadersInit => {
  * Includes stronger protection measures for sensitive operations
  */
 export const getSensitiveOperationHeaders = (): HeadersInit => {
-  const standardHeaders = getHeaders(false); // Never include bypass for sensitive ops
-  const headers = { ...standardHeaders as Record<string, string> };
+  const headers = { ...getHeaders() as Record<string, string> };
   
   // Add timestamp to prevent replay attacks
   headers['X-Request-Timestamp'] = Date.now().toString();
@@ -64,21 +55,15 @@ export const getSensitiveOperationHeaders = (): HeadersInit => {
 export const getFileUploadHeaders = (): HeadersInit => {
   // Don't include Content-Type as it will be set by the browser
   // with the correct multipart boundary
-  const baseHeaders = getHeaders(false);
-  const uploadHeaders: Record<string, string> = {};
+  const uploadHeaders: Record<string, string> = {
+    'X-Requested-With': 'XMLHttpRequest',
+    'X-Application-Type': 'asp-cranes-crm'
+  };
   
-  // Copy over auth header if present
-  if ((baseHeaders as Record<string, string>)['Authorization']) {
-    uploadHeaders['Authorization'] = (baseHeaders as Record<string, string>)['Authorization'];
-  }
-  
-  // Copy other security headers
-  if ((baseHeaders as Record<string, string>)['X-Requested-With']) {
-    uploadHeaders['X-Requested-With'] = (baseHeaders as Record<string, string>)['X-Requested-With'];
-  }
-  
-  if ((baseHeaders as Record<string, string>)['X-Application-Type']) {
-    uploadHeaders['X-Application-Type'] = (baseHeaders as Record<string, string>)['X-Application-Type'];
+  // Add JWT token if available
+  const token = localStorage.getItem('jwt-token');
+  if (token) {
+    uploadHeaders['Authorization'] = `Bearer ${token}`;
   }
 
   return uploadHeaders;
@@ -94,24 +79,19 @@ const generateRequestId = (): string => {
 };
 
 /**
- * Check if current token appears to be a development token
- * Used to warn users if they somehow have a dev token in production
+ * Check if current token appears to be valid
+ * Used for client-side token validation
  */
-export const isUsingDevToken = (): boolean => {
+export const hasValidToken = (): boolean => {
   try {
     const token = localStorage.getItem('jwt-token');
     if (!token) return false;
 
-    const isDevSignature = token.includes('dev-signature');
-    const isDevFlag = sessionStorage.getItem('using-development-auth') === 'true';
-
-    if (isProd() && (isDevSignature || isDevFlag)) {
-      logError('CRITICAL SECURITY WARNING: Development token detected in production environment');
-      return true;
-    }
-
-    return isDevSignature || isDevFlag;
+    // Basic token format validation
+    const parts = token.split('.');
+    return parts.length === 3; // JWT has 3 parts
   } catch (e) {
+    logError('Error checking token validity:', e);
     return false;
   }
 };

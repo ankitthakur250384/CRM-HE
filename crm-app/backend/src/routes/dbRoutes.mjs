@@ -7,6 +7,7 @@ import express from 'express';
 import jwt from 'jsonwebtoken';
 import pg from 'pg';
 import dotenv from 'dotenv';
+import { authenticateToken } from '../middleware/authMiddleware.ts';
 
 dotenv.config();
 
@@ -54,7 +55,7 @@ router.use(authenticateToken);
 /**
  * Database query endpoint
  */
-router.post('/query', async (req, res) => {
+router.post('/query', authenticateToken, async (req, res) => {
   try {
     const { query, values, type } = req.body;
     

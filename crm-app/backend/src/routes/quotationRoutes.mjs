@@ -7,6 +7,7 @@
 import express from 'express';
 import pg from 'pg';
 import { v4 as uuidv4 } from 'uuid';
+import { authenticateToken } from '../middleware/authMiddleware.ts';
 import { generateQuotationTemplate } from '../utils/pdfGenerator.js';
 
 const router = express.Router();
@@ -32,7 +33,7 @@ const pool = new pg.Pool({
  *  - gstRate (number, e.g., 18)
  *  - terms (array of strings)
  */
-router.post('/generate', async (req, res) => {
+router.post('/generate', authenticateToken, async (req, res) => {
   try {
     const quotation = req.body;
 
@@ -236,7 +237,7 @@ router.get('/:id', async (req, res) => {
  * POST /api/quotations
  * Create a new quotation in the system
  */
-router.post('/', async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   try {
     const quotationData = req.body;
     // Validate required fields

@@ -14,7 +14,39 @@ const router = express.Router();
 
 // Import authentication middleware from central file
 // If the file doesn't exist yet, implement inline
-import { authenticateToken } from '../authMiddleware.mjs';
+import express from 'express';
+import { authenticateToken } from '../middleware/authMiddleware.ts';
+import { leadsRepository } from '../db-connection.js';
+
+const router = express.Router();
+
+// Error handling middleware specific to lead routes
+const asyncHandler = (fn) => (req, res, next) => {
+  Promise.resolve(fn(req, res, next)).catch(error => {
+    console.error('🚨 [LEADS] Error in route handler:', error);
+    
+    // Handle specific PostgreSQL errors
+    if (error.code === '23505') { // unique_violation
+      return res.status(409).json({
+        message: 'A lead with this information already exists',
+        error: 'Duplicate entry',
+      });
+    }
+    
+    if (error.code === '23503') { // foreign_key_violation  
+      return res.status(400).json({
+        message: 'Invalid reference to related data',
+        error: 'Foreign key constraint violation',
+      });
+    }
+    
+    // Generic error handling
+    res.status(500).json({
+      message: 'An unexpected error occurred',
+      error: process.env.NODE_ENV !== 'production' ? error.message : 'Internal server error',
+    });
+  });
+};
 
 /**
  * Wrap all repository calls in try/catch with proper error handling
@@ -44,7 +76,7 @@ const devBypass = (req, res, next) => {
 /**
  * GET /leads - Get all leads
  */
-router.get('/', devBypass, asyncHandler(async (req, res) => {
+router.get('/', authenticateToken, asyncHandler(async (req, res) => {
   const leads = await leadRepository.getLeads();
   res.json(leads);
 }));
@@ -52,7 +84,7 @@ router.get('/', devBypass, asyncHandler(async (req, res) => {
 /**
  * GET /leads/:id - Get lead by ID
  */
-router.get('/:id', devBypass, asyncHandler(async (req, res) => {
+router.get('/:id', authenticateToken, asyncHandler(async (req, res) => {
   const lead = await leadRepository.getLeadById(req.params.id);
   
   if (!lead) {
@@ -65,7 +97,7 @@ router.get('/:id', devBypass, asyncHandler(async (req, res) => {
 /**
  * POST /leads - Create new lead
  */
-router.post('/', devBypass, asyncHandler(async (req, res) => {
+router.post('/', authenticateToken, asyncHandler(async (req, res) => {
   // Validate required fields - customerId is optional since it will be created/found automatically
   const requiredFields = ['customerName', 'email', 'serviceNeeded'];
   const missingFields = requiredFields.filter(field => !req.body[field]);
@@ -100,7 +132,7 @@ router.post('/', devBypass, asyncHandler(async (req, res) => {
 /**
  * PATCH /leads/:id/status - Update lead status
  */
-router.patch('/:id/status', devBypass, asyncHandler(async (req, res) => {
+router.patch('/:id/status', authenticateToken, asyncHandler(async (req, res) => {
   const { status } = req.body;
   
   if (!status) {
@@ -119,7 +151,7 @@ router.patch('/:id/status', devBypass, asyncHandler(async (req, res) => {
 /**
  * PATCH /leads/:id/assign - Assign lead to sales agent
  */
-router.patch('/:id/assign', devBypass, asyncHandler(async (req, res) => {
+router.patch('/:id/assign', authenticateToken, asyncHandler(async (req, res) => {
   const { salesAgentId, salesAgentName } = req.body;
   
   // Allow empty salesAgentId for unassignment (will be converted to null in repository)
@@ -140,7 +172,7 @@ router.patch('/:id/assign', devBypass, asyncHandler(async (req, res) => {
 /**
  * PUT /leads/:id - Update lead (complete update)
  */
-router.put('/:id', devBypass, asyncHandler(async (req, res) => {
+router.put('/:id', authenticateToken, asyncHandler(async (req, res) => {
   const leadId = req.params.id;
   const leadData = req.body;
   
@@ -168,7 +200,7 @@ router.put('/:id', devBypass, asyncHandler(async (req, res) => {
  * PATCH /leads/:id - Update lead (partial update) 
  * This is for general lead updates when using PATCH method
  */
-router.patch('/:id', devBypass, asyncHandler(async (req, res) => {
+router.patch('/:id', authenticateToken, asyncHandler(async (req, res) => {
   const leadId = req.params.id;
   const leadData = req.body;
   

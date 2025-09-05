@@ -31,29 +31,18 @@ services:
       DB_NAME: asp_crm
       DB_USER: postgres
       DB_PASSWORD: crmdb@21
-      JWT_SECRET: 3ef0d123387553c81aaa771f5f62686afd930dece8da511268d4d30e3728b20c83d802dedd6b7caacfa2b94b0f303b3c06414e86d2fd1ca5c7295c0215b53613
-      JWT_EXPIRES_IN: 24h
+      JWT_SECRET: brnpGhQa2G1JlQ+RA69ki0vJCc3Bb/a8jKC7FGBn5Y5EuBwlAKmcXx+BRkagkIUDrC/3Liup0WDgZxvLz0EmrQ==
+      JWT_REFRESH_SECRET: PIPQdZjRjyZ33EPA0SMl+PCNvZTFf5yyh47Bfwyh2fTr0JVmX5poEZ2S8+H7/99Ph0toIwOWQhBFMgUONvcZeQ==
+      JWT_ACCESS_TOKEN_EXPIRY: 15m
+      JWT_REFRESH_TOKEN_EXPIRY: 7d
+      SESSION_SECRET: KYozTqin2gKmQIZZMHh6iVAApporQwYXbpBJVIHmPtY=
       CORS_ORIGIN: http://103.224.243.242:3000
       LOG_LEVEL: info
-      # AI System Configuration
-      OPENAI_API_KEY: ${OPENAI_API_KEY:-your_openai_api_key_here}
-      OPENAI_MODEL: gpt-4o-mini
-      OPENAI_MAX_TOKENS: 1000
-      OPENAI_TEMPERATURE: 0.7
-      OPENAI_TIMEOUT: 2000
-      ASP_CRM_BASE_URL: http://backend:3001/api
-      ASP_CRM_TIMEOUT: 30000
-      LEADS_BYPASS_HEADER: X-bypass-Auth
-      LEADS_BYPASS_VALUE: true
-      AI_SYSTEM_AUTO_INIT: true
-      AI_AGENT_TIMEOUT: 30000
-      AI_MAX_CONCURRENT_REQUESTS: 10
-      AI_CACHE_ENABLED: true
-      AI_CACHE_MAX_SIZE: 1000
-      AI_CACHE_TIMEOUT: 300000
-      AI_LOG_LEVEL: info
-      AI_METRICS_ENABLED: true
-      AI_METRICS_INTERVAL: 60000
+      RATE_LIMIT_WINDOW_MS: 900000
+      RATE_LIMIT_MAX_REQUESTS: 100
+      # CrewAI Configuration
+      CREWAI_API_URL: https://asp-cranes-ai-sales-chatbot-v1-19ac7cde-f23-cb712937.crewai.com
+      CREWAI_API_TOKEN: 323534e6cfe2
     depends_on:
       postgres:
         condition: service_healthy

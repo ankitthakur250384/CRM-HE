@@ -2,6 +2,7 @@
  * API routes for job scheduling (jobs, job_equipment, job_operators)
  */
 import express from 'express';
+import { authenticateToken } from '../middleware/authMiddleware.ts';
 import { getJobs, getJobById, createJob, updateJob, deleteJob, getJobEquipment, addJobEquipment, removeJobEquipment, getJobOperators, addJobOperator, removeJobOperator } from '../services/postgres/jobRepository.js';
 import { createJobActivity } from '../services/activityService.js';
 import { 
@@ -38,7 +39,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Create job
-router.post('/', async (req, res) => {
+router.post('/', authenticateToken, async (req, res) => {
   try {
     const job = await createJob(req.body);
     
@@ -124,7 +125,7 @@ router.get('/:id/equipment', async (req, res) => {
     res.status(500).json({ error: getErrorMessage(error) });
   }
 });
-router.post('/:id/equipment', async (req, res) => {
+router.post('/:id/equipment', authenticateToken, async (req, res) => {
   try {
     const { equipmentId } = req.body;
     const result = await addJobEquipment(req.params.id, equipmentId);
@@ -151,7 +152,7 @@ router.get('/:id/operators', async (req, res) => {
     res.status(500).json({ error: getErrorMessage(error) });
   }
 });
-router.post('/:id/operators', async (req, res) => {
+router.post('/:id/operators', authenticateToken, async (req, res) => {
   try {
     const { operatorId } = req.body;
     const result = await addJobOperator(req.params.id, operatorId);

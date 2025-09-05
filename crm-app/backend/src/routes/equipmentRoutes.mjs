@@ -1,24 +1,24 @@
 /**
- * Equipment API Routes
- * Handles CRUD operations for equipment
- * Uses repository pattern to separate database logic from route handling
+ * Equipment API Routes with Enhanced RBAC
+ * Handles CRUD operations for equipment with role-based access control
  */
 
 import express from 'express';
 import dotenv from 'dotenv';
 
-// Import authentication middleware and equipment repository
-import { authenticateToken } from '../authMiddleware.mjs';
+// Import enhanced authentication middleware
+import { authenticateToken, authorize } from '../middleware/authMiddleware.js';
 import * as equipmentRepository from '../services/postgres/equipmentRepository.js';
-
-// Debug: Log what we're importing
-console.log('🔍 Equipment Repository imports:', Object.keys(equipmentRepository));
-console.log('🔍 getAllEquipment function:', typeof equipmentRepository.getAllEquipment);
 
 // Load environment variables
 dotenv.config();
 
 const router = express.Router();
+
+// Define role permissions for equipment management
+const EQUIPMENT_READ_ROLES = ['admin', 'sales_agent', 'operations_manager'];
+const EQUIPMENT_WRITE_ROLES = ['admin', 'operations_manager'];
+const EQUIPMENT_DELETE_ROLES = ['admin'];
 
 // Initialize equipment table when server starts - commented out for production deployment
 // try {
@@ -39,9 +39,9 @@ const asyncHandler = (fn) => (req, res, next) => {
   });
 };
 
-// GET all equipment (with optional category filter)
-router.get('/', asyncHandler(async (req, res, next) => {
-  // Public route: no authentication required
+// GET all equipment (with optional category filter) - Protected Route
+router.get('/', authenticateToken, authorize(EQUIPMENT_READ_ROLES), asyncHandler(async (req, res, next) => {
+  console.log(`🔍 [EQUIPMENT] User ${req.user.email} (${req.user.role}) accessing equipment list`);
 
   const { category } = req.query;
   
@@ -77,9 +77,9 @@ router.get('/:id', asyncHandler(async (req, res, next) => {
   });
 }));
 
-// CREATE equipment
-router.post('/', asyncHandler(async (req, res, next) => {
-  // Public route: no authentication required
+// CREATE equipment - Admin and Operations Manager only
+router.post('/', authenticateToken, authorize(EQUIPMENT_WRITE_ROLES), asyncHandler(async (req, res, next) => {
+  console.log(`🔍 [EQUIPMENT] User ${req.user.email} (${req.user.role}) creating equipment`);
 
   // Validate required fields according to schema
   const requiredFields = [

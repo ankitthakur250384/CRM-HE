@@ -1,10 +1,13 @@
 import express from 'express';
 import { db } from '../lib/dbClient.js';
 
+import express from 'express';
+import { authenticateToken } from '../middleware/authMiddleware.ts';
+
 const router = express.Router();
 
 // Generate quotation preview/print HTML
-router.post('/preview', async (req, res) => {
+router.post('/preview', authenticateToken, async (req, res) => {
   try {
     let { quotationId, templateId, format = 'html' } = req.body;
 
@@ -117,7 +120,7 @@ router.post('/preview', async (req, res) => {
 });
 
 // Print quotation
-router.post('/print', async (req, res) => {
+router.post('/print', authenticateToken, async (req, res) => {
   try {
     const { quotationId, templateId } = req.body;
     
@@ -162,7 +165,7 @@ router.post('/print', async (req, res) => {
 });
 
 // Download PDF
-router.post('/pdf', async (req, res) => {
+router.post('/pdf', authenticateToken, async (req, res) => {
   try {
     const { quotationId, templateId } = req.body;
 
@@ -215,7 +218,7 @@ router.post('/pdf', async (req, res) => {
 });
 
 // Email PDF
-router.post('/email-pdf', async (req, res) => {
+router.post('/email-pdf', authenticateToken, async (req, res) => {
   try {
     const { quotationId, templateId, emailTo, subject, message } = req.body;
 

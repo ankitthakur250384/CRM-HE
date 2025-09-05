@@ -3,6 +3,7 @@
  * Provides REST API access to the AI agent network
  */
 import express from 'express';
+import { authenticateToken } from '../middleware/authMiddleware.ts';
 import { aiSystemManager } from '../ai/AISystemManager.js';
 
 const router = express.Router();
@@ -11,7 +12,7 @@ const router = express.Router();
  * Initialize AI system
  * POST /api/ai/initialize
  */
-router.post('/initialize', async (req, res) => {
+router.post('/initialize', authenticateToken, async (req, res) => {
   try {
     console.log('🚀 Initializing AI system via API...');
     
@@ -68,7 +69,7 @@ router.get('/status', async (req, res) => {
  * Handle customer chat interaction
  * POST /api/ai/chat
  */
-router.post('/chat', async (req, res) => {
+router.post('/chat', authenticateToken, async (req, res) => {
   try {
     const { query, context = {} } = req.body;
     
@@ -118,7 +119,7 @@ router.post('/chat', async (req, res) => {
  * Process lead through AI system
  * POST /api/ai/leads/process
  */
-router.post('/leads/process', async (req, res) => {
+router.post('/leads/process', authenticateToken, async (req, res) => {
   try {
     const leadData = req.body;
     
@@ -158,7 +159,7 @@ router.post('/leads/process', async (req, res) => {
  * Generate quotation through AI system
  * POST /api/ai/quotations/generate
  */
-router.post('/quotations/generate', async (req, res) => {
+router.post('/quotations/generate', authenticateToken, async (req, res) => {
   try {
     const quotationData = req.body;
     
@@ -198,7 +199,7 @@ router.post('/quotations/generate', async (req, res) => {
  * Research company through AI system
  * POST /api/ai/intelligence/research-company
  */
-router.post('/intelligence/research-company', async (req, res) => {
+router.post('/intelligence/research-company', authenticateToken, async (req, res) => {
   try {
     const { companyName, domain, additionalInfo } = req.body;
     
@@ -242,7 +243,7 @@ router.post('/intelligence/research-company', async (req, res) => {
  * Analyze market trends through AI system
  * POST /api/ai/intelligence/market-trends
  */
-router.post('/intelligence/market-trends', async (req, res) => {
+router.post('/intelligence/market-trends', authenticateToken, async (req, res) => {
   try {
     const { industry, region, timeframe } = req.body;
     
@@ -286,7 +287,7 @@ router.post('/intelligence/market-trends', async (req, res) => {
  * Calculate pricing through AI system
  * POST /api/ai/pricing/calculate
  */
-router.post('/pricing/calculate', async (req, res) => {
+router.post('/pricing/calculate', authenticateToken, async (req, res) => {
   try {
     const { equipmentType, rentalDuration, location, requirements } = req.body;
     
@@ -363,7 +364,7 @@ router.get('/agents/:agentId/metrics', async (req, res) => {
  * Execute specific agent action
  * POST /api/ai/agents/:agentId/execute
  */
-router.post('/agents/:agentId/execute', async (req, res) => {
+router.post('/agents/:agentId/execute', authenticateToken, async (req, res) => {
   try {
     const { agentId } = req.params;
     const { action, data, context = {} } = req.body;
@@ -473,7 +474,7 @@ router.delete('/conversations/:conversationId', async (req, res) => {
  * Restart AI system
  * POST /api/ai/restart
  */
-router.post('/restart', async (req, res) => {
+router.post('/restart', authenticateToken, async (req, res) => {
   try {
     console.log('🔄 Restarting AI system via API...');
     

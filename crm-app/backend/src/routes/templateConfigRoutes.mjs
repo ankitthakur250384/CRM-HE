@@ -1,4 +1,5 @@
 import express from 'express';
+import { authenticateToken } from '../middleware/authMiddleware.ts';
 import { db } from '../lib/dbClient.js';
 
 const router = express.Router();
@@ -44,7 +45,7 @@ router.get('/templates', async (req, res) => {
 });
 
 // Save template configuration
-router.post('/templates', async (req, res) => {
+router.post('/templates', authenticateToken, async (req, res) => {
   try {
     const { 
       defaultQuotationTemplate, 

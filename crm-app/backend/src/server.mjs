@@ -1,6 +1,6 @@
 /**
  * API Server for ASP Cranes CRM
- * Production-ready server with proper error handling and security
+ * Production-ready server with comprehensive security and authentication
  */
 
 import express from 'express';
@@ -9,12 +9,18 @@ import dotenv from 'dotenv';
 import helmet from 'helmet';
 import morgan from 'morgan';
 import compression from 'compression';
+import cookieParser from 'cookie-parser';
+import rateLimit from 'express-rate-limit';
 import { fileURLToPath } from 'url';
 import path from 'path';
 import fs from 'fs';
 
+// Import security middleware
+import { authenticateToken } from './middleware/authMiddleware.ts';
+
 // Import all route files
-import authRoutes from './routes/authRoutes.mjs';
+import authRoutes from './routes/authRoutes.ts';
+import mfaRoutes from './routes/mfaRoutes.ts';
 import dealsRoutes from './routes/dealsRoutes.mjs';
 import leadsRoutes from './routes/leadsRoutes.mjs';
 import quotationRoutes from './routes/quotationRoutes.mjs';
@@ -27,6 +33,7 @@ import operatorRoutes from './routes/operatorRoutes.mjs';
 import activityRoutes from './routes/activityRoutes.mjs';
 import notificationRoutes from './routes/notificationRoutes.mjs';
 import dashboardRoutes from './routes/dashboardRoutes.mjs';
+import aiRoutes from './routes/aiRoutes.mjs';
 
 import dbConfigRoutes from './routes/dbConfigRoutes.mjs';
 import templateRoutes from './routes/templateRoutes.mjs';
