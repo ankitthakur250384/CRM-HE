@@ -7,7 +7,7 @@ import express from 'express';
 import dotenv from 'dotenv';
 
 // Import enhanced authentication middleware
-import { authenticateToken, authorize } from '../middleware/authMiddleware.js';
+import { authenticateToken, authorize } from '../middleware/authMiddleware.mjs';
 import * as equipmentRepository from '../services/postgres/equipmentRepository.js';
 
 // Load environment variables
