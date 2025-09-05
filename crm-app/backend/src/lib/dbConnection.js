@@ -23,7 +23,7 @@ const dbConfig = {
   port: parseInt(isBrowser ? '5432' : (process.env.DB_PORT || '5432')),
   database: isBrowser ? 'asp_crm' : (process.env.DB_NAME || 'asp_crm'),
   user: isBrowser ? 'postgres' : (process.env.DB_USER || 'postgres'),
-  password: isBrowser ? 'postgres' : (process.env.DB_PASSWORD || 'crmdb@21'),
+  password: isBrowser ? 'postgres' : (process.env.DB_PASSWORD || 'crmdb_secure_2024'),
   ssl: isBrowser ? false : ((process.env.DB_SSL) === 'true' ? true : false),
   max: 20, // Maximum number of clients in the pool
   idleTimeoutMillis: 30000, // Close idle clients after 30 seconds
