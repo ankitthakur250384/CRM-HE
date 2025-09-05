@@ -22,6 +22,10 @@ import {
   Zap
 } from 'lucide-react';
 
+// Template and printing utilities
+import { getTemplates } from '../services/templateService';
+import { mergeQuotationWithTemplate } from '../utils/templateMerger';
+
 // Types
 interface Quotation {
   id: string;
@@ -341,8 +345,83 @@ export function QuotationManagementOld() {
     }
   };
 
-  // Print quotation
-  const handlePrint = (quotation: Quotation) => {
+  // Print quotation using default template
+  const handlePrint = async (quotation: Quotation) => {
+    try {
+      // Fetch all templates and find the default one
+      const templates = await getTemplates();
+      const defaultTemplate = templates.find(template => template.isDefault);
+      
+      if (!defaultTemplate) {
+        // Fallback to hardcoded template if no default template is set
+        handlePrintFallback(quotation);
+        return;
+      }
+
+      // Convert the quotation to the format expected by mergeQuotationWithTemplate
+      const quotationForTemplate = {
+        ...quotation,
+        customerContact: {
+          name: quotation.customerName,
+          email: quotation.customerEmail || '',
+          phone: quotation.customerPhone || '',
+          company: quotation.customerCompany || '',
+          address: quotation.customerAddress || '',
+          designation: ''
+        },
+        selectedEquipment: {
+          id: 'equipment-' + quotation.machineType,
+          equipmentId: quotation.machineType,
+          name: MACHINE_TYPES.find(m => m.value === quotation.machineType)?.label || quotation.machineType,
+          baseRates: {
+            micro: MACHINE_TYPES.find(m => m.value === quotation.machineType)?.baseRate || 4000,
+            small: MACHINE_TYPES.find(m => m.value === quotation.machineType)?.baseRate || 4000,
+            monthly: MACHINE_TYPES.find(m => m.value === quotation.machineType)?.baseRate || 4000,
+            yearly: MACHINE_TYPES.find(m => m.value === quotation.machineType)?.baseRate || 4000
+          }
+        },
+        totalRent: quotation.totalCost,
+        includeGst: true,
+        billing: 'gst' as const,
+        shift: 'single' as const,
+        dayNight: 'day' as const,
+        dealType: 'rental' as const,
+        sundayWorking: 'no' as const,
+        otherFactors: [],
+        incidentalCharges: [],
+        extraCharge: 0,
+        otherFactorsCharge: 0,
+        mobRelaxation: 0,
+        runningCostPerKm: 100,
+        version: 1,
+        createdBy: 'system',
+        leadId: quotation.dealId || 'default-lead',
+        customerId: 'customer-' + quotation.customerName.replace(/\s+/g, '-').toLowerCase()
+      };
+
+      // Merge quotation data with template
+      const mergedHtml = mergeQuotationWithTemplate(quotationForTemplate, defaultTemplate);
+      
+      // Open print window with merged content
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        alert('Please allow popups to print quotations');
+        return;
+      }
+
+      printWindow.document.write(mergedHtml);
+      printWindow.document.close();
+      printWindow.print();
+      
+    } catch (error) {
+      console.error('Error printing quotation with template:', error);
+      // Fallback to hardcoded template on error
+      handlePrintFallback(quotation);
+    }
+  };
+
+  // Fallback print function with hardcoded template
+  const handlePrintFallback = (quotation: Quotation) => {
     const printWindow = window.open('', '_blank');
     if (!printWindow) return;
 
