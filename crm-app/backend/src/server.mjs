@@ -16,11 +16,11 @@ import path from 'path';
 import fs from 'fs';
 
 // Import security middleware
-import { authenticateToken } from './middleware/authMiddleware.ts';
+import { authenticateToken } from './middleware/authMiddleware.mjs';
 
 // Import all route files
-import authRoutes from './routes/authRoutes.ts';
-import mfaRoutes from './routes/mfaRoutes.ts';
+import authRoutes from './routes/authRoutes.mjs';
+import mfaRoutes from './routes/mfaRoutes.mjs';
 import dealsRoutes from './routes/dealsRoutes.mjs';
 import leadsRoutes from './routes/leadsRoutes.mjs';
 import quotationRoutes from './routes/quotationRoutes.mjs';
