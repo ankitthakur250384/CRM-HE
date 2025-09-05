@@ -4,7 +4,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-crmdb_secure_2024}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-crmdb@21}
       POSTGRES_DB: asp_crm
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -29,7 +29,7 @@ services:
       DB_PORT: 5432
       DB_NAME: asp_crm
       DB_USER: postgres
-      DB_PASSWORD: ${DB_PASSWORD:-crmdb_secure_2024}
+      DB_PASSWORD: ${DB_PASSWORD:-crmdb@21}
       JWT_SECRET: ${JWT_SECRET:-MoBly0rPrUSgf8yj0yuzTQgceJJy/FwCaYY62qGA7zm3vFugjPh46YR5uHsvfCP1+gKiOqjISkmrzWfRgIdv0Q==}
       JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-SkkXDeYqLyQte/+Ta35PsX+XG76eebZ9oWuTpHeyM5QeAQBVPmNf/01tPyr1Nw+q1gXO3BtcrFLwUCZ2//facA==}
       JWT_ACCESS_TOKEN_EXPIRY: 15m
