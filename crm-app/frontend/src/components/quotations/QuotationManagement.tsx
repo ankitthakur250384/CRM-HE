@@ -266,69 +266,49 @@ const QuotationManagementComplete: React.FC = () => {
     }
   };
 
-  const printQuotation = (quotationId: string) => {
+  const printQuotation = async (quotationId: string) => {
     const quotation = quotations.find(q => q.id === quotationId);
     if (!quotation) return;
 
-    // Open quotation in new window for printing
-    const printWindow = window.open('', '_blank');
-    if (!printWindow) {
-      showNotification('Please allow popups to print quotations', 'error');
-      return;
-    }
+    try {
+      // Get the print HTML from the backend using the configured template
+      const response = await fetch('/api/quotations/print', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        },
+        body: JSON.stringify({ 
+          quotationId: quotationId,
+          // templateId will be auto-selected from default config if not provided
+        }),
+      });
 
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Quotation ${quotation.id}</title>
-          <style>
-            body { font-family: Arial, sans-serif; margin: 20px; }
-            .header { text-align: center; margin-bottom: 30px; }
-            .company-name { font-size: 24px; font-weight: bold; color: #1e40af; }
-            .quotation-title { font-size: 20px; margin: 10px 0; }
-            .details { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin: 20px 0; }
-            .section { border: 1px solid #ddd; padding: 15px; border-radius: 5px; }
-            .section h3 { margin-top: 0; color: #1e40af; }
-            .total { font-size: 18px; font-weight: bold; text-align: right; margin-top: 20px; }
-            @media print { body { margin: 0; } }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <div class="company-name">ASP CRANES</div>
-            <div class="quotation-title">QUOTATION</div>
-            <div>Quotation ID: ${quotation.id}</div>
-            <div>Date: ${new Date(quotation.created_at).toLocaleDateString()}</div>
-          </div>
-          
-          <div class="details">
-            <div class="section">
-              <h3>Customer Details</h3>
-              <p><strong>Company:</strong> ${quotation.customer_name}</p>
-              <p><strong>Email:</strong> ${quotation.customer_email || 'N/A'}</p>
-              <p><strong>Phone:</strong> ${quotation.customer_phone || 'N/A'}</p>
-            </div>
-            
-            <div class="section">
-              <h3>Project Details</h3>
-              <p><strong>Equipment:</strong> ${quotation.machine_type}</p>
-              <p><strong>Duration:</strong> ${quotation.number_of_days} days</p>
-              <p><strong>Working Hours:</strong> ${quotation.working_hours}/day</p>
-              <p><strong>Order Type:</strong> ${quotation.order_type}</p>
-            </div>
-          </div>
-          
-          <div class="total">
-            <p>Total Amount: ₹${quotation.total_cost.toLocaleString('en-IN')}</p>
-          </div>
-        </body>
-      </html>
-    `);
-    
-    printWindow.document.close();
-    printWindow.print();
-    showNotification('Print dialog opened', 'success');
+      if (!response.ok) {
+        throw new Error('Failed to generate print version');
+      }
+
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to generate print version');
+      }
+
+      // Open quotation in new window for printing using the template
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        showNotification('Please allow popups to print quotations', 'error');
+        return;
+      }
+
+      printWindow.document.write(result.html);
+      printWindow.document.close();
+      printWindow.print();
+      
+      showNotification('Print window opened successfully', 'success');
+    } catch (error) {
+      console.error('Error printing quotation:', error);
+      showNotification('Failed to print quotation', 'error');
+    }
   };
 
   const emailQuotation = (quotationId: string) => {

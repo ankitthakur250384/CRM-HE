@@ -119,39 +119,76 @@ router.post('/preview', authenticateToken, async (req, res) => {
 // Print quotation
 router.post('/print', authenticateToken, async (req, res) => {
   try {
-    const { quotationId, templateId } = req.body;
+    let { quotationId, templateId } = req.body;
     
     console.log('🖨️ Print request:', { quotationId, templateId });
 
-    // Generate preview first
-    const previewBody = { quotationId, templateId, format: 'html' };
-    const previewReq = { body: previewBody };
-    const previewRes = { 
-      json: (data) => data,
-      status: (code) => ({ json: (data) => ({ ...data, statusCode: code }) })
-    };
-
-    // Simulate calling the preview endpoint
-    const mockRes = {
-      data: null,
-      json(data) { this.data = data; },
-      status(code) { 
-        return {
-          json: (data) => { this.data = { ...data, statusCode: code }; }
-        };
-      }
-    };
-
-    // Call preview logic directly
-    await router.stack.find(layer => layer.route && layer.route.path === '/preview')
-      ?.route.stack[0].handle(previewReq, mockRes, () => {});
-
-    if (!mockRes.data || !mockRes.data.success) {
-      throw new Error('Failed to generate preview for printing');
+    if (!quotationId) {
+      return res.status(400).json({ success: false, error: 'Quotation ID is required' });
     }
 
+    // Get quotation
+    const quotationQuery = 'SELECT * FROM quotations WHERE id = $1';
+    const quotationResult = await db.query(quotationQuery, [quotationId]);
+    
+    if (quotationResult.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Quotation not found' });
+    }
+
+    const quotation = quotationResult.rows[0];
+    console.log('📋 Found quotation:', quotation.id);
+
+    // If no template specified, get default template
+    if (!templateId) {
+      const defaultTemplateQuery = `
+        SELECT * FROM quotation_templates 
+        WHERE is_default = true 
+        ORDER BY created_at DESC 
+        LIMIT 1
+      `;
+      const defaultTemplateResult = await db.query(defaultTemplateQuery);
+      if (defaultTemplateResult.rows.length > 0) {
+        templateId = defaultTemplateResult.rows[0].id;
+        console.log('🎯 Using default template:', templateId);
+      }
+    }
+
+    // Get machines for this quotation
+    const machinesQuery = `
+      SELECT qm.*,
+             e.name as equipment_name,
+             e.model,
+             e.specifications,
+             e.category as equipment_category
+      FROM quotation_machines qm
+      LEFT JOIN equipment e ON qm.equipment_id = e.id
+      WHERE qm.quotation_id = $1
+      ORDER BY qm.created_at
+    `;
+    
+    const machinesResult = await db.query(machinesQuery, [quotationId]);
+    const machines = machinesResult.rows;
+    console.log('🏗️ Equipment count:', machines.length);
+
+    // Get template
+    const templateQuery = `
+      SELECT * FROM quotation_templates 
+      WHERE id = $1
+    `;
+    
+    const templateResult = await db.query(templateQuery, [templateId]);
+    if (templateResult.rows.length === 0) {
+      return res.status(404).json({ success: false, error: 'Template not found' });
+    }
+
+    const template = templateResult.rows[0];
+    console.log('🎨 Template:', template.name);
+
+    // Generate HTML from template
+    const html = await generateQuotationHtml(quotation, machines, template);
+
     // Add print-specific styling
-    const printHtml = addPrintStyles(mockRes.data.html);
+    const printHtml = addPrintStyles(html);
 
     res.json({ success: true, html: printHtml });
 
