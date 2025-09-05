@@ -6,15 +6,15 @@
 echo "🔧 Setting up MFA database schema..."
 
 # Check if PostgreSQL is running
-if ! docker-compose ps db | grep -q "Up"; then
+if ! docker-compose ps postgres | grep -q "Up"; then
     echo "❌ Database container is not running. Starting..."
-    docker-compose up -d db
-    sleep 5
+    docker-compose up -d postgres
+    sleep 10
 fi
 
 # Run the MFA schema setup
 echo "📊 Creating MFA tables and columns..."
-docker-compose exec -T db psql -U postgres -d aspcranes_crm < setup_mfa_database.sql
+docker-compose exec -T postgres psql -U postgres -d asp_crm < setup_mfa_database.sql
 
 if [ $? -eq 0 ]; then
     echo "✅ MFA database schema setup complete!"

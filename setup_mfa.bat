@@ -5,16 +5,16 @@ REM Run this to set up MFA support in your database
 echo 🔧 Setting up MFA database schema...
 
 REM Check if PostgreSQL is running
-docker-compose ps db | findstr /C:"Up" >nul
+docker-compose ps postgres | findstr /C:"Up" >nul
 if errorlevel 1 (
     echo ❌ Database container is not running. Starting...
-    docker-compose up -d db
-    timeout /t 5 /nobreak >nul
+    docker-compose up -d postgres
+    timeout /t 10 /nobreak >nul
 )
 
 REM Run the MFA schema setup
 echo 📊 Creating MFA tables and columns...
-docker-compose exec -T db psql -U postgres -d aspcranes_crm < setup_mfa_database.sql
+docker-compose exec -T postgres psql -U postgres -d asp_crm < setup_mfa_database.sql
 
 if %errorlevel% equ 0 (
     echo ✅ MFA database schema setup complete!
