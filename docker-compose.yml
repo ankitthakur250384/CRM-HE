@@ -5,7 +5,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: crmdb@21
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-crmdb_secure_2024}
       POSTGRES_DB: asp_crm
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -30,19 +30,19 @@ services:
       DB_PORT: 5432
       DB_NAME: asp_crm
       DB_USER: postgres
-      DB_PASSWORD: crmdb@21
-      JWT_SECRET: brnpGhQa2G1JlQ+RA69ki0vJCc3Bb/a8jKC7FGBn5Y5EuBwlAKmcXx+BRkagkIUDrC/3Liup0WDgZxvLz0EmrQ==
-      JWT_REFRESH_SECRET: PIPQdZjRjyZ33EPA0SMl+PCNvZTFf5yyh47Bfwyh2fTr0JVmX5poEZ2S8+H7/99Ph0toIwOWQhBFMgUONvcZeQ==
+      DB_PASSWORD: ${DB_PASSWORD:-crmdb_secure_2024}
+      JWT_SECRET: ${JWT_SECRET:-MoBly0rPrUSgf8yj0yuzTQgceJJy/FwCaYY62qGA7zm3vFugjPh46YR5uHsvfCP1+gKiOqjISkmrzWfRgIdv0Q==}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-SkkXDeYqLyQte/+Ta35PsX+XG76eebZ9oWuTpHeyM5QeAQBVPmNf/01tPyr1Nw+q1gXO3BtcrFLwUCZ2//facA==}
       JWT_ACCESS_TOKEN_EXPIRY: 15m
       JWT_REFRESH_TOKEN_EXPIRY: 7d
-      SESSION_SECRET: KYozTqin2gKmQIZZMHh6iVAApporQwYXbpBJVIHmPtY=
+      SESSION_SECRET: ${SESSION_SECRET:-hhxqD54L9QVzZkLZ+s9WXswDQPOS6SvUgBYhxKMUndw=}
       CORS_ORIGIN: http://103.224.243.242:3000
       LOG_LEVEL: info
       RATE_LIMIT_WINDOW_MS: 900000
       RATE_LIMIT_MAX_REQUESTS: 100
       # CrewAI Configuration
       CREWAI_API_URL: https://asp-cranes-ai-sales-chatbot-v1-19ac7cde-f23-cb712937.crewai.com
-      CREWAI_API_TOKEN: 323534e6cfe2
+      CREWAI_API_TOKEN: ${CREWAI_API_TOKEN:-}
     depends_on:
       postgres:
         condition: service_healthy

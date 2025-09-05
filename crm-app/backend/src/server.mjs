@@ -33,7 +33,6 @@ import operatorRoutes from './routes/operatorRoutes.mjs';
 import activityRoutes from './routes/activityRoutes.mjs';
 import notificationRoutes from './routes/notificationRoutes.mjs';
 import dashboardRoutes from './routes/dashboardRoutes.mjs';
-import aiRoutes from './routes/aiRoutes.mjs';
 
 import dbConfigRoutes from './routes/dbConfigRoutes.mjs';
 import templateRoutes from './routes/templateRoutes.mjs';
