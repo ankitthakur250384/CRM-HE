@@ -22,11 +22,10 @@ router.post('/preview', authenticateToken, async (req, res) => {
       }
     }
 
-    // If still no template, get the first active template
+    // If still no template, get the first available template
     if (!templateId) {
       const firstTemplateQuery = `
         SELECT id FROM quotation_templates 
-        WHERE (is_active = true OR is_active IS NULL)
         ORDER BY is_default DESC NULLS LAST, created_at DESC 
         LIMIT 1
       `;
@@ -88,7 +87,7 @@ router.post('/preview', authenticateToken, async (req, res) => {
     // Get template
     const templateQuery = `
       SELECT * FROM quotation_templates 
-      WHERE id = $1 AND (is_active = true OR is_active IS NULL)
+      WHERE id = $1
     `;
     
     const templateResult = await db.query(templateQuery, [templateId]);
