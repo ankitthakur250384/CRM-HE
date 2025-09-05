@@ -42,6 +42,7 @@ services:
       # CrewAI Configuration
       CREWAI_API_URL: https://asp-cranes-ai-sales-chatbot-v1-19ac7cde-f23-cb712937.crewai.com
       CREWAI_API_TOKEN: ${CREWAI_API_TOKEN:-}
+      CREWAI_USER_TOKEN: ${CREWAI_USER_TOKEN:-}
     depends_on:
       postgres:
         condition: service_healthy

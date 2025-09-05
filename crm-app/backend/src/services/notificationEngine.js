@@ -616,10 +616,9 @@ class NotificationEngine {
   async getUsersByRoles(roles) {
     try {
       const query = `
-        SELECT uid as id, email, phone, display_name as name, role
+        SELECT uid as id, email, display_name as name, role
         FROM users 
         WHERE role = ANY($1)
-        AND is_active = TRUE
       `;
       
       const result = await db.query(query, [roles]);
