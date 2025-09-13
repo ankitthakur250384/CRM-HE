@@ -762,131 +762,110 @@ function addPrintStyles(html) {
 function renderTemplateElements(elements, quotation, machines) {
   console.log('🎨 Rendering template elements:', elements.length);
   
-  const variableMap = {
-    // Company information
-    'company.name': 'ASP Cranes',
-    'company_name': 'ASP Cranes',
-    'company.address': 'Professional Crane Services & Equipment Rental',
-    'company_address': 'Professional Crane Services & Equipment Rental',
-    'company.phone': '+91-XXXXXXXXXX',
-    'company_phone': '+91-XXXXXXXXXX',
-    'company.email': 'info@aspcranes.com',
-    'company_email': 'info@aspcranes.com',
-    
-    // Quotation information
-    'quotation.number': quotation.id || '',
-    'quotation_number': quotation.id || '',
-    'quotation.date': formatDate(quotation.created_at),
-    'quotation_date': formatDate(quotation.created_at),
-    'quotation.id': quotation.id || '',
-    'quotation_id': quotation.id || '',
-    
-    // Customer information
-    'customer.name': quotation.customer_name || '',
-    'customer_name': quotation.customer_name || '',
-    'customer.email': quotation.customer_email || '',
-    'customer_email': quotation.customer_email || '',
-    'customer.phone': quotation.customer_phone || '',
-    'customer_phone': quotation.customer_phone || '',
-    'customer.address': quotation.customer_address || '',
-    'customer_address': quotation.customer_address || '',
-    
-    // Project details
-    'project.equipment': quotation.machine_type || '',
-    'equipment_name': quotation.machine_type || '',
-    'machine_type': quotation.machine_type || '',
-    'project.duration': `${quotation.number_of_days} days`,
-    'project_duration': `${quotation.number_of_days} days`,
-    'number_of_days': quotation.number_of_days || 0,
-    'working_hours': quotation.working_hours || 0,
-    
-    // Cost information
-    'total_amount': formatCurrency(quotation.total_amount || 0),
-    'total_cost': formatCurrency(quotation.total_amount || 0),
-    'quotation.total': formatCurrency(quotation.total_amount || 0),
-    'working_cost': formatCurrency(quotation.working_cost || 0),
-    'transportation_cost': formatCurrency(quotation.transportation_cost || 0)
-  };
-  
-  function replaceVariables(text) {
-    if (!text || typeof text !== 'string') return text;
-    
-    let result = text;
-    for (const [key, value] of Object.entries(variableMap)) {
-      const regex = new RegExp(`{{\\s*${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*}}`, 'g');
-      result = result.replace(regex, value);
+  if (!elements || !Array.isArray(elements)) {
+    return '<p>No template elements found</p>';
+  }
+
+  return elements.map(element => {
+    const style = element.style || {};
+    const styleStr = Object.entries(style)
+      .map(([key, value]) => `${key.replace(/([A-Z])/g, '-$1').toLowerCase()}: ${value}`)
+      .join('; ');
+
+    switch (element.type) {
+      case 'header':
+        return `<div style="${styleStr}">
+          <h1 style="margin: 0; ${styleStr}">${replaceVariables(element.content, quotation)}</h1>
+        </div>`;
+
+      case 'text':
+        const textContent = replaceVariables(element.content, quotation)
+          .replace(/\n/g, '<br>');
+        return `<div style="${styleStr}">
+          <p style="margin: 0; white-space: pre-line;">${textContent}</p>
+        </div>`;
+
+      case 'table':
+        if (!element.config || !element.config.rows) {
+          return `<div style="${styleStr}">Table configuration missing</div>`;
+        }
+        
+        const { rows, columns, showHeader, columnWidths } = element.config;
+        let tableHtml = `<table style="width: 100%; border-collapse: collapse; ${styleStr}">`;
+        
+        // Add header if configured
+        if (showHeader && columns) {
+          tableHtml += '<thead><tr>';
+          columns.forEach((col, index) => {
+            const width = columnWidths && columnWidths[index] ? columnWidths[index] : 'auto';
+            tableHtml += `<th style="border: 1px solid #ddd; padding: 8px; background-color: #f5f5f5; width: ${width};">${col}</th>`;
+          });
+          tableHtml += '</tr></thead>';
+        }
+        
+        // Add rows
+        tableHtml += '<tbody>';
+        rows.forEach(row => {
+          tableHtml += '<tr>';
+          row.forEach((cell, index) => {
+            const width = columnWidths && columnWidths[index] ? columnWidths[index] : 'auto';
+            const cellContent = replaceVariables(cell, quotation);
+            tableHtml += `<td style="border: 1px solid #ddd; padding: 8px; width: ${width};">${cellContent}</td>`;
+          });
+          tableHtml += '</tr>';
+        });
+        tableHtml += '</tbody></table>';
+        
+        return `<div style="${styleStr}">${tableHtml}</div>`;
+
+      case 'terms':
+        const termsContent = replaceVariables(element.content, quotation)
+          .replace(/\n/g, '<br>')
+          .replace(/\n\n/g, '<br><br>');
+        return `<div style="${styleStr}">
+          <div style="white-space: pre-line; line-height: 1.4;">${termsContent}</div>
+        </div>`;
+
+      default:
+        return `<div style="${styleStr}">${replaceVariables(element.content || '', quotation)}</div>`;
     }
+  }).join('\n');
+  
+  // Enhanced variable replacement function
+  function replaceVariables(content, quotationData) {
+    if (!content || !quotationData) return content;
+
+    const variables = {
+      '{{customer_name}}': quotationData.customer_name || 'N/A',
+      '{{customer_email}}': quotationData.customer_email || 'N/A', 
+      '{{customer_phone}}': quotationData.customer_phone || 'N/A',
+      '{{customer_address}}': quotationData.customer_address || 'N/A',
+      '{{quotation_id}}': quotationData.id || 'N/A',
+      '{{machine_type}}': quotationData.machine_type || 'N/A',
+      '{{order_type}}': quotationData.order_type || 'N/A',
+      '{{number_of_days}}': quotationData.number_of_days || 'N/A',
+      '{{working_hours}}': quotationData.working_hours || 'N/A',
+      '{{total_cost}}': quotationData.total_cost ? `₹${Number(quotationData.total_cost).toLocaleString('en-IN')}` : 'N/A',
+      '{{created_date}}': quotationData.created_at ? new Date(quotationData.created_at).toLocaleDateString('en-IN') : 'N/A',
+      '{{site_distance}}': quotationData.site_distance || 'N/A',
+      '{{usage}}': quotationData.usage || 'N/A',
+      '{{shift}}': quotationData.shift || 'N/A',
+      '{{food_resources}}': quotationData.food_resources || 'N/A',
+      // Table-specific variables
+      '{{item_name}}': quotationData.machine_type || 'Mobile Crane',
+      '{{item_capacity}}': quotationData.machine_type || 'N/A',
+      '{{item_duration}}': quotationData.number_of_days ? `${quotationData.number_of_days} days` : 'N/A',
+      '{{item_rate}}': quotationData.total_cost ? `₹${Number(quotationData.total_cost).toLocaleString('en-IN')}` : 'N/A',
+      '{{item_amount}}': quotationData.total_cost ? `₹${Number(quotationData.total_cost).toLocaleString('en-IN')}` : 'N/A'
+    };
+
+    let result = content;
+    for (const [variable, value] of Object.entries(variables)) {
+      result = result.replace(new RegExp(variable.replace(/[{}]/g, '\\$&'), 'g'), value);
+    }
+    
     return result;
   }
-  
-  function renderElement(element) {
-    console.log('🔧 Rendering element:', element.type);
-    
-    switch (element.type) {
-      case 'text':
-      case 'paragraph':
-        return `<div class="template-text">${replaceVariables(element.content || element.text || '')}</div>`;
-      
-      case 'heading':
-      case 'header':
-        const level = element.level || 2;
-        return `<h${level} class="template-heading">${replaceVariables(element.content || element.text || '')}</h${level}>`;
-      
-      case 'table':
-        if (element.rows && element.rows.length > 0) {
-          let tableHtml = '<table class="template-table">';
-          element.rows.forEach((row, rowIndex) => {
-            const isHeader = rowIndex === 0 && element.hasHeader !== false;
-            tableHtml += '<tr>';
-            if (row.cells) {
-              row.cells.forEach(cell => {
-                const tag = isHeader ? 'th' : 'td';
-                tableHtml += `<${tag}>${replaceVariables(cell.content || cell.text || '')}</${tag}>`;
-              });
-            }
-            tableHtml += '</tr>';
-          });
-          tableHtml += '</table>';
-          return tableHtml;
-        }
-        return '<div class="template-section">Table data not available</div>';
-      
-      case 'image':
-        if (element.src) {
-          return `<img src="${element.src}" alt="${element.alt || ''}" style="max-width: 100%; height: auto;" />`;
-        }
-        return '';
-      
-      case 'divider':
-        return '<hr style="margin: 20px 0; border: 1px solid #ddd;" />';
-      
-      case 'spacer':
-        const height = element.height || 20;
-        return `<div style="height: ${height}px;"></div>`;
-      
-      case 'container':
-      case 'section':
-        let containerHtml = '<div class="template-section">';
-        if (element.children && element.children.length > 0) {
-          element.children.forEach(child => {
-            containerHtml += renderElement(child);
-          });
-        }
-        containerHtml += '</div>';
-        return containerHtml;
-      
-      default:
-        console.warn('⚠️ Unknown element type:', element.type);
-        return `<div class="template-text">${replaceVariables(element.content || element.text || '')}</div>`;
-    }
-  }
-  
-  let html = '';
-  elements.forEach(element => {
-    html += renderElement(element);
-  });
-  
-  return html;
 }
 
 export default router;
