@@ -405,35 +405,54 @@ async function generateQuotationHtml(quotation, machines, template) {
   // Second, try to use template elements (Template Builder format)
   if (template.elements && Array.isArray(template.elements) && template.elements.length > 0) {
     console.log('✅ Using template elements (Template Builder)');
-    // For now, convert elements to basic HTML
-    // This would need full Template Builder renderer implementation
-    let html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Quotation ${quotation.id}</title>
-        <style>
-          body { font-family: Arial, sans-serif; margin: 20px; }
-          .header { text-align: center; margin-bottom: 20px; }
-          .content { margin: 20px 0; }
-        </style>
-      </head>
-      <body>
-        <div class="header">
-          <h1>ASP Cranes - Quotation</h1>
-          <p>Professional Crane Services</p>
-        </div>
-        <div class="content">
-          <p><strong>Quotation ID:</strong> ${quotation.id}</p>
-          <p><strong>Customer:</strong> ${quotation.customer_name}</p>
-          <p><strong>Equipment:</strong> ${quotation.machine_type}</p>
-          <p><strong>Total Amount:</strong> ${formatCurrency(quotation.total_amount || 0)}</p>
-        </div>
-      </body>
-      </html>
-    `;
-    return html;
+    console.log('🔧 Elements count:', template.elements.length);
+    
+    try {
+      // Parse elements if they are stored as string
+      let elements = template.elements;
+      if (typeof elements === 'string') {
+        elements = JSON.parse(elements);
+      }
+      
+      // Render template elements to HTML
+      const renderedContent = renderTemplateElements(elements, quotation, machines);
+      
+      let html = `
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <title>Quotation ${quotation.id}</title>
+          <style>
+            body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+            .template-container { max-width: 800px; margin: 0 auto; }
+            .template-header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid #2563eb; padding-bottom: 20px; }
+            .template-section { margin: 20px 0; }
+            .template-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+            .template-table th, .template-table td { border: 1px solid #ddd; padding: 12px; text-align: left; }
+            .template-table th { background-color: #f8f9fa; font-weight: bold; }
+            .template-text { margin: 10px 0; }
+            .template-heading { color: #2563eb; margin: 20px 0 10px 0; }
+            @media print { 
+              body { margin: 0; } 
+              .template-container { max-width: none; margin: 0; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="template-container">
+            ${renderedContent}
+          </div>
+        </body>
+        </html>
+      `;
+      
+      console.log('✅ Template builder HTML generated successfully');
+      return html;
+    } catch (error) {
+      console.error('❌ Error rendering template elements:', error);
+      // Fall through to fallback template
+    }
   }
   
   // Fallback to hardcoded template if no content (backward compatibility)
@@ -737,6 +756,137 @@ function addPrintStyles(html) {
   `;
   
   return html.replace('</head>', printStyles + '</head>');
+}
+
+// Template Builder Elements Renderer
+function renderTemplateElements(elements, quotation, machines) {
+  console.log('🎨 Rendering template elements:', elements.length);
+  
+  const variableMap = {
+    // Company information
+    'company.name': 'ASP Cranes',
+    'company_name': 'ASP Cranes',
+    'company.address': 'Professional Crane Services & Equipment Rental',
+    'company_address': 'Professional Crane Services & Equipment Rental',
+    'company.phone': '+91-XXXXXXXXXX',
+    'company_phone': '+91-XXXXXXXXXX',
+    'company.email': 'info@aspcranes.com',
+    'company_email': 'info@aspcranes.com',
+    
+    // Quotation information
+    'quotation.number': quotation.id || '',
+    'quotation_number': quotation.id || '',
+    'quotation.date': formatDate(quotation.created_at),
+    'quotation_date': formatDate(quotation.created_at),
+    'quotation.id': quotation.id || '',
+    'quotation_id': quotation.id || '',
+    
+    // Customer information
+    'customer.name': quotation.customer_name || '',
+    'customer_name': quotation.customer_name || '',
+    'customer.email': quotation.customer_email || '',
+    'customer_email': quotation.customer_email || '',
+    'customer.phone': quotation.customer_phone || '',
+    'customer_phone': quotation.customer_phone || '',
+    'customer.address': quotation.customer_address || '',
+    'customer_address': quotation.customer_address || '',
+    
+    // Project details
+    'project.equipment': quotation.machine_type || '',
+    'equipment_name': quotation.machine_type || '',
+    'machine_type': quotation.machine_type || '',
+    'project.duration': `${quotation.number_of_days} days`,
+    'project_duration': `${quotation.number_of_days} days`,
+    'number_of_days': quotation.number_of_days || 0,
+    'working_hours': quotation.working_hours || 0,
+    
+    // Cost information
+    'total_amount': formatCurrency(quotation.total_amount || 0),
+    'total_cost': formatCurrency(quotation.total_amount || 0),
+    'quotation.total': formatCurrency(quotation.total_amount || 0),
+    'working_cost': formatCurrency(quotation.working_cost || 0),
+    'transportation_cost': formatCurrency(quotation.transportation_cost || 0)
+  };
+  
+  function replaceVariables(text) {
+    if (!text || typeof text !== 'string') return text;
+    
+    let result = text;
+    for (const [key, value] of Object.entries(variableMap)) {
+      const regex = new RegExp(`{{\\s*${key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*}}`, 'g');
+      result = result.replace(regex, value);
+    }
+    return result;
+  }
+  
+  function renderElement(element) {
+    console.log('🔧 Rendering element:', element.type);
+    
+    switch (element.type) {
+      case 'text':
+      case 'paragraph':
+        return `<div class="template-text">${replaceVariables(element.content || element.text || '')}</div>`;
+      
+      case 'heading':
+      case 'header':
+        const level = element.level || 2;
+        return `<h${level} class="template-heading">${replaceVariables(element.content || element.text || '')}</h${level}>`;
+      
+      case 'table':
+        if (element.rows && element.rows.length > 0) {
+          let tableHtml = '<table class="template-table">';
+          element.rows.forEach((row, rowIndex) => {
+            const isHeader = rowIndex === 0 && element.hasHeader !== false;
+            tableHtml += '<tr>';
+            if (row.cells) {
+              row.cells.forEach(cell => {
+                const tag = isHeader ? 'th' : 'td';
+                tableHtml += `<${tag}>${replaceVariables(cell.content || cell.text || '')}</${tag}>`;
+              });
+            }
+            tableHtml += '</tr>';
+          });
+          tableHtml += '</table>';
+          return tableHtml;
+        }
+        return '<div class="template-section">Table data not available</div>';
+      
+      case 'image':
+        if (element.src) {
+          return `<img src="${element.src}" alt="${element.alt || ''}" style="max-width: 100%; height: auto;" />`;
+        }
+        return '';
+      
+      case 'divider':
+        return '<hr style="margin: 20px 0; border: 1px solid #ddd;" />';
+      
+      case 'spacer':
+        const height = element.height || 20;
+        return `<div style="height: ${height}px;"></div>`;
+      
+      case 'container':
+      case 'section':
+        let containerHtml = '<div class="template-section">';
+        if (element.children && element.children.length > 0) {
+          element.children.forEach(child => {
+            containerHtml += renderElement(child);
+          });
+        }
+        containerHtml += '</div>';
+        return containerHtml;
+      
+      default:
+        console.warn('⚠️ Unknown element type:', element.type);
+        return `<div class="template-text">${replaceVariables(element.content || element.text || '')}</div>`;
+    }
+  }
+  
+  let html = '';
+  elements.forEach(element => {
+    html += renderElement(element);
+  });
+  
+  return html;
 }
 
 export default router;

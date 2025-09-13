@@ -24,6 +24,7 @@ import mfaRoutes from './routes/mfaRoutes.mjs';
 import dealsRoutes from './routes/dealsRoutes.mjs';
 import leadsRoutes from './routes/leadsRoutes.mjs';
 import quotationRoutes from './routes/quotationRoutes.mjs';
+import quotationPrintRoutes from './routes/quotationPrintRoutes.mjs';
 import customerRoutes from './routes/customerRoutes.mjs';
 import equipmentRoutes from './routes/equipmentRoutes.mjs';
 import configRoutes from './routes/configRoutes.mjs';
@@ -169,9 +170,11 @@ app.get('/api/check', (req, res) => {
 
 // Mount all API routes
 app.use('/api/auth', authRoutes);
+app.use('/api/mfa', mfaRoutes);
 app.use('/api/deals', dealsRoutes);
 app.use('/api/leads', leadsRoutes);
 app.use('/api/quotations', quotationRoutes);
+app.use('/api/quotations', quotationPrintRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/equipment', equipmentRoutes);
 app.use('/api/config', configRoutes);
