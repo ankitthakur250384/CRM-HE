@@ -38,6 +38,7 @@ import dashboardRoutes from './routes/dashboardRoutes.mjs';
 import dbConfigRoutes from './routes/dbConfigRoutes.mjs';
 import templateRoutes from './routes/templateRoutes.mjs';
 import templateConfigRoutes from './routes/templateConfigRoutes.mjs';
+import templateBuilderRoutes from './routes/templateBuilderRoutes.mjs';
 
 import modernTemplateRoutes from './routes/modernTemplateRoutes.mjs';
 console.log('DEBUG: modernTemplateRoutes import:', modernTemplateRoutes);
@@ -193,6 +194,8 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/crewai', crewaiCloudRoutes);
 
 // Mount template routes - ORDER MATTERS: more specific routes first
+console.log('🔧 Mounting /api/templates/builder route...');
+app.use('/api/templates/builder', templateBuilderRoutes);
 console.log('🔧 Mounting /api/templates/modern route...');
 app.use('/api/templates/modern', modernTemplateRoutes);
 console.log('🔧 Mounting /api/templates route...');
