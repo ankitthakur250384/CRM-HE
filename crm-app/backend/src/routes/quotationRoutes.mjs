@@ -9,6 +9,7 @@ import pg from 'pg';
 import { v4 as uuidv4 } from 'uuid';
 import { authenticateToken } from '../middleware/authMiddleware.mjs';
 import { generateQuotationTemplate } from '../utils/pdfGenerator.js';
+import { QuotationTableBuilder } from '../utils/quotationTableBuilder.mjs';
 
 const router = express.Router();
 
@@ -492,5 +493,138 @@ router.delete('/:id', async (req, res) => {
     });
   }
 });
+
+/**
+ * POST /api/quotations/print - Generate printable quotation using Twenty CRM table builder pattern
+ */
+router.post('/print', authenticateToken, async (req, res) => {
+  try {
+    const { quotationId } = req.body;
+    
+    console.log('🖨️ [QuotationRoutes] Print request for quotation:', quotationId);
+
+    if (!quotationId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Quotation ID is required'
+      });
+    }
+
+    // Get quotation with full details
+    const quotationData = await getQuotationWithFullDetails(quotationId);
+    if (!quotationData) {
+      return res.status(404).json({
+        success: false,
+        error: 'Quotation not found'
+      });
+    }
+
+    // Use Twenty CRM inspired table builder
+    const tableBuilder = new QuotationTableBuilder();
+    const html = tableBuilder
+      .setData(quotationData)
+      .setOptions({ printMode: true, theme: 'professional' })
+      .generatePrintHTML();
+
+    console.log('✅ [QuotationRoutes] Print HTML generated successfully');
+
+    res.json({
+      success: true,
+      html,
+      quotation: {
+        id: quotationData.id,
+        number: quotationData.quotation_number
+      },
+      method: 'Twenty CRM Table Builder'
+    });
+
+  } catch (error) {
+    console.error('❌ [QuotationRoutes] Print generation failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Print generation failed',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * Helper function to get quotation with complete details for printing
+ */
+async function getQuotationWithFullDetails(quotationId) {
+  const client = await pool.connect();
+  
+  try {
+    // Get basic quotation info
+    const quotationQuery = `
+      SELECT 
+        q.*,
+        c.name as customer_name,
+        c.email as customer_email,
+        c.phone as customer_phone,
+        c.address as customer_address,
+        c.company as customer_company
+      FROM quotations q
+      LEFT JOIN customers c ON q.customer_id = c.id
+      WHERE q.id = $1 AND q.deleted_at IS NULL
+    `;
+    
+    const quotationResult = await client.query(quotationQuery, [quotationId]);
+    
+    if (quotationResult.rows.length === 0) {
+      return null;
+    }
+    
+    const quotation = quotationResult.rows[0];
+    
+    // Get quotation items
+    const itemsQuery = `
+      SELECT 
+        description,
+        quantity,
+        unit_price,
+        total,
+        notes
+      FROM quotation_items
+      WHERE quotation_id = $1
+      ORDER BY created_at ASC
+    `;
+    
+    const itemsResult = await client.query(itemsQuery, [quotationId]);
+    
+    // Structure the complete data
+    return {
+      id: quotation.id,
+      quotation_number: quotation.quotation_number,
+      description: quotation.description,
+      status: quotation.status,
+      valid_until: quotation.valid_until,
+      total_amount: quotation.total_amount,
+      tax_rate: quotation.tax_rate,
+      created_at: quotation.created_at,
+      updated_at: quotation.updated_at,
+      
+      customer: {
+        name: quotation.customer_name,
+        email: quotation.customer_email,
+        phone: quotation.customer_phone,
+        address: quotation.customer_address,
+        company: quotation.customer_company
+      },
+      
+      company: {
+        name: 'ASP Cranes',
+        address: 'Industrial Area, New Delhi, India',
+        phone: '+91-XXXX-XXXX',
+        email: 'info@aspcranes.com'
+      },
+      
+      items: itemsResult.rows || []
+    };
+    
+  } finally {
+    client.release();
+  }
+}
 
 export default router;
