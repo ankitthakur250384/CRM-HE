@@ -98,22 +98,36 @@ async function getTemplateForRendering(templateId) {
   try {
     let template;
     
+    console.log('🔍 Getting template for rendering:', templateId);
+    
     if (templateId) {
       // Get specific template
       template = await db.oneOrNone(
         'SELECT * FROM quotation_templates WHERE id = $1 AND is_active = true',
         [templateId]
       );
+      console.log('📋 Specific template found:', template ? template.id : 'None');
     } else {
       // Get default template
       template = await db.oneOrNone(
         'SELECT * FROM quotation_templates WHERE is_default = true AND is_active = true ORDER BY created_at DESC LIMIT 1'
       );
+      console.log('🎯 Default template found:', template ? template.id : 'None');
+    }
+
+    if (template) {
+      console.log('✅ Template details:', {
+        id: template.id,
+        name: template.name,
+        hasElements: !!template.elements,
+        elementsType: typeof template.elements,
+        isDefault: template.is_default
+      });
     }
 
     return template;
   } catch (error) {
-    console.error('Error fetching template:', error);
+    console.error('❌ Error fetching template:', error);
     return null;
   }
 }
@@ -132,6 +146,9 @@ async function updateTemplateUsage(templateId) {
 
 // Main function to generate quotation HTML
 async function generateQuotationHTML(quotation, template, forPrint = false) {
+  console.log('🎨 Generating HTML for quotation:', quotation.id);
+  console.log('📋 Using template:', template.id, template.name);
+  
   const printStyles = forPrint ? `
     <style>
       @media print {
@@ -284,21 +301,50 @@ async function generateQuotationHTML(quotation, template, forPrint = false) {
 
   let htmlContent = '';
 
-  // Check if template has elements (template builder format)
-  if (template.elements && Array.isArray(template.elements) && template.elements.length > 0) {
-    console.log('🎨 Rendering template builder format');
-    htmlContent = renderTemplateBuilderElements(template.elements, quotation);
+  console.log('🔍 Template elements type:', typeof template.elements);
+  console.log('🔍 Template elements isArray:', Array.isArray(template.elements));
+  
+  // Handle JSONB elements field - PostgreSQL returns it as already parsed object/array
+  let elements = null;
+  
+  if (template.elements) {
+    if (Array.isArray(template.elements)) {
+      // Already an array (JSONB parsed)
+      elements = template.elements;
+      console.log('✅ Elements is already an array, count:', elements.length);
+    } else if (typeof template.elements === 'string') {
+      // String that needs parsing
+      try {
+        elements = JSON.parse(template.elements);
+        console.log('✅ Parsed string elements, count:', elements.length);
+      } catch (parseError) {
+        console.error('❌ Error parsing elements string:', parseError);
+        elements = null;
+      }
+    } else if (typeof template.elements === 'object') {
+      // Object but not array - might be malformed
+      console.log('⚠️ Elements is object but not array:', template.elements);
+      elements = null;
+    }
+  }
+
+  // Generate HTML based on available data
+  if (elements && Array.isArray(elements) && elements.length > 0) {
+    console.log('🎨 Using template builder format with', elements.length, 'elements');
+    htmlContent = renderTemplateBuilderElements(elements, quotation);
   } 
   // Check if template has content (simple HTML format)
   else if (template.content && template.content.trim()) {
-    console.log('📝 Rendering simple HTML format');
+    console.log('📝 Using simple HTML content format');
     htmlContent = replaceVariablesInContent(template.content, quotation);
   }
   // Fallback to default quotation format
   else {
-    console.log('🔄 Using fallback default format');
+    console.log('🔄 Using fallback default format - no valid template data found');
     htmlContent = generateDefaultQuotationHTML(quotation);
   }
+
+  console.log('📄 Generated HTML length:', htmlContent.length);
 
   return `
     <!DOCTYPE html>
@@ -319,11 +365,16 @@ async function generateQuotationHTML(quotation, template, forPrint = false) {
 
 // Render template builder elements
 function renderTemplateBuilderElements(elements, quotation) {
+  console.log('🎨 Rendering template builder elements:', elements.length);
+  
   if (!elements || !Array.isArray(elements)) {
+    console.log('❌ Invalid elements array');
     return '<p>No template elements found</p>';
   }
 
-  return elements.map(element => {
+  return elements.map((element, index) => {
+    console.log(`🔧 Rendering element ${index + 1}:`, element.type, element.id);
+    
     const style = element.style || {};
     const styleStr = Object.entries(style)
       .map(([key, value]) => `${key.replace(/([A-Z])/g, '-$1').toLowerCase()}: ${value}`)
@@ -331,28 +382,34 @@ function renderTemplateBuilderElements(elements, quotation) {
 
     switch (element.type) {
       case 'header':
+        const headerContent = replaceVariables(element.content, quotation);
+        console.log(`📝 Header content: "${element.content}" → "${headerContent}"`);
         return `<div class="template-element" style="${styleStr}">
-          <h1 class="template-heading">${replaceVariables(element.content, quotation)}</h1>
+          <h1 class="template-heading">${headerContent}</h1>
         </div>`;
 
       case 'text':
         const textContent = replaceVariables(element.content, quotation)
           .replace(/\n/g, '<br>');
+        console.log(`📝 Text content length:`, textContent.length);
         return `<div class="template-element template-text" style="${styleStr}">
           ${textContent}
         </div>`;
 
       case 'table':
+        console.log(`📊 Table config:`, element.config ? 'exists' : 'missing');
         return renderTableElement(element, quotation, styleStr);
 
       case 'terms':
         const termsContent = replaceVariables(element.content, quotation);
+        console.log(`📋 Terms content length:`, termsContent.length);
         return `<div class="template-element terms-section" style="${styleStr}">
           <div class="terms-title">Terms & Conditions</div>
           <div class="terms-content">${termsContent}</div>
         </div>`;
 
       default:
+        console.log(`⚠️ Unknown element type: ${element.type}`);
         return `<div class="template-element" style="${styleStr}">
           ${replaceVariables(element.content || '', quotation)}
         </div>`;
@@ -402,11 +459,22 @@ function renderTableElement(element, quotation, styleStr) {
 function replaceVariables(content, quotation) {
   if (!content || typeof content !== 'string') return '';
 
+  console.log(`🔄 Replacing variables in: "${content.substring(0, 50)}..."`);
+
   const variables = {
+    // Company info
+    '{{company_name}}': 'ASP Cranes',
+    '{{company_address}}': 'Professional Crane Services & Equipment Rental',
+    '{{company_phone}}': '+91-XXXXXXXXXX',
+    '{{company_email}}': 'info@aspcranes.com',
+    
+    // Customer info
     '{{customer_name}}': quotation.customer_name || 'N/A',
     '{{customer_email}}': quotation.customer_email || 'N/A',
     '{{customer_phone}}': quotation.customer_phone || 'N/A',
     '{{customer_address}}': quotation.customer_address || 'N/A',
+    
+    // Quotation info
     '{{quotation_id}}': quotation.id || 'N/A',
     '{{quotation_number}}': quotation.id || 'N/A',
     '{{machine_type}}': quotation.machine_type || 'N/A',
@@ -421,24 +489,29 @@ function replaceVariables(content, quotation) {
     '{{usage}}': quotation.usage || 'N/A',
     '{{shift}}': quotation.shift || 'N/A',
     '{{food_resources}}': quotation.food_resources || 'N/A',
+    
     // Table-specific variables
     '{{item_name}}': quotation.machine_type || 'Mobile Crane',
     '{{item_capacity}}': quotation.machine_type || 'N/A',
     '{{item_duration}}': quotation.number_of_days ? `${quotation.number_of_days} days` : 'N/A',
     '{{item_rate}}': quotation.total_cost ? `₹${Number(quotation.total_cost).toLocaleString('en-IN')}` : 'N/A',
-    '{{item_amount}}': quotation.total_cost ? `₹${Number(quotation.total_cost).toLocaleString('en-IN')}` : 'N/A',
-    // Company info
-    '{{company_name}}': 'ASP Cranes',
-    '{{company_address}}': 'Professional Crane Services & Equipment Rental',
-    '{{company_phone}}': '+91-XXXXXXXXXX',
-    '{{company_email}}': 'info@aspcranes.com'
+    '{{item_amount}}': quotation.total_cost ? `₹${Number(quotation.total_cost).toLocaleString('en-IN')}` : 'N/A'
   };
 
   let result = content;
+  let replacementsMade = 0;
+  
   for (const [variable, value] of Object.entries(variables)) {
-    result = result.replace(new RegExp(variable.replace(/[{}]/g, '\\$&'), 'g'), value);
+    const regex = new RegExp(variable.replace(/[{}]/g, '\\$&'), 'g');
+    const oldResult = result;
+    result = result.replace(regex, value);
+    if (oldResult !== result) {
+      replacementsMade++;
+      console.log(`✅ Replaced ${variable} with "${value}"`);
+    }
   }
-
+  
+  console.log(`🔄 Made ${replacementsMade} variable replacements`);
   return result;
 }
 
