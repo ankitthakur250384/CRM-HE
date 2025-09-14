@@ -4,6 +4,12 @@ import { authenticateToken } from '../middleware/authMiddleware.mjs';
 
 const router = express.Router();
 
+// Simple test endpoint to verify if the frontend is calling our routes
+router.get('/test', (req, res) => {
+  console.log('🧪 TEST ENDPOINT CALLED - Frontend is reaching our print routes!');
+  res.json({ success: true, message: 'Print routes are working!' });
+});
+
 // GET /api/quotations/preview/:id - Preview quotation with template
 router.get('/preview/:id', authenticateToken, async (req, res) => {
   try {
