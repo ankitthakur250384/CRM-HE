@@ -3,7 +3,7 @@
  */
 import express from 'express';
 import { authenticateToken } from '../middleware/authMiddleware.mjs';
-import { dbPool } from '../lib/dbConnection.js';
+import pool from '../lib/dbConnection.js';
 import { templateService } from '../services/TemplateService.mjs';
 import { htmlGeneratorService } from '../services/HtmlGeneratorService.mjs';
 import { pdfService } from '../services/PdfService.mjs';
@@ -113,7 +113,7 @@ async function getQuotationWithDetails(quotationId) {
       WHERE q.id = $1 AND q.deleted_at IS NULL
     `;
     
-    const result = await dbPool.query(query, [quotationId]);
+    const result = await pool.query(query, [quotationId]);
     
     if (!result.rows || result.rows.length === 0) {
       return null;
@@ -133,7 +133,7 @@ async function getQuotationWithDetails(quotationId) {
       ORDER BY created_at ASC
     `;
     
-    const itemsResult = await dbPool.query(itemsQuery, [quotationId]);
+    const itemsResult = await pool.query(itemsQuery, [quotationId]);
     
     // Structure the data
     const quotation = {

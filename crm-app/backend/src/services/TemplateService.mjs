@@ -7,11 +7,11 @@
  * - Data mapping and transformation
  * - Business logic separation
  */
-import { dbPool } from '../lib/dbConnection.js';
+import pool from '../lib/dbConnection.js';
 
 export class TemplateService {
   constructor() {
-    this.dbPool = dbPool;
+    this.dbPool = pool;
   }
 
   /**
