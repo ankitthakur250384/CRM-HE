@@ -155,6 +155,18 @@ router.get('/', async (req, res) => {
 });
 
 /**
+ * GET /api/quotations/print-test - Simple test endpoint to verify routing
+ */
+router.get('/print-test', (req, res) => {
+  console.log('🧪 [QuotationRoutes] Print test endpoint called');
+  res.json({
+    success: true,
+    message: 'Print route is working!',
+    timestamp: new Date().toISOString()
+  });
+});
+
+/**
  * GET /api/quotations/:id
  * Get quotation by ID for SuiteCRM-style detailed view
  */
@@ -498,12 +510,19 @@ router.delete('/:id', async (req, res) => {
  * POST /api/quotations/print - Generate printable quotation using Twenty CRM table builder pattern
  */
 router.post('/print', authenticateToken, async (req, res) => {
+  console.log('🖨️ [QuotationRoutes] ===== PRINT ENDPOINT CALLED =====');
+  console.log('🖨️ [QuotationRoutes] Request method:', req.method);
+  console.log('🖨️ [QuotationRoutes] Request path:', req.path);
+  console.log('🖨️ [QuotationRoutes] Request body:', req.body);
+  console.log('🖨️ [QuotationRoutes] Request headers:', req.headers);
+  
   try {
     const { quotationId } = req.body;
     
     console.log('🖨️ [QuotationRoutes] Print request for quotation:', quotationId);
 
     if (!quotationId) {
+      console.log('❌ [QuotationRoutes] No quotation ID provided');
       return res.status(400).json({
         success: false,
         error: 'Quotation ID is required'
@@ -511,15 +530,24 @@ router.post('/print', authenticateToken, async (req, res) => {
     }
 
     // Get quotation with full details
+    console.log('🔍 [QuotationRoutes] Fetching quotation data...');
     const quotationData = await getQuotationWithFullDetails(quotationId);
     if (!quotationData) {
+      console.log('❌ [QuotationRoutes] Quotation not found');
       return res.status(404).json({
         success: false,
         error: 'Quotation not found'
       });
     }
 
+    console.log('✅ [QuotationRoutes] Quotation data fetched:', {
+      id: quotationData.id,
+      number: quotationData.quotation_number,
+      itemsCount: quotationData.items?.length || 0
+    });
+
     // Use Twenty CRM inspired table builder
+    console.log('🏗️ [QuotationRoutes] Building table with Twenty CRM pattern...');
     const tableBuilder = new QuotationTableBuilder();
     const html = tableBuilder
       .setData(quotationData)
@@ -527,6 +555,7 @@ router.post('/print', authenticateToken, async (req, res) => {
       .generatePrintHTML();
 
     console.log('✅ [QuotationRoutes] Print HTML generated successfully');
+    console.log('📏 [QuotationRoutes] HTML length:', html.length, 'characters');
 
     res.json({
       success: true,
@@ -535,11 +564,13 @@ router.post('/print', authenticateToken, async (req, res) => {
         id: quotationData.id,
         number: quotationData.quotation_number
       },
-      method: 'Twenty CRM Table Builder'
+      method: 'Twenty CRM Table Builder',
+      timestamp: new Date().toISOString()
     });
 
   } catch (error) {
     console.error('❌ [QuotationRoutes] Print generation failed:', error);
+    console.error('❌ [QuotationRoutes] Error stack:', error.stack);
     res.status(500).json({
       success: false,
       error: 'Print generation failed',
@@ -547,6 +578,8 @@ router.post('/print', authenticateToken, async (req, res) => {
     });
   }
 });
+
+
 
 /**
  * Helper function to get quotation with complete details for printing
