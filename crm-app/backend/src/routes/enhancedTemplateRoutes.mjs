@@ -110,6 +110,167 @@ router.post('/create', authenticateToken, async (req, res) => {
 });
 
 /**
+ * GET /api/templates/enhanced/list
+ * Get all enhanced templates with filtering and pagination
+ */
+router.get('/list', authenticateToken, async (req, res) => {
+  try {
+    const { 
+      page = 1, 
+      limit = 20, 
+      search = '', 
+      category = '', 
+      theme = '',
+      isActive = true 
+    } = req.query;
+    
+    // This is a placeholder implementation - you should integrate with your database
+    // For now, return sample templates
+    const sampleTemplates = [
+      {
+        id: 'tpl_001',
+        name: 'Professional ASP Cranes Template',
+        description: 'Modern professional template with company branding',
+        theme: 'PROFESSIONAL',
+        category: 'Quotation',
+        isDefault: true,
+        isActive: true,
+        createdBy: req.user.id,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        thumbnail: null,
+        usageCount: 15
+      },
+      {
+        id: 'tpl_002', 
+        name: 'Classic Business Template',
+        description: 'Traditional business template with clean layout',
+        theme: 'CLASSIC',
+        category: 'Quotation',
+        isDefault: false,
+        isActive: true,
+        createdBy: req.user.id,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        thumbnail: null,
+        usageCount: 8
+      }
+    ];
+    
+    res.json({
+      success: true,
+      data: sampleTemplates,
+      pagination: {
+        page: parseInt(page),
+        limit: parseInt(limit),
+        total: sampleTemplates.length,
+        pages: Math.ceil(sampleTemplates.length / limit)
+      }
+    });
+  } catch (error) {
+    console.error('Error fetching enhanced templates:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch enhanced templates',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/templates/enhanced/:id
+ * Get specific enhanced template by ID
+ */
+router.get('/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const templateBuilder = new EnhancedTemplateBuilder();
+    
+    await templateBuilder.loadTemplate(id);
+    
+    res.json({
+      success: true,
+      data: templateBuilder.template
+    });
+  } catch (error) {
+    console.error('Error fetching enhanced template:', error);
+    res.status(404).json({
+      success: false,
+      error: 'Template not found',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * PUT /api/templates/enhanced/:id
+ * Update existing enhanced template
+ */
+router.put('/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = {
+      ...req.body,
+      updatedBy: req.user.id,
+      updatedAt: new Date().toISOString()
+    };
+    
+    const templateBuilder = new EnhancedTemplateBuilder();
+    await templateBuilder.loadTemplate(id);
+    
+    // Update template properties
+    Object.assign(templateBuilder.template, updateData);
+    
+    await templateBuilder.saveTemplate();
+    
+    res.json({
+      success: true,
+      data: templateBuilder.template,
+      message: 'Enhanced template updated successfully'
+    });
+  } catch (error) {
+    console.error('Error updating enhanced template:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update enhanced template',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * DELETE /api/templates/enhanced/:id
+ * Delete enhanced template (soft delete)
+ */
+router.delete('/:id', authenticateToken, async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    // Implement soft delete by setting isActive to false
+    const templateBuilder = new EnhancedTemplateBuilder();
+    await templateBuilder.loadTemplate(id);
+    
+    templateBuilder.template.isActive = false;
+    templateBuilder.template.deletedAt = new Date().toISOString();
+    templateBuilder.template.deletedBy = req.user.id;
+    
+    await templateBuilder.saveTemplate();
+    
+    res.json({
+      success: true,
+      message: 'Enhanced template deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting enhanced template:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to delete enhanced template',
+      message: error.message
+    });
+  }
+});
+
+/**
  * POST /api/templates/enhanced/preview
  * Generate template preview with advanced options
  */

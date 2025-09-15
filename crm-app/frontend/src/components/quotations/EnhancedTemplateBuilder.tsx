@@ -321,6 +321,34 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedElement, onUp
           </div>
         )}
 
+        {selectedElement.type === ELEMENT_TYPES.TERMS && (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Terms Title</label>
+              <input
+                type="text"
+                value={selectedElement.content?.title || 'Terms & Conditions'}
+                onChange={(e) => onUpdate(selectedElement.id, {
+                  content: { ...selectedElement.content, title: e.target.value }
+                })}
+                className="w-full p-2 border border-gray-300 rounded-md"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Terms Content</label>
+              <textarea
+                value={selectedElement.content?.text || ''}
+                onChange={(e) => onUpdate(selectedElement.id, {
+                  content: { ...selectedElement.content, text: e.target.value }
+                })}
+                rows={8}
+                className="w-full p-2 border border-gray-300 rounded-md"
+                placeholder="Enter terms and conditions..."
+              />
+            </div>
+          </>
+        )}
+
         {/* Styling */}
         <div>
           <h4 className="text-sm font-semibold text-gray-700 mb-3">Styling</h4>
@@ -351,7 +379,9 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedElement, onUp
               <label className="block text-sm font-medium text-gray-700 mb-1">Background</label>
               <input
                 type="color"
-                value={selectedElement.style?.backgroundColor || '#ffffff'}
+                value={selectedElement.style?.backgroundColor && selectedElement.style.backgroundColor !== 'transparent' 
+                  ? selectedElement.style.backgroundColor 
+                  : '#ffffff'}
                 onChange={(e) => onUpdate(selectedElement.id, {
                   style: { ...selectedElement.style, backgroundColor: e.target.value }
                 })}
