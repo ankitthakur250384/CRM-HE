@@ -128,30 +128,101 @@ const EnhancedTemplateManager = () => {
   };
 
   const handlePreviewTemplate = async (template: EnhancedTemplate) => {
+    console.log('🎬 Starting preview for template:', template.name);
+    
     try {
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      
+      // Add auth header if token exists
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+        console.log('🔐 Using authentication token');
+      } else {
+        console.log('⚠️ No authentication token found, proceeding without auth');
+      }
+      
+      // Sample quotation data for preview
+      const sampleQuotationData = {
+        company: {
+          name: 'ASP CRANES',
+          address: '123 Industrial Ave, Equipment District, ED 12345',
+          phone: '+1 (555) 123-4567',
+          email: 'info@aspcranes.com'
+        },
+        client: {
+          name: 'Demo Construction Ltd.',
+          address: '456 Building St, Construction City, CC 67890',
+          contact: 'John Smith',
+          phone: '+1 (555) 987-6543'
+        },
+        quotation: {
+          number: 'Q-2024-001',
+          date: new Date().toLocaleDateString(),
+          validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+          items: [
+            {
+              description: 'Mobile Crane Rental - 50 Ton',
+              quantity: 1,
+              unit: 'Day',
+              rate: 1500.00,
+              amount: 1500.00
+            },
+            {
+              description: 'Operator Services',
+              quantity: 8,
+              unit: 'Hour',
+              rate: 75.00,
+              amount: 600.00
+            }
+          ],
+          subtotal: 2100.00,
+          tax: 210.00,
+          total: 2310.00
+        }
+      };
+
+      console.log('📤 Sending preview request...');
       const response = await fetch('/api/templates/enhanced/preview', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        },
+        headers,
         body: JSON.stringify({
-          templateId: template.id,
+          templateData: template,
+          quotationData: sampleQuotationData,
           format: 'html'
         })
       });
 
+      console.log('📥 Response status:', response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ HTTP Error:', errorText);
+        throw new Error(`HTTP ${response.status}: ${response.statusText}\nDetails: ${errorText}`);
+      }
+
       const result = await response.json();
+      console.log('✅ Preview result:', result.success ? 'Success' : 'Failed');
+      
       if (result.success) {
         // Open preview in new window
-        const previewWindow = window.open('', '_blank');
+        const previewWindow = window.open('', '_blank', 'width=800,height=600');
         if (previewWindow) {
           previewWindow.document.write(result.data.html);
           previewWindow.document.close();
+          console.log('🎉 Preview opened in new window');
+        } else {
+          alert('Could not open preview window. Please check if pop-ups are blocked.');
         }
+      } else {
+        console.error('❌ Preview failed:', result.error);
+        alert('Preview failed: ' + (result.error || 'Unknown error'));
       }
     } catch (error) {
-      console.error('Error previewing template:', error);
+      console.error('💥 Error previewing template:', error);
+      alert('Error previewing template: ' + (error instanceof Error ? error.message : String(error)));
     }
   };
 
