@@ -188,6 +188,107 @@ router.post('/create', async (req, res) => {
 });
 
 /**
+ * GET /api/templates/enhanced/sample-data
+ * Get sample data for template building
+ */
+router.get('/sample-data', async (req, res) => {
+  try {
+    const sampleData = {
+      companies: [
+        {
+          id: 1,
+          name: "ASP Cranes Ltd",
+          address: "123 Industrial Park, Mumbai, Maharashtra 400001",
+          phone: "+91 22 1234 5678",
+          email: "info@aspcranes.com",
+          website: "www.aspcranes.com",
+          gstin: "27ABCDE1234F1Z5",
+          logo: "/assets/asp-logo.jpg"
+        }
+      ],
+      equipment: [
+        {
+          id: 1,
+          name: "Mobile Crane 50T",
+          description: "50 Ton Mobile Crane with Telescopic Boom",
+          rate: 5000,
+          unit: "per day",
+          category: "Mobile Cranes"
+        },
+        {
+          id: 2,
+          name: "Tower Crane TCR-60",
+          description: "60m Jib Tower Crane",
+          rate: 15000,
+          unit: "per month",
+          category: "Tower Cranes"
+        },
+        {
+          id: 3,
+          name: "Crawler Crane 80T",
+          description: "80 Ton Crawler Crane",
+          rate: 8000,
+          unit: "per day",
+          category: "Crawler Cranes"
+        }
+      ],
+      customers: [
+        {
+          id: 1,
+          name: "Construction Corp Ltd",
+          address: "456 Builder Street, Mumbai 400002",
+          contact: "Rajesh Kumar",
+          phone: "+91 98765 43210",
+          email: "rajesh@constructioncorp.com",
+          gstin: "27FGHIJ5678K2L9"
+        },
+        {
+          id: 2,
+          name: "Infrastructure Builders",
+          address: "789 Project Road, Mumbai 400003",
+          contact: "Priya Sharma",
+          phone: "+91 87654 32109",
+          email: "priya@infrabuilders.com",
+          gstin: "27MNOPQ9012R3S4"
+        }
+      ],
+      projects: [
+        {
+          id: 1,
+          name: "High-Rise Construction Project",
+          location: "Bandra, Mumbai",
+          startDate: "2024-01-15",
+          endDate: "2024-12-31",
+          description: "40-story residential tower construction"
+        },
+        {
+          id: 2,
+          name: "Bridge Construction",
+          location: "JVLR, Mumbai",
+          startDate: "2024-02-01",
+          endDate: "2024-08-31",
+          description: "Flyover bridge construction project"
+        }
+      ]
+    };
+
+    res.json({
+      success: true,
+      data: sampleData,
+      message: 'Sample data retrieved successfully'
+    });
+    
+  } catch (error) {
+    console.error('Error retrieving sample data:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve sample data',
+      message: error.message
+    });
+  }
+});
+
+/**
  * GET /api/templates/enhanced/list
  * Get all enhanced templates with filtering and pagination
  * Note: Made this endpoint less restrictive for demo purposes
