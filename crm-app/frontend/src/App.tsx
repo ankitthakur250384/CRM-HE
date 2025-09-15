@@ -26,7 +26,7 @@ import { Customers } from './pages/Customers';
 import { Deals } from './pages/Deals';
 import { DealDetails } from './pages/DealDetails';
 import { useAuthStore } from './store/authStore';
-import { TemplateManagement } from './pages/TemplateManagement';
+import { QuotationTemplates } from './pages/QuotationTemplates';
 import { AnalyticsDashboard } from './components/dashboard/AnalyticsDashboard';
 import { TaskManagement } from './pages/TaskManagement';
 import { CampaignManagement } from './pages/CampaignManagement';
@@ -157,7 +157,7 @@ function AppContent() {
             
             <Route path="admin/templates" element={
               <ProtectedRoute allowedRoles={['admin', 'sales_agent']}>
-                <TemplateManagement />
+                <QuotationTemplates />
               </ProtectedRoute>
             } />
             
