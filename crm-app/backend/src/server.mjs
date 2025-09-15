@@ -35,12 +35,6 @@ import notificationRoutes from './routes/notificationRoutes.mjs';
 import dashboardRoutes from './routes/dashboardRoutes.mjs';
 
 import dbConfigRoutes from './routes/dbConfigRoutes.mjs';
-import templateRoutes from './routes/templateRoutes.mjs';
-import templateConfigRoutes from './routes/templateConfigRoutes.mjs';
-import templateBuilderRoutes from './routes/templateBuilderRoutes.mjs';
-
-import modernTemplateRoutes from './routes/modernTemplateRoutes.mjs';
-console.log('DEBUG: modernTemplateRoutes import:', modernTemplateRoutes);
 
 // Import enhanced template routes for InvoiceNinja-style functionality
 import enhancedTemplateRoutes from './routes/enhancedTemplateRoutes.mjs';
@@ -180,7 +174,6 @@ app.use('/api/quotations', quotationRoutes);
 app.use('/api/customers', customerRoutes);
 app.use('/api/equipment', equipmentRoutes);
 app.use('/api/config', configRoutes);
-app.use('/api/config', templateConfigRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/jobs', jobRoutes);
 app.use('/api/operators', operatorRoutes);
@@ -197,12 +190,7 @@ app.use('/api/crewai', crewaiCloudRoutes);
 // Mount template routes - ORDER MATTERS: more specific routes first
 console.log('🔧 Mounting /api/templates/enhanced route...');
 app.use('/api/templates/enhanced', enhancedTemplateRoutes);
-console.log('🔧 Mounting /api/templates/builder route...');
-app.use('/api/templates/builder', templateBuilderRoutes);
-console.log('🔧 Mounting /api/templates/modern route...');
-app.use('/api/templates/modern', modernTemplateRoutes);
-console.log('🔧 Mounting /api/templates route...');
-app.use('/api/templates', templateRoutes);
+console.log('✅ Enhanced template routes mounted successfully');
 
 // Mount database config routes
 app.use('/api/dbconfig', dbConfigRoutes);
