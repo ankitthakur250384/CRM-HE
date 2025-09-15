@@ -1,0 +1,977 @@
+/**
+ * Enhanced Template Builder Service
+ * Inspired by InvoiceNinja's template system, adapted for ASP Cranes
+ * Provides visual template building, advanced PDF generation, and template management
+ */
+
+import fs from 'fs/promises';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import pg from 'pg';
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+
+// Database configuration
+const pool = new pg.Pool({
+  host: process.env.DB_HOST || 'localhost',
+  port: parseInt(process.env.DB_PORT || '5432'),
+  database: process.env.DB_NAME || 'asp_crm',
+  user: process.env.DB_USER || 'postgres',
+  password: process.env.DB_PASSWORD || 'crmdb@21',
+  ssl: (process.env.DB_SSL === 'true') ? true : false
+});
+
+/**
+ * Template Element Types - Similar to InvoiceNinja's approach
+ */
+export const TEMPLATE_ELEMENT_TYPES = {
+  HEADER: 'header',
+  COMPANY_INFO: 'company_info',
+  CLIENT_INFO: 'client_info',
+  QUOTATION_INFO: 'quotation_info',
+  ITEMS_TABLE: 'items_table',
+  TOTALS: 'totals',
+  TERMS: 'terms',
+  FOOTER: 'footer',
+  CUSTOM_TEXT: 'custom_text',
+  IMAGE: 'image',
+  DIVIDER: 'divider',
+  SPACER: 'spacer',
+  SIGNATURE: 'signature'
+};
+
+/**
+ * Template Themes - Professional styling options
+ */
+export const TEMPLATE_THEMES = {
+  MODERN: {
+    name: 'Modern',
+    primaryColor: '#2563eb',
+    secondaryColor: '#64748b',
+    accentColor: '#f59e0b',
+    fontFamily: 'Inter, sans-serif',
+    headerStyle: 'minimal',
+    tableStyle: 'bordered'
+  },
+  CLASSIC: {
+    name: 'Classic',
+    primaryColor: '#1f2937',
+    secondaryColor: '#6b7280',
+    accentColor: '#dc2626',
+    fontFamily: 'Georgia, serif',
+    headerStyle: 'traditional',
+    tableStyle: 'striped'
+  },
+  PROFESSIONAL: {
+    name: 'Professional',
+    primaryColor: '#0f172a',
+    secondaryColor: '#475569',
+    accentColor: '#059669',
+    fontFamily: 'system-ui, sans-serif',
+    headerStyle: 'corporate',
+    tableStyle: 'minimal'
+  },
+  CREATIVE: {
+    name: 'Creative',
+    primaryColor: '#7c3aed',
+    secondaryColor: '#a78bfa',
+    accentColor: '#f97316',
+    fontFamily: 'Poppins, sans-serif',
+    headerStyle: 'artistic',
+    tableStyle: 'gradient'
+  }
+};
+
+/**
+ * Enhanced Template Builder Class
+ */
+export class EnhancedTemplateBuilder {
+  constructor() {
+    this.template = {
+      id: null,
+      name: '',
+      description: '',
+      theme: 'MODERN',
+      layout: {
+        pageSize: 'A4',
+        orientation: 'portrait',
+        margins: { top: 20, right: 20, bottom: 20, left: 20 },
+        header: { height: 80, enabled: true },
+        footer: { height: 60, enabled: true }
+      },
+      elements: [],
+      settings: {
+        showLogo: true,
+        showBackground: false,
+        enableWatermark: false,
+        includeAttachments: false,
+        multiLanguage: false,
+        currency: 'INR',
+        taxDisplay: 'inclusive'
+      },
+      branding: {
+        logo: null,
+        logoPosition: 'top-left',
+        logoSize: { width: 150, height: 60 },
+        companyColors: true,
+        customCSS: ''
+      },
+      version: 1,
+      isActive: true,
+      isDefault: false,
+      createdBy: null,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+  }
+
+  /**
+   * Create a new template from scratch
+   */
+  createTemplate(templateData) {
+    this.template = {
+      ...this.template,
+      ...templateData,
+      id: this.generateTemplateId(),
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    return this;
+  }
+
+  /**
+   * Load existing template
+   */
+  async loadTemplate(templateId) {
+    try {
+      const client = await pool.connect();
+      try {
+        const result = await client.query(
+          'SELECT * FROM quotation_templates WHERE id = $1',
+          [templateId]
+        );
+
+        if (result.rows.length === 0) {
+          throw new Error('Template not found');
+        }
+
+        const templateData = result.rows[0];
+        this.template = {
+          ...this.template,
+          ...templateData,
+          elements: JSON.parse(templateData.elements || '[]'),
+          layout: JSON.parse(templateData.layout || '{}'),
+          settings: JSON.parse(templateData.settings || '{}'),
+          branding: JSON.parse(templateData.branding || '{}')
+        };
+
+        return this;
+      } finally {
+        client.release();
+      }
+    } catch (error) {
+      console.error('Error loading template:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Add element to template
+   */
+  addElement(elementType, elementData = {}) {
+    const element = this.createTemplateElement(elementType, elementData);
+    this.template.elements.push(element);
+    this.template.updatedAt = new Date();
+    return this;
+  }
+
+  /**
+   * Create template element based on type
+   */
+  createTemplateElement(type, data = {}) {
+    const baseElement = {
+      id: this.generateElementId(),
+      type,
+      position: { x: 0, y: 0, width: '100%', height: 'auto' },
+      style: this.getDefaultElementStyle(type),
+      visible: true,
+      conditional: null,
+      ...data
+    };
+
+    switch (type) {
+      case TEMPLATE_ELEMENT_TYPES.HEADER:
+        return {
+          ...baseElement,
+          content: {
+            title: '{{company.name}}',
+            subtitle: 'QUOTATION',
+            showDate: true,
+            showQuotationNumber: true,
+            alignment: 'center'
+          }
+        };
+
+      case TEMPLATE_ELEMENT_TYPES.COMPANY_INFO:
+        return {
+          ...baseElement,
+          content: {
+            fields: [
+              '{{company.name}}',
+              '{{company.address}}',
+              '{{company.phone}}',
+              '{{company.email}}',
+              '{{company.website}}'
+            ],
+            layout: 'vertical',
+            alignment: 'left'
+          }
+        };
+
+      case TEMPLATE_ELEMENT_TYPES.CLIENT_INFO:
+        return {
+          ...baseElement,
+          content: {
+            title: 'Bill To:',
+            fields: [
+              '{{client.name}}',
+              '{{client.company}}',
+              '{{client.address}}',
+              '{{client.phone}}',
+              '{{client.email}}'
+            ],
+            layout: 'vertical',
+            alignment: 'left'
+          }
+        };
+
+      case TEMPLATE_ELEMENT_TYPES.QUOTATION_INFO:
+        return {
+          ...baseElement,
+          content: {
+            fields: [
+              { label: 'Quotation #', value: '{{quotation.number}}' },
+              { label: 'Date', value: '{{quotation.date}}' },
+              { label: 'Valid Until', value: '{{quotation.validUntil}}' },
+              { label: 'Terms', value: '{{quotation.paymentTerms}}' }
+            ],
+            layout: 'table',
+            alignment: 'right'
+          }
+        };
+
+      case TEMPLATE_ELEMENT_TYPES.ITEMS_TABLE:
+        return {
+          ...baseElement,
+          content: {
+            columns: [
+              { key: 'description', label: 'Description', width: '40%', alignment: 'left' },
+              { key: 'quantity', label: 'Qty', width: '15%', alignment: 'center' },
+              { key: 'rate', label: 'Rate', width: '20%', alignment: 'right' },
+              { key: 'amount', label: 'Amount', width: '25%', alignment: 'right' }
+            ],
+            showHeader: true,
+            showFooter: false,
+            alternateRows: true,
+            showBorders: true
+          }
+        };
+
+      case TEMPLATE_ELEMENT_TYPES.TOTALS:
+        return {
+          ...baseElement,
+          content: {
+            fields: [
+              { label: 'Subtotal', value: '{{totals.subtotal}}', showIf: 'always' },
+              { label: 'Discount', value: '{{totals.discount}}', showIf: 'hasDiscount' },
+              { label: 'Tax ({{tax.rate}}%)', value: '{{totals.tax}}', showIf: 'hasTax' },
+              { label: 'Total', value: '{{totals.total}}', showIf: 'always', emphasized: true }
+            ],
+            alignment: 'right',
+            width: '50%'
+          }
+        };
+
+      case TEMPLATE_ELEMENT_TYPES.TERMS:
+        return {
+          ...baseElement,
+          content: {
+            title: 'Terms & Conditions',
+            text: '{{quotation.terms}}',
+            defaultText: 'Please review the terms and conditions before accepting this quotation.',
+            showTitle: true
+          }
+        };
+
+      case TEMPLATE_ELEMENT_TYPES.FOOTER:
+        return {
+          ...baseElement,
+          content: {
+            text: 'Thank you for your business!',
+            showPageNumbers: true,
+            showGeneratedDate: true,
+            alignment: 'center'
+          }
+        };
+
+      case TEMPLATE_ELEMENT_TYPES.CUSTOM_TEXT:
+        return {
+          ...baseElement,
+          content: {
+            text: data.text || 'Custom text content',
+            markdown: false,
+            variables: true
+          }
+        };
+
+      case TEMPLATE_ELEMENT_TYPES.SIGNATURE:
+        return {
+          ...baseElement,
+          content: {
+            title: 'Authorized Signature',
+            showDate: true,
+            showName: true,
+            signatureLine: true,
+            alignment: 'right'
+          }
+        };
+
+      default:
+        return baseElement;
+    }
+  }
+
+  /**
+   * Get default styling for element type
+   */
+  getDefaultElementStyle(type) {
+    const theme = TEMPLATE_THEMES[this.template.theme] || TEMPLATE_THEMES.MODERN;
+
+    const baseStyle = {
+      fontFamily: theme.fontFamily,
+      fontSize: '14px',
+      color: '#000000',
+      backgroundColor: 'transparent',
+      padding: '10px',
+      margin: '5px 0',
+      border: 'none'
+    };
+
+    switch (type) {
+      case TEMPLATE_ELEMENT_TYPES.HEADER:
+        return {
+          ...baseStyle,
+          fontSize: '24px',
+          fontWeight: 'bold',
+          color: theme.primaryColor,
+          textAlign: 'center',
+          padding: '20px',
+          borderBottom: `2px solid ${theme.primaryColor}`
+        };
+
+      case TEMPLATE_ELEMENT_TYPES.ITEMS_TABLE:
+        return {
+          ...baseStyle,
+          border: '1px solid #e5e7eb',
+          borderRadius: '4px'
+        };
+
+      case TEMPLATE_ELEMENT_TYPES.TOTALS:
+        return {
+          ...baseStyle,
+          fontWeight: '500',
+          backgroundColor: '#f9fafb',
+          border: '1px solid #e5e7eb',
+          borderRadius: '4px'
+        };
+
+      default:
+        return baseStyle;
+    }
+  }
+
+  /**
+   * Update element in template
+   */
+  updateElement(elementId, updates) {
+    const elementIndex = this.template.elements.findIndex(el => el.id === elementId);
+    if (elementIndex === -1) {
+      throw new Error('Element not found');
+    }
+
+    this.template.elements[elementIndex] = {
+      ...this.template.elements[elementIndex],
+      ...updates,
+      updatedAt: new Date()
+    };
+
+    this.template.updatedAt = new Date();
+    return this;
+  }
+
+  /**
+   * Remove element from template
+   */
+  removeElement(elementId) {
+    this.template.elements = this.template.elements.filter(el => el.id !== elementId);
+    this.template.updatedAt = new Date();
+    return this;
+  }
+
+  /**
+   * Reorder elements
+   */
+  reorderElements(elementIds) {
+    const reorderedElements = [];
+    elementIds.forEach(id => {
+      const element = this.template.elements.find(el => el.id === id);
+      if (element) {
+        reorderedElements.push(element);
+      }
+    });
+    this.template.elements = reorderedElements;
+    this.template.updatedAt = new Date();
+    return this;
+  }
+
+  /**
+   * Apply theme to template
+   */
+  applyTheme(themeName) {
+    if (!TEMPLATE_THEMES[themeName]) {
+      throw new Error('Invalid theme');
+    }
+
+    this.template.theme = themeName;
+    const theme = TEMPLATE_THEMES[themeName];
+
+    // Update element styles based on theme
+    this.template.elements = this.template.elements.map(element => ({
+      ...element,
+      style: {
+        ...element.style,
+        fontFamily: theme.fontFamily,
+        color: element.type === TEMPLATE_ELEMENT_TYPES.HEADER ? theme.primaryColor : element.style.color
+      }
+    }));
+
+    this.template.updatedAt = new Date();
+    return this;
+  }
+
+  /**
+   * Save template to database
+   */
+  async saveTemplate() {
+    try {
+      const client = await pool.connect();
+      try {
+        const query = this.template.id ? 
+          `UPDATE quotation_templates SET 
+           name = $1, description = $2, theme = $3, layout = $4, 
+           elements = $5, settings = $6, branding = $7, 
+           is_active = $8, is_default = $9, updated_at = $10, version = version + 1
+           WHERE id = $11 RETURNING *` :
+          `INSERT INTO quotation_templates 
+           (name, description, theme, layout, elements, settings, branding, 
+            is_active, is_default, created_by, created_at, updated_at, version)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`;
+
+        const values = this.template.id ? [
+          this.template.name,
+          this.template.description,
+          this.template.theme,
+          JSON.stringify(this.template.layout),
+          JSON.stringify(this.template.elements),
+          JSON.stringify(this.template.settings),
+          JSON.stringify(this.template.branding),
+          this.template.isActive,
+          this.template.isDefault,
+          this.template.updatedAt,
+          this.template.id
+        ] : [
+          this.template.name,
+          this.template.description,
+          this.template.theme,
+          JSON.stringify(this.template.layout),
+          JSON.stringify(this.template.elements),
+          JSON.stringify(this.template.settings),
+          JSON.stringify(this.template.branding),
+          this.template.isActive,
+          this.template.isDefault,
+          this.template.createdBy,
+          this.template.createdAt,
+          this.template.updatedAt,
+          this.template.version
+        ];
+
+        const result = await client.query(query, values);
+        this.template = {
+          ...this.template,
+          ...result.rows[0],
+          elements: JSON.parse(result.rows[0].elements),
+          layout: JSON.parse(result.rows[0].layout),
+          settings: JSON.parse(result.rows[0].settings),
+          branding: JSON.parse(result.rows[0].branding)
+        };
+
+        return this;
+      } finally {
+        client.release();
+      }
+    } catch (error) {
+      console.error('Error saving template:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Generate template preview HTML
+   */
+  generatePreviewHTML(sampleData = null) {
+    const data = sampleData || this.getSampleQuotationData();
+    return this.renderTemplate(data, { preview: true });
+  }
+
+  /**
+   * Generate final HTML for quotation
+   */
+  generateQuotationHTML(quotationData) {
+    return this.renderTemplate(quotationData, { preview: false });
+  }
+
+  /**
+   * Render template with data
+   */
+  renderTemplate(data, options = {}) {
+    const theme = TEMPLATE_THEMES[this.template.theme] || TEMPLATE_THEMES.MODERN;
+    
+    let html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quotation ${data.quotation?.number || 'Preview'}</title>
+    <style>
+        ${this.generateCSS(theme, options)}
+    </style>
+</head>
+<body>
+    <div class="quotation-container">
+        ${this.template.elements.map(element => this.renderElement(element, data)).join('')}
+    </div>
+</body>
+</html>`;
+
+    return this.replaceVariables(html, data);
+  }
+
+  /**
+   * Render individual template element
+   */
+  renderElement(element, data) {
+    if (!element.visible) return '';
+
+    const elementClass = `element-${element.type}`;
+    const elementStyle = this.generateElementStyle(element.style);
+
+    switch (element.type) {
+      case TEMPLATE_ELEMENT_TYPES.HEADER:
+        return `
+          <div class="${elementClass}" style="${elementStyle}">
+            <h1>${element.content.title}</h1>
+            ${element.content.subtitle ? `<h2>${element.content.subtitle}</h2>` : ''}
+          </div>`;
+
+      case TEMPLATE_ELEMENT_TYPES.COMPANY_INFO:
+        return `
+          <div class="${elementClass}" style="${elementStyle}">
+            ${element.content.fields.map(field => `<div>${field}</div>`).join('')}
+          </div>`;
+
+      case TEMPLATE_ELEMENT_TYPES.CLIENT_INFO:
+        return `
+          <div class="${elementClass}" style="${elementStyle}">
+            <h3>${element.content.title}</h3>
+            ${element.content.fields.map(field => `<div>${field}</div>`).join('')}
+          </div>`;
+
+      case TEMPLATE_ELEMENT_TYPES.QUOTATION_INFO:
+        return `
+          <div class="${elementClass}" style="${elementStyle}">
+            <table class="info-table">
+              ${element.content.fields.map(field => 
+                `<tr><td class="label">${field.label}:</td><td class="value">${field.value}</td></tr>`
+              ).join('')}
+            </table>
+          </div>`;
+
+      case TEMPLATE_ELEMENT_TYPES.ITEMS_TABLE:
+        return this.renderItemsTable(element, data);
+
+      case TEMPLATE_ELEMENT_TYPES.TOTALS:
+        return this.renderTotals(element, data);
+
+      case TEMPLATE_ELEMENT_TYPES.TERMS:
+        return `
+          <div class="${elementClass}" style="${elementStyle}">
+            ${element.content.showTitle ? `<h3>${element.content.title}</h3>` : ''}
+            <div class="terms-content">${element.content.text || element.content.defaultText}</div>
+          </div>`;
+
+      case TEMPLATE_ELEMENT_TYPES.CUSTOM_TEXT:
+        return `
+          <div class="${elementClass}" style="${elementStyle}">
+            ${element.content.text}
+          </div>`;
+
+      case TEMPLATE_ELEMENT_TYPES.SIGNATURE:
+        return `
+          <div class="${elementClass}" style="${elementStyle}">
+            <div class="signature-area">
+              <h4>${element.content.title}</h4>
+              ${element.content.signatureLine ? '<div class="signature-line"></div>' : ''}
+              ${element.content.showDate ? '<div class="signature-date">Date: _______________</div>' : ''}
+            </div>
+          </div>`;
+
+      default:
+        return `<div class="${elementClass}" style="${elementStyle}">Unknown element type</div>`;
+    }
+  }
+
+  /**
+   * Render items table
+   */
+  renderItemsTable(element, data) {
+    const items = data.items || [];
+    const columns = element.content.columns;
+
+    return `
+      <div class="element-items-table" style="${this.generateElementStyle(element.style)}">
+        <table class="items-table">
+          ${element.content.showHeader ? `
+            <thead>
+              <tr>
+                ${columns.map(col => 
+                  `<th style="width: ${col.width}; text-align: ${col.alignment}">${col.label}</th>`
+                ).join('')}
+              </tr>
+            </thead>
+          ` : ''}
+          <tbody>
+            ${items.map((item, index) => `
+              <tr class="${element.content.alternateRows && index % 2 === 1 ? 'alternate-row' : ''}">
+                ${columns.map(col => `
+                  <td style="text-align: ${col.alignment}">${item[col.key] || '-'}</td>
+                `).join('')}
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      </div>`;
+  }
+
+  /**
+   * Render totals section
+   */
+  renderTotals(element, data) {
+    const totals = data.totals || {};
+    
+    return `
+      <div class="element-totals" style="${this.generateElementStyle(element.style)}">
+        <table class="totals-table">
+          ${element.content.fields.map(field => {
+            const showField = this.shouldShowTotalField(field, data);
+            if (!showField) return '';
+            
+            return `
+              <tr class="${field.emphasized ? 'emphasized' : ''}">
+                <td class="label">${field.label}:</td>
+                <td class="value">${field.value}</td>
+              </tr>`;
+          }).join('')}
+        </table>
+      </div>`;
+  }
+
+  /**
+   * Generate CSS for template
+   */
+  generateCSS(theme, options = {}) {
+    return `
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      
+      body {
+        font-family: ${theme.fontFamily};
+        color: #000;
+        line-height: 1.6;
+        background: ${options.preview ? '#f5f5f5' : 'white'};
+      }
+      
+      .quotation-container {
+        max-width: 800px;
+        margin: ${options.preview ? '20px auto' : '0 auto'};
+        background: white;
+        padding: ${this.template.layout.margins.top}px ${this.template.layout.margins.right}px 
+                  ${this.template.layout.margins.bottom}px ${this.template.layout.margins.left}px;
+        ${options.preview ? 'box-shadow: 0 2px 10px rgba(0,0,0,0.1);' : ''}
+      }
+      
+      .element-header {
+        text-align: center;
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 2px solid ${theme.primaryColor};
+      }
+      
+      .element-header h1 {
+        font-size: 2.5em;
+        color: ${theme.primaryColor};
+        margin-bottom: 5px;
+        font-weight: bold;
+      }
+      
+      .element-header h2 {
+        font-size: 1.2em;
+        color: ${theme.secondaryColor};
+        font-weight: normal;
+      }
+      
+      .items-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 20px 0;
+      }
+      
+      .items-table th,
+      .items-table td {
+        padding: 12px 8px;
+        border: 1px solid #ddd;
+      }
+      
+      .items-table th {
+        background-color: ${theme.primaryColor};
+        color: white;
+        font-weight: bold;
+      }
+      
+      .items-table .alternate-row {
+        background-color: #f9f9f9;
+      }
+      
+      .totals-table {
+        width: 300px;
+        margin-left: auto;
+        border-collapse: collapse;
+      }
+      
+      .totals-table td {
+        padding: 8px 12px;
+        border-bottom: 1px solid #eee;
+      }
+      
+      .totals-table .label {
+        text-align: left;
+        font-weight: 500;
+      }
+      
+      .totals-table .value {
+        text-align: right;
+        font-weight: bold;
+      }
+      
+      .totals-table .emphasized {
+        background-color: ${theme.primaryColor};
+        color: white;
+        font-weight: bold;
+      }
+      
+      .info-table {
+        width: 100%;
+        max-width: 400px;
+        margin-left: auto;
+      }
+      
+      .info-table td {
+        padding: 5px 10px;
+      }
+      
+      .info-table .label {
+        font-weight: 500;
+        color: ${theme.secondaryColor};
+      }
+      
+      .signature-area {
+        margin-top: 40px;
+        text-align: right;
+      }
+      
+      .signature-line {
+        border-bottom: 2px solid #333;
+        width: 250px;
+        margin: 20px 0 10px auto;
+      }
+      
+      .terms-content {
+        font-size: 0.9em;
+        color: ${theme.secondaryColor};
+        line-height: 1.5;
+      }
+      
+      @media print {
+        body { background: white; }
+        .quotation-container { box-shadow: none; margin: 0; }
+        ${options.preview ? '.preview-only { display: none; }' : ''}
+      }
+    `;
+  }
+
+  /**
+   * Generate inline style string from style object
+   */
+  generateElementStyle(styleObj) {
+    return Object.entries(styleObj)
+      .map(([key, value]) => `${this.camelToKebab(key)}: ${value}`)
+      .join('; ');
+  }
+
+  /**
+   * Replace template variables with actual data
+   */
+  replaceVariables(html, data) {
+    let processedHtml = html;
+
+    // Replace company variables
+    if (data.company) {
+      Object.entries(data.company).forEach(([key, value]) => {
+        const regex = new RegExp(`{{company\\.${key}}}`, 'g');
+        processedHtml = processedHtml.replace(regex, value || '');
+      });
+    }
+
+    // Replace client variables
+    if (data.client) {
+      Object.entries(data.client).forEach(([key, value]) => {
+        const regex = new RegExp(`{{client\\.${key}}}`, 'g');
+        processedHtml = processedHtml.replace(regex, value || '');
+      });
+    }
+
+    // Replace quotation variables
+    if (data.quotation) {
+      Object.entries(data.quotation).forEach(([key, value]) => {
+        const regex = new RegExp(`{{quotation\\.${key}}}`, 'g');
+        processedHtml = processedHtml.replace(regex, value || '');
+      });
+    }
+
+    // Replace totals variables
+    if (data.totals) {
+      Object.entries(data.totals).forEach(([key, value]) => {
+        const regex = new RegExp(`{{totals\\.${key}}}`, 'g');
+        processedHtml = processedHtml.replace(regex, value || '');
+      });
+    }
+
+    return processedHtml;
+  }
+
+  /**
+   * Helper methods
+   */
+  generateTemplateId() {
+    return `template_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  generateElementId() {
+    return `element_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  }
+
+  camelToKebab(str) {
+    return str.replace(/([a-z0-9]|(?=[A-Z]))([A-Z])/g, '$1-$2').toLowerCase();
+  }
+
+  shouldShowTotalField(field, data) {
+    switch (field.showIf) {
+      case 'always': return true;
+      case 'hasDiscount': return data.totals?.discount && parseFloat(data.totals.discount.replace(/[^\d.-]/g, '')) > 0;
+      case 'hasTax': return data.totals?.tax && parseFloat(data.totals.tax.replace(/[^\d.-]/g, '')) > 0;
+      default: return true;
+    }
+  }
+
+  getSampleQuotationData() {
+    return {
+      company: {
+        name: 'ASP Cranes Pvt. Ltd.',
+        address: 'Industrial Area, Pune, Maharashtra 411019',
+        phone: '+91 99999 88888',
+        email: 'sales@aspcranes.com',
+        website: 'www.aspcranes.com'
+      },
+      client: {
+        name: 'John Doe',
+        company: 'Construction Corp.',
+        address: 'Mumbai, Maharashtra',
+        phone: '+91 98765 43210',
+        email: 'john@constructioncorp.com'
+      },
+      quotation: {
+        number: 'QUO-2025-001',
+        date: new Date().toLocaleDateString('en-IN'),
+        validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN'),
+        paymentTerms: '50% advance, balance on completion',
+        terms: 'This quotation is valid for 30 days. All rates are inclusive of GST.'
+      },
+      items: [
+        {
+          description: 'Tower Crane Rental - Potain MC 175',
+          quantity: '30 days',
+          rate: '₹25,000',
+          amount: '₹7,50,000'
+        },
+        {
+          description: 'Mobile Crane - Liebherr LTM 1090',
+          quantity: '5 days',
+          rate: '₹15,000',
+          amount: '₹75,000'
+        }
+      ],
+      totals: {
+        subtotal: '₹8,25,000',
+        discount: '₹25,000',
+        tax: '₹1,44,000',
+        total: '₹9,44,000'
+      }
+    };
+  }
+
+  /**
+   * Export template configuration
+   */
+  exportTemplate() {
+    return {
+      ...this.template,
+      exportedAt: new Date(),
+      version: '1.0'
+    };
+  }
+
+  /**
+   * Import template configuration
+   */
+  importTemplate(templateConfig) {
+    this.template = {
+      ...this.template,
+      ...templateConfig,
+      id: null, // Reset ID for import
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    return this;
+  }
+}
+
+export default EnhancedTemplateBuilder;

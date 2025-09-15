@@ -42,6 +42,9 @@ import templateBuilderRoutes from './routes/templateBuilderRoutes.mjs';
 import modernTemplateRoutes from './routes/modernTemplateRoutes.mjs';
 console.log('DEBUG: modernTemplateRoutes import:', modernTemplateRoutes);
 
+// Import enhanced template routes for InvoiceNinja-style functionality
+import enhancedTemplateRoutes from './routes/enhancedTemplateRoutes.mjs';
+
 // Import AI routes for CrewAI integration
 import aiRoutes from './routes/aiRoutes.mjs';
 import crewaiCloudRoutes from './routes/crewaiCloudRoutes.mjs';
@@ -192,6 +195,8 @@ app.use('/api/ai', aiRoutes);
 app.use('/api/crewai', crewaiCloudRoutes);
 
 // Mount template routes - ORDER MATTERS: more specific routes first
+console.log('🔧 Mounting /api/templates/enhanced route...');
+app.use('/api/templates/enhanced', enhancedTemplateRoutes);
 console.log('🔧 Mounting /api/templates/builder route...');
 app.use('/api/templates/builder', templateBuilderRoutes);
 console.log('🔧 Mounting /api/templates/modern route...');
