@@ -35,15 +35,26 @@ const EnhancedTemplateManager = () => {
   const loadTemplates = async () => {
     setIsLoading(true);
     try {
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      
+      // Add auth header if token exists
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
       const response = await fetch('/api/templates/enhanced/list', {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
-        }
+        headers
       });
 
       const result = await response.json();
       if (result.success) {
         setTemplates(result.data);
+        console.log('✅ Templates loaded successfully', result.authenticated ? '(authenticated)' : '(demo mode)');
+      } else {
+        console.error('Failed to load templates:', result.message);
       }
     } catch (error) {
       console.error('Error loading templates:', error);
