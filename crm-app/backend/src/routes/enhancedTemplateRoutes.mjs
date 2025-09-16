@@ -289,6 +289,93 @@ router.get('/sample-data', async (req, res) => {
 });
 
 /**
+ * GET /api/templates/enhanced/default
+ * Get the current default template
+ */
+router.get('/default', async (req, res) => {
+  try {
+    // Check for authentication but don't require it for demo
+    const authHeader = req.headers['authorization'];
+    let user = null;
+    
+    if (authHeader) {
+      const token = authHeader.split(' ')[1];
+      const jwtSecret = process.env.JWT_SECRET || 'default_jwt_secret_for_development';
+      try {
+        user = jwt.verify(token, jwtSecret);
+      } catch (err) {
+        console.log('⚠️ Invalid token provided, continuing without auth');
+      }
+    }
+
+    // Database connection
+    const { Client } = await import('pg');
+    const client = new Client({
+      host: process.env.DB_HOST || 'localhost',
+      port: parseInt(process.env.DB_PORT || '5432'),
+      database: process.env.DB_NAME || 'asp_crm',
+      user: process.env.DB_USER || 'postgres',
+      password: process.env.DB_PASSWORD || 'crmdb@21',
+      ssl: (process.env.DB_SSL === 'true') ? true : false
+    });
+
+    await client.connect();
+
+    try {
+      const query = `
+        SELECT * FROM enhanced_templates 
+        WHERE is_default = true AND is_active = true 
+        ORDER BY updated_at DESC 
+        LIMIT 1
+      `;
+      
+      const result = await client.query(query);
+      
+      if (result.rows.length === 0) {
+        return res.json({
+          success: true,
+          data: null,
+          message: 'No default template configured'
+        });
+      }
+
+      const defaultTemplate = result.rows[0];
+
+      res.json({
+        success: true,
+        data: {
+          id: defaultTemplate.id,
+          name: defaultTemplate.name,
+          description: defaultTemplate.description,
+          theme: defaultTemplate.theme,
+          category: defaultTemplate.category,
+          isDefault: defaultTemplate.is_default,
+          isActive: defaultTemplate.is_active,
+          createdBy: defaultTemplate.created_by,
+          createdAt: defaultTemplate.created_at,
+          updatedAt: defaultTemplate.updated_at,
+          elements: defaultTemplate.elements,
+          settings: defaultTemplate.settings,
+          branding: defaultTemplate.branding
+        },
+        message: 'Default template retrieved successfully'
+      });
+
+    } finally {
+      await client.end();
+    }
+    
+  } catch (error) {
+    console.error('Error retrieving default template:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve default template',
+      message: error.message
+    });
+  }
+});
+
+/**
  * GET /api/templates/enhanced/list
  * Get all enhanced templates with filtering and pagination
  * Note: Made this endpoint less restrictive for demo purposes
@@ -619,6 +706,141 @@ router.put('/:id', async (req, res) => {
     
   } catch (error) {
     console.error('Error updating enhanced template:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to update enhanced template',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * PATCH /api/templates/enhanced/:id
+ * Partially update existing enhanced template (alias for PUT)
+ */
+router.patch('/:id', async (req, res) => {
+  try {
+    // Check for authentication but don't require it for demo
+    const authHeader = req.headers['authorization'];
+    let user = { id: 'demo-user' };
+    
+    if (authHeader) {
+      const token = authHeader.split(' ')[1];
+      const jwtSecret = process.env.JWT_SECRET || 'default_jwt_secret_for_development';
+      try {
+        user = jwt.verify(token, jwtSecret);
+      } catch (err) {
+        console.log('⚠️ Invalid token provided, using demo user');
+      }
+    }
+    
+    const { id } = req.params;
+    
+    // Database connection
+    const { Client } = await import('pg');
+    const client = new Client({
+      host: process.env.DB_HOST || 'localhost',
+      port: parseInt(process.env.DB_PORT || '5432'),
+      database: process.env.DB_NAME || 'asp_crm',
+      user: process.env.DB_USER || 'postgres',
+      password: process.env.DB_PASSWORD || 'crmdb@21',
+      ssl: (process.env.DB_SSL === 'true') ? true : false
+    });
+    
+    await client.connect();
+    
+    try {
+      // Get current template data first
+      const getCurrentQuery = `
+        SELECT * FROM enhanced_templates 
+        WHERE id = $1 AND is_active = true
+      `;
+      
+      const currentResult = await client.query(getCurrentQuery, [id]);
+      
+      if (currentResult.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: 'Template not found'
+        });
+      }
+      
+      const currentTemplate = currentResult.rows[0];
+      
+      // Merge the updates with current data
+      const updates = req.body;
+      const updatedData = {
+        name: updates.name !== undefined ? updates.name : currentTemplate.name,
+        description: updates.description !== undefined ? updates.description : currentTemplate.description,
+        theme: updates.theme !== undefined ? updates.theme : currentTemplate.theme,
+        category: updates.category !== undefined ? updates.category : currentTemplate.category,
+        is_default: updates.isDefault !== undefined ? updates.isDefault : currentTemplate.is_default,
+        elements: updates.elements !== undefined ? updates.elements : currentTemplate.elements,
+        settings: updates.settings !== undefined ? updates.settings : currentTemplate.settings,
+        branding: updates.branding !== undefined ? updates.branding : currentTemplate.branding
+      };
+      
+      // If setting this template as default, unset all other defaults first
+      if (updates.isDefault === true) {
+        await client.query(`UPDATE enhanced_templates SET is_default = false WHERE is_active = true`);
+      }
+      
+      const updateQuery = `
+        UPDATE enhanced_templates 
+        SET name = $2, description = $3, theme = $4, category = $5, 
+            is_default = $6, elements = $7, settings = $8, branding = $9,
+            updated_at = CURRENT_TIMESTAMP
+        WHERE id = $1 AND is_active = true
+        RETURNING *
+      `;
+      
+      const result = await client.query(updateQuery, [
+        id,
+        updatedData.name,
+        updatedData.description,
+        updatedData.theme,
+        updatedData.category,
+        updatedData.is_default,
+        updatedData.elements,
+        updatedData.settings,
+        updatedData.branding
+      ]);
+      
+      if (result.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: 'Template not found or update failed'
+        });
+      }
+      
+      const updatedTemplate = result.rows[0];
+      
+      res.json({
+        success: true,
+        data: {
+          id: updatedTemplate.id,
+          name: updatedTemplate.name,
+          description: updatedTemplate.description,
+          theme: updatedTemplate.theme,
+          category: updatedTemplate.category,
+          isDefault: updatedTemplate.is_default,
+          isActive: updatedTemplate.is_active,
+          createdBy: updatedTemplate.created_by,
+          createdAt: updatedTemplate.created_at,
+          updatedAt: updatedTemplate.updated_at,
+          elements: updatedTemplate.elements,
+          settings: updatedTemplate.settings,
+          branding: updatedTemplate.branding
+        },
+        message: 'Enhanced template updated successfully'
+      });
+      
+    } finally {
+      await client.end();
+    }
+    
+  } catch (error) {
+    console.error('Error patching enhanced template:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to update enhanced template',
