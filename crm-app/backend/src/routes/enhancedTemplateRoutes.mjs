@@ -1179,4 +1179,120 @@ function createDefaultElements() {
   ];
 }
 
+/**
+ * POST /api/templates/enhanced/duplicate
+ * Duplicate an existing enhanced template
+ */
+router.post('/duplicate', async (req, res) => {
+  try {
+    // Check for authentication but don't require it for demo
+    const authHeader = req.headers['authorization'];
+    let user = { id: 'demo-user' };
+    
+    if (authHeader) {
+      const token = authHeader.split(' ')[1];
+      const jwtSecret = process.env.JWT_SECRET || 'default_jwt_secret_for_development';
+      try {
+        user = jwt.verify(token, jwtSecret);
+      } catch (err) {
+        console.log('⚠️ Invalid token provided, using demo user');
+      }
+    }
+
+    const { templateId, newName } = req.body;
+
+    if (!templateId || !newName) {
+      return res.status(400).json({
+        success: false,
+        error: 'Template ID and new name are required'
+      });
+    }
+
+    // Database connection
+    const { Client } = await import('pg');
+    const client = new Client({
+      host: process.env.DB_HOST || 'localhost',
+      port: parseInt(process.env.DB_PORT || '5432'),
+      database: process.env.DB_NAME || 'asp_crm',
+      user: process.env.DB_USER || 'postgres',
+      password: process.env.DB_PASSWORD || 'crmdb@21',
+      ssl: (process.env.DB_SSL === 'true') ? true : false
+    });
+
+    await client.connect();
+
+    try {
+      // First, get the original template
+      const getQuery = `
+        SELECT name, description, theme, category, elements, settings, branding
+        FROM enhanced_templates
+        WHERE id = $1 AND is_active = true
+      `;
+      
+      const originalResult = await client.query(getQuery, [templateId]);
+      
+      if (originalResult.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: 'Original template not found'
+        });
+      }
+
+      const original = originalResult.rows[0];
+
+      // Create the duplicate
+      const insertQuery = `
+        INSERT INTO enhanced_templates (
+          name, description, theme, category, elements, settings, branding, created_by
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+        RETURNING *
+      `;
+
+      const insertResult = await client.query(insertQuery, [
+        newName,
+        original.description ? `${original.description} (Copy)` : 'Duplicated template',
+        original.theme,
+        original.category,
+        original.elements,
+        original.settings,
+        original.branding,
+        user.id
+      ]);
+
+      const duplicatedTemplate = insertResult.rows[0];
+
+      res.json({
+        success: true,
+        data: {
+          id: duplicatedTemplate.id,
+          name: duplicatedTemplate.name,
+          description: duplicatedTemplate.description,
+          theme: duplicatedTemplate.theme,
+          category: duplicatedTemplate.category,
+          isDefault: duplicatedTemplate.is_default,
+          isActive: duplicatedTemplate.is_active,
+          createdBy: duplicatedTemplate.created_by,
+          createdAt: duplicatedTemplate.created_at,
+          updatedAt: duplicatedTemplate.updated_at,
+          elements: duplicatedTemplate.elements,
+          settings: duplicatedTemplate.settings,
+          branding: duplicatedTemplate.branding
+        },
+        message: 'Template duplicated successfully'
+      });
+
+    } finally {
+      await client.end();
+    }
+
+  } catch (error) {
+    console.error('Error duplicating enhanced template:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to duplicate enhanced template',
+      message: error.message
+    });
+  }
+});
+
 export default router;

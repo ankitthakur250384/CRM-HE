@@ -12,7 +12,7 @@ export const templateApiClient = {
 // Create a new template via backend API
 export async function createTemplate(template: Partial<Template>): Promise<Template> {
   const apiUrl = import.meta.env.VITE_API_URL || '/api';
-  const response = await fetch(`${apiUrl}/templates`, {
+  const response = await fetch(`${apiUrl}/templates/enhanced/create`, {
     method: 'POST',
     headers: { ...getHeaders(), 'Content-Type': 'application/json' },
     body: JSON.stringify(template),
@@ -28,7 +28,7 @@ export async function createTemplate(template: Partial<Template>): Promise<Templ
 // Update an existing template via backend API
 export async function updateTemplate(templateId: string, updates: Partial<Template>): Promise<Template> {
   const apiUrl = import.meta.env.VITE_API_URL || '/api';
-  const response = await fetch(`${apiUrl}/templates/${templateId}`, {
+  const response = await fetch(`${apiUrl}/templates/enhanced/${templateId}`, {
     method: 'PATCH',
     headers: { ...getHeaders(), 'Content-Type': 'application/json' },
     body: JSON.stringify(updates),
@@ -44,7 +44,7 @@ export async function updateTemplate(templateId: string, updates: Partial<Templa
 // Delete a template by ID via backend API
 export async function deleteTemplate(templateId: string): Promise<void> {
   const apiUrl = import.meta.env.VITE_API_URL || '/api';
-  const response = await fetch(`${apiUrl}/templates/${templateId}`, {
+  const response = await fetch(`${apiUrl}/templates/enhanced/${templateId}`, {
     method: 'DELETE',
     headers: getHeaders(),
     credentials: 'include',
@@ -57,7 +57,7 @@ export async function deleteTemplate(templateId: string): Promise<void> {
 // Fetch a single template by ID from backend API
 export async function getTemplateById(templateId: string): Promise<Template> {
   const apiUrl = import.meta.env.VITE_API_URL || '/api';
-  const response = await fetch(`${apiUrl}/templates/${templateId}`, {
+  const response = await fetch(`${apiUrl}/templates/enhanced/${templateId}`, {
     method: 'GET',
     headers: getHeaders(),
     credentials: 'include',
@@ -74,7 +74,7 @@ export async function getTemplates(): Promise<Template[]> {
   try {
     const apiUrl = import.meta.env.VITE_API_URL || '/api';
     
-    const response = await fetch(`${apiUrl}/templates`, {
+    const response = await fetch(`${apiUrl}/templates/enhanced/list`, {
       method: 'GET',
       headers: getHeaders(),
       credentials: 'include',
