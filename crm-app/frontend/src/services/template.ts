@@ -29,7 +29,7 @@ export async function createTemplate(template: Partial<Template>): Promise<Templ
 export async function updateTemplate(templateId: string, updates: Partial<Template>): Promise<Template> {
   const apiUrl = import.meta.env.VITE_API_URL || '/api';
   const response = await fetch(`${apiUrl}/templates/enhanced/${templateId}`, {
-    method: 'PATCH',
+    method: 'PUT',
     headers: { ...getHeaders(), 'Content-Type': 'application/json' },
     body: JSON.stringify(updates),
     credentials: 'include',

@@ -7,7 +7,8 @@ import { Card, CardHeader, CardTitle, CardContent } from '../common/Card';
 import { Template } from '../../types/template';
 import { Quotation } from '../../types/quotation';
 import { mergeQuotationWithTemplate } from '../../utils/templateMerger.ts';
-import { getTemplates, updateTemplate } from '../../services/templateService';
+import { getTemplates } from '../../services/templateService';
+import { getDefaultTemplateConfig, updateDefaultTemplateConfig } from '../../services/configService';
 
 interface DefaultTemplateConfigProps {
   onSave?: () => void;
@@ -115,17 +116,26 @@ export function DefaultTemplateConfig({ onSave }: DefaultTemplateConfigProps) {
   const loadTemplatesAndConfig = async () => {
     try {
       setIsLoading(true);
-      const fetchedTemplates = await getTemplates();
-      setTemplates(fetchedTemplates);
+      console.log('Loading templates and config...');
       
-      // Find and set the default template
-      const defaultTemplate = fetchedTemplates.find(t => t.isDefault);
-      if (defaultTemplate) {
-        setSelectedTemplateId(defaultTemplate.id);
+      // Load all templates
+      const allTemplates = await getTemplates();
+      console.log('Loaded templates:', allTemplates);
+      setTemplates(allTemplates);
+      
+      // Get current default template config
+      const defaultConfig = await getDefaultTemplateConfig();
+      console.log('Default config:', defaultConfig);
+      
+      if (defaultConfig && defaultConfig.defaultTemplateId) {
+        setSelectedTemplateId(defaultConfig.defaultTemplateId);
+      } else if (allTemplates.length > 0) {
+        // If no default is set but templates exist, select the first one
+        setSelectedTemplateId(allTemplates[0].id);
       }
     } catch (error) {
       console.error('Error loading templates and config:', error);
-      showToast('Error loading configuration', 'error');
+      showToast('Error loading templates and config: ' + (error instanceof Error ? error.message : String(error)), 'error');
     } finally {
       setIsLoading(false);
     }
@@ -137,31 +147,25 @@ export function DefaultTemplateConfig({ onSave }: DefaultTemplateConfigProps) {
   };
 
   const handleSave = async () => {
+    if (!selectedTemplateId) {
+      showToast('Please select a template first', 'error');
+      return;
+    }
+
     try {
       setIsSaving(true);
       
-      // Update the old default template to non-default
-      const oldDefaultTemplate = templates.find(t => t.isDefault);
-      if (oldDefaultTemplate && oldDefaultTemplate.id !== selectedTemplateId) {
-        await updateTemplate(oldDefaultTemplate.id, { isDefault: false });
-      }
-
-      // Update the new default template
-      if (selectedTemplateId) {
-        const template = templates.find(t => t.id === selectedTemplateId);
-        if (template) {
-          await updateTemplate(template.id, { isDefault: true });
-        }
-      }
+      // Update the default template configuration using the proper config service
+      await updateDefaultTemplateConfig(selectedTemplateId);
       
-      // Refresh templates
+      // Refresh templates and config
       await loadTemplatesAndConfig();
       
       showToast('Default template configuration saved successfully');
       onSave?.();
     } catch (error) {
       console.error('Error saving default template config:', error);
-      showToast('Error saving configuration', 'error');
+      showToast('Error saving configuration: ' + (error instanceof Error ? error.message : String(error)), 'error');
     } finally {
       setIsSaving(false);
     }
