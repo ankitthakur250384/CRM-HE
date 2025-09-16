@@ -376,6 +376,80 @@ router.get('/default', async (req, res) => {
 });
 
 /**
+ * Auto-create default template if it doesn't exist
+ */
+async function ensureDefaultTemplate(client) {
+  try {
+    // Check if default template exists
+    const checkQuery = `SELECT id FROM enhanced_templates WHERE id = 'tpl_default_001'`;
+    const checkResult = await client.query(checkQuery);
+    
+    if (checkResult.rows.length === 0) {
+      console.log('🔧 Creating default template as it does not exist...');
+      
+      const defaultElements = [
+        {
+          "id": "header-1",
+          "type": "header",
+          "content": {
+            "title": "ASP CRANES",
+            "subtitle": "Professional Equipment Solutions"
+          },
+          "visible": true,
+          "style": {"fontSize": "24px", "color": "#0052CC", "textAlign": "center"}
+        },
+        {
+          "id": "company-info-1", 
+          "type": "company_info",
+          "content": {
+            "fields": ["{{company.name}}", "{{company.address}}", "{{company.phone}}"],
+            "layout": "vertical"
+          },
+          "visible": true,
+          "style": {"fontSize": "14px"}
+        }
+      ];
+      
+      const defaultSettings = {
+        "pageSize": "A4",
+        "margins": {"top": 20, "right": 20, "bottom": 20, "left": 20}
+      };
+      
+      const defaultBranding = {
+        "primaryColor": "#0052CC",
+        "secondaryColor": "#1f2937",
+        "logoUrl": null
+      };
+      
+      const insertQuery = `
+        INSERT INTO enhanced_templates (
+          id, name, description, theme, category, is_default, is_active, 
+          created_by, elements, settings, branding
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+      `;
+      
+      await client.query(insertQuery, [
+        'tpl_default_001',
+        'Default ASP Cranes Template',
+        'Standard quotation template for ASP Cranes',
+        'MODERN',
+        'Quotation',
+        true,
+        true,
+        'system',
+        JSON.stringify(defaultElements),
+        JSON.stringify(defaultSettings),
+        JSON.stringify(defaultBranding)
+      ]);
+      
+      console.log('✅ Default template created successfully');
+    }
+  } catch (error) {
+    console.error('⚠️ Error ensuring default template exists:', error);
+  }
+}
+
+/**
  * GET /api/templates/enhanced/list
  * Get all enhanced templates with filtering and pagination
  * Note: Made this endpoint less restrictive for demo purposes
@@ -417,6 +491,9 @@ router.get('/list', async (req, res) => {
     });
     
     await client.connect();
+    
+    // Ensure default template exists
+    await ensureDefaultTemplate(client);
     
     try {
       // Build query with filters
@@ -748,6 +825,11 @@ router.patch('/:id', async (req, res) => {
     });
     
     await client.connect();
+    
+    // Ensure default template exists if this is trying to access it
+    if (id === 'tpl_default_001') {
+      await ensureDefaultTemplate(client);
+    }
     
     try {
       // Get current template data first
