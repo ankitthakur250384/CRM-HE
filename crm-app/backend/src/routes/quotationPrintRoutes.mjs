@@ -5,7 +5,7 @@ import express from 'express';
 import { authenticateToken } from '../middleware/authMiddleware.mjs';
 import pool from '../lib/dbConnection.js';
 import { templateService } from '../services/TemplateService.mjs';
-import { htmlGeneratorService } from '../services/HtmlGeneratorService.mjs';
+import { htmlGeneratorService } from '../services/htmlGeneratorService.mjs';
 import { pdfService } from '../services/PdfService.mjs';
 
 const router = express.Router();
@@ -149,18 +149,15 @@ router.post('/print', authenticateToken, async (req, res) => {
     // Step 3: Map data for template
     const mappedData = templateService.mapQuotationData(quotationData);
 
-    // Step 4: Generate HTML
-    const html = await htmlGeneratorService.generateHTML(template, mappedData);
-
-    // Step 5: Return response
-    console.log('✅ [PrintRoutes] Generation completed successfully');
+    // Step 4: Return template data for frontend rendering
+    // The frontend will handle the actual HTML generation
+    console.log('✅ [PrintRoutes] Template data prepared for frontend');
     res.json({
       success: true,
-      html,
-      template: {
-        id: template.id,
-        name: template.name
-      }
+      template: template,
+      quotationData: quotationData,
+      mappedData: mappedData,
+      renderMode: 'frontend' // Signal to frontend to use its renderer
     });
 
   } catch (error) {
