@@ -17,11 +17,13 @@ interface QuotationPrintSystemProps {
 }
 
 interface Template {
-  id: number;
+  id: string; // Enhanced Templates use string IDs
   name: string;
   description: string;
   is_active: boolean;
   is_default: boolean;
+  theme?: string;
+  category?: string;
 }
 
 interface EmailFormData {
@@ -34,7 +36,7 @@ const QuotationPrintSystem: React.FC<QuotationPrintSystemProps> = ({
   quotationId 
 }) => {
   const [templates, setTemplates] = useState<Template[]>([]);
-  const [selectedTemplate, setSelectedTemplate] = useState<number | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [configDefaultTemplateId, setConfigDefaultTemplateId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
@@ -380,14 +382,14 @@ const QuotationPrintSystem: React.FC<QuotationPrintSystemProps> = ({
             
             <select
               id="template-select"
-              value={selectedTemplate?.toString() || ''}
-              onChange={(e) => setSelectedTemplate(parseInt(e.target.value) || null)}
+              value={selectedTemplate || ''}
+              onChange={(e) => setSelectedTemplate(e.target.value || null)}
               disabled={isLoading}
               className="w-full p-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
             >
               <option value="">Select a template</option>
               {templates.map((template) => {
-                const isConfigDefault = configDefaultTemplateId && template.id.toString() === configDefaultTemplateId;
+                const isConfigDefault = configDefaultTemplateId && template.id === configDefaultTemplateId;
                 const isDatabaseDefault = template.is_default;
                 let defaultLabel = '';
                 
@@ -398,7 +400,7 @@ const QuotationPrintSystem: React.FC<QuotationPrintSystemProps> = ({
                 }
                 
                 return (
-                  <option key={template.id} value={template.id.toString()}>
+                  <option key={template.id} value={template.id}>
                     {template.name}{defaultLabel}
                   </option>
                 );

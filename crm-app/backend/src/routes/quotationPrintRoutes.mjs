@@ -259,4 +259,119 @@ async function getQuotationWithDetails(quotationId) {
   }
 }
 
+/**
+ * POST /api/quotations/print/preview - Generate print preview
+ */
+router.post('/print/preview', async (req, res) => {
+  try {
+    const { quotationId, templateId, format = 'html' } = req.body;
+    
+    console.log('👁️ [PrintRoutes] Preview request:', {
+      quotationId,
+      templateId,
+      format
+    });
+
+    // Validate required parameters
+    if (!quotationId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Quotation ID is required'
+      });
+    }
+
+    // Step 1: Get quotation data
+    const quotationData = await getQuotationWithDetails(quotationId);
+    if (!quotationData) {
+      return res.status(404).json({
+        success: false,
+        error: 'Quotation not found'
+      });
+    }
+
+    // Step 2: Get template (Enhanced Template System)
+    const template = templateId 
+      ? await templateService.getTemplateById(templateId)
+      : await templateService.getDefaultTemplate();
+
+    // Step 3: Generate basic HTML for preview
+    const html = await htmlGeneratorService.generateBasicHTML(template, quotationData);
+
+    console.log('✅ [PrintRoutes] Preview generated successfully');
+    res.json({
+      success: true,
+      html: html,
+      template: {
+        id: template.id,
+        name: template.name
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ [PrintRoutes] Preview generation failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Preview generation failed',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/quotations/print/print - Generate printable version
+ */
+router.post('/print/print', async (req, res) => {
+  try {
+    const { quotationId, templateId } = req.body;
+    
+    console.log('🖨️ [PrintRoutes] Print request:', {
+      quotationId,
+      templateId
+    });
+
+    // Validate required parameters
+    if (!quotationId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Quotation ID is required'
+      });
+    }
+
+    // Step 1: Get quotation data
+    const quotationData = await getQuotationWithDetails(quotationId);
+    if (!quotationData) {
+      return res.status(404).json({
+        success: false,
+        error: 'Quotation not found'
+      });
+    }
+
+    // Step 2: Get template (Enhanced Template System)
+    const template = templateId 
+      ? await templateService.getTemplateById(templateId)
+      : await templateService.getDefaultTemplate();
+
+    // Step 3: Generate HTML for printing
+    const html = await htmlGeneratorService.generateBasicHTML(template, quotationData);
+
+    console.log('✅ [PrintRoutes] Print HTML generated successfully');
+    res.json({
+      success: true,
+      html: html,
+      template: {
+        id: template.id,
+        name: template.name
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ [PrintRoutes] Print generation failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Print generation failed',
+      message: error.message
+    });
+  }
+});
+
 export default router;

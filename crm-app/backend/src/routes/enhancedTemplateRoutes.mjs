@@ -450,6 +450,62 @@ async function ensureDefaultTemplate(client) {
 }
 
 /**
+ * GET /api/templates/quotation
+ * Get all enhanced templates for quotation printing (frontend compatibility)
+ */
+router.get('/quotation', async (req, res) => {
+  try {
+    console.log('📋 [Enhanced Templates] Loading templates for quotation printing');
+    
+    const client = new Client(dbConfig);
+    await client.connect();
+    
+    try {
+      const query = `
+        SELECT 
+          id, name, description, theme, category, 
+          is_default, is_active, created_by, created_at, updated_at
+        FROM enhanced_templates 
+        WHERE is_active = true
+        ORDER BY is_default DESC, updated_at DESC
+      `;
+      
+      const result = await client.query(query);
+      
+      // Convert to format expected by QuotationPrintSystem
+      const templates = result.rows.map(row => ({
+        id: row.id, // Keep as string for Enhanced Templates
+        name: row.name,
+        description: row.description,
+        is_active: row.is_active,
+        is_default: row.is_default,
+        theme: row.theme,
+        category: row.category
+      }));
+      
+      console.log(`✅ [Enhanced Templates] Found ${templates.length} active templates for quotation printing`);
+      
+      res.json({
+        success: true,
+        templates: templates,
+        count: templates.length
+      });
+      
+    } finally {
+      await client.end();
+    }
+    
+  } catch (error) {
+    console.error('❌ [Enhanced Templates] Error loading quotation templates:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to load quotation templates',
+      message: error.message
+    });
+  }
+});
+
+/**
  * GET /api/templates/enhanced/list
  * Get all enhanced templates with filtering and pagination
  * Note: Made this endpoint less restrictive for demo purposes
