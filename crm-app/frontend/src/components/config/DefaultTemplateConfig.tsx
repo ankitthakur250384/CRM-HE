@@ -4,76 +4,26 @@ import { Select } from '../common/Select';
 import { Button } from '../common/Button';
 import { Toast } from '../common/Toast';
 import { Card, CardHeader, CardTitle, CardContent } from '../common/Card';
-import { Template } from '../../types/template';
-import { Quotation } from '../../types/quotation';
-import { mergeQuotationWithTemplate } from '../../utils/templateMerger.ts';
-import { getTemplates } from '../../services/templateService';
 import { getDefaultTemplateConfig, updateDefaultTemplateConfig } from '../../services/configService';
 
 interface DefaultTemplateConfigProps {
   onSave?: () => void;
 }
 
-// Sample quotation data for preview
-const SAMPLE_QUOTATION: Quotation = {
-  id: 'sample-quotation',
-  leadId: 'sample-lead',
-  customerId: 'sample-customer',
-  customerName: 'Sample Company Ltd.',
-  customerContact: {
-    name: 'John Smith',
-    email: 'john.smith@samplecompany.com',
-    phone: '+91 98765 43210',
-    company: 'Sample Company Ltd.',
-    address: '123 Business Park, Tech City, State - 400001',
-    designation: 'Procurement Manager'
-  },
-  orderType: 'monthly',
-  numberOfDays: 30,
-  workingHours: 8,
-  selectedEquipment: {
-    id: 'sample-equipment',
-    equipmentId: 'crane-001',
-    name: '50T Mobile Crane',
-    baseRates: {
-      micro: 5000,
-      small: 4500,
-      monthly: 4000,
-      yearly: 3500
-    }
-  },
-  foodResources: 2,
-  accomResources: 2,
-  siteDistance: 50,
-  usage: 'normal',
-  riskFactor: 'low',
-  extraCharge: 5000,
-  incidentalCharges: ['10000'],
-  otherFactorsCharge: 2000,
-  billing: 'gst',
-  // baseRate removed, not in Quotation type
-  includeGst: true,
-  shift: 'single',
-  dayNight: 'day',
-  mobDemob: 15000,
-  mobRelaxation: 5000,
-  runningCostPerKm: 100,
-  totalRent: 150000,
-  version: 1,
-  createdAt: new Date().toISOString(),
-  updatedAt: new Date().toISOString(),
-  createdBy: 'system',
-  status: 'draft',
-  machineType: 'mobile',
-  dealType: 'rental',
-  sundayWorking: 'no', // or another valid SundayWorking value
-  otherFactors: []
-};
+interface EnhancedTemplate {
+  id: string;
+  name: string;
+  description?: string;
+  theme: string;
+  category: string;
+  is_default: boolean;
+  is_active: boolean;
+}
 
 export function DefaultTemplateConfig({ onSave }: DefaultTemplateConfigProps) {
-  const [templates, setTemplates] = useState<Template[]>([]);
+  const [templates, setTemplates] = useState<EnhancedTemplate[]>([]);
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
-  const [selectedTemplate, setSelectedTemplate] = useState<Template | null>(null);
+  const [selectedTemplate, setSelectedTemplate] = useState<EnhancedTemplate | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [toast, setToast] = useState<{
@@ -84,19 +34,45 @@ export function DefaultTemplateConfig({ onSave }: DefaultTemplateConfigProps) {
   const [previewHtml, setPreviewHtml] = useState('');
 
   useEffect(() => {
-    async function fetchPreview() {
-      if (selectedTemplate && SAMPLE_QUOTATION) {
+    async function generatePreview() {
+      if (selectedTemplate) {
         try {
-          const html = mergeQuotationWithTemplate(SAMPLE_QUOTATION, selectedTemplate);
-          setPreviewHtml(html);
+          // Use Enhanced Template System for preview
+          const response = await fetch('/api/quotations/print/preview', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${localStorage.getItem('token')}`
+            },
+            body: JSON.stringify({
+              quotationId: 'sample', // Use sample data
+              templateId: selectedTemplate.id,
+              format: 'html'
+            })
+          });
+
+          const data = await response.json();
+          if (data.success) {
+            setPreviewHtml(data.html);
+          } else {
+            setPreviewHtml(`<div style="color:red; padding: 20px;">
+              <h3>Preview Error</h3>
+              <p>Unable to generate preview: ${data.error || 'Unknown error'}</p>
+              <p><strong>Template:</strong> ${selectedTemplate.name}</p>
+            </div>`);
+          }
         } catch (err) {
-          setPreviewHtml('<div style="color:red">Error generating preview</div>');
+          setPreviewHtml(`<div style="color:red; padding: 20px;">
+            <h3>Connection Error</h3>
+            <p>Unable to connect to Enhanced Template System</p>
+            <p>Error: ${err instanceof Error ? err.message : 'Unknown error'}</p>
+          </div>`);
         }
       } else {
         setPreviewHtml('');
       }
     }
-    fetchPreview();
+    generatePreview();
   }, [selectedTemplate]);
 
   useEffect(() => {
@@ -116,11 +92,29 @@ export function DefaultTemplateConfig({ onSave }: DefaultTemplateConfigProps) {
   const loadTemplatesAndConfig = async () => {
     try {
       setIsLoading(true);
-      console.log('Loading templates and config...');
+      console.log('Loading Enhanced Templates and config...');
       
-      // Load all templates
-      const allTemplates = await getTemplates();
-      console.log('Loaded templates:', allTemplates);
+      // Load Enhanced Templates instead of old templates
+      const token = localStorage.getItem('token');
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+      
+      const response = await fetch('/api/templates/enhanced/list', {
+        headers
+      });
+
+      const result = await response.json();
+      if (!result.success) {
+        throw new Error(result.error || 'Failed to load Enhanced Templates');
+      }
+
+      const allTemplates = result.data || [];
+      console.log('Loaded Enhanced Templates:', allTemplates);
       setTemplates(allTemplates);
       
       // Get current default template config
@@ -134,8 +128,8 @@ export function DefaultTemplateConfig({ onSave }: DefaultTemplateConfigProps) {
         setSelectedTemplateId(allTemplates[0].id);
       }
     } catch (error) {
-      console.error('Error loading templates and config:', error);
-      showToast('Error loading templates and config: ' + (error instanceof Error ? error.message : String(error)), 'error');
+      console.error('Error loading Enhanced Templates and config:', error);
+      showToast('Error loading Enhanced Templates: ' + (error instanceof Error ? error.message : String(error)), 'error');
     } finally {
       setIsLoading(false);
     }

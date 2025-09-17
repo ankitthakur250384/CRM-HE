@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
   Search, 
   Plus, 
@@ -48,6 +49,7 @@ interface QuotationListItem {
 }
 
 const QuotationManagementComplete: React.FC = () => {
+  const navigate = useNavigate();
   const [quotations, setQuotations] = useState<QuotationListItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
@@ -153,8 +155,8 @@ const QuotationManagementComplete: React.FC = () => {
         setSelectedQuotation(quotationId);
         break;
       case 'edit':
-        // Navigate to edit mode
-        setSelectedQuotation(`EDIT_${quotationId}`);
+        // Navigate to quotation creation page with edit mode
+        navigate(`/quotations/create?edit=${quotationId}`);
         break;
       case 'duplicate':
         // Create a copy of the quotation
@@ -371,19 +373,6 @@ ASP Cranes Team`;
     return (
       <NewQuotationBuilder 
         dealId={dealId}
-        onClose={() => setSelectedQuotation(null)} 
-        onSave={fetchQuotations} 
-      />
-    );
-  }
-
-  if (selectedQuotation?.startsWith('EDIT_')) {
-    // Extract quotation ID and show quotation builder in edit mode
-    const quotationId = selectedQuotation.replace('EDIT_', '');
-    const quotationData = quotations.find(q => q.id === quotationId);
-    return (
-      <NewQuotationBuilder 
-        quotationData={quotationData}
         onClose={() => setSelectedQuotation(null)} 
         onSave={fetchQuotations} 
       />

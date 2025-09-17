@@ -103,7 +103,7 @@ export function QuotationCreation() {
   const location = useLocation();
   const navState = location.state as any;
   const dealId = searchParams.get('dealId') || navState?.dealId || '';
-  const quotationId = searchParams.get('quotationId');
+  const quotationId = searchParams.get('quotationId') || searchParams.get('edit');
 
   // Configuration management with auto-refresh
   const {
