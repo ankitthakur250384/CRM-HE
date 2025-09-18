@@ -154,7 +154,7 @@ const QuotationManagementComplete: React.FC = () => {
         break;
       case 'edit':
         // Navigate to quotation creation page with edit mode
-        navigate(`/quotations/create?edit=${quotationId}`);
+        navigate(`/quotation-creation?edit=${quotationId}`);
         break;
       case 'duplicate':
         // Create a copy of the quotation

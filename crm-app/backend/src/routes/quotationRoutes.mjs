@@ -36,6 +36,10 @@ const pool = new pg.Pool({
  */
 router.post('/generate', authenticateToken, async (req, res) => {
   try {
+    console.log('📋 [Generate] Received request:', req.method, req.originalUrl);
+    console.log('📋 [Generate] Headers:', req.headers);
+    console.log('📋 [Generate] Body:', req.body);
+    
     const quotation = req.body;
 
     if (!quotation || !quotation.items || quotation.items.length === 0) {
@@ -65,6 +69,45 @@ router.post('/generate', authenticateToken, async (req, res) => {
     res.status(500).json({ 
       success: false,
       message: 'Failed to generate quotation PDF' 
+    });
+  }
+});
+
+/**
+ * POST /api/quotations/generate-test - Test endpoint without authentication
+ */
+router.post('/generate-test', async (req, res) => {
+  try {
+    console.log('🧪 [Generate-Test] Received request:', req.method, req.originalUrl);
+    console.log('🧪 [Generate-Test] Headers:', req.headers);
+    console.log('🧪 [Generate-Test] Body:', req.body);
+    
+    const quotation = req.body;
+
+    if (!quotation || !quotation.items || quotation.items.length === 0) {
+      return res.status(400).json({ 
+        success: false,
+        message: 'Quotation must include at least one item' 
+      });
+    }
+
+    // Return success response for testing
+    res.json({
+      success: true,
+      message: 'Test endpoint working - authentication bypassed',
+      receivedData: {
+        hasCustomer: !!quotation.customer,
+        itemCount: quotation.items?.length || 0,
+        hasTerms: !!quotation.terms
+      }
+    });
+
+  } catch (error) {
+    console.error('Generate test error:', error);
+    res.status(500).json({ 
+      success: false,
+      message: 'Failed to process test request',
+      error: error.message
     });
   }
 });

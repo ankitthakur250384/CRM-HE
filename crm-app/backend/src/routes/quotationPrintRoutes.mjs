@@ -260,7 +260,92 @@ async function getQuotationWithDetails(quotationId) {
 }
 
 /**
- * POST /api/quotations/print/preview - Generate print preview
+ * GET /api/quotations/print/preview - Generate print preview (GET version)
+ */
+router.get('/preview', async (req, res) => {
+  try {
+    const { quotationId, templateId, format = 'html' } = req.query;
+    
+    console.log('👁️ [PrintRoutes] Preview GET request:', {
+      quotationId,
+      templateId,
+      format
+    });
+
+    // Validate required parameters
+    if (!quotationId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Quotation ID is required'
+      });
+    }
+
+    // Generate preview using template service
+    const templateService = new TemplateService();
+    const htmlGenerator = new HtmlGeneratorService();
+    
+    try {
+      // Get template (use default if not specified)
+      const template = templateId 
+        ? await templateService.getTemplate(templateId)
+        : await templateService.getDefaultTemplate();
+
+      if (!template) {
+        return res.status(404).json({
+          success: false,
+          error: 'Template not found'
+        });
+      }
+
+      // Get quotation data
+      const quotationData = await templateService.getQuotationData(quotationId);
+      
+      if (!quotationData) {
+        return res.status(404).json({
+          success: false,
+          error: 'Quotation not found'
+        });
+      }
+
+      // Generate HTML preview
+      const html = await htmlGenerator.generateHTML(template, quotationData);
+
+      if (format === 'json') {
+        return res.json({
+          success: true,
+          data: {
+            html,
+            template,
+            quotation: quotationData
+          }
+        });
+      }
+
+      // Return HTML content
+      res.setHeader('Content-Type', 'text/html');
+      res.send(html);
+
+    } catch (templateError) {
+      console.error('Template processing error:', templateError);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to process template',
+        details: templateError.message
+      });
+    }
+
+  } catch (error) {
+    console.error('Preview generation error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to generate preview',
+      details: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/quotations/print/preview - Generate print preview (POST version)
  */
 router.post('/print/preview', async (req, res) => {
   try {
