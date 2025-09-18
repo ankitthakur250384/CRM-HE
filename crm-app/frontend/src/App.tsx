@@ -12,7 +12,7 @@ import { AppShell } from './components/layout/AppShell';
 import { UnifiedDashboard } from './pages/UnifiedDashboard';
 import { LeadManagement } from './pages/LeadManagement';
 import ToastContainer from './components/common/ToastContainer';
-import QuotationManagementOld from './pages/QuotationManagementOld';
+import QuotationManagement from './components/quotations/QuotationManagement';
 import { QuotationCreation } from './pages/QuotationCreation';
 import DealSelectionPage from './pages/DealSelectionPage';
 import { JobScheduling } from './pages/JobScheduling';
@@ -219,7 +219,7 @@ function AppContent() {
             
             <Route path="quotations" element={
               <ProtectedRoute allowedRoles={['admin', 'sales_agent', 'operations_manager']}>
-                <QuotationManagementOld />
+                <QuotationManagement />
               </ProtectedRoute>
             } />
             

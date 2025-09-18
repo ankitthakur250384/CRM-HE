@@ -19,7 +19,6 @@ import { Button } from '../common/Button';
 import { Toast } from '../common/Toast';
 import { Template } from '../../types/template';
 import { Quotation } from '../../types/quotation';
-import { mergeQuotationWithTemplate } from '../../utils/templateMerger';
 import { calculateQuotationTotals } from '../../utils/professionalTemplateRenderer';
 import { QuotationSummary } from '../../pages/QuotationSummary';
 import { PrintOptionsModal } from './PrintOptionsModal';
@@ -140,10 +139,6 @@ export function TemplatePreview({
         setError('Template is required');
         return;
       }
-      if (!template.content && !template.elements) {
-        setError('Template content is required');
-        return;
-      }
 
       try {
         setIsLoading(true);
@@ -152,27 +147,39 @@ export function TemplatePreview({
         console.log("Template preview received template:", template);
         console.log("Template preview received quotation:", quotation);
 
-        const result = await mergeQuotationWithTemplate(previewQuotation, template);
-        console.log("Generated merged content length:", result?.length || 0);
-        console.log("Generated merged content preview:", result ? result.substring(0, 200) : 'empty');
-        console.log("Template structure:", {
-          id: template.id,
-          name: template.name,
-          hasContent: !!template.content,
-          hasElements: !!template.elements,
-          elementsCount: template.elements?.length || 0
+        // Use Enhanced Template System for preview
+        const response = await fetch('/api/quotations/print/preview', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          },
+          body: JSON.stringify({
+            quotationId: quotation?.id || 'sample',
+            templateId: template.id,
+            format: 'html'
+          })
         });
-        
-        if (result && result.trim()) {
-          setMergedContent(result);
+
+        const data = await response.json();
+        if (data.success && data.html) {
+          setMergedContent(data.html);
         } else {
-          console.warn("Cannot merge template - missing template or content");
-          setMergedContent('<div style="padding: 20px;">Template content could not be loaded</div>');
+          console.warn("Cannot generate preview from Enhanced Template System:", data.error);
+          setMergedContent(`<div style="padding: 20px;">
+            <h3>Preview Error</h3>
+            <p>Unable to generate preview: ${data.error || 'Unknown error'}</p>
+            <p><strong>Template:</strong> ${template.name}</p>
+          </div>`);
         }
       } catch (err) {
-        console.error('Error merging template:', err);
-        setError('Failed to merge template with quotation data');
-        setMergedContent('<div style="padding: 20px; color: red;">Error generating preview</div>');
+        console.error('Error generating template preview:', err);
+        setError('Failed to generate template preview');
+        setMergedContent(`<div style="padding: 20px; color: red;">
+          <h3>Connection Error</h3>
+          <p>Unable to connect to Enhanced Template System</p>
+          <p>Error: ${err instanceof Error ? err.message : 'Unknown error'}</p>
+        </div>`);
       } finally {
         setIsLoading(false);
       }
@@ -447,7 +454,14 @@ export function TemplatePreview({
       <PrintOptionsModal
         isOpen={showPrintOptions}
         onClose={() => setShowPrintOptions(false)}
-        onPrint={handlePrintWithOptions}
+        onConfirm={handlePrintWithOptions}
+        title="Print Options"
+        options={[
+          { id: 'customer_details', label: 'Customer Details', description: 'Include customer information' },
+          { id: 'equipment_details', label: 'Equipment Details', description: 'Include equipment specifications' },
+          { id: 'pricing_breakdown', label: 'Pricing Breakdown', description: 'Include detailed pricing' },
+          { id: 'terms_conditions', label: 'Terms & Conditions', description: 'Include terms and conditions' }
+        ]}
       />
     </div>
   );

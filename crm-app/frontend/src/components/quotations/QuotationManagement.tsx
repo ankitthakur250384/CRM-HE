@@ -148,8 +148,6 @@ const QuotationManagementComplete: React.FC = () => {
   };
 
   const handleQuickAction = (action: string, quotationId: string) => {
-    const quotation = quotations.find(q => q.id === quotationId);
-    
     switch (action) {
       case 'view':
         setSelectedQuotation(quotationId);
