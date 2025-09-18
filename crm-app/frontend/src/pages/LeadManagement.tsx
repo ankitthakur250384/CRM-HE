@@ -727,11 +727,11 @@ export function LeadManagement() {
           resetForm();
         }}
         title="Create New Lead"
-        size="lg"
+        size="xl"
       >
-        <form onSubmit={handleCreateLead} className="space-y-6">
+        <form onSubmit={handleCreateLead} className="space-y-8">
           <RequiredFieldsInfo />
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
             <FormInput
               label="Full Name"
               value={formData.fullName}
@@ -835,14 +835,17 @@ export function LeadManagement() {
             )}
           </div>
 
-          <TextArea
-            label="Additional Notes"
-            value={formData.notes}
-            onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
-            rows={3}
-          />
+          <div className="col-span-full">
+            <TextArea
+              label="Additional Notes"
+              value={formData.notes}
+              onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+              rows={4}
+              className="w-full"
+            />
+          </div>
 
-          <div className="flex justify-end gap-3">
+          <div className="flex justify-end gap-4 pt-4">
             <Button
               type="button"
               variant="outline"

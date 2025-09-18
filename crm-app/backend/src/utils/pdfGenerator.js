@@ -5,6 +5,10 @@
 
 import fs from 'fs';
 import path from 'path';
+import { AdvancedPDFGenerator } from '../services/AdvancedPDFGenerator.mjs';
+
+// Initialize PDF generator
+const pdfGenerator = new AdvancedPDFGenerator();
 
 /**
  * Generate a quotation PDF template
@@ -13,13 +17,36 @@ import path from 'path';
  * @returns {Buffer} PDF buffer
  */
 export async function generateQuotationTemplate(quotation, companyInfo) {
-  // For now, we'll generate HTML and return it as a buffer
-  // In production, you'd use puppeteer or similar to generate actual PDF
-  
-  const html = generateQuotationHTML(quotation, companyInfo);
-  
-  // Return HTML as buffer (replace with actual PDF generation)
-  return Buffer.from(html, 'utf8');
+  try {
+    // Generate HTML content
+    const html = generateQuotationHTML(quotation, companyInfo);
+    
+    // Configure PDF options
+    const pdfOptions = {
+      format: 'A4',
+      orientation: 'portrait',
+      quality: 'STANDARD',
+      margins: {
+        top: '15mm',
+        right: '15mm',
+        bottom: '15mm',
+        left: '15mm'
+      },
+      displayHeaderFooter: false,
+      printBackground: true,
+      preferCSSPageSize: true
+    };
+    
+    // Generate actual PDF using AdvancedPDFGenerator
+    const pdfBuffer = await pdfGenerator.generatePDF(html, pdfOptions);
+    
+    return pdfBuffer;
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    // Fallback: return HTML as buffer if PDF generation fails
+    const html = generateQuotationHTML(quotation, companyInfo);
+    return Buffer.from(html, 'utf8');
+  }
 }
 
 /**
@@ -45,31 +72,48 @@ function generateQuotationHTML(quotation, companyInfo) {
           font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
           line-height: 1.6;
           color: #333;
-          background: #f8f9fa;
+          background: #f5f7fa;
           padding: 20px;
+          margin: 0;
         }
         .container {
-          max-width: 800px;
+          max-width: 900px;
           margin: 0 auto;
           background: white;
-          box-shadow: 0 4px 20px rgba(0,0,0,0.1);
-          border-radius: 10px;
+          box-shadow: 0 8px 32px rgba(0,0,0,0.12);
+          border-radius: 12px;
           overflow: hidden;
+          border: 1px solid #e2e8f0;
         }
         .header {
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
           color: white;
-          padding: 30px;
+          padding: 40px 30px;
           text-align: center;
+          position: relative;
+        }
+        .header::before {
+          content: '';
+          position: absolute;
+          bottom: 0;
+          left: 50%;
+          transform: translateX(-50%);
+          width: 60%;
+          height: 3px;
+          background: #60a5fa;
         }
         .header h1 {
-          font-size: 32px;
-          margin-bottom: 10px;
-          font-weight: 300;
+          font-size: 48px;
+          margin-bottom: 8px;
+          font-weight: 700;
+          letter-spacing: 2px;
+          text-shadow: 0 2px 4px rgba(0,0,0,0.3);
         }
         .header p {
-          opacity: 0.9;
-          font-size: 16px;
+          opacity: 0.95;
+          font-size: 18px;
+          font-weight: 300;
+          letter-spacing: 1px;
         }
         .content {
           padding: 40px;
@@ -220,8 +264,12 @@ function generateQuotationHTML(quotation, companyInfo) {
     <body>
       <div class="container">
         <div class="header">
-          <h1>QUOTATION</h1>
-          <p>Professional Service Quotation</p>
+          <h1>ASP CRANES</h1>
+          <p>Professional Equipment Solutions</p>
+        </div>
+        
+        <div style="background: #f8fafc; padding: 20px; text-align: center; border-bottom: 1px solid #e2e8f0;">
+          <h2 style="color: #1e40af; font-size: 28px; margin: 0; font-weight: 600;">QUOTATION</h2>
         </div>
         
         <div class="content">
