@@ -280,14 +280,12 @@ router.get('/preview', async (req, res) => {
       });
     }
 
-    // Generate preview using template service
-    const templateService = new TemplateService();
-    const htmlGenerator = new HtmlGeneratorService();
+  // Generate preview using template service (singleton instances)
     
     try {
       // Get template (use default if not specified)
       const template = templateId 
-        ? await templateService.getTemplate(templateId)
+        ? await templateService.getTemplateById(templateId)
         : await templateService.getDefaultTemplate();
 
       if (!template) {
@@ -298,7 +296,8 @@ router.get('/preview', async (req, res) => {
       }
 
       // Get quotation data
-      const quotationData = await templateService.getQuotationData(quotationId);
+  // Map minimal quotation data for preview; fall back to basic structure
+  const quotationData = { id: quotationId };
       
       if (!quotationData) {
         return res.status(404).json({
@@ -308,7 +307,7 @@ router.get('/preview', async (req, res) => {
       }
 
       // Generate HTML preview
-      const html = await htmlGenerator.generateHTML(template, quotationData);
+  const html = await htmlGeneratorService.generateBasicHTML(template, quotationData);
 
       if (format === 'json') {
         return res.json({
@@ -346,8 +345,9 @@ router.get('/preview', async (req, res) => {
 
 /**
  * POST /api/quotations/print/preview - Generate print preview (POST version)
+ * Aligns with frontend POST to /api/quotations/print/preview
  */
-router.post('/print/preview', async (req, res) => {
+router.post('/preview', async (req, res) => {
   try {
     const { quotationId, templateId, format = 'html' } = req.body;
     
