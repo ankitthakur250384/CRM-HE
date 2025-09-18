@@ -727,125 +727,139 @@ export function LeadManagement() {
           resetForm();
         }}
         title="Create New Lead"
-        size="xl"
+        size="full"
       >
         <form onSubmit={handleCreateLead} className="space-y-8">
           <RequiredFieldsInfo />
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-8">
-            <FormInput
-              label="Full Name"
-              value={formData.fullName}
-              onChange={(e) => setFormData(prev => ({ ...prev, fullName: e.target.value }))}
-              required
-            />
-
-            <FormInput
-              label="Company Name"
-              value={formData.companyName}
-              onChange={(e) => setFormData(prev => ({ ...prev, companyName: e.target.value }))}
-              helperText="Optional"
-            />
-
-            <FormInput
-              label="Phone Number"
-              type="tel"
-              value={formData.phoneNumber}
-              onChange={(e) => setFormData(prev => ({ ...prev, phoneNumber: e.target.value }))}
-              required
-            />
-
-            <FormInput
-              label="Email Address"
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-              required
-            />
-
-            <Select
-              label="Type of Machinery Needed"
-              options={[
-                { value: '', label: 'Select Machinery Type' },
-                ...MACHINERY_OPTIONS
-              ]}
-              value={formData.machineryType}
-              onChange={(value) => setFormData(prev => ({ ...prev, machineryType: value }))}
-              required
-            />
-
-            <FormInput
-              label="Site Location"
-              value={formData.location}
-              onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
-              required
-            />
-
-            <FormInput
-              label="Start Date"
-              type="date"
-              value={formData.startDate}
-              min={today}
-              onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
-              required
-            />
-
-            <FormInput
-              label="Number of Rental Days"
-              type="number"
-              min="1"
-              value={formData.rentalDays}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                const value = Math.max(1, parseInt(e.target.value) || 1);
-                setFormData(prev => ({ ...prev, rentalDays: value.toString() }));
-              }}
-              required
-            />
-
-            <Select
-              label="Shift Timing"
-              options={SHIFT_OPTIONS}
-              value={formData.shiftTiming}
-              onChange={(value) => setFormData(prev => ({ ...prev, shiftTiming: value }))}
-              required
-            />
-
-            <FormInput
-              label="Designation"
-              value={formData.designation}
-              onChange={(e) => setFormData(prev => ({ ...prev, designation: e.target.value }))}
-              placeholder="Enter designation"
-              helperText="Optional"
-            />
-
-            {/* Only show sales agent assignment for admin users */}
-            {user?.role === 'admin' && (
-              <Select
-                label="Assign To"
-                options={[
-                  { value: '', label: 'Select Sales Agent' },
-                  ...salesAgents.map(agent => ({
-                    value: agent.id,
-                    label: agent.name,
-                  }))
-                ]}
-                value={formData.assignedTo}
-                onChange={(value) => setFormData(prev => ({ ...prev, assignedTo: value }))}
+          
+          {/* Personal Information Section */}
+          <div className="bg-gray-50 p-6 rounded-lg">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Personal Information</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <FormInput
+                label="Full Name"
+                value={formData.fullName}
+                onChange={(e) => setFormData(prev => ({ ...prev, fullName: e.target.value }))}
                 required
               />
-            )}
+
+              <FormInput
+                label="Company Name"
+                value={formData.companyName}
+                onChange={(e) => setFormData(prev => ({ ...prev, companyName: e.target.value }))}
+                helperText="Optional"
+              />
+
+              <FormInput
+                label="Phone Number"
+                type="tel"
+                value={formData.phoneNumber}
+                onChange={(e) => setFormData(prev => ({ ...prev, phoneNumber: e.target.value }))}
+                required
+              />
+
+              <FormInput
+                label="Email Address"
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                required
+              />
+
+              <FormInput
+                label="Designation"
+                value={formData.designation}
+                onChange={(e) => setFormData(prev => ({ ...prev, designation: e.target.value }))}
+                placeholder="Enter designation"
+                helperText="Optional"
+              />
+            </div>
           </div>
 
-          <div className="col-span-full">
+          {/* Project Details Section */}
+          <div className="bg-blue-50 p-6 rounded-lg">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Project Details</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <Select
+                label="Type of Machinery Needed"
+                options={[
+                  { value: '', label: 'Select Machinery Type' },
+                  ...MACHINERY_OPTIONS
+                ]}
+                value={formData.machineryType}
+                onChange={(value) => setFormData(prev => ({ ...prev, machineryType: value }))}
+                required
+              />
+
+              <FormInput
+                label="Site Location"
+                value={formData.location}
+                onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
+                required
+              />
+
+              <FormInput
+                label="Start Date"
+                type="date"
+                value={formData.startDate}
+                min={today}
+                onChange={(e) => setFormData(prev => ({ ...prev, startDate: e.target.value }))}
+                required
+              />
+
+              <FormInput
+                label="Number of Rental Days"
+                type="number"
+                min="1"
+                value={formData.rentalDays}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  const value = Math.max(1, parseInt(e.target.value) || 1);
+                  setFormData(prev => ({ ...prev, rentalDays: value.toString() }));
+                }}
+                required
+              />
+
+              <Select
+                label="Shift Timing"
+                options={SHIFT_OPTIONS}
+                value={formData.shiftTiming}
+                onChange={(value) => setFormData(prev => ({ ...prev, shiftTiming: value }))}
+                required
+              />
+
+              {/* Only show sales agent assignment for admin users */}
+              {user?.role === 'admin' && (
+                <Select
+                  label="Assign To"
+                  options={[
+                    { value: '', label: 'Select Sales Agent' },
+                    ...salesAgents.map(agent => ({
+                      value: agent.id,
+                      label: agent.name,
+                    }))
+                  ]}
+                  value={formData.assignedTo}
+                  onChange={(value) => setFormData(prev => ({ ...prev, assignedTo: value }))}
+                  required
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Additional Information Section */}
+          <div className="bg-green-50 p-6 rounded-lg">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">Additional Information</h3>
             <TextArea
               label="Additional Notes"
               value={formData.notes}
               onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
               rows={4}
               className="w-full"
+              placeholder="Any additional requirements, special instructions, or notes..."
             />
           </div>
 
-          <div className="flex justify-end gap-4 pt-4">
+          <div className="flex justify-end gap-4 pt-6 border-t border-gray-200">
             <Button
               type="button"
               variant="outline"
@@ -853,9 +867,15 @@ export function LeadManagement() {
                 setIsCreateModalOpen(false);
                 resetForm();
               }}
+              className="px-6 py-2"
             >
               Cancel
-            </Button>            <Button type="submit" variant="accent">
+            </Button>
+            <Button 
+              type="submit" 
+              variant="accent"
+              className="px-8 py-2"
+            >
               Create Lead
             </Button>
           </div>
