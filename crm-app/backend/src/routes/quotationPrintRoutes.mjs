@@ -5,7 +5,7 @@ import express from 'express';
 import { authenticateToken } from '../middleware/authMiddleware.mjs';
 import pool from '../lib/dbConnection.js';
 import { templateService } from '../services/TemplateService.mjs';
-import { htmlGeneratorService } from '../services/htmlGeneratorService.mjs';
+import { htmlGeneratorService } from '../services/HtmlGeneratorService.mjs';
 import { pdfService } from '../services/PdfService.mjs';
 
 const router = express.Router();

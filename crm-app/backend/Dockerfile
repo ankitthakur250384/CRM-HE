@@ -1,8 +1,23 @@
 FROM node:20-alpine
 WORKDIR /app
 
-# Install dependencies needed for native modules and wget for health check
-RUN apk add --no-cache python3 make g++ wget
+# Install dependencies needed for native modules, puppeteer, and wget for health check
+RUN apk add --no-cache \
+    python3 \
+    make \
+    g++ \
+    wget \
+    chromium \
+    nss \
+    freetype \
+    freetype-dev \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont
+
+# Set environment variable for puppeteer to use installed chromium
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
+ENV PUPPETEER_SKIP_DOWNLOAD=true
 
 # Copy package files
 COPY package*.json ./
