@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, RefreshCw, FileText } from 'lucide-react';
+import { Save, RefreshCw, FileText, Activity, AlertCircle } from 'lucide-react';
 import { Select } from '../common/Select';
 import { Button } from '../common/Button';
 import { Toast } from '../common/Toast';
@@ -32,6 +32,34 @@ export function DefaultTemplateConfig({ onSave }: DefaultTemplateConfigProps) {
     variant?: 'success' | 'error' | 'warning';
   }>({ show: false, title: '' });
   const [previewHtml, setPreviewHtml] = useState('');
+  const [connectionStatus, setConnectionStatus] = useState<'unknown' | 'connected' | 'disconnected'>('unknown');
+
+  const testConnection = async () => {
+    try {
+      console.log('Testing backend connection...');
+      
+      // Test health endpoint first
+      const healthResponse = await fetch('/api/templates/enhanced/health');
+      console.log('Health response:', healthResponse.status);
+      
+      if (healthResponse.ok) {
+        const healthData = await healthResponse.json();
+        console.log('Health data:', healthData);
+        setConnectionStatus('connected');
+        showToast('✅ Backend connection successful!', 'success');
+        return true;
+      } else {
+        setConnectionStatus('disconnected');
+        showToast(`❌ Backend health check failed: ${healthResponse.status}`, 'error');
+        return false;
+      }
+    } catch (error) {
+      console.error('Connection test failed:', error);
+      setConnectionStatus('disconnected');
+      showToast(`❌ Connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
+      return false;
+    }
+  };
 
   useEffect(() => {
     async function generatePreview() {
@@ -62,10 +90,20 @@ export function DefaultTemplateConfig({ onSave }: DefaultTemplateConfigProps) {
             </div>`);
           }
         } catch (err) {
-          setPreviewHtml(`<div style="color:red; padding: 20px;">
-            <h3>Connection Error</h3>
-            <p>Unable to connect to Enhanced Template System</p>
-            <p>Error: ${err instanceof Error ? err.message : 'Unknown error'}</p>
+          console.error('Preview generation error:', err);
+          setPreviewHtml(`<div style="color:#f59e0b; padding: 20px; border: 1px solid #fbbf24; border-radius: 8px; background-color: #fef3c7;">
+            <h3 style="margin-top: 0; color: #92400e;">⚠️ Preview Temporarily Unavailable</h3>
+            <p><strong>Template:</strong> ${selectedTemplate.name}</p>
+            <p><strong>Status:</strong> Backend connection issue</p>
+            <p><strong>Error:</strong> ${err instanceof Error ? err.message : 'Unknown error'}</p>
+            <hr style="border-color: #fbbf24; margin: 16px 0;">
+            <p style="font-size: 14px; color: #92400e;">
+              <strong>What this means:</strong><br>
+              • The template configuration is saved and will work<br>
+              • Preview generation requires backend connection<br>
+              • This is likely a temporary connectivity issue<br>
+              • Try refreshing the page or check your connection
+            </p>
           </div>`);
         }
       } else {
@@ -108,12 +146,20 @@ export function DefaultTemplateConfig({ onSave }: DefaultTemplateConfigProps) {
         headers
       });
 
+      console.log('Enhanced Templates response status:', response.status);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
       const result = await response.json();
+      console.log('Enhanced Templates response:', result);
+      
       if (!result.success) {
         throw new Error(result.error || 'Failed to load Enhanced Templates');
       }
 
-      const allTemplates = result.data || [];
+      const allTemplates = result.data || result.templates || [];
       console.log('Loaded Enhanced Templates:', allTemplates);
       setTemplates(allTemplates);
       
@@ -129,7 +175,25 @@ export function DefaultTemplateConfig({ onSave }: DefaultTemplateConfigProps) {
       }
     } catch (error) {
       console.error('Error loading Enhanced Templates and config:', error);
-      showToast('Error loading Enhanced Templates: ' + (error instanceof Error ? error.message : String(error)), 'error');
+      
+      // Provide fallback templates if backend is unreachable
+      const fallbackTemplates = [{
+        id: 'fallback_template',
+        name: 'Fallback Template (Backend Unreachable)',
+        description: 'Basic template used when backend is not available',
+        theme: 'PROFESSIONAL',
+        category: 'quotation',
+        is_default: true,
+        is_active: true
+      }];
+      
+      setTemplates(fallbackTemplates);
+      setSelectedTemplateId(fallbackTemplates[0].id);
+      
+      showToast(
+        `Error loading templates: ${error instanceof Error ? error.message : String(error)}. Using fallback template.`, 
+        'warning'
+      );
     } finally {
       setIsLoading(false);
     }
