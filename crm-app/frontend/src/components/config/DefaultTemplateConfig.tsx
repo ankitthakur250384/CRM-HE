@@ -66,7 +66,8 @@ export function DefaultTemplateConfig({ onSave }: DefaultTemplateConfigProps) {
       if (selectedTemplate) {
         try {
           // Use Enhanced Template System for preview
-          const response = await fetch('/api/quotations/print/preview', {
+          const apiUrl = import.meta.env.VITE_API_URL || '/api';
+          const response = await fetch(`${apiUrl}/quotations/print/preview`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',

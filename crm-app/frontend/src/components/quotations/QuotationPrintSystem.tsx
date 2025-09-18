@@ -35,6 +35,9 @@ interface EmailFormData {
 const QuotationPrintSystem: React.FC<QuotationPrintSystemProps> = ({ 
   quotationId 
 }) => {
+  // API configuration
+  const apiUrl = import.meta.env.VITE_API_URL || '/api';
+  
   const [templates, setTemplates] = useState<Template[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
   const [configDefaultTemplateId, setConfigDefaultTemplateId] = useState<string | null>(null);
@@ -66,7 +69,7 @@ const QuotationPrintSystem: React.FC<QuotationPrintSystemProps> = ({
   const loadTemplates = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch('/api/templates/quotation');
+      const response = await fetch(`${apiUrl}/templates/quotation`);
       const data = await response.json();
 
       if (data.success) {
@@ -75,7 +78,7 @@ const QuotationPrintSystem: React.FC<QuotationPrintSystemProps> = ({
         // First, try to get the default template from config system
         let defaultTemplateId = null;
         try {
-          const configResponse = await fetch('/api/config/templates');
+          const configResponse = await fetch(`${apiUrl}/config/templates`);
           const configData = await configResponse.json();
           if (configData.success && configData.data.defaultQuotationTemplate) {
             defaultTemplateId = configData.data.defaultQuotationTemplate;
@@ -136,7 +139,7 @@ const QuotationPrintSystem: React.FC<QuotationPrintSystemProps> = ({
       setIsLoading(true);
       setOperationStatus({ type: 'loading', message: 'Generating preview...' });
 
-      const response = await fetch('/api/quotations/print/preview', {
+      const response = await fetch(`${apiUrl}/quotations/print/preview`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -193,7 +196,7 @@ const QuotationPrintSystem: React.FC<QuotationPrintSystemProps> = ({
       setIsLoading(true);
       setOperationStatus({ type: 'loading', message: 'Preparing for print...' });
 
-      const response = await fetch('/api/quotations/print/print', {
+      const response = await fetch(`${apiUrl}/quotations/print/print`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -244,7 +247,7 @@ const QuotationPrintSystem: React.FC<QuotationPrintSystemProps> = ({
       setIsLoading(true);
       setOperationStatus({ type: 'loading', message: 'Generating PDF...' });
 
-      const response = await fetch('/api/quotations/print/pdf', {
+      const response = await fetch(`${apiUrl}/quotations/print/pdf`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -299,7 +302,7 @@ const QuotationPrintSystem: React.FC<QuotationPrintSystemProps> = ({
       setIsLoading(true);
       setOperationStatus({ type: 'loading', message: 'Sending email...' });
 
-      const response = await fetch('/api/quotations/print/email-pdf', {
+      const response = await fetch(`${apiUrl}/quotations/print/email-pdf`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'

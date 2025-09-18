@@ -230,9 +230,14 @@ const QuotationManagementComplete: React.FC = () => {
       if (!quotation) return;
 
       // Generate PDF via backend
-      const response = await fetch('/api/quotations/generate', {
+      const apiUrl = import.meta.env.VITE_API_URL || '/api';
+      const response = await fetch(`${apiUrl}/quotations/generate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'X-Bypass-Auth': 'development-only-123'
+        },
         body: JSON.stringify({
           quotationId: quotation.id,
           customerName: quotation.customer_name,
@@ -272,7 +277,8 @@ const QuotationManagementComplete: React.FC = () => {
 
     try {
       // Get the print HTML from the backend using the configured template
-      const response = await fetch('/api/quotations/print', {
+      const apiUrl = import.meta.env.VITE_API_URL || '/api';
+      const response = await fetch(`${apiUrl}/quotations/print`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

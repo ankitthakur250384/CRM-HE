@@ -119,6 +119,9 @@ export function TemplatePreview({
   onSendEmail,
   className = ''
 }: TemplatePreviewProps) {
+  // API configuration
+  const apiUrl = import.meta.env.VITE_API_URL || '/api';
+  
   const [showPlaceholders, setShowPlaceholders] = useState(false);
   const [showPrintOptions, setShowPrintOptions] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -148,7 +151,7 @@ export function TemplatePreview({
         console.log("Template preview received quotation:", quotation);
 
         // Use Enhanced Template System for preview
-        const response = await fetch('/api/quotations/print/preview', {
+        const response = await fetch(`${apiUrl}/quotations/print/preview`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
