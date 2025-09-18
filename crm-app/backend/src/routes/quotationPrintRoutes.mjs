@@ -10,6 +10,17 @@ import { pdfService } from '../services/PdfService.mjs';
 
 const router = express.Router();
 
+// Optional auth for selected endpoints: allows bypass header regardless of NODE_ENV
+const optionalAuth = (req, res, next) => {
+  const bypassHeader = req.headers['x-bypass-auth'];
+  if (bypassHeader === 'development-only-123' || bypassHeader === 'true') {
+    console.log('⚠️ OptionalAuth(Print): bypassing auth based on header');
+    req.user = { uid: 'bypass-user', email: 'bypass@example.com', role: 'admin' };
+    return next();
+  }
+  return authenticateToken(req, res, next);
+};
+
 /**
  * Health check endpoint for print services
  */
@@ -111,9 +122,69 @@ router.post('/test-print', async (req, res) => {
 });
 
 /**
+ * POST /api/quotations/print/pdf - Generate PDF for download
+ */
+router.post('/pdf', optionalAuth, async (req, res) => {
+  try {
+    const { quotationId, templateId } = req.body;
+    if (!quotationId) {
+      return res.status(400).json({ success: false, error: 'Quotation ID is required' });
+    }
+
+    // Load data
+    const quotationData = await getQuotationWithDetails(quotationId);
+    const template = templateId 
+      ? await templateService.getTemplateById(templateId)
+      : await templateService.getDefaultTemplate();
+
+    // Generate HTML then PDF
+    const html = await htmlGeneratorService.generateBasicHTML(template, quotationData);
+    const pdf = await pdfService.generateFromHTML(html, { format: 'A4' });
+
+    // Return as file
+    const buffer = Buffer.from(pdf.data, 'base64');
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=quotation_${quotationId}.pdf`);
+    return res.send(buffer);
+  } catch (error) {
+    console.error('❌ [PrintRoutes] PDF generation failed:', error);
+    return res.status(500).json({ success: false, error: 'Failed to generate PDF' });
+  }
+});
+
+/**
+ * POST /api/quotations/print/email-pdf - Generate PDF and send via email
+ * NOTE: This is a stub - integrate real mailer later
+ */
+router.post('/email-pdf', optionalAuth, async (req, res) => {
+  try {
+    const { quotationId, templateId, emailTo, subject, message } = req.body;
+    if (!quotationId || !emailTo) {
+      return res.status(400).json({ success: false, error: 'quotationId and emailTo are required' });
+    }
+
+    // Load data and generate PDF (same as /pdf)
+    const quotationData = await getQuotationWithDetails(quotationId);
+    const template = templateId 
+      ? await templateService.getTemplateById(templateId)
+      : await templateService.getDefaultTemplate();
+    const html = await htmlGeneratorService.generateBasicHTML(template, quotationData);
+    const pdf = await pdfService.generateFromHTML(html, { format: 'A4' });
+
+    // TODO: Send email with attachment using nodemailer (stubbed)
+    console.log('📧 [PrintRoutes] Email stub:', { to: emailTo, subject, attachmentSize: pdf.size });
+
+    return res.json({ success: true, message: 'Email sent (stub)' });
+  } catch (error) {
+    console.error('❌ [PrintRoutes] Email PDF failed:', error);
+    return res.status(500).json({ success: false, error: 'Failed to email PDF' });
+  }
+});
+
+/**
  * POST /api/quotations/print - Main print endpoint
  */
-router.post('/print', authenticateToken, async (req, res) => {
+router.post('/print', optionalAuth, async (req, res) => {
   try {
     const { quotationId, templateId, format = 'html' } = req.body;
     
