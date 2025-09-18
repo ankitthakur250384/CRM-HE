@@ -186,7 +186,18 @@ export function DealDetails() {
               <Button
                 className="text-xs"
                 size="sm"
-                onClick={() => navigate(`/quotations/create?dealId=${deal.id}`)}
+                onClick={() => navigate('/quotation-creation', {
+                  state: {
+                    selectedDeal: deal,
+                    deal: deal,
+                    dealId: deal.id,
+                    customerName: deal.customer?.name || '',
+                    customerEmail: deal.customer?.email || '',
+                    customerPhone: deal.customer?.phone || '',
+                    customerCompany: deal.customer?.company || '',
+                    customerAddress: deal.customer?.address || ''
+                  }
+                })}
                 variant="accent"
               >
                 Create Quotation
@@ -352,7 +363,18 @@ export function DealDetails() {
             <CardContent className="px-4 pb-4 sm:px-6 sm:pb-6 space-y-4">
               <Button
                 className="w-full"
-                onClick={() => navigate(`/quotations/create?dealId=${deal.id}`)}
+                onClick={() => navigate('/quotation-creation', {
+                  state: {
+                    selectedDeal: deal,
+                    deal: deal,
+                    dealId: deal.id,
+                    customerName: deal.customer?.name || '',
+                    customerEmail: deal.customer?.email || '',
+                    customerPhone: deal.customer?.phone || '',
+                    customerCompany: deal.customer?.company || '',
+                    customerAddress: deal.customer?.address || ''
+                  }
+                })}
                 variant="accent"
               >
                 Create Quotation

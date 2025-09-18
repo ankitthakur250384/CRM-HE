@@ -18,8 +18,6 @@ import {
   FileText
 } from 'lucide-react';
 import SuiteCRMQuotationSystem from './SuiteCRMQuotationSystem';
-import NewQuotationBuilder from './NewQuotationBuilder';
-import DealSelection from './DealSelection';
 
 interface QuotationListItem {
   id: string;
@@ -347,41 +345,9 @@ ASP Cranes Team`;
   };
 
   const handleCreateNew = () => {
-    // Navigate to deal selection for quotation creation
-    setSelectedQuotation('DEAL_SELECTION');
+    // Navigate to deal selection page first, then to quotation creation
+    navigate('/select-deal');
   };
-
-  if (selectedQuotation === 'NEW_QUOTATION') {
-    // Show the new quotation builder
-    return (
-      <NewQuotationBuilder onClose={() => setSelectedQuotation(null)} onSave={fetchQuotations} />
-    );
-  }
-
-  if (selectedQuotation === 'DEAL_SELECTION') {
-    // Show deal selection for quotation creation
-    return (
-      <DealSelection 
-        onClose={() => setSelectedQuotation(null)} 
-        onSelectDeal={(deal) => {
-          // Navigate to quotation builder with deal data
-          setSelectedQuotation(`NEW_FROM_DEAL_${deal.id}`);
-        }} 
-      />
-    );
-  }
-
-  if (selectedQuotation?.startsWith('NEW_FROM_DEAL_')) {
-    // Extract deal ID and show quotation builder with deal data
-    const dealId = selectedQuotation.replace('NEW_FROM_DEAL_', '');
-    return (
-      <NewQuotationBuilder 
-        dealId={dealId}
-        onClose={() => setSelectedQuotation(null)} 
-        onSave={fetchQuotations} 
-      />
-    );
-  }
 
   if (selectedQuotation) {
     const quotationData = quotations.find(q => q.id === selectedQuotation);
