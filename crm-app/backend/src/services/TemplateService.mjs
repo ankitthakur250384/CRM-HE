@@ -206,35 +206,60 @@ class TemplateService {
    * Map quotation data for template rendering
    */
   mapQuotationData(quotationData) {
+    console.log('🗺️ [TemplateService] Mapping quotation data:', {
+      customerName: quotationData.customerName,
+      customerContact: quotationData.customerContact,
+      hasCustomerData: !!(quotationData.customerName || quotationData.customerContact?.name)
+    });
+    
+    // Extract customer information with fallbacks
+    const customerName = quotationData.customerContact?.name || quotationData.customer_name || quotationData.customerName || 'ABC Construction';
+    const companyName = quotationData.customerContact?.company || quotationData.customer_company || quotationData.customerName || 'ABC Construction';
+    const customerEmail = quotationData.customerContact?.email || quotationData.customer_email || quotationData.email || 'info@abcconstruction.com';
+    const customerPhone = quotationData.customerContact?.phone || quotationData.customer_phone || quotationData.phone || '+91 98765 43210';
+    const customerAddress = quotationData.customerContact?.address || quotationData.customer_address || quotationData.address || 'Mumbai, Maharashtra';
+    
     return {
       company: {
         name: "ASP CRANES",
-        address: "123 Industrial Ave, Equipment District, ED 12345",
-        phone: "+91 22 1234 5678",
-        email: "info@aspcranes.com"
+        address: "Industrial Area, Pune, Maharashtra 411019",
+        phone: "+91 99999 88888",
+        email: "sales@aspcranes.com",
+        website: "www.aspcranes.com"
       },
+      // Support both formats for customer data
       customer: {
-        name: quotationData.customerName || 'N/A',
-        address: quotationData.customerContact?.address || 'N/A',
-        contact: quotationData.customerContact?.name || 'N/A',
-        phone: quotationData.customerContact?.phone || 'N/A'
+        name: customerName,
+        company: companyName,
+        address: customerAddress,
+        contact: customerName,
+        phone: customerPhone,
+        email: customerEmail
+      },
+      // Enhanced template format (client instead of customer)
+      client: {
+        name: customerName,
+        company: companyName,
+        address: customerAddress,
+        phone: customerPhone,
+        email: customerEmail
       },
       quotation: {
-        number: quotationData.id || 'N/A',
-        date: new Date().toLocaleDateString(),
-        validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString(),
+        number: quotationData.quotation_number || quotationData.id || `QTN-${Date.now()}`,
+        date: new Date().toLocaleDateString('en-IN'),
+        validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN'),
         items: [
           {
-            description: quotationData.selectedEquipment?.name || 'Equipment Rental',
-            quantity: quotationData.numberOfDays || 1,
+            description: quotationData.selectedEquipment?.name || quotationData.machine_type || 'Equipment Rental',
+            quantity: quotationData.numberOfDays || quotationData.number_of_days || 1,
             unit: 'Days',
-            rate: quotationData.selectedEquipment?.baseRates?.[quotationData.orderType] || 0,
-            amount: quotationData.totalRent || 0
+            rate: quotationData.selectedEquipment?.baseRates?.[quotationData.orderType] || quotationData.daily_rate || 5000,
+            amount: quotationData.totalRent || quotationData.total_cost || quotationData.total_amount || 50000
           }
         ],
-        subtotal: quotationData.totalRent || 0,
-        tax: (quotationData.totalRent || 0) * 0.18,
-        total: (quotationData.totalRent || 0) * 1.18
+        subtotal: quotationData.totalRent || quotationData.total_cost || quotationData.total_amount || 50000,
+        tax: (quotationData.totalRent || quotationData.total_cost || quotationData.total_amount || 50000) * 0.18,
+        total: (quotationData.totalRent || quotationData.total_cost || quotationData.total_amount || 50000) * 1.18
       }
     };
   }

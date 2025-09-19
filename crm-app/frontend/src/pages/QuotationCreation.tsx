@@ -1034,46 +1034,12 @@ export function QuotationCreation() {
                           </h4>
                           <div className="space-y-3">
                             {formData.selectedMachines.map((machine, index) => (
-                              <div key={`${machine.id}-${index}`} className="flex items-center justify-between bg-white p-3 rounded border border-gray-200">
-                                <div className="flex-1">
-                                  <div className="font-medium text-gray-900">{machine.name}</div>
-                                  <div className="text-sm text-gray-600">
-                                    {formatCurrency(machine.baseRate)}{getRateUnit(formData.orderType)} × {machine.quantity} machine{machine.quantity !== 1 ? 's' : ''}
+                              <div key={`${machine.id}-${index}`} className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                                <div className="flex items-start justify-between mb-3">
+                                  <div className="flex-1">
+                                    <div className="font-medium text-gray-900 text-lg">{machine.name}</div>
+                                    <div className="text-sm text-gray-500 mt-1">{machine.equipmentId}</div>
                                   </div>
-                                  <div className="text-sm text-green-600 font-medium">
-                                    Subtotal: {formatCurrency(machine.baseRate * machine.quantity)}{getRateUnit(formData.orderType)}
-                                  </div>
-                                </div>
-                                <div className="flex items-center gap-2">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setFormData(prev => ({
-                                        ...prev,
-                                        selectedMachines: prev.selectedMachines.map((m, i) => 
-                                          i === index ? { ...m, quantity: Math.max(1, m.quantity - 1) } : m
-                                        )
-                                      }));
-                                    }}
-                                    className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600"
-                                  >
-                                    -
-                                  </button>
-                                  <span className="text-sm font-medium min-w-[30px] text-center">{machine.quantity}</span>
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setFormData(prev => ({
-                                        ...prev,
-                                        selectedMachines: prev.selectedMachines.map((m, i) => 
-                                          i === index ? { ...m, quantity: m.quantity + 1 } : m
-                                        )
-                                      }));
-                                    }}
-                                    className="w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600"
-                                  >
-                                    +
-                                  </button>
                                   <button
                                     type="button"
                                     onClick={() => {
@@ -1082,18 +1048,118 @@ export function QuotationCreation() {
                                         selectedMachines: prev.selectedMachines.filter((_, i) => i !== index)
                                       }));
                                     }}
-                                    className="ml-2 w-8 h-8 rounded-full bg-red-100 hover:bg-red-200 flex items-center justify-center text-red-600"
+                                    className="w-8 h-8 rounded-full bg-red-100 hover:bg-red-200 flex items-center justify-center text-red-600 transition-colors"
+                                    title="Remove equipment"
                                   >
                                     ×
                                   </button>
                                 </div>
+                                
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                  {/* Quantity Control */}
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                      Quantity
+                                    </label>
+                                    <div className="flex items-center gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setFormData(prev => ({
+                                            ...prev,
+                                            selectedMachines: prev.selectedMachines.map((m, i) => 
+                                              i === index ? { ...m, quantity: Math.max(1, m.quantity - 1) } : m
+                                            )
+                                          }));
+                                        }}
+                                        className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 transition-colors"
+                                      >
+                                        -
+                                      </button>
+                                      <input
+                                        type="number"
+                                        value={machine.quantity}
+                                        onChange={(e) => {
+                                          const quantity = Math.max(1, parseInt(e.target.value) || 1);
+                                          setFormData(prev => ({
+                                            ...prev,
+                                            selectedMachines: prev.selectedMachines.map((m, i) => 
+                                              i === index ? { ...m, quantity } : m
+                                            )
+                                          }));
+                                        }}
+                                        className="w-16 text-center text-sm font-medium border border-gray-300 rounded-lg px-2 py-1"
+                                        min="1"
+                                      />
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setFormData(prev => ({
+                                            ...prev,
+                                            selectedMachines: prev.selectedMachines.map((m, i) => 
+                                              i === index ? { ...m, quantity: m.quantity + 1 } : m
+                                            )
+                                          }));
+                                        }}
+                                        className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 transition-colors"
+                                      >
+                                        +
+                                      </button>
+                                    </div>
+                                  </div>
+
+                                  {/* Editable Rate */}
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                      Rate{getRateUnit(formData.orderType)}
+                                    </label>
+                                    <div className="relative">
+                                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">₹</span>
+                                      <input
+                                        type="number"
+                                        value={machine.baseRate}
+                                        onChange={(e) => {
+                                          const baseRate = Math.max(0, parseFloat(e.target.value) || 0);
+                                          setFormData(prev => ({
+                                            ...prev,
+                                            selectedMachines: prev.selectedMachines.map((m, i) => 
+                                              i === index ? { ...m, baseRate } : m
+                                            )
+                                          }));
+                                        }}
+                                        className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                        min="0"
+                                        step="100"
+                                        placeholder="0"
+                                      />
+                                    </div>
+                                    <div className="text-xs text-gray-500 mt-1">
+                                      Default: {formatCurrency(machine.baseRates?.[formData.orderType] || 0)}
+                                    </div>
+                                  </div>
+
+                                  {/* Subtotal Display */}
+                                  <div>
+                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                      Subtotal
+                                    </label>
+                                    <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+                                      <div className="text-lg font-bold text-blue-700">
+                                        {formatCurrency(machine.baseRate * machine.quantity)}
+                                      </div>
+                                      <div className="text-xs text-blue-600">
+                                        {machine.quantity} × {formatCurrency(machine.baseRate)}{getRateUnit(formData.orderType)}
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
                               </div>
                             ))}
                           </div>
-                          <div className="mt-3 pt-3 border-t border-gray-200">
+                          <div className="mt-4 pt-4 border-t border-gray-300 bg-blue-50 rounded-lg p-4">
                             <div className="flex justify-between items-center">
-                              <span className="font-medium text-gray-900">Total Equipment Cost:</span>
-                              <span className="font-bold text-blue-600">
+                              <span className="text-lg font-semibold text-gray-900">Total Equipment Cost:</span>
+                              <span className="text-xl font-bold text-blue-700">
                                 {formatCurrency(
                                   formData.selectedMachines.reduce((total, machine) => 
                                     total + (machine.baseRate * machine.quantity), 0

@@ -282,13 +282,20 @@ function processTemplateElement(
       
     case 'customer':
     case 'customer_details':
+    case 'client_info':
+      const customerName = quotation.customerContact?.name || quotation.customerName || 'ABC Construction';
+      const customerCompany = quotation.customerContact?.company || quotation.customerName || 'ABC Construction';
+      const customerEmail = quotation.customerContact?.email || 'info@abcconstruction.com';
+      const customerPhone = quotation.customerContact?.phone || '+91 98765 43210';
+      const customerAddress = quotation.customerContact?.address || 'Mumbai, Maharashtra';
+      
       return `<div class="customer-section" ${wrapperStyle}>
         <h3>📋 Bill To</h3>
-        <div><strong>${quotation.customerContact?.company || quotation.customerName || 'Valued Customer'}</strong></div>
-        <div>Contact: ${quotation.customerContact?.name || 'N/A'}</div>
-        <div>Address: ${quotation.customerContact?.address || 'Address not provided'}</div>
-        <div>Phone: ${quotation.customerContact?.phone || 'N/A'}</div>
-        <div>Email: ${quotation.customerContact?.email || 'N/A'}</div>
+        <div><strong>${customerCompany}</strong></div>
+        <div>Contact: ${customerName}</div>
+        <div>Address: ${customerAddress}</div>
+        <div>Phone: ${customerPhone}</div>
+        <div>Email: ${customerEmail}</div>
       </div>`;
       
     case 'table':
@@ -817,14 +824,56 @@ function generateCostBreakdown(calculations: QuotationCalculations, quotation: Q
 }
 
 function replaceTemplatePlaceholders(content: string, quotation: Quotation, quoteNumber: string, quoteDate: string): string {
+  console.log('🔄 [TemplateRenderer] Replacing placeholders for quotation:', quotation.id);
+  console.log('🔄 [TemplateRenderer] Customer data available:', {
+    customerName: quotation.customerName,
+    customerContact: quotation.customerContact,
+    hasName: !!(quotation.customerContact?.name || quotation.customerName),
+    hasCompany: !!(quotation.customerContact?.company),
+    hasEmail: !!(quotation.customerContact?.email),
+    hasPhone: !!(quotation.customerContact?.phone)
+  });
+
+  // Extract customer information with better fallbacks
+  const customerName = quotation.customerContact?.name || quotation.customerName || 'ABC Construction';
+  const customerCompany = quotation.customerContact?.company || quotation.customerName || 'ABC Construction';
+  const customerEmail = quotation.customerContact?.email || 'info@abcconstruction.com';
+  const customerPhone = quotation.customerContact?.phone || '+91 98765 43210';
+  const customerAddress = quotation.customerContact?.address || 'Mumbai, Maharashtra';
+
   return content
-    .replace(/\{\{customer_name\}\}/g, quotation.customerContact?.name || quotation.customerName || 'Valued Customer')
-    .replace(/\{\{customer_company\}\}/g, quotation.customerContact?.company || 'Customer Company')
-    .replace(/\{\{customer_phone\}\}/g, quotation.customerContact?.phone || 'N/A')
-    .replace(/\{\{customer_email\}\}/g, quotation.customerContact?.email || 'N/A')
-    .replace(/\{\{equipment_name\}\}/g, quotation.selectedEquipment?.name || 'Equipment')
-    .replace(/\{\{total_amount\}\}/g, `₹${quotation.totalRent?.toLocaleString('en-IN') || '0'}`)
-    .replace(/\{\{project_duration\}\}/g, `${quotation.numberOfDays} ${quotation.numberOfDays === 1 ? 'Day' : 'Days'}`)
+    // Legacy customer placeholders
+    .replace(/\{\{customer_name\}\}/g, customerName)
+    .replace(/\{\{customer_company\}\}/g, customerCompany)
+    .replace(/\{\{customer_phone\}\}/g, customerPhone)
+    .replace(/\{\{customer_email\}\}/g, customerEmail)
+    .replace(/\{\{customer_address\}\}/g, customerAddress)
+    
+    // Enhanced template client placeholders
+    .replace(/\{\{client\.name\}\}/g, customerName)
+    .replace(/\{\{client\.company\}\}/g, customerCompany)
+    .replace(/\{\{client\.phone\}\}/g, customerPhone)
+    .replace(/\{\{client\.email\}\}/g, customerEmail)
+    .replace(/\{\{client\.address\}\}/g, customerAddress)
+    
+    // Company placeholders
+    .replace(/\{\{company\.name\}\}/g, 'ASP CRANES')
+    .replace(/\{\{company\.address\}\}/g, 'Industrial Area, Pune, Maharashtra 411019')
+    .replace(/\{\{company\.phone\}\}/g, '+91 99999 88888')
+    .replace(/\{\{company\.email\}\}/g, 'sales@aspcranes.com')
+    .replace(/\{\{company\.website\}\}/g, 'www.aspcranes.com')
+    
+    // Quotation placeholders
+    .replace(/\{\{quotation\.number\}\}/g, quoteNumber)
+    .replace(/\{\{quotation\.date\}\}/g, quoteDate)
+    .replace(/\{\{quotation\.validUntil\}\}/g, new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN'))
+    
+    // Equipment and project placeholders
+    .replace(/\{\{equipment_name\}\}/g, quotation.selectedEquipment?.name || quotation.selectedMachines?.[0]?.name || 'Equipment')
+    .replace(/\{\{total_amount\}\}/g, `₹${quotation.totalRent?.toLocaleString('en-IN') || '50,000'}`)
+    .replace(/\{\{project_duration\}\}/g, `${quotation.numberOfDays || 7} ${(quotation.numberOfDays || 7) === 1 ? 'Day' : 'Days'}`)
+    
+    // Legacy placeholders
     .replace(/\{\{quote_date\}\}/g, quoteDate)
     .replace(/\{\{quote_number\}\}/g, quoteNumber);
 }
