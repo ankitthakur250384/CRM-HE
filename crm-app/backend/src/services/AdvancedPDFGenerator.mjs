@@ -98,13 +98,19 @@ export class AdvancedPDFGenerator {
   async generatePDF(htmlContent, options = {}) {
     // Fallback if puppeteer is not available
     if (!puppeteer) {
-      console.log('⚠️ PDF generation unavailable - returning mock PDF');
+      console.log('⚠️ Puppeteer unavailable - generating HTML-based PDF fallback');
+      
+      // Generate a proper HTML file for PDF viewing instead of mock content
+      const htmlWithStyles = this.enhanceHTMLForPDF(htmlContent, options);
+      
+      // Return HTML that can be converted to PDF on the frontend
       return {
         success: true,
-        data: Buffer.from('Mock PDF content - Puppeteer not available').toString('base64'),
+        data: Buffer.from(htmlWithStyles, 'utf8'),
         format: options.format || 'A4',
-        size: 1024,
-        fallback: true
+        size: Buffer.byteLength(htmlWithStyles, 'utf8'),
+        fallback: true,
+        contentType: 'text/html'
       };
     }
     
@@ -145,7 +151,20 @@ export class AdvancedPDFGenerator {
       return pdfBuffer;
     } catch (error) {
       console.error('PDF Generation Error:', error);
-      throw new Error(`PDF generation failed: ${error.message}`);
+      
+      // Fallback to HTML when PDF generation fails
+      console.log('📄 Falling back to HTML generation due to PDF error');
+      const htmlWithStyles = this.enhanceHTMLForPDF(htmlContent, options);
+      
+      return {
+        success: false,
+        error: error.message,
+        data: Buffer.from(htmlWithStyles, 'utf8'),
+        format: options.format || 'A4',
+        size: Buffer.byteLength(htmlWithStyles, 'utf8'),
+        fallback: true,
+        contentType: 'text/html'
+      };
     }
   }
 

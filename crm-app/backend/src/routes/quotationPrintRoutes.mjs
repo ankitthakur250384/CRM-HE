@@ -22,6 +22,31 @@ const optionalAuth = (req, res, next) => {
 };
 
 /**
+ * Helper function to get default template configuration
+ */
+async function getDefaultTemplateConfig() {
+  try {
+    const client = await pool.connect();
+    const result = await client.query(`
+      SELECT config_value 
+      FROM system_config 
+      WHERE config_key = 'defaultQuotationTemplate'
+    `);
+    client.release();
+    
+    if (result.rows.length > 0) {
+      return {
+        defaultTemplateId: result.rows[0].config_value
+      };
+    }
+    return null;
+  } catch (error) {
+    console.warn('Could not fetch default template config:', error);
+    return null;
+  }
+}
+
+/**
  * Health check endpoint for print services
  */
 router.get('/health', (req, res) => {
@@ -127,28 +152,79 @@ router.post('/test-print', async (req, res) => {
 router.post('/pdf', optionalAuth, async (req, res) => {
   try {
     const { quotationId, templateId } = req.body;
+    console.log('📄 [PDF Route] Generating PDF for quotation:', quotationId, 'with template:', templateId);
+    
     if (!quotationId) {
       return res.status(400).json({ success: false, error: 'Quotation ID is required' });
     }
 
     // Load data
     const quotationData = await getQuotationWithDetails(quotationId);
-    const template = templateId 
-      ? await templateService.getTemplateById(templateId)
-      : await templateService.getDefaultTemplate();
+    if (!quotationData) {
+      return res.status(404).json({ success: false, error: 'Quotation not found' });
+    }
+    
+    // Get template (use default from config if none specified)
+    let template;
+    if (templateId) {
+      template = await templateService.getTemplateById(templateId);
+    } else {
+      // Try to get configured default template first
+      try {
+        const defaultConfig = await getDefaultTemplateConfig();
+        if (defaultConfig?.defaultTemplateId) {
+          template = await templateService.getTemplateById(defaultConfig.defaultTemplateId);
+          console.log('📋 Using configured default template:', defaultConfig.defaultTemplateId);
+        }
+      } catch (configError) {
+        console.warn('Could not load default template config:', configError);
+      }
+      
+      // Fallback to database default template
+      if (!template) {
+        template = await templateService.getDefaultTemplate();
+        console.log('📋 Using database default template');
+      }
+    }
 
-    // Generate HTML then PDF
-    const html = await htmlGeneratorService.generateBasicHTML(template, quotationData);
-    const pdf = await pdfService.generateFromHTML(html, { format: 'A4' });
+    // Generate enhanced HTML using the professional renderer
+    const mappedData = templateService.mapQuotationData(quotationData);
+    console.log('🗺️ Mapped quotation data:', { hasCustomer: !!mappedData.customer, hasClient: !!mappedData.client });
+    
+    // Use enhanced template rendering
+    const html = await htmlGeneratorService.generateEnhancedHTML(template, mappedData);
+    console.log('🎨 Generated HTML length:', html.length);
+    
+    // Generate PDF with proper error handling
+    const pdfResult = await pdfService.generateFromHTML(html, { 
+      format: 'A4',
+      quality: 'HIGH',
+      margins: { top: '15mm', right: '15mm', bottom: '15mm', left: '15mm' }
+    });
 
-    // Return as file
-    const buffer = Buffer.from(pdf.data, 'base64');
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename=quotation_${quotationId}.pdf`);
-    return res.send(buffer);
+    // Handle PDF result based on whether Puppeteer is available
+    if (pdfResult.fallback) {
+      console.log('⚠️ Using HTML fallback due to PDF generation issues');
+      
+      // Return HTML that can be printed or converted to PDF on frontend
+      res.setHeader('Content-Type', 'text/html');
+      res.setHeader('Content-Disposition', `inline; filename=quotation_${quotationId}.html`);
+      return res.send(pdfResult.data);
+    } else {
+      // Return proper PDF
+      const buffer = Buffer.isBuffer(pdfResult.data) ? pdfResult.data : Buffer.from(pdfResult.data, 'base64');
+      res.setHeader('Content-Type', 'application/pdf');
+      res.setHeader('Content-Disposition', `attachment; filename=quotation_${quotationId}.pdf`);
+      return res.send(buffer);
+    }
   } catch (error) {
-    console.error('❌ [PrintRoutes] PDF generation failed:', error);
-    return res.status(500).json({ success: false, error: 'Failed to generate PDF' });
+    console.error('❌ [PDF Route] PDF generation failed:', error);
+    console.error('❌ [PDF Route] Error stack:', error.stack);
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Failed to generate PDF',
+      message: error.message 
+    });
   }
 });
 
@@ -354,10 +430,25 @@ router.get('/preview', async (req, res) => {
   // Generate preview using template service (singleton instances)
     
     try {
-      // Get template (use default if not specified)
-      const template = templateId 
-        ? await templateService.getTemplateById(templateId)
-        : await templateService.getDefaultTemplate();
+      // Get template with priority selection (specific templateId > configured default > database default)
+      let template;
+      if (templateId) {
+        template = await templateService.getTemplateById(templateId);
+      } else {
+        // Check for configured default template first
+        const defaultConfig = await getDefaultTemplateConfig();
+        if (defaultConfig?.template_id) {
+          try {
+            template = await templateService.getTemplateById(defaultConfig.template_id);
+            console.log('📋 [PrintRoutes] Using configured default template:', defaultConfig.template_id);
+          } catch (configError) {
+            console.log('⚠️ [PrintRoutes] Configured template not found, falling back to database default');
+            template = await templateService.getDefaultTemplate();
+          }
+        } else {
+          template = await templateService.getDefaultTemplate();
+        }
+      }
 
       if (!template) {
         return res.status(404).json({
@@ -367,8 +458,7 @@ router.get('/preview', async (req, res) => {
       }
 
       // Get quotation data
-  // Map minimal quotation data for preview; fall back to basic structure
-  const quotationData = { id: quotationId };
+      const quotationData = await getQuotationWithDetails(quotationId);
       
       if (!quotationData) {
         return res.status(404).json({
@@ -378,7 +468,8 @@ router.get('/preview', async (req, res) => {
       }
 
       // Generate HTML preview
-  const html = await htmlGeneratorService.generateBasicHTML(template, quotationData);
+      const mappedData = templateService.mapQuotationData(quotationData);
+      const html = await htmlGeneratorService.generateBasicHTML(template, mappedData);
 
       if (format === 'json') {
         return res.json({
@@ -436,45 +527,8 @@ router.post('/preview', async (req, res) => {
       });
     }
 
-    // Step 1: Get quotation data with fallback
-    let quotationData;
-    try {
-      quotationData = await getQuotationWithDetails(quotationId);
-    } catch (error) {
-      console.log('⚠️ [PrintRoutes] Database error, using fallback data:', error.message);
-      quotationData = {
-        id: quotationId,
-        quotation_number: `QTN-${quotationId}`,
-        description: 'Sample Quotation',
-        status: 'active',
-        valid_until: new Date(Date.now() + 30*24*60*60*1000), // 30 days from now
-        total_amount: 50000,
-        tax_rate: 18,
-        created_at: new Date(),
-        updated_at: new Date(),
-        customer: {
-          name: 'Sample Customer',
-          email: 'sample@example.com',
-          phone: '+91-9876543210',
-          address: '123 Sample Street, Sample City',
-          company: 'Sample Company Ltd.'
-        },
-        items: [
-          {
-            description: 'Crane Service',
-            quantity: 1,
-            unit_price: 50000,
-            total: 50000
-          }
-        ],
-        company: {
-          name: 'ASP Cranes',
-          address: 'Industrial Area, New Delhi, India',
-          phone: '+91-XXXX-XXXX',
-          email: 'info@aspcranes.com'
-        }
-      };
-    }
+    // Step 1: Get quotation data
+    const quotationData = await getQuotationWithDetails(quotationId);
 
     if (!quotationData) {
       return res.status(404).json({
@@ -483,69 +537,30 @@ router.post('/preview', async (req, res) => {
       });
     }
 
-    // Step 2: Get template (Enhanced Template System) with fallback
+    // Step 2: Get template with priority selection
     let template;
-    try {
-      template = templateId 
-        ? await templateService.getTemplateById(templateId)
-        : await templateService.getDefaultTemplate();
-    } catch (error) {
-      console.log('⚠️ [PrintRoutes] Template service error, using fallback template:', error.message);
-      template = {
-        id: 'fallback-template',
-        name: 'Fallback Template',
-        description: 'Basic fallback template',
-        config: {
-          header: {
-            show_logo: true,
-            company_name: true,
-            quotation_number: true,
-            date: true
-          },
-          sections: {
-            customer_details: true,
-            items_table: true,
-            totals: true,
-            terms: true
-          },
-          styling: {
-            font_family: 'Arial',
-            font_size: '12px',
-            primary_color: '#2563eb'
-          }
+    // Priority: specific templateId > configured default > database default
+    if (templateId) {
+      template = await templateService.getTemplateById(templateId);
+    } else {
+      // Check for configured default template first
+      const defaultConfig = await getDefaultTemplateConfig();
+      if (defaultConfig?.template_id) {
+        try {
+          template = await templateService.getTemplateById(defaultConfig.template_id);
+          console.log('📋 [PrintRoutes] Using configured default template:', defaultConfig.template_id);
+        } catch (configError) {
+          console.log('⚠️ [PrintRoutes] Configured template not found, falling back to database default');
+          template = await templateService.getDefaultTemplate();
         }
-      };
+      } else {
+        template = await templateService.getDefaultTemplate();
+      }
     }
 
-    // Step 3: Generate basic HTML for preview with fallback
-    let html;
-    try {
-      html = await htmlGeneratorService.generateBasicHTML(template, quotationData);
-    } catch (error) {
-      console.log('⚠️ [PrintRoutes] HTML generation error, using basic fallback:', error.message);
-      html = `
-        <div style="padding: 20px; font-family: Arial, sans-serif;">
-          <h1>${quotationData.company.name}</h1>
-          <h2>Quotation #${quotationData.quotation_number}</h2>
-          <p><strong>Customer:</strong> ${quotationData.customer.name}</p>
-          <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
-          <table border="1" cellpadding="10" style="width: 100%; border-collapse: collapse;">
-            <tr><th>Description</th><th>Quantity</th><th>Price</th><th>Total</th></tr>
-            ${quotationData.items.map(item => `
-              <tr>
-                <td>${item.description}</td>
-                <td>${item.quantity}</td>
-                <td>₹${item.unit_price}</td>
-                <td>₹${item.total}</td>
-              </tr>
-            `).join('')}
-          </table>
-          <p style="text-align: right; margin-top: 20px;">
-            <strong>Total Amount: ₹${quotationData.total_amount}</strong>
-          </p>
-        </div>
-      `;
-    }
+    // Step 3: Generate HTML for preview
+    const mappedData = templateService.mapQuotationData(quotationData);
+    const html = await htmlGeneratorService.generateBasicHTML(template, mappedData);
 
     console.log('✅ [PrintRoutes] Preview generated successfully');
     res.json({

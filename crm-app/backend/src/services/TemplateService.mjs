@@ -207,17 +207,44 @@ class TemplateService {
    */
   mapQuotationData(quotationData) {
     console.log('🗺️ [TemplateService] Mapping quotation data:', {
-      customerName: quotationData.customerName,
-      customerContact: quotationData.customerContact,
-      hasCustomerData: !!(quotationData.customerName || quotationData.customerContact?.name)
+      customerName: quotationData.customer?.name,
+      hasCustomerData: !!(quotationData.customer?.name),
+      totalAmount: quotationData.total_amount,
+      itemsCount: quotationData.items?.length || 0
     });
     
-    // Extract customer information with fallbacks
-    const customerName = quotationData.customerContact?.name || quotationData.customer_name || quotationData.customerName || 'ABC Construction';
-    const companyName = quotationData.customerContact?.company || quotationData.customer_company || quotationData.customerName || 'ABC Construction';
-    const customerEmail = quotationData.customerContact?.email || quotationData.customer_email || quotationData.email || 'info@abcconstruction.com';
-    const customerPhone = quotationData.customerContact?.phone || quotationData.customer_phone || quotationData.phone || '+91 98765 43210';
-    const customerAddress = quotationData.customerContact?.address || quotationData.customer_address || quotationData.address || 'Mumbai, Maharashtra';
+    // Extract customer information from correct data structure
+    const customerName = quotationData.customer?.name || 'ABC Construction';
+    const companyName = quotationData.customer?.company || quotationData.customer?.name || 'ABC Construction';
+    const customerEmail = quotationData.customer?.email || 'info@abcconstruction.com';
+    const customerPhone = quotationData.customer?.phone || '+91 98765 43210';
+    const customerAddress = quotationData.customer?.address || 'Mumbai, Maharashtra';
+    
+    // Process quotation items
+    const items = quotationData.items || [];
+    const processedItems = items.map(item => ({
+      description: item.description || 'Equipment Rental',
+      quantity: item.quantity || 1,
+      unit: 'Each',
+      rate: item.unit_price || 0,
+      amount: item.total || 0
+    }));
+    
+    // If no items, create a default item
+    if (processedItems.length === 0) {
+      processedItems.push({
+        description: 'Equipment Rental',
+        quantity: 1,
+        unit: 'Days',
+        rate: 5000,
+        amount: 5000
+      });
+    }
+    
+    const totalAmount = quotationData.total_amount || 0;
+    const taxRate = quotationData.tax_rate || 18;
+    const subtotal = totalAmount / (1 + taxRate / 100);
+    const tax = totalAmount - subtotal;
     
     return {
       company: {
@@ -246,21 +273,17 @@ class TemplateService {
       },
       quotation: {
         number: quotationData.quotation_number || quotationData.id || `QTN-${Date.now()}`,
-        date: new Date().toLocaleDateString('en-IN'),
-        validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN'),
-        items: [
-          {
-            description: quotationData.selectedEquipment?.name || quotationData.machine_type || 'Equipment Rental',
-            quantity: quotationData.numberOfDays || quotationData.number_of_days || 1,
-            unit: 'Days',
-            rate: quotationData.selectedEquipment?.baseRates?.[quotationData.orderType] || quotationData.daily_rate || 5000,
-            amount: quotationData.totalRent || quotationData.total_cost || quotationData.total_amount || 50000
-          }
-        ],
-        subtotal: quotationData.totalRent || quotationData.total_cost || quotationData.total_amount || 50000,
-        tax: (quotationData.totalRent || quotationData.total_cost || quotationData.total_amount || 50000) * 0.18,
-        total: (quotationData.totalRent || quotationData.total_cost || quotationData.total_amount || 50000) * 1.18
-      }
+        date: quotationData.created_at ? new Date(quotationData.created_at).toLocaleDateString('en-IN') : new Date().toLocaleDateString('en-IN'),
+        validUntil: quotationData.valid_until ? new Date(quotationData.valid_until).toLocaleDateString('en-IN') : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN'),
+        items: processedItems,
+        subtotal: subtotal,
+        tax: tax,
+        total: totalAmount
+      },
+      // Legacy support
+      items: processedItems,
+      total_amount: totalAmount,
+      quotation_number: quotationData.quotation_number
     };
   }
 }

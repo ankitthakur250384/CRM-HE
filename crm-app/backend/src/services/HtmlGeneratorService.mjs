@@ -6,13 +6,13 @@
 class HTMLGeneratorService {
   constructor() {
     this.defaultStyles = {
-      body: 'font-family: Arial, sans-serif; margin: 0; padding: 20px; line-height: 1.4;',
-      header: 'text-align: center; border-bottom: 2px solid #0052CC; padding-bottom: 10px; margin-bottom: 20px;',
-      section: 'margin-bottom: 20px;',
-      table: 'width: 100%; border-collapse: collapse; margin: 10px 0;',
-      th: 'background-color: #f8f9fa; border: 1px solid #ddd; padding: 8px; text-align: left;',
-      td: 'border: 1px solid #ddd; padding: 8px;',
-      totals: 'background-color: #f8f9fa; font-weight: bold;'
+      body: 'font-family: Arial, sans-serif; margin: 0; padding: 20px; line-height: 1.6; color: #2c2c2c;',
+      header: 'text-align: center; border-bottom: 3px solid #0052CC; padding-bottom: 15px; margin-bottom: 25px; color: #1a1a1a;',
+      section: 'margin-bottom: 25px; color: #2c2c2c;',
+      table: 'width: 100%; border-collapse: collapse; margin: 15px 0; font-size: 14px;',
+      th: 'background-color: #f8f9fa; border: 1px solid #ddd; padding: 12px; text-align: left; font-weight: 600; color: #1a1a1a;',
+      td: 'border: 1px solid #ddd; padding: 10px; color: #2c2c2c;',
+      totals: 'background-color: #f8f9fa; font-weight: bold; color: #1a1a1a;'
     };
   }
 
@@ -86,28 +86,29 @@ class HTMLGeneratorService {
       case 'header':
         return `
           <div class="header" style="${this.defaultStyles.header}">
-            <h1 style="margin: 0; color: #0052CC;">ASP CRANES</h1>
-            <h2 style="margin: 5px 0 0 0; font-size: 16px; font-weight: normal;">Professional Equipment Solutions</h2>
+            <h1 style="margin: 0; color: #0052CC; font-size: 32px; font-weight: bold;">ASP CRANES</h1>
+            <h2 style="margin: 8px 0 0 0; font-size: 18px; font-weight: normal; color: #2c2c2c;">Professional Equipment Solutions</h2>
           </div>
         `;
         
       case 'customer':
         return `
           <div class="customer-info" style="${this.defaultStyles.section}">
-            <h3>Bill To:</h3>
-            <div><strong>${quotationData.customerName || 'Valued Customer'}</strong></div>
-            <div>Contact: ${quotationData.customerContact?.name || 'N/A'}</div>
-            <div>Address: ${quotationData.customerContact?.address || 'N/A'}</div>
-            <div>Phone: ${quotationData.customerContact?.phone || 'N/A'}</div>
+            <h3 style="color: #1a1a1a; margin-bottom: 15px; font-size: 18px;">Bill To:</h3>
+            <div style="font-weight: 600; color: #1a1a1a; margin-bottom: 8px; font-size: 16px;">${quotationData.customer?.name || quotationData.client?.name || 'Valued Customer'}</div>
+            ${quotationData.customer?.company || quotationData.client?.company ? `<div style="color: #2c2c2c; margin-bottom: 6px;">Company: ${quotationData.customer?.company || quotationData.client?.company}</div>` : ''}
+            ${quotationData.customer?.address || quotationData.client?.address ? `<div style="color: #2c2c2c; margin-bottom: 6px;">Address: ${quotationData.customer?.address || quotationData.client?.address}</div>` : ''}
+            ${quotationData.customer?.phone || quotationData.client?.phone ? `<div style="color: #2c2c2c; margin-bottom: 6px;">Phone: ${quotationData.customer?.phone || quotationData.client?.phone}</div>` : ''}
+            ${quotationData.customer?.email || quotationData.client?.email ? `<div style="color: #2c2c2c; margin-bottom: 6px;">Email: ${quotationData.customer?.email || quotationData.client?.email}</div>` : ''}
           </div>
         `;
         
       case 'field':
         return `
           <div class="quotation-details" style="${this.defaultStyles.section}">
-            <div>Quotation #: ${quotationData.id || 'Q-' + Date.now()}</div>
-            <div>Date: ${new Date().toLocaleDateString()}</div>
-            <div>Valid Until: ${new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString()}</div>
+            <div style="color: #1a1a1a; font-weight: 600; margin-bottom: 8px;">Quotation #: ${quotationData.quotation_number || quotationData.id || 'Q-' + Date.now()}</div>
+            <div style="color: #2c2c2c; margin-bottom: 6px;">Date: ${quotationData.created_at ? new Date(quotationData.created_at).toLocaleDateString() : new Date().toLocaleDateString()}</div>
+            <div style="color: #2c2c2c; margin-bottom: 6px;">Valid Until: ${quotationData.valid_until ? new Date(quotationData.valid_until).toLocaleDateString() : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString()}</div>
           </div>
         `;
         
@@ -126,10 +127,15 @@ class HTMLGeneratorService {
    * Render basic table
    */
   renderBasicTable(quotationData) {
-    const equipment = quotationData.selectedEquipment || {};
-    const baseRate = equipment.baseRates?.[quotationData.orderType] || 0;
-    const days = quotationData.numberOfDays || 1;
-    const total = baseRate * days;
+    const items = quotationData.items || [];
+    
+    if (items.length === 0) {
+      return `
+        <div class="items-table" style="${this.defaultStyles.section}">
+          <p>No items found in quotation.</p>
+        </div>
+      `;
+    }
 
     return `
       <div class="items-table" style="${this.defaultStyles.section}">
@@ -138,19 +144,19 @@ class HTMLGeneratorService {
             <tr>
               <th style="${this.defaultStyles.th}">Description</th>
               <th style="${this.defaultStyles.th}">Quantity</th>
-              <th style="${this.defaultStyles.th}">Unit</th>
-              <th style="${this.defaultStyles.th}">Rate</th>
-              <th style="${this.defaultStyles.th}">Amount</th>
+              <th style="${this.defaultStyles.th}">Unit Price</th>
+              <th style="${this.defaultStyles.th}">Total</th>
             </tr>
           </thead>
           <tbody>
-            <tr>
-              <td style="${this.defaultStyles.td}">${equipment.name || 'Equipment Rental'}</td>
-              <td style="${this.defaultStyles.td}">${days}</td>
-              <td style="${this.defaultStyles.td}">Days</td>
-              <td style="${this.defaultStyles.td}">₹${baseRate.toLocaleString()}</td>
-              <td style="${this.defaultStyles.td}">₹${total.toLocaleString()}</td>
-            </tr>
+            ${items.map(item => `
+              <tr>
+                <td style="${this.defaultStyles.td}">${item.description || 'Item'}</td>
+                <td style="${this.defaultStyles.td}">${item.quantity || 1}</td>
+                <td style="${this.defaultStyles.td}">₹${item.unit_price || 0}</td>
+                <td style="${this.defaultStyles.td}">₹${item.total || 0}</td>
+              </tr>
+            `).join('')}
           </tbody>
         </table>
       </div>
@@ -161,16 +167,17 @@ class HTMLGeneratorService {
    * Render basic totals
    */
   renderBasicTotals(quotationData) {
-    const subtotal = quotationData.totalRent || 0;
-    const tax = subtotal * 0.18;
-    const total = subtotal + tax;
+    const total = quotationData.total_amount || 0;
+    const taxRate = quotationData.tax_rate || 18;
+    const subtotal = total / (1 + taxRate / 100);
+    const tax = total - subtotal;
 
     return `
       <div class="totals" style="${this.defaultStyles.section}">
         <div style="text-align: right;">
-          <div>Subtotal: ₹${subtotal.toLocaleString()}</div>
-          <div>Tax (18%): ₹${tax.toLocaleString()}</div>
-          <div style="font-weight: bold; font-size: 18px;">Total: ₹${total.toLocaleString()}</div>
+          <div>Subtotal: ₹${subtotal.toFixed(2)}</div>
+          <div>Tax (${taxRate}%): ₹${tax.toFixed(2)}</div>
+          <div style="font-weight: bold; font-size: 18px;">Total: ₹${total.toFixed(2)}</div>
         </div>
       </div>
     `;

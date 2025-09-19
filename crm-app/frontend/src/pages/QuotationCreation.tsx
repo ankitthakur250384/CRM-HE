@@ -9,7 +9,8 @@ import {
   Clock,
   IndianRupee,
   Settings,
-  Calendar
+  Calendar,
+  Package
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/common/Card';
 import { Button } from '../components/common/Button';
@@ -1028,17 +1029,19 @@ export function QuotationCreation() {
 
                       {/* Selected machines list */}
                       {formData.selectedMachines.length > 0 && (
-                        <div className="mt-4 p-4 bg-gray-50 border border-gray-200 rounded-lg">
-                          <h4 className="text-sm font-medium text-gray-900 mb-3">
+                        <div className="mt-4 space-y-3">
+                          <h4 className="text-sm font-medium text-gray-900 flex items-center gap-2">
+                            <Package className="w-4 h-4 text-blue-600" />
                             Selected Equipment ({formData.selectedMachines.length} type{formData.selectedMachines.length !== 1 ? 's' : ''})
                           </h4>
                           <div className="space-y-3">
                             {formData.selectedMachines.map((machine, index) => (
-                              <div key={`${machine.id}-${index}`} className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
-                                <div className="flex items-start justify-between mb-3">
+                              <div key={`${machine.id}-${index}`} className="bg-white border border-gray-200 rounded-lg p-4 shadow-sm hover:shadow-md transition-shadow">
+                                {/* Equipment Header */}
+                                <div className="flex items-start justify-between mb-4">
                                   <div className="flex-1">
-                                    <div className="font-medium text-gray-900 text-lg">{machine.name}</div>
-                                    <div className="text-sm text-gray-500 mt-1">{machine.equipmentId}</div>
+                                    <h5 className="font-semibold text-gray-900 text-base leading-tight">{machine.name}</h5>
+                                    <p className="text-sm text-gray-500 mt-1">{machine.equipmentId}</p>
                                   </div>
                                   <button
                                     type="button"
@@ -1048,20 +1051,21 @@ export function QuotationCreation() {
                                         selectedMachines: prev.selectedMachines.filter((_, i) => i !== index)
                                       }));
                                     }}
-                                    className="w-8 h-8 rounded-full bg-red-100 hover:bg-red-200 flex items-center justify-center text-red-600 transition-colors"
+                                    className="w-7 h-7 rounded-full bg-red-100 hover:bg-red-200 flex items-center justify-center text-red-600 transition-colors ml-3 flex-shrink-0"
                                     title="Remove equipment"
                                   >
                                     ×
                                   </button>
                                 </div>
                                 
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                  {/* Quantity Control */}
-                                  <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                {/* Controls Row */}
+                                <div className="grid grid-cols-3 gap-4">
+                                  {/* Quantity */}
+                                  <div className="space-y-2">
+                                    <label className="block text-xs font-medium text-gray-700 uppercase tracking-wider">
                                       Quantity
                                     </label>
-                                    <div className="flex items-center gap-2">
+                                    <div className="flex items-center gap-1">
                                       <button
                                         type="button"
                                         onClick={() => {
@@ -1072,7 +1076,7 @@ export function QuotationCreation() {
                                             )
                                           }));
                                         }}
-                                        className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 transition-colors"
+                                        className="w-7 h-7 rounded bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 transition-colors text-sm font-medium"
                                       >
                                         -
                                       </button>
@@ -1088,7 +1092,7 @@ export function QuotationCreation() {
                                             )
                                           }));
                                         }}
-                                        className="w-16 text-center text-sm font-medium border border-gray-300 rounded-lg px-2 py-1"
+                                        className="w-12 text-center text-sm font-medium border border-gray-300 rounded px-1 py-1 focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                                         min="1"
                                       />
                                       <button
@@ -1101,20 +1105,20 @@ export function QuotationCreation() {
                                             )
                                           }));
                                         }}
-                                        className="w-8 h-8 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 transition-colors"
+                                        className="w-7 h-7 rounded bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 transition-colors text-sm font-medium"
                                       >
                                         +
                                       </button>
                                     </div>
                                   </div>
 
-                                  {/* Editable Rate */}
-                                  <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  {/* Rate */}
+                                  <div className="space-y-2">
+                                    <label className="block text-xs font-medium text-gray-700 uppercase tracking-wider">
                                       Rate{getRateUnit(formData.orderType)}
                                     </label>
                                     <div className="relative">
-                                      <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500 text-sm">₹</span>
+                                      <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">₹</span>
                                       <input
                                         type="number"
                                         value={machine.baseRate}
@@ -1127,28 +1131,28 @@ export function QuotationCreation() {
                                             )
                                           }));
                                         }}
-                                        className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 text-sm"
+                                        className="w-full pl-6 pr-2 py-1 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                                         min="0"
                                         step="100"
                                         placeholder="0"
                                       />
                                     </div>
-                                    <div className="text-xs text-gray-500 mt-1">
+                                    <div className="text-xs text-gray-500">
                                       Default: {formatCurrency(machine.baseRates?.[formData.orderType] || 0)}
                                     </div>
                                   </div>
 
-                                  {/* Subtotal Display */}
-                                  <div>
-                                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  {/* Subtotal */}
+                                  <div className="space-y-2">
+                                    <label className="block text-xs font-medium text-gray-700 uppercase tracking-wider">
                                       Subtotal
                                     </label>
-                                    <div className="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
-                                      <div className="text-lg font-bold text-blue-700">
+                                    <div className="bg-blue-50 border border-blue-200 rounded px-3 py-2">
+                                      <div className="font-bold text-blue-700 text-sm">
                                         {formatCurrency(machine.baseRate * machine.quantity)}
                                       </div>
                                       <div className="text-xs text-blue-600">
-                                        {machine.quantity} × {formatCurrency(machine.baseRate)}{getRateUnit(formData.orderType)}
+                                        {machine.quantity} × {formatCurrency(machine.baseRate)}
                                       </div>
                                     </div>
                                   </div>
@@ -1156,9 +1160,11 @@ export function QuotationCreation() {
                               </div>
                             ))}
                           </div>
-                          <div className="mt-4 pt-4 border-t border-gray-300 bg-blue-50 rounded-lg p-4">
+                          
+                          {/* Total Section */}
+                          <div className="bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-lg p-4">
                             <div className="flex justify-between items-center">
-                              <span className="text-lg font-semibold text-gray-900">Total Equipment Cost:</span>
+                              <span className="font-semibold text-gray-900">Total Equipment Cost:</span>
                               <span className="text-xl font-bold text-blue-700">
                                 {formatCurrency(
                                   formData.selectedMachines.reduce((total, machine) => 
