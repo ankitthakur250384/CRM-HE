@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Printer, Eye, Download, Mail, X } from 'lucide-react';
 
@@ -14,6 +14,8 @@ const QuotationPreviewPrint: React.FC<QuotationPreviewPrintProps> = ({
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
   const [previewHtml, setPreviewHtml] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [defaultTemplate, setDefaultTemplate] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
 
   // Simple quotation data for testing
   const defaultQuotationData = {
@@ -31,6 +33,91 @@ const QuotationPreviewPrint: React.FC<QuotationPreviewPrintProps> = ({
   };
 
   const data = quotationData || defaultQuotationData;
+
+  // Fetch default template configuration on component mount
+  useEffect(() => {
+    const fetchDefaultTemplate = async () => {
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL || '/api';
+        
+        // First, get the default template configuration
+        const configResponse = await fetch(`${apiUrl}/config/default-template`, {
+          headers: {
+            'X-Bypass-Auth': 'development-only-123'
+          }
+        });
+        
+        if (configResponse.ok) {
+          const config = await configResponse.json();
+          console.log('🔧 Default template config:', config);
+          
+          if (config.defaultTemplateId) {
+            // Fetch the actual template
+            const templateResponse = await fetch(`${apiUrl}/templates/enhanced/${config.defaultTemplateId}`, {
+              headers: {
+                'X-Bypass-Auth': 'development-only-123'
+              }
+            });
+            
+            if (templateResponse.ok) {
+              const template = await templateResponse.json();
+              console.log('📋 Fetched default template:', template);
+              setDefaultTemplate(template.data || template);
+            } else {
+              console.warn('Failed to fetch default template, using fallback');
+              setError('Failed to load default template');
+            }
+          } else {
+            console.warn('No default template configured, using fallback');
+            setError('No default template configured');
+          }
+        } else {
+          console.warn('Failed to fetch default template config, using fallback');
+          setError('Failed to load template configuration');
+        }
+      } catch (error) {
+        console.error('Error fetching default template:', error);
+        setError('Error loading template');
+      }
+    };
+
+    fetchDefaultTemplate();
+  }, []);
+
+  const generateTemplatePreview = async () => {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || '/api';
+      
+      // Use the enhanced template system for preview generation
+      const response = await fetch(`${apiUrl}/quotations/print/preview`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Bypass-Auth': 'development-only-123'
+        },
+        body: JSON.stringify({
+          quotationId: quotationId,
+          templateId: defaultTemplate?.id, // Use default template if available
+          format: 'html'
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.html) {
+          return result.html;
+        } else {
+          throw new Error(result.error || 'Failed to generate template preview');
+        }
+      } else {
+        throw new Error(`Template preview failed: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('Template preview error:', error);
+      // Fall back to simple preview if template system fails
+      return generateSimplePreview();
+    }
+  };
 
   const generateSimplePreview = () => {
     const html = `
@@ -235,41 +322,115 @@ const QuotationPreviewPrint: React.FC<QuotationPreviewPrintProps> = ({
     return html;
   };
 
-  const handlePreview = () => {
+  const handlePreview = async () => {
     setIsLoading(true);
+    setError(null);
     try {
-      const html = generateSimplePreview();
+      let html;
+      
+      // Try to use template-based preview if default template is available
+      if (defaultTemplate) {
+        console.log('🎨 Using template-based preview with template:', defaultTemplate.name);
+        html = await generateTemplatePreview();
+      } else {
+        console.log('📄 Using fallback simple preview');
+        html = generateSimplePreview();
+      }
+      
       setPreviewHtml(html);
       setIsPreviewOpen(true);
     } catch (error) {
       console.error('Error generating preview:', error);
-      alert('Failed to generate preview');
+      setError(`Failed to generate preview: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      
+      // As last resort, try simple preview
+      try {
+        const fallbackHtml = generateSimplePreview();
+        setPreviewHtml(fallbackHtml);
+        setIsPreviewOpen(true);
+      } catch (fallbackError) {
+        console.error('Even fallback preview failed:', fallbackError);
+        alert('Failed to generate preview');
+      }
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handlePrint = () => {
-    const html = generateSimplePreview();
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(html);
-      printWindow.document.close();
-      printWindow.print();
+  const handlePrint = async () => {
+    setIsLoading(true);
+    try {
+      let html;
+      
+      // Try to use template-based preview if default template is available
+      if (defaultTemplate) {
+        console.log('🖨️ Printing with template-based preview');
+        html = await generateTemplatePreview();
+      } else {
+        console.log('🖨️ Printing with fallback simple preview');
+        html = generateSimplePreview();
+      }
+      
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(html);
+        printWindow.document.close();
+        printWindow.print();
+      }
+    } catch (error) {
+      console.error('Error generating print content:', error);
+      // Fallback to simple preview
+      const fallbackHtml = generateSimplePreview();
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(fallbackHtml);
+        printWindow.document.close();
+        printWindow.print();
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleDownload = () => {
-    const html = generateSimplePreview();
-    const blob = new Blob([html], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `quotation_${quotationId}.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+  const handleDownload = async () => {
+    setIsLoading(true);
+    try {
+      let html;
+      
+      // Try to use template-based preview if default template is available
+      if (defaultTemplate) {
+        console.log('💾 Downloading with template-based preview');
+        html = await generateTemplatePreview();
+      } else {
+        console.log('💾 Downloading with fallback simple preview');
+        html = generateSimplePreview();
+      }
+      
+      const blob = new Blob([html], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `quotation_${quotationId}.html`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Error generating download content:', error);
+      // Fallback to simple preview
+      const fallbackHtml = generateSimplePreview();
+      const blob = new Blob([fallbackHtml], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `quotation_${quotationId}.html`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleEmail = () => {
@@ -283,6 +444,24 @@ const QuotationPreviewPrint: React.FC<QuotationPreviewPrintProps> = ({
     <div className="quotation-preview-print">
       <div className="bg-white rounded-lg p-6 shadow-sm border">
         <h3 className="text-lg font-semibold mb-4">Quotation Actions</h3>
+        
+        {/* Template Status Display */}
+        {defaultTemplate && (
+          <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-md">
+            <p className="text-sm text-green-800">
+              ✅ Using template: <strong>{defaultTemplate.name}</strong>
+            </p>
+          </div>
+        )}
+        
+        {error && (
+          <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+            <p className="text-sm text-yellow-800">
+              ⚠️ {error} - Using fallback template
+            </p>
+          </div>
+        )}
+        
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           <Button 
             onClick={handlePreview}
