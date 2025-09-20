@@ -354,6 +354,10 @@ export function QuotationCreation() {
         
         if (quotationToLoad) {
           console.log('[QuotationCreation] Loading quotation data for ID:', quotationToLoad.id);
+          console.log('[QuotationCreation] Full quotation data received:', quotationToLoad);
+          console.log('[QuotationCreation] Customer data:', quotationToLoad.customerContact);
+          console.log('[QuotationCreation] Working hours:', quotationToLoad.workingHours);
+          console.log('[QuotationCreation] Food resources:', quotationToLoad.foodResources);
           
           const updatedFormData = {
             ...formData,
@@ -395,6 +399,13 @@ export function QuotationCreation() {
           };
           
           console.log('[QuotationCreation] Form data populated with', Object.keys(updatedFormData).length, 'fields');
+          console.log('[QuotationCreation] Updated form data preview:', {
+            numberOfDays: updatedFormData.numberOfDays,
+            workingHours: updatedFormData.workingHours,
+            foodResources: updatedFormData.foodResources,
+            customerName: updatedFormData.customerName,
+            customerContact: updatedFormData.customerContact
+          });
           setFormData(updatedFormData);
 
           // If we have calculations from the loaded quotation, use them to set initial state

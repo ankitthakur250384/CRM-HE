@@ -232,7 +232,9 @@ router.get('/:id', async (req, res) => {
     try {
       const quotationResult = await client.query(`
         SELECT q.*, c.name as customer_name, c.email as customer_email,
-               c.phone as customer_phone, d.title as deal_title
+               c.phone as customer_phone, c.company as customer_company,
+               c.address as customer_address, c.designation as customer_designation,
+               d.title as deal_title
         FROM quotations q
         LEFT JOIN customers c ON q.customer_id = c.id
         LEFT JOIN deals d ON q.deal_id = d.id
@@ -259,16 +261,105 @@ router.get('/:id', async (req, res) => {
       const transformedQuotation = {
         id: quotation.id,
         quotationId: quotation.id,
+        dealId: quotation.deal_id,
+        leadId: quotation.lead_id,
+        customerId: quotation.customer_id,
         customerName: quotation.customer_name,
-        customerEmail: quotation.customer_email,
-        customerPhone: quotation.customer_phone,
+        customerContact: quotation.customer_contact || {
+          name: quotation.customer_name,
+          email: quotation.customer_email,
+          phone: quotation.customer_phone,
+          company: quotation.customer_company,
+          address: quotation.customer_address,
+          designation: quotation.customer_designation
+        },
         dealTitle: quotation.deal_title,
         machineType: quotation.machine_type,
         orderType: quotation.order_type,
         numberOfDays: quotation.number_of_days,
+        workingHours: quotation.working_hours,
+        foodResources: quotation.food_resources,
+        accomResources: quotation.accom_resources,
+        siteDistance: quotation.site_distance,
+        usage: quotation.usage,
+        riskFactor: quotation.risk_factor,
+        shift: quotation.shift,
+        dayNight: quotation.day_night,
+        mobDemob: quotation.mob_demob,
+        mobRelaxation: quotation.mob_relaxation,
+        extraCharge: quotation.extra_charge,
+        otherFactorsCharge: quotation.other_factors_charge,
+        billing: quotation.billing,
+        includeGst: quotation.include_gst,
+        sundayWorking: quotation.sunday_working,
+        incidentalCharges: quotation.incidental_charges || [],
+        otherFactors: quotation.other_factors || [],
+        totalRent: quotation.total_rent,
         totalCost: quotation.total_cost,
+        workingCost: quotation.working_cost,
+        mobDemobCost: quotation.mob_demob_cost,
+        foodAccomCost: quotation.food_accom_cost,
+        usageLoadFactor: quotation.usage_load_factor,
+        riskAdjustment: quotation.risk_adjustment,
+        gstAmount: quotation.gst_amount,
+        version: quotation.version,
+        createdBy: quotation.created_by,
         status: quotation.status,
+        templateId: quotation.template_id,
+        notes: quotation.notes,
         createdAt: quotation.created_at,
+        updatedAt: quotation.updated_at,
+        calculations: {
+          baseRate: 0, // Will be calculated on frontend
+          totalHours: quotation.working_hours * quotation.number_of_days,
+          workingCost: quotation.working_cost || 0,
+          mobDemobCost: quotation.mob_demob_cost || 0,
+          foodAccomCost: quotation.food_accom_cost || 0,
+          usageLoadFactor: quotation.usage_load_factor || 0,
+          extraCharges: quotation.extra_charge || 0,
+          riskAdjustment: quotation.risk_adjustment || 0,
+          incidentalCost: 0, // Will be calculated from incidentalCharges
+          otherFactorsCost: quotation.other_factors_charge || 0,
+          subtotal: quotation.total_rent || 0,
+          gstAmount: quotation.gst_amount || 0,
+          totalAmount: quotation.total_cost || 0
+        },
+        selectedMachines: machinesResult.rows.map(machine => ({
+          id: machine.equipment_id,
+          machineType: quotation.machine_type,
+          equipmentId: machine.equipment_id,
+          name: machine.equipment_name || 'Equipment',
+          quantity: machine.quantity || 1,
+          baseRate: machine.base_rate || 0,
+          baseRates: {
+            micro: machine.base_rate || 0,
+            small: machine.base_rate || 0,
+            monthly: machine.base_rate || 0,
+            yearly: machine.base_rate || 0
+          },
+          runningCostPerKm: machine.running_cost_per_km || 0
+        })),
+        selectedEquipment: machinesResult.rows.length > 0 ? {
+          id: machinesResult.rows[0].equipment_id,
+          equipmentId: machinesResult.rows[0].equipment_id,
+          name: machinesResult.rows[0].equipment_name || 'Equipment',
+          baseRates: {
+            micro: machinesResult.rows[0].base_rate || 0,
+            small: machinesResult.rows[0].base_rate || 0,
+            monthly: machinesResult.rows[0].base_rate || 0,
+            yearly: machinesResult.rows[0].base_rate || 0
+          }
+        } : {
+          id: '',
+          equipmentId: '',
+          name: '',
+          baseRates: {
+            micro: 0,
+            small: 0,
+            monthly: 0,
+            yearly: 0
+          }
+        },
         items: machinesResult.rows.map(machine => ({
           description: machine.equipment_name || 'Equipment',
           qty: machine.quantity || 1,

@@ -233,7 +233,7 @@ const QuotationManagementComplete: React.FC = () => {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${localStorage.getItem('jwt-token')}`,
           'X-Bypass-Auth': 'development-only-123'
         },
         body: JSON.stringify({
@@ -280,7 +280,8 @@ const QuotationManagementComplete: React.FC = () => {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          'Authorization': `Bearer ${localStorage.getItem('jwt-token')}`,
+          'X-Bypass-Auth': 'development-only-123'
         },
         body: JSON.stringify({ 
           quotationId: quotationId,

@@ -322,7 +322,7 @@ router.post('/print', optionalAuth, async (req, res) => {
  */
 async function getQuotationWithDetails(quotationId) {
   try {
-    console.log('🔍 [Helper] Fetching quotation:', quotationId);
+    console.log('🔍 [Helper] Fetching quotation:', quotationId, 'Type:', typeof quotationId);
     
     const query = `
       SELECT 
@@ -345,7 +345,9 @@ async function getQuotationWithDetails(quotationId) {
       WHERE q.id = $1 AND q.deleted_at IS NULL
     `;
     
+    console.log('🔍 [Helper] Executing query with ID:', quotationId);
     const result = await pool.query(query, [quotationId]);
+    console.log('🔍 [Helper] Query result rows count:', result.rows.length);
     
     if (!result.rows || result.rows.length === 0) {
       return null;
@@ -458,7 +460,17 @@ router.get('/preview', async (req, res) => {
       }
 
       // Get quotation data
-      const quotationData = await getQuotationWithDetails(quotationId);
+      let quotationData;
+      try {
+        quotationData = await getQuotationWithDetails(quotationId);
+      } catch (error) {
+        console.error('❌ [PrintRoutes] Failed to fetch quotation:', error);
+        return res.status(500).json({
+          success: false,
+          error: 'Failed to fetch quotation data',
+          message: error.message
+        });
+      }
       
       if (!quotationData) {
         return res.status(404).json({
@@ -468,8 +480,18 @@ router.get('/preview', async (req, res) => {
       }
 
       // Generate HTML preview
-      const mappedData = templateService.mapQuotationData(quotationData);
-      const html = await htmlGeneratorService.generateBasicHTML(template, mappedData);
+      let html;
+      try {
+        const mappedData = templateService.mapQuotationData(quotationData);
+        html = await htmlGeneratorService.generateBasicHTML(template, mappedData);
+      } catch (error) {
+        console.error('❌ [PrintRoutes] Failed to generate HTML:', error);
+        return res.status(500).json({
+          success: false,
+          error: 'Failed to generate preview HTML',
+          message: error.message
+        });
+      }
 
       if (format === 'json') {
         return res.json({
@@ -516,7 +538,8 @@ router.post('/preview', async (req, res) => {
     console.log('👁️ [PrintRoutes] Preview request:', {
       quotationId,
       templateId,
-      format
+      format,
+      body: req.body
     });
 
     // Validate required parameters
@@ -528,7 +551,17 @@ router.post('/preview', async (req, res) => {
     }
 
     // Step 1: Get quotation data
-    const quotationData = await getQuotationWithDetails(quotationId);
+    let quotationData;
+    try {
+      quotationData = await getQuotationWithDetails(quotationId);
+    } catch (error) {
+      console.error('❌ [PrintRoutes] Failed to fetch quotation:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to fetch quotation data',
+        message: error.message
+      });
+    }
 
     if (!quotationData) {
       return res.status(404).json({
@@ -539,28 +572,47 @@ router.post('/preview', async (req, res) => {
 
     // Step 2: Get template with priority selection
     let template;
-    // Priority: specific templateId > configured default > database default
-    if (templateId) {
-      template = await templateService.getTemplateById(templateId);
-    } else {
-      // Check for configured default template first
-      const defaultConfig = await getDefaultTemplateConfig();
-      if (defaultConfig?.template_id) {
-        try {
-          template = await templateService.getTemplateById(defaultConfig.template_id);
-          console.log('📋 [PrintRoutes] Using configured default template:', defaultConfig.template_id);
-        } catch (configError) {
-          console.log('⚠️ [PrintRoutes] Configured template not found, falling back to database default');
+    try {
+      // Priority: specific templateId > configured default > database default
+      if (templateId) {
+        template = await templateService.getTemplateById(templateId);
+      } else {
+        // Check for configured default template first
+        const defaultConfig = await getDefaultTemplateConfig();
+        if (defaultConfig?.template_id) {
+          try {
+            template = await templateService.getTemplateById(defaultConfig.template_id);
+            console.log('📋 [PrintRoutes] Using configured default template:', defaultConfig.template_id);
+          } catch (configError) {
+            console.log('⚠️ [PrintRoutes] Configured template not found, falling back to database default');
+            template = await templateService.getDefaultTemplate();
+          }
+        } else {
           template = await templateService.getDefaultTemplate();
         }
-      } else {
-        template = await templateService.getDefaultTemplate();
       }
+    } catch (error) {
+      console.error('❌ [PrintRoutes] Failed to fetch template:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to fetch template',
+        message: error.message
+      });
     }
 
     // Step 3: Generate HTML for preview
-    const mappedData = templateService.mapQuotationData(quotationData);
-    const html = await htmlGeneratorService.generateBasicHTML(template, mappedData);
+    let html;
+    try {
+      const mappedData = templateService.mapQuotationData(quotationData);
+      html = await htmlGeneratorService.generateBasicHTML(template, mappedData);
+    } catch (error) {
+      console.error('❌ [PrintRoutes] Failed to generate HTML:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'Failed to generate preview HTML',
+        message: error.message
+      });
+    }
 
     console.log('✅ [PrintRoutes] Preview generated successfully');
     res.json({

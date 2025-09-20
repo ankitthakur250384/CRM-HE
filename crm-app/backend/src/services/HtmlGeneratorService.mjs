@@ -64,6 +64,14 @@ class HTMLGeneratorService {
             }
           }
         }
+      } else {
+        // If template doesn't have elements, create a basic structure
+        console.log('⚠️ Template has no elements, creating basic structure');
+        sections.push(this.renderBasicElement({ type: 'header' }, quotationData));
+        sections.push(this.renderBasicElement({ type: 'customer' }, quotationData));
+        sections.push(this.renderBasicElement({ type: 'field' }, quotationData));
+        sections.push(this.renderBasicElement({ type: 'table' }, quotationData));
+        sections.push(this.renderBasicElement({ type: 'total' }, quotationData));
       }
 
       // Wrap in basic HTML document
