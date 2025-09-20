@@ -8,7 +8,9 @@ import { useState, useEffect, useCallback, useRef } from 'react';
 import {
   DragDropContext,
   Droppable,
-  Draggable
+  Draggable,
+  DraggableProvided,
+  DraggableStateSnapshot
 } from 'react-beautiful-dnd';
 import {
   Plus,
@@ -196,7 +198,7 @@ const TemplateElement: React.FC<TemplateElementProps> = ({ element, index, onUpd
 
   return (
     <Draggable draggableId={element.id} index={index}>
-      {(provided, snapshot) => (
+      {(provided: DraggableProvided, snapshot: DraggableStateSnapshot) => (
         <div
           ref={provided.innerRef}
           {...provided.draggableProps}

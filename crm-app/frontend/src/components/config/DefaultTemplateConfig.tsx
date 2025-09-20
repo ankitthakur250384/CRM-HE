@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Save, RefreshCw, FileText, Activity, AlertCircle } from 'lucide-react';
+import { Save, RefreshCw, FileText } from 'lucide-react';
 import { Select } from '../common/Select';
 import { Button } from '../common/Button';
 import { Toast } from '../common/Toast';
@@ -32,34 +32,6 @@ export function DefaultTemplateConfig({ onSave }: DefaultTemplateConfigProps) {
     variant?: 'success' | 'error' | 'warning';
   }>({ show: false, title: '' });
   const [previewHtml, setPreviewHtml] = useState('');
-  const [connectionStatus, setConnectionStatus] = useState<'unknown' | 'connected' | 'disconnected'>('unknown');
-
-  const testConnection = async () => {
-    try {
-      console.log('Testing backend connection...');
-      
-      // Test health endpoint first
-      const healthResponse = await fetch('/api/templates/enhanced/health');
-      console.log('Health response:', healthResponse.status);
-      
-      if (healthResponse.ok) {
-        const healthData = await healthResponse.json();
-        console.log('Health data:', healthData);
-        setConnectionStatus('connected');
-        showToast('✅ Backend connection successful!', 'success');
-        return true;
-      } else {
-        setConnectionStatus('disconnected');
-        showToast(`❌ Backend health check failed: ${healthResponse.status}`, 'error');
-        return false;
-      }
-    } catch (error) {
-      console.error('Connection test failed:', error);
-      setConnectionStatus('disconnected');
-      showToast(`❌ Connection failed: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
-      return false;
-    }
-  };
 
   useEffect(() => {
     async function generatePreview() {
