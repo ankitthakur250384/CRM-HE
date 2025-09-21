@@ -88,32 +88,9 @@ const QuotationPreviewPrint: React.FC<QuotationPreviewPrintProps> = ({
 
   const generateTemplatePreview = async () => {
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || '/api';
-      
-      // Use the enhanced template system for preview generation
-      const response = await fetch(`${apiUrl}/quotations/print/preview`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Bypass-Auth': 'development-only-123'
-        },
-        body: JSON.stringify({
-          quotationId: quotationId,
-          templateId: defaultTemplate?.id, // Use default template if available
-          format: 'html'
-        })
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success && result.html) {
-          return result.html;
-        } else {
-          throw new Error(result.error || 'Failed to generate template preview');
-        }
-      } else {
-        throw new Error(`Template preview failed: ${response.status}`);
-      }
+      // Use simple local preview instead of backend API to avoid 500 errors
+      console.log('🎨 [QuotationPreview] Generating simple template preview locally');
+      return generateSimplePreview();
     } catch (error) {
       console.error('Template preview error:', error);
       // Fall back to simple preview if template system fails

@@ -156,35 +156,78 @@ const SuiteCRMQuotationSystem: React.FC<SuiteCRMQuotationSystemProps> = ({
   // Generate template-based preview using the enhanced template system
   const generateTemplateBasedPreview = async () => {
     try {
-      const apiUrl = import.meta.env.VITE_API_URL || '/api';
+      // For now, generate a simple HTML preview directly in frontend
+      // This avoids the backend 500 error while we fix the template system
+      console.log('🎨 [SuiteCRM] Generating simple template preview locally');
       
-      console.log('🎨 [SuiteCRM] Generating template-based preview with template:', defaultTemplate?.name);
-      
-      const response = await fetch(`${apiUrl}/quotations/print/preview`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-Bypass-Auth': 'development-only-123'
-        },
-        body: JSON.stringify({
-          quotationId: data.id,
-          templateId: defaultTemplate?.id,
-          format: 'html',
-          quotationData: data // Pass the current quotation data
-        })
-      });
+      const html = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASP Cranes Quotation - ${data.id}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
+        .header { text-align: center; border-bottom: 3px solid #2563eb; padding-bottom: 20px; margin-bottom: 30px; }
+        .company-name { color: #2563eb; font-size: 28px; font-weight: bold; margin-bottom: 10px; }
+        .tagline { color: #64748b; font-size: 14px; }
+        .section { margin-bottom: 25px; }
+        .section-title { color: #1e40af; font-size: 18px; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; }
+        .customer-info, .quotation-details { background: #f8fafc; padding: 15px; border-radius: 6px; }
+        .info-row { margin-bottom: 8px; }
+        .label { font-weight: bold; color: #374151; }
+        .value { color: #6b7280; }
+        .total-section { background: #2563eb; color: white; padding: 15px; border-radius: 6px; text-align: center; }
+        .total-amount { font-size: 24px; font-weight: bold; }
+        .footer { text-align: center; margin-top: 40px; color: #64748b; font-size: 12px; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="company-name">ASP CRANES PROFESSIONAL SERVICES</div>
+        <div class="tagline">Professional Lifting Solutions • Heavy Equipment Rental</div>
+    </div>
 
-      if (response.ok) {
-        const result = await response.json();
-        if (result.success && result.html) {
-          console.log('✅ [SuiteCRM] Template-based preview generated successfully');
-          return result.html;
-        } else {
-          throw new Error(result.error || 'Failed to generate template preview');
-        }
-      } else {
-        throw new Error(`Template preview failed: ${response.status}`);
-      }
+    <div class="section">
+        <div class="section-title">Customer Information</div>
+        <div class="customer-info">
+            <div class="info-row"><span class="label">Name:</span> <span class="value">${data.customer_name || 'N/A'}</span></div>
+            <div class="info-row"><span class="label">Email:</span> <span class="value">${data.customer_email || 'N/A'}</span></div>
+            <div class="info-row"><span class="label">Phone:</span> <span class="value">${data.customer_phone || 'N/A'}</span></div>
+            <div class="info-row"><span class="label">Address:</span> <span class="value">${data.customer_address || 'N/A'}</span></div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="section-title">Quotation Details</div>
+        <div class="quotation-details">
+            <div class="info-row"><span class="label">Quotation ID:</span> <span class="value">${data.id}</span></div>
+            <div class="info-row"><span class="label">Equipment:</span> <span class="value">${data.machine_type || 'N/A'}</span></div>
+            <div class="info-row"><span class="label">Service Type:</span> <span class="value">${data.order_type || 'N/A'}</span></div>
+            <div class="info-row"><span class="label">Duration:</span> <span class="value">${data.number_of_days || 'N/A'} days</span></div>
+            <div class="info-row"><span class="label">Working Hours:</span> <span class="value">${data.working_hours || 'N/A'} hours/day</span></div>
+            <div class="info-row"><span class="label">Status:</span> <span class="value">${data.status || 'Draft'}</span></div>
+        </div>
+    </div>
+
+    <div class="section">
+        <div class="total-section">
+            <div>Total Amount</div>
+            <div class="total-amount">₹${(data.total_cost || 0).toLocaleString('en-IN')}</div>
+        </div>
+    </div>
+
+    <div class="footer">
+        <p>ASP Cranes Professional Services | Generated on ${new Date().toLocaleDateString('en-IN')}</p>
+        <p>Thank you for choosing ASP Cranes for your lifting solutions</p>
+    </div>
+</body>
+</html>`;
+
+      console.log('✅ [SuiteCRM] Simple template preview generated successfully');
+      return html;
+
     } catch (error) {
       console.error('[SuiteCRM] Template preview error:', error);
       setTemplateError(`Template preview failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
