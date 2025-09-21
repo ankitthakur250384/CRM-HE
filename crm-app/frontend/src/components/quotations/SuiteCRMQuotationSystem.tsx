@@ -14,6 +14,7 @@ import {
   User,
   Phone
 } from 'lucide-react';
+import { generateAndDownloadPDF, generateAndOpenPDF } from '../../services/pdfGenerator';
 
 interface QuotationData {
   id: string;
@@ -61,6 +62,9 @@ const SuiteCRMQuotationSystem: React.FC<SuiteCRMQuotationSystemProps> = ({
     message: string;
     timestamp: Date;
   }>>([]);
+  const [defaultTemplate, setDefaultTemplate] = useState<any>(null);
+  const [templateError, setTemplateError] = useState<string | null>(null);
+  const [useTemplateSystem, setUseTemplateSystem] = useState(true);
 
   const previewRef = useRef<HTMLIFrameElement>(null);
 
@@ -92,6 +96,101 @@ const SuiteCRMQuotationSystem: React.FC<SuiteCRMQuotationSystemProps> = ({
   };
 
   const data = quotationData || defaultData;
+
+  // Fetch default template configuration on component mount
+  useEffect(() => {
+    const fetchDefaultTemplate = async () => {
+      try {
+        const apiUrl = import.meta.env.VITE_API_URL || '/api';
+        
+        // First, get the default template configuration
+        const configResponse = await fetch(`${apiUrl}/config/defaultTemplate`, {
+          headers: {
+            'X-Bypass-Auth': 'development-only-123'
+          }
+        });
+        
+        if (configResponse.ok) {
+          const configResult = await configResponse.json();
+          const config = configResult.data || configResult;
+          console.log('🔧 [SuiteCRM] Default template config:', config);
+          
+          if (config && config.defaultTemplateId) {
+            // Fetch the actual template
+            const templateResponse = await fetch(`${apiUrl}/templates/enhanced/${config.defaultTemplateId}`, {
+              headers: {
+                'X-Bypass-Auth': 'development-only-123'
+              }
+            });
+            
+            if (templateResponse.ok) {
+              const template = await templateResponse.json();
+              console.log('📋 [SuiteCRM] Fetched default template:', template);
+              setDefaultTemplate(template.data || template);
+              setUseTemplateSystem(true);
+            } else {
+              console.warn('[SuiteCRM] Failed to fetch default template, using fallback');
+              setTemplateError('Failed to load default template');
+              setUseTemplateSystem(false);
+            }
+          } else {
+            console.warn('[SuiteCRM] No default template configured, using fallback');
+            setTemplateError('No default template configured');
+            setUseTemplateSystem(false);
+          }
+        } else {
+          console.warn('[SuiteCRM] Failed to fetch default template config, using fallback');
+          setTemplateError('Failed to load template configuration');
+          setUseTemplateSystem(false);
+        }
+      } catch (error) {
+        console.error('[SuiteCRM] Error fetching default template:', error);
+        setTemplateError('Error loading template');
+        setUseTemplateSystem(false);
+      }
+    };
+
+    fetchDefaultTemplate();
+  }, []);
+
+  // Generate template-based preview using the enhanced template system
+  const generateTemplateBasedPreview = async () => {
+    try {
+      const apiUrl = import.meta.env.VITE_API_URL || '/api';
+      
+      console.log('🎨 [SuiteCRM] Generating template-based preview with template:', defaultTemplate?.name);
+      
+      const response = await fetch(`${apiUrl}/quotations/print/preview`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Bypass-Auth': 'development-only-123'
+        },
+        body: JSON.stringify({
+          quotationId: data.id,
+          templateId: defaultTemplate?.id,
+          format: 'html',
+          quotationData: data // Pass the current quotation data
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success && result.html) {
+          console.log('✅ [SuiteCRM] Template-based preview generated successfully');
+          return result.html;
+        } else {
+          throw new Error(result.error || 'Failed to generate template preview');
+        }
+      } else {
+        throw new Error(`Template preview failed: ${response.status}`);
+      }
+    } catch (error) {
+      console.error('[SuiteCRM] Template preview error:', error);
+      setTemplateError(`Template preview failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      throw error;
+    }
+  };
 
   const addNotification = (type: 'success' | 'error' | 'info', message: string) => {
     const notification = {
@@ -673,7 +772,25 @@ const SuiteCRMQuotationSystem: React.FC<SuiteCRMQuotationSystemProps> = ({
   const handlePreview = async () => {
     setIsLoading(true);
     try {
-      const html = generateComprehensiveQuotation();
+      let html;
+      
+      // Try to use template-based preview if available and enabled
+      if (useTemplateSystem && defaultTemplate) {
+        console.log('🎨 [SuiteCRM] Using template-based preview with template:', defaultTemplate.name);
+        try {
+          html = await generateTemplateBasedPreview();
+        } catch (templateError) {
+          console.warn('[SuiteCRM] Template-based preview failed, falling back to hardcoded:', templateError);
+          html = generateComprehensiveQuotation();
+          addNotification('info', 'Using fallback template due to template system error');
+        }
+      } else {
+        console.log('📄 [SuiteCRM] Using fallback hardcoded preview');
+        html = generateComprehensiveQuotation();
+        if (templateError) {
+          addNotification('info', `Template system unavailable: ${templateError}`);
+        }
+      }
       
       // Update iframe
       setTimeout(() => {
@@ -690,37 +807,98 @@ const SuiteCRMQuotationSystem: React.FC<SuiteCRMQuotationSystemProps> = ({
       
       addNotification('success', 'Quotation preview generated successfully');
     } catch (error) {
+      console.error('[SuiteCRM] Preview generation error:', error);
       addNotification('error', 'Failed to generate preview');
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handlePrint = () => {
-    const html = generateComprehensiveQuotation();
-    const printWindow = window.open('', '_blank');
-    if (printWindow) {
-      printWindow.document.write(html);
-      printWindow.document.close();
-      printWindow.print();
-      addNotification('success', 'Print dialog opened');
-    } else {
-      addNotification('error', 'Please allow popups to print');
+  const handlePrint = async () => {
+    setIsLoading(true);
+    try {
+      let html;
+      
+      // Try to use template-based preview if available and enabled
+      if (useTemplateSystem && defaultTemplate) {
+        console.log('🖨️ [SuiteCRM] Printing with template-based preview');
+        try {
+          html = await generateTemplateBasedPreview();
+        } catch (templateError) {
+          console.warn('[SuiteCRM] Template-based print failed, falling back to hardcoded:', templateError);
+          html = generateComprehensiveQuotation();
+        }
+      } else {
+        console.log('🖨️ [SuiteCRM] Printing with fallback hardcoded preview');
+        html = generateComprehensiveQuotation();
+      }
+      
+      // Use the new PDF generation service
+      await generateAndOpenPDF(html, {
+        filename: `ASP_Cranes_Quotation_${data.id}.pdf`,
+        format: 'a4',
+        orientation: 'portrait'
+      });
+      
+      addNotification('success', 'PDF generated and opened for printing');
+    } catch (error) {
+      console.error('[SuiteCRM] Print error:', error);
+      addNotification('error', `Print failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      
+      // Fallback to old window.open method if PDF generation fails
+      try {
+        const fallbackHtml = generateComprehensiveQuotation();
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+          printWindow.document.write(fallbackHtml);
+          printWindow.document.close();
+          printWindow.print();
+          addNotification('success', 'Fallback print dialog opened');
+        }
+      } catch (fallbackError) {
+        addNotification('error', 'All print methods failed');
+      }
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const handleDownload = () => {
-    const html = generateComprehensiveQuotation();
-    const blob = new Blob([html], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `ASP_Cranes_Quotation_${data.id}_${new Date().toISOString().split('T')[0]}.html`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    addNotification('success', 'Quotation downloaded successfully');
+  const handleDownload = async () => {
+    setIsLoading(true);
+    try {
+      let html;
+      
+      // Try to use template-based preview if available and enabled
+      if (useTemplateSystem && defaultTemplate) {
+        console.log('📥 [SuiteCRM] Downloading with template-based preview');
+        try {
+          html = await generateTemplateBasedPreview();
+        } catch (templateError) {
+          console.warn('[SuiteCRM] Template-based download failed, falling back to hardcoded:', templateError);
+          html = generateComprehensiveQuotation();
+        }
+      } else {
+        console.log('📥 [SuiteCRM] Downloading with fallback hardcoded preview');
+        html = generateComprehensiveQuotation();
+      }
+      
+      // Use the new PDF generation service
+      await generateAndDownloadPDF(
+        html,
+        `ASP_Cranes_Quotation_${data.id}.pdf`,
+        {
+          format: 'a4',
+          orientation: 'portrait'
+        }
+      );
+      
+      addNotification('success', 'PDF downloaded successfully');
+    } catch (error) {
+      console.error('[SuiteCRM] Download error:', error);
+      addNotification('error', `Download failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleEmail = () => {
@@ -781,10 +959,24 @@ ISO 9001:2015 Certified Company`;
     }
   };
 
-  // Auto-generate preview on load
+  // Auto-generate preview on load, but wait for template loading to complete
   useEffect(() => {
-    handlePreview();
-  }, []);
+    // Add a small delay to ensure template loading useEffect has time to complete
+    const timer = setTimeout(() => {
+      handlePreview();
+    }, 1000);
+
+    return () => clearTimeout(timer);
+  }, []); // Empty dependency array for initial load only
+
+  // Auto-refresh preview when template system state changes
+  useEffect(() => {
+    // Only refresh if we have completed the initial template loading attempt
+    if (defaultTemplate !== null || templateError !== null) {
+      console.log('🔄 [SuiteCRM] Template system state changed, refreshing preview');
+      handlePreview();
+    }
+  }, [defaultTemplate, templateError, useTemplateSystem]);
 
   return (
     <div className="suite-crm-quotation-system bg-gray-50 min-h-screen">
@@ -982,7 +1174,25 @@ ISO 9001:2015 Certified Company`;
               <div className="bg-white rounded-lg shadow-sm border h-full">
                 <div className="p-4 border-b border-gray-200">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-lg font-semibold">Live Preview</h3>
+                    <div className="flex items-center space-x-3">
+                      <h3 className="text-lg font-semibold">Live Preview</h3>
+                      
+                      {/* Template Status Indicator */}
+                      {useTemplateSystem && defaultTemplate && (
+                        <div className="flex items-center space-x-2 px-3 py-1 bg-green-100 text-green-800 rounded-full text-sm">
+                          <CheckCircle className="h-4 w-4" />
+                          <span>Template: {defaultTemplate.name}</span>
+                        </div>
+                      )}
+                      
+                      {templateError && (
+                        <div className="flex items-center space-x-2 px-3 py-1 bg-yellow-100 text-yellow-800 rounded-full text-sm">
+                          <AlertCircle className="h-4 w-4" />
+                          <span>Fallback Mode</span>
+                        </div>
+                      )}
+                    </div>
+                    
                     <div className="flex items-center space-x-2">
                       <button
                         onClick={() => setIsPreviewVisible(!isPreviewVisible)}

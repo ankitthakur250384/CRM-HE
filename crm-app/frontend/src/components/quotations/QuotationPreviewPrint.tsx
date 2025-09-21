@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '../ui/button';
 import { Printer, Eye, Download, Mail, X } from 'lucide-react';
+import { generateAndDownloadPDF, generateAndOpenPDF } from '../../services/pdfGenerator';
 
 interface QuotationPreviewPrintProps {
   quotationId: string;
@@ -41,17 +42,18 @@ const QuotationPreviewPrint: React.FC<QuotationPreviewPrintProps> = ({
         const apiUrl = import.meta.env.VITE_API_URL || '/api';
         
         // First, get the default template configuration
-        const configResponse = await fetch(`${apiUrl}/config/default-template`, {
+        const configResponse = await fetch(`${apiUrl}/config/defaultTemplate`, {
           headers: {
             'X-Bypass-Auth': 'development-only-123'
           }
         });
         
         if (configResponse.ok) {
-          const config = await configResponse.json();
+          const configResult = await configResponse.json();
+          const config = configResult.data || configResult;
           console.log('🔧 Default template config:', config);
           
-          if (config.defaultTemplateId) {
+          if (config && config.defaultTemplateId) {
             // Fetch the actual template
             const templateResponse = await fetch(`${apiUrl}/templates/enhanced/${config.defaultTemplateId}`, {
               headers: {
@@ -371,21 +373,25 @@ const QuotationPreviewPrint: React.FC<QuotationPreviewPrintProps> = ({
         html = generateSimplePreview();
       }
       
-      const printWindow = window.open('', '_blank');
-      if (printWindow) {
-        printWindow.document.write(html);
-        printWindow.document.close();
-        printWindow.print();
-      }
+      // Use the new PDF generation service
+      await generateAndOpenPDF(html, {
+        filename: `ASP_Cranes_Quotation_${quotationId}.pdf`,
+        format: 'a4',
+        orientation: 'portrait'
+      });
     } catch (error) {
       console.error('Error generating print content:', error);
-      // Fallback to simple preview
-      const fallbackHtml = generateSimplePreview();
-      const printWindow = window.open('', '_blank');
-      if (printWindow) {
-        printWindow.document.write(fallbackHtml);
-        printWindow.document.close();
-        printWindow.print();
+      // Fallback to old window.open method if PDF generation fails
+      try {
+        const fallbackHtml = generateSimplePreview();
+        const printWindow = window.open('', '_blank');
+        if (printWindow) {
+          printWindow.document.write(fallbackHtml);
+          printWindow.document.close();
+          printWindow.print();
+        }
+      } catch (fallbackError) {
+        console.error('All print methods failed:', fallbackError);
       }
     } finally {
       setIsLoading(false);
@@ -406,28 +412,32 @@ const QuotationPreviewPrint: React.FC<QuotationPreviewPrintProps> = ({
         html = generateSimplePreview();
       }
       
-      const blob = new Blob([html], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `quotation_${quotationId}.html`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      // Use the new PDF generation service
+      await generateAndDownloadPDF(
+        html,
+        `ASP_Cranes_Quotation_${quotationId}.pdf`,
+        {
+          format: 'a4',
+          orientation: 'portrait'
+        }
+      );
     } catch (error) {
       console.error('Error generating download content:', error);
-      // Fallback to simple preview
-      const fallbackHtml = generateSimplePreview();
-      const blob = new Blob([fallbackHtml], { type: 'text/html' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `quotation_${quotationId}.html`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      // Fallback to HTML download if PDF generation fails
+      try {
+        const fallbackHtml = generateSimplePreview();
+        const blob = new Blob([fallbackHtml], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `quotation_${quotationId}.html`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      } catch (fallbackError) {
+        console.error('All download methods failed:', fallbackError);
+      }
     } finally {
       setIsLoading(false);
     }
