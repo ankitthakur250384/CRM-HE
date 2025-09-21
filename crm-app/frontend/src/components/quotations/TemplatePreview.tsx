@@ -24,6 +24,102 @@ import { QuotationSummary } from '../../pages/QuotationSummary';
 import { PrintOptionsModal } from './PrintOptionsModal';
 import { FileText, Info, Download, Send, RefreshCw } from 'lucide-react';
 
+// Generate local template preview without backend call
+const generateLocalTemplatePreview = (template: any, quotation: any) => {
+  console.log('🎨 Generating local preview for template:', template?.name || 'default');
+  
+  const data = quotation || {
+    id: 'sample-quotation',
+    customer_name: 'ABC Construction',
+    customer_email: 'contact@abc-construction.com',
+    customer_phone: '+91 9876543210',
+    customer_address: 'Industrial Area, New Delhi, India',
+    machine_type: 'Mobile Crane',
+    order_type: 'Monthly',
+    number_of_days: 30,
+    working_hours: 8,
+    total_cost: 61265.6
+  };
+
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASP Cranes Quotation - ${data.id}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
+        .header { text-align: center; border-bottom: 3px solid #2563eb; padding-bottom: 20px; margin-bottom: 30px; }
+        .company-name { color: #2563eb; font-size: 28px; font-weight: bold; margin-bottom: 10px; }
+        .tagline { color: #64748b; font-size: 14px; }
+        .section { margin-bottom: 25px; }
+        .section-title { color: #1e40af; font-size: 18px; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; }
+        .customer-info, .quotation-details { background: #f8fafc; padding: 15px; border-radius: 6px; }
+        .info-row { margin-bottom: 8px; }
+        .label { font-weight: bold; color: #374151; }
+        .value { color: #6b7280; }
+        .total-section { background: #2563eb; color: white; padding: 15px; border-radius: 6px; text-align: center; }
+        .total-amount { font-size: 24px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="company-name">ASP CRANES</div>
+        <div class="tagline">Professional Crane Services | Your Trusted Lifting Partner</div>
+    </div>
+
+    <div style="text-align: center; background: #2563eb; color: white; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+        <h1 style="margin: 0; font-size: 32px;">QUOTATION</h1>
+    </div>
+
+    <div style="display: flex; gap: 30px; margin-bottom: 30px;">
+        <div style="flex: 1;">
+            <h3 style="color: #2563eb; border-bottom: 2px solid #2563eb; padding-bottom: 8px;">📋 Quotation Details</h3>
+            <div style="background: #f8fafc; padding: 15px; border-radius: 6px;">
+                <p><strong>Quotation ID:</strong> ${data.id}</p>
+                <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+                <p><strong>Status:</strong> Draft</p>
+                <p><strong>Valid Until:</strong> ${new Date(Date.now() + 30*24*60*60*1000).toLocaleDateString()}</p>
+            </div>
+        </div>
+        
+        <div style="flex: 1;">
+            <h3 style="color: #2563eb; border-bottom: 2px solid #2563eb; padding-bottom: 8px;">👤 Customer Information</h3>
+            <div style="background: #f8fafc; padding: 15px; border-radius: 6px;">
+                <p><strong>Company:</strong> ${data.customer_name}</p>
+                <p><strong>Email:</strong> ${data.customer_email || 'N/A'}</p>
+                <p><strong>Phone:</strong> ${data.customer_phone || 'N/A'}</p>
+                <p><strong>Address:</strong> ${data.customer_address || 'N/A'}</p>
+            </div>
+        </div>
+    </div>
+
+    <div style="margin-bottom: 30px;">
+        <h3 style="color: #2563eb; border-bottom: 2px solid #2563eb; padding-bottom: 8px;">🏗️ Project Specifications</h3>
+        <div style="background: #f8fafc; padding: 15px; border-radius: 6px;">
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 15px;">
+                <div><strong>Equipment:</strong> ${data.machine_type}</div>
+                <div><strong>Service Type:</strong> ${data.order_type}</div>
+                <div><strong>Duration:</strong> ${data.number_of_days} days</div>
+                <div><strong>Working Hours:</strong> ${data.working_hours} hours/day</div>
+            </div>
+        </div>
+    </div>
+
+    <div style="text-align: center; background: #2563eb; color: white; padding: 20px; border-radius: 8px; margin: 30px 0;">
+        <h2 style="margin: 0;">Total Amount</h2>
+        <div style="font-size: 32px; font-weight: bold; margin-top: 10px;">₹${(data.total_cost || 61265.6).toLocaleString()}</div>
+    </div>
+
+    <div style="text-align: center; margin-top: 40px; color: #64748b; font-size: 12px;">
+        <p>ASP Cranes Professional Services | Industrial Area, New Delhi, India</p>
+        <p>Email: info@aspcranes.com | Phone: +91 9876543210</p>
+    </div>
+</body>
+</html>`;
+};
+
 // Sample quotation data for preview when no quotation is provided
 // This matches the database schema and backend transformation
 const SAMPLE_QUOTATION: Quotation = {
@@ -120,7 +216,7 @@ export function TemplatePreview({
   className = ''
 }: TemplatePreviewProps) {
   // API configuration
-  const apiUrl = import.meta.env.VITE_API_URL || '/api';
+  // Remove unused apiUrl variable since we're generating locally
   
   const [showPlaceholders, setShowPlaceholders] = useState(false);
   const [showPrintOptions, setShowPrintOptions] = useState(false);
@@ -150,32 +246,9 @@ export function TemplatePreview({
         console.log("Template preview received template:", template);
         console.log("Template preview received quotation:", quotation);
 
-        // Use Enhanced Template System for preview
-        const response = await fetch(`${apiUrl}/quotations/print/preview`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${localStorage.getItem('jwt-token')}`,
-            'X-Bypass-Auth': 'development-only-123'
-          },
-          body: JSON.stringify({
-            quotationId: quotation?.id || 'sample',
-            templateId: template.id,
-            format: 'html'
-          })
-        });
-
-        const data = await response.json();
-        if (data.success && data.html) {
-          setMergedContent(data.html);
-        } else {
-          console.warn("Cannot generate preview from Enhanced Template System:", data.error);
-          setMergedContent(`<div style="padding: 20px;">
-            <h3>Preview Error</h3>
-            <p>Unable to generate preview: ${data.error || 'Unknown error'}</p>
-            <p><strong>Template:</strong> ${template.name}</p>
-          </div>`);
-        }
+        // Generate preview locally instead of calling backend
+        const html = generateLocalTemplatePreview(template, quotation);
+        setMergedContent(html);
       } catch (err) {
         console.error('Error generating template preview:', err);
         setError('Failed to generate template preview');

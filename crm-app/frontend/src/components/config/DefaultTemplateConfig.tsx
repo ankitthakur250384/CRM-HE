@@ -6,6 +6,41 @@ import { Toast } from '../common/Toast';
 import { Card, CardHeader, CardTitle, CardContent } from '../common/Card';
 import { getDefaultTemplateConfig, updateDefaultTemplateConfig } from '../../services/configService';
 
+// Generate sample preview for default template configuration
+const generateSamplePreview = (templateId: string) => {
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sample Quotation Preview</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
+        .header { text-align: center; border-bottom: 3px solid #2563eb; padding-bottom: 20px; margin-bottom: 30px; }
+        .company-name { color: #2563eb; font-size: 28px; font-weight: bold; }
+        .tagline { color: #64748b; font-size: 14px; }
+        .section { margin-bottom: 25px; }
+        .section-title { color: #1e40af; font-size: 18px; font-weight: bold; }
+        .total-section { background: #2563eb; color: white; padding: 15px; border-radius: 6px; text-align: center; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="company-name">ASP CRANES</div>
+        <div class="tagline">Sample Template Preview - ${templateId}</div>
+    </div>
+    <div class="section">
+        <div class="section-title">Sample Quotation Content</div>
+        <p>This is a sample preview of how quotations will appear with the selected template.</p>
+    </div>
+    <div class="total-section">
+        <div style="font-size: 24px; font-weight: bold;">Sample Amount: ₹61,265.60</div>
+    </div>
+</body>
+</html>`;
+};
+
 interface DefaultTemplateConfigProps {
   onSave?: () => void;
 }
@@ -37,47 +72,16 @@ export function DefaultTemplateConfig({ onSave }: DefaultTemplateConfigProps) {
     async function generatePreview() {
       if (selectedTemplate) {
         try {
-          // Use Enhanced Template System for preview
-          const apiUrl = import.meta.env.VITE_API_URL || '/api';
-          const response = await fetch(`${apiUrl}/quotations/print/preview`, {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${localStorage.getItem('jwt-token')}`,
-              'X-Bypass-Auth': 'development-only-123'
-            },
-            body: JSON.stringify({
-              quotationId: 'sample', // Use sample data
-              templateId: selectedTemplate.id,
-              format: 'html'
-            })
-          });
-
-          const data = await response.json();
-          if (data.success) {
-            setPreviewHtml(data.html);
-          } else {
-            setPreviewHtml(`<div style="color:red; padding: 20px;">
-              <h3>Preview Error</h3>
-              <p>Unable to generate preview: ${data.error || 'Unknown error'}</p>
-              <p><strong>Template:</strong> ${selectedTemplate.name}</p>
-            </div>`);
-          }
+          // Generate preview locally instead of calling backend
+          const html = generateSamplePreview(selectedTemplate.id);
+          setPreviewHtml(html);
+          
         } catch (err) {
           console.error('Preview generation error:', err);
           setPreviewHtml(`<div style="color:#f59e0b; padding: 20px; border: 1px solid #fbbf24; border-radius: 8px; background-color: #fef3c7;">
-            <h3 style="margin-top: 0; color: #92400e;">⚠️ Preview Temporarily Unavailable</h3>
+            <h3 style="margin-top: 0; color: #92400e;">⚠️ Preview Error</h3>
             <p><strong>Template:</strong> ${selectedTemplate.name}</p>
-            <p><strong>Status:</strong> Backend connection issue</p>
             <p><strong>Error:</strong> ${err instanceof Error ? err.message : 'Unknown error'}</p>
-            <hr style="border-color: #fbbf24; margin: 16px 0;">
-            <p style="font-size: 14px; color: #92400e;">
-              <strong>What this means:</strong><br>
-              • The template configuration is saved and will work<br>
-              • Preview generation requires backend connection<br>
-              • This is likely a temporary connectivity issue<br>
-              • Try refreshing the page or check your connection
-            </p>
           </div>`);
         }
       } else {

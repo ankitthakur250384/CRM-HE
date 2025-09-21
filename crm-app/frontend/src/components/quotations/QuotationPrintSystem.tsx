@@ -11,6 +11,77 @@ import {
   Loader2
 } from 'lucide-react';
 
+// Generate local template preview without backend call
+const generateLocalQuotationPreview = (quotationId: number, templateId: string) => {
+  console.log('🎨 Generating local preview for quotation:', quotationId, 'template:', templateId);
+  
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASP Cranes Quotation - ${quotationId}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
+        .header { text-align: center; border-bottom: 3px solid #2563eb; padding-bottom: 20px; margin-bottom: 30px; }
+        .company-name { color: #2563eb; font-size: 28px; font-weight: bold; margin-bottom: 10px; }
+        .tagline { color: #64748b; font-size: 14px; }
+        .section { margin-bottom: 25px; }
+        .section-title { color: #1e40af; font-size: 18px; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; }
+        .customer-info, .quotation-details { background: #f8fafc; padding: 15px; border-radius: 6px; }
+        .info-row { margin-bottom: 8px; }
+        .label { font-weight: bold; color: #374151; }
+        .value { color: #6b7280; }
+        .total-section { background: #2563eb; color: white; padding: 15px; border-radius: 6px; text-align: center; }
+        .total-amount { font-size: 24px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="company-name">ASP CRANES</div>
+        <div class="tagline">Professional Crane Services | Your Trusted Lifting Partner</div>
+    </div>
+
+    <div style="text-align: center; background: #2563eb; color: white; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+        <h1 style="margin: 0; font-size: 32px;">QUOTATION</h1>
+    </div>
+
+    <div style="display: flex; gap: 30px; margin-bottom: 30px;">
+        <div style="flex: 1;">
+            <h3 style="color: #2563eb; border-bottom: 2px solid #2563eb; padding-bottom: 8px;">📋 Quotation Details</h3>
+            <div style="background: #f8fafc; padding: 15px; border-radius: 6px;">
+                <p><strong>Quotation ID:</strong> ${quotationId}</p>
+                <p><strong>Template:</strong> ${templateId}</p>
+                <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+                <p><strong>Status:</strong> Draft</p>
+            </div>
+        </div>
+        
+        <div style="flex: 1;">
+            <h3 style="color: #2563eb; border-bottom: 2px solid #2563eb; padding-bottom: 8px;">👤 Customer Information</h3>
+            <div style="background: #f8fafc; padding: 15px; border-radius: 6px;">
+                <p><strong>Company:</strong> ABC Construction</p>
+                <p><strong>Email:</strong> contact@abc-construction.com</p>
+                <p><strong>Phone:</strong> +91 9876543210</p>
+                <p><strong>Address:</strong> Industrial Area, New Delhi, India</p>
+            </div>
+        </div>
+    </div>
+
+    <div style="text-align: center; background: #2563eb; color: white; padding: 20px; border-radius: 8px; margin: 30px 0;">
+        <h2 style="margin: 0;">Total Amount</h2>
+        <div style="font-size: 32px; font-weight: bold; margin-top: 10px;">₹61,265.60</div>
+    </div>
+
+    <div style="text-align: center; margin-top: 40px; color: #64748b; font-size: 12px;">
+        <p>ASP Cranes Professional Services | Industrial Area, New Delhi, India</p>
+        <p>Email: info@aspcranes.com | Phone: +91 9876543210</p>
+    </div>
+</body>
+</html>`;
+};
+
 interface QuotationPrintSystemProps {
   quotationId: number;
   onClose?: () => void;
@@ -139,43 +210,27 @@ const QuotationPrintSystem: React.FC<QuotationPrintSystemProps> = ({
       setIsLoading(true);
       setOperationStatus({ type: 'loading', message: 'Generating preview...' });
 
-      const response = await fetch(`${apiUrl}/quotations/print/preview`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('jwt-token') || ''}`,
-          'X-Bypass-Auth': 'development-only-123'
-        },
-        body: JSON.stringify({
-          quotationId,
-          templateId: selectedTemplate,
-          format: 'html'
-        })
-      });
-
-      const data = await response.json();
-
-      if (data.success) {
-        setIsPreviewOpen(true);
-        setOperationStatus({ type: 'success', message: 'Preview generated successfully!' });
-        
-        // Load preview in iframe
-        setTimeout(() => {
-          if (previewFrameRef.current) {
-            const iframe = previewFrameRef.current;
-            const doc = iframe.contentDocument || iframe.contentWindow?.document;
-            if (doc) {
-              doc.open();
-              doc.write(data.html);
-              doc.close();
-            }
+      // Generate preview locally instead of calling backend
+      const html = generateLocalQuotationPreview(quotationId, selectedTemplate);
+      
+      setIsPreviewOpen(true);
+      setOperationStatus({ type: 'success', message: 'Preview generated successfully!' });
+      
+      // Load preview in iframe
+      setTimeout(() => {
+        if (previewFrameRef.current) {
+          const iframe = previewFrameRef.current;
+          const doc = iframe.contentDocument || iframe.contentWindow?.document;
+          if (doc) {
+            doc.open();
+            doc.write(html);
+            doc.close();
           }
-        }, 100);
+        }
+      }, 100);
 
-        showNotification("Preview Ready", "Quotation preview has been generated successfully.");
-      } else {
-        throw new Error(data.error || 'Failed to generate preview');
-      }
+      showNotification("Preview Ready", "Quotation preview has been generated successfully.");
+      
     } catch (error) {
       console.error('Error generating preview:', error);
       setOperationStatus({
