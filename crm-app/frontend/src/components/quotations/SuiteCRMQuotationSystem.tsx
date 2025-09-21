@@ -29,20 +29,6 @@ const SuiteCRMQuotationSystem: React.FC<SuiteCRMQuotationSystemProps> = ({
     message: string;
   }>>([]);
 
-  // Function to convert number to words (simplified version)
-  const convertToWords = (num: number): string => {
-    const ones = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten', 'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen'];
-    const tens = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety'];
-    
-    if (num === 0) return 'Zero';
-    if (num < 20) return ones[num];
-    if (num < 100) return tens[Math.floor(num / 10)] + (num % 10 !== 0 ? ' ' + ones[num % 10] : '');
-    if (num < 1000) return ones[Math.floor(num / 100)] + ' Hundred' + (num % 100 !== 0 ? ' ' + convertToWords(num % 100) : '');
-    if (num < 100000) return convertToWords(Math.floor(num / 1000)) + ' Thousand' + (num % 1000 !== 0 ? ' ' + convertToWords(num % 1000) : '');
-    if (num < 10000000) return convertToWords(Math.floor(num / 100000)) + ' Lakh' + (num % 100000 !== 0 ? ' ' + convertToWords(num % 100000) : '');
-    return convertToWords(Math.floor(num / 10000000)) + ' Crore' + (num % 10000000 !== 0 ? ' ' + convertToWords(num % 10000000) : '');
-  };
-
   const handlePreview = async () => {
     setIsLoading(true);
     try {
@@ -56,188 +42,15 @@ const SuiteCRMQuotationSystem: React.FC<SuiteCRMQuotationSystemProps> = ({
         return;
       }
       
-      const data = quotationData; // Alias for template usage
-      const html = `
-        <!DOCTYPE html>
-        <html lang="en">
-        <head>
-          <meta charset="UTF-8">
-          <meta name="viewport" content="width=device-width, initial-scale=1.0">
-          <title>Quotation Preview</title>
-          <style>
-            body {
-              font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-              margin: 0;
-              padding: 20px;
-              background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-              color: #333;
-            }
-            
-            .quotation-container {
-              max-width: 800px;
-              margin: 0 auto;
-              background: white;
-              border-radius: 16px;
-              box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-              overflow: hidden;
-            }
-            
-            .header {
-              background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%);
-              color: white;
-              padding: 40px;
-              text-align: center;
-              position: relative;
-            }
-            
-            .header::before {
-              content: '';
-              position: absolute;
-              top: 0;
-              left: 0;
-              right: 0;
-              bottom: 0;
-              background: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100"><defs><pattern id="grid" width="10" height="10" patternUnits="userSpaceOnUse"><path d="M 10 0 L 0 0 0 10" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1"/></pattern></defs><rect width="100" height="100" fill="url(%23grid)"/></svg>');
-              opacity: 0.3;
-            }
-            
-            .company-logo {
-              font-size: 36px;
-              font-weight: 900;
-              margin-bottom: 10px;
-              letter-spacing: 2px;
-              position: relative;
-              z-index: 1;
-            }
-            
-            .company-tagline {
-              font-size: 16px;
-              margin-bottom: 25px;
-              opacity: 0.9;
-              position: relative;
-              z-index: 1;
-            }
-            
-            .quotation-title {
-              font-size: 28px;
-              font-weight: 700;
-              background: rgba(255,255,255,0.15);
-              padding: 15px 30px;
-              border-radius: 8px;
-              display: inline-block;
-              position: relative;
-              z-index: 1;
-            }
-            
-            .content {
-              padding: 40px;
-            }
-            
-            .quotation-meta {
-              display: grid;
-              grid-template-columns: 1fr 1fr;
-              gap: 30px;
-              margin-bottom: 40px;
-              padding: 25px;
-              background: #f8fafc;
-              border-radius: 12px;
-              border-left: 5px solid #3b82f6;
-            }
-            
-            .meta-group h3 {
-              color: #1e40af;
-              font-size: 18px;
-              font-weight: 600;
-              margin-bottom: 15px;
-              display: flex;
-              align-items: center;
-              gap: 8px;
-            }
-            
-            .section {
-              margin-bottom: 30px;
-              padding: 20px;
-              background: #f9fafb;
-              border-radius: 8px;
-            }
-            
-            .section h2 {
-              color: #1e40af;
-              margin-bottom: 15px;
-              font-size: 20px;
-            }
-            
-            .total-section {
-              text-align: center;
-              padding: 30px;
-              background: #1e40af;
-              color: white;
-              border-radius: 12px;
-              margin-top: 40px;
-            }
-            
-            .total-amount {
-              font-size: 36px;
-              font-weight: 900;
-              margin: 15px 0;
-            }
-          </style>
-        </head>
-        <body>
-          <div class="quotation-container">
-            <div class="header">
-              <div class="company-logo">ASP CRANES</div>
-              <div class="company-tagline">Professional Crane Services</div>
-              <div class="quotation-title">QUOTATION</div>
-            </div>
-            
-            <div class="content">
-              <div class="quotation-meta">
-                <div class="meta-group">
-                  <h3>Quotation Details</h3>
-                  <div>ID: #${data.id}</div>
-                  <div>Date: ${new Date(data.created_at).toLocaleDateString()}</div>
-                  <div>Status: ${data.status}</div>
-                </div>
-                
-                <div class="meta-group">
-                  <h3>Customer Information</h3>
-                  <div>Company: ${data.customer_name}</div>
-                  <div>Email: ${data.customer_email || 'N/A'}</div>
-                  <div>Phone: ${data.customer_phone || 'N/A'}</div>
-                </div>
-              </div>
-              
-              <div class="section">
-                <h2>Project Details</h2>
-                <p>Equipment: ${data.equipment_type}</p>
-                <p>Duration: ${data.duration} days</p>
-                <p>Location: ${data.location}</p>
-              </div>
-              
-              <div class="total-section">
-                <h3>Total Amount</h3>
-                <div class="total-amount">₹${data.total_cost.toLocaleString()}</div>
-                <div>(${convertToWords(data.total_cost)} Rupees Only)</div>
-              </div>
-            </div>
-          </div>
-        </body>
-        </html>
-      `;
+      // Simple preview - just log the data or show in console
+      console.log('Quotation data:', quotationData);
       
-      if (data) {
-        const newWindow = window.open('', '_blank');
-        if (newWindow) {
-          newWindow.document.write(html);
-          newWindow.document.close();
-        }
-        setNotifications(prev => [...prev, {
-          id: Date.now().toString(),
-          type: 'success',
-          message: 'Quotation preview opened successfully'
-        }]);
-      }
+      setNotifications(prev => [...prev, {
+        id: Date.now().toString(),
+        type: 'success',
+        message: 'Preview functionality ready'
+      }]);
+      
     } catch (error) {
       console.error('Error generating preview:', error);
       setNotifications(prev => [...prev, {

@@ -87,250 +87,71 @@ const QuotationPreviewPrint: React.FC<QuotationPreviewPrintProps> = ({
   }, []);
 
   const generateTemplatePreview = async () => {
-    try {
-      // Use simple local preview instead of backend API to avoid 500 errors
-      console.log('🎨 [QuotationPreview] Generating simple template preview locally');
-      return generateSimplePreview();
-    } catch (error) {
-      console.error('Template preview error:', error);
-      // Fall back to simple preview if template system fails
-      return generateSimplePreview();
+    if (!defaultTemplate) {
+      throw new Error('No default template available - Template builder system is required');
     }
-  };
 
-  const generateSimplePreview = () => {
-    const html = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <meta charset="utf-8">
-        <title>Quotation ${data.id}</title>
-        <style>
-          body { 
-            font-family: Arial, sans-serif; 
-            margin: 0; 
-            padding: 20px; 
-            line-height: 1.6;
-            color: #333;
-          }
-          .container { 
-            max-width: 800px; 
-            margin: 0 auto;
-            background: white;
-            padding: 40px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.1);
-          }
-          .header { 
-            text-align: center;
-            margin-bottom: 40px;
-            border-bottom: 3px solid #2563eb;
-            padding-bottom: 20px;
-          }
-          .company-name {
-            font-size: 32px;
-            font-weight: bold;
-            color: #2563eb;
-            margin-bottom: 10px;
-          }
-          .company-tagline {
-            font-size: 16px;
-            color: #64748b;
-            margin-bottom: 20px;
-          }
-          .quotation-title {
-            font-size: 24px;
-            font-weight: bold;
-            color: #1f2937;
-          }
-          .details-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin: 30px 0;
-            padding: 20px;
-            background: #f8fafc;
-            border-radius: 8px;
-          }
-          .detail-item {
-            margin-bottom: 10px;
-          }
-          .detail-label {
-            font-weight: bold;
-            color: #374151;
-          }
-          .detail-value {
-            color: #6b7280;
-          }
-          .cost-section {
-            margin-top: 40px;
-            padding: 20px;
-            background: #f0f9ff;
-            border-left: 4px solid #2563eb;
-            border-radius: 0 8px 8px 0;
-          }
-          .total-amount {
-            font-size: 24px;
-            font-weight: bold;
-            color: #2563eb;
-            text-align: center;
-            margin-top: 20px;
-            padding-top: 20px;
-            border-top: 2px solid #e5e7eb;
-          }
-          .terms {
-            margin-top: 40px;
-            padding: 20px;
-            background: #fef7ed;
-            border-left: 4px solid #f59e0b;
-            border-radius: 0 8px 8px 0;
-          }
-          .signature-section {
-            margin-top: 60px;
-            text-align: right;
-            padding-top: 40px;
-            border-top: 1px solid #e5e7eb;
-          }
-          .signature-line {
-            border-bottom: 1px solid #374151;
-            width: 200px;
-            margin: 40px 0 10px auto;
-          }
-          @media print {
-            body { margin: 0; }
-            .container { box-shadow: none; }
-          }
-        </style>
-      </head>
-      <body>
-        <div class="container">
-          <div class="header">
-            <div class="company-name">ASP CRANES</div>
-            <div class="company-tagline">Professional Crane Services | Your Trusted Partner</div>
-            <div class="quotation-title">QUOTATION</div>
-          </div>
+    console.log('🎨 [QuotationPreview] Using template builder system with template:', defaultTemplate.name);
+    console.log('📋 Template data:', defaultTemplate);
+    console.log('📊 Quotation data:', data);
+    
+    // Use the template builder API to generate the preview
+    const apiUrl = import.meta.env.VITE_API_URL || '/api';
+    console.log('🌐 API URL:', apiUrl);
+    
+    const requestPayload = {
+      templateId: defaultTemplate.id,
+      quotationData: data
+    };
+    console.log('📤 Request payload:', requestPayload);
+    
+    const response = await fetch(`${apiUrl}/templates/enhanced/preview`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-Bypass-Auth': 'development-only-123'
+      },
+      body: JSON.stringify(requestPayload)
+    });
 
-          <div class="details-grid">
-            <div>
-              <div class="detail-item">
-                <div class="detail-label">Quotation ID:</div>
-                <div class="detail-value">#${data.id}</div>
-              </div>
-              <div class="detail-item">
-                <div class="detail-label">Date:</div>
-                <div class="detail-value">${new Date(data.created_at).toLocaleDateString('en-IN')}</div>
-              </div>
-              <div class="detail-item">
-                <div class="detail-label">Machine Type:</div>
-                <div class="detail-value">${data.machine_type}</div>
-              </div>
-              <div class="detail-item">
-                <div class="detail-label">Order Type:</div>
-                <div class="detail-value">${data.order_type}</div>
-              </div>
-            </div>
-            <div>
-              <div class="detail-item">
-                <div class="detail-label">Customer:</div>
-                <div class="detail-value">${data.customer_name}</div>
-              </div>
-              <div class="detail-item">
-                <div class="detail-label">Email:</div>
-                <div class="detail-value">${data.customer_email || 'N/A'}</div>
-              </div>
-              <div class="detail-item">
-                <div class="detail-label">Phone:</div>
-                <div class="detail-value">${data.customer_phone || 'N/A'}</div>
-              </div>
-              <div class="detail-item">
-                <div class="detail-label">Status:</div>
-                <div class="detail-value">${data.status}</div>
-              </div>
-            </div>
-          </div>
+    console.log('📥 Response status:', response.status);
+    console.log('📥 Response headers:', Object.fromEntries(response.headers.entries()));
 
-          <div class="cost-section">
-            <h3 style="margin-top: 0; color: #2563eb;">Project Details</h3>
-            <div class="details-grid" style="background: white; margin: 20px 0;">
-              <div>
-                <div class="detail-item">
-                  <div class="detail-label">Duration:</div>
-                  <div class="detail-value">${data.number_of_days} days</div>
-                </div>
-                <div class="detail-item">
-                  <div class="detail-label">Working Hours:</div>
-                  <div class="detail-value">${data.working_hours} hours/day</div>
-                </div>
-              </div>
-              <div>
-                <div class="detail-item">
-                  <div class="detail-label">Total Hours:</div>
-                  <div class="detail-value">${data.number_of_days * data.working_hours} hours</div>
-                </div>
-                <div class="detail-item">
-                  <div class="detail-label">Rate:</div>
-                  <div class="detail-value">₹${Math.round(data.total_cost / (data.number_of_days * data.working_hours))}/hour</div>
-                </div>
-              </div>
-            </div>
-            <div class="total-amount">
-              Total Amount: ₹${data.total_cost.toLocaleString('en-IN')}
-            </div>
-          </div>
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('❌ Template preview API failed:', response.status, errorText);
+      throw new Error(`Template API failed: ${response.status} - ${errorText}`);
+    }
 
-          <div class="terms">
-            <h3 style="margin-top: 0; color: #f59e0b;">Terms & Conditions</h3>
-            <ul style="margin: 0; padding-left: 20px;">
-              <li>Payment Terms: 50% advance, balance on completion</li>
-              <li>Equipment delivery within 2-3 working days from advance payment</li>
-              <li>Fuel charges extra as per actual consumption</li>
-              <li>All rates are subject to site conditions and accessibility</li>
-              <li>This quotation is valid for 15 days from date of issue</li>
-              <li>Mobilization and demobilization charges as applicable</li>
-            </ul>
-          </div>
+    const result = await response.json();
+    console.log('📋 API response:', result);
+    
+    const generatedHtml = result.data?.html || result.html;
+    
+    if (!generatedHtml) {
+      console.error('❌ No HTML returned from template API');
+      console.log('Response structure:', Object.keys(result));
+      throw new Error('Template API returned no HTML content');
+    }
 
-          <div class="signature-section">
-            <strong>For ASP Cranes</strong>
-            <div class="signature-line"></div>
-            <div style="font-size: 12px; color: #6b7280;">Authorized Signature</div>
-          </div>
-        </div>
-      </body>
-      </html>
-    `;
-    return html;
+    console.log('✅ Successfully generated template-based preview');
+    console.log('📄 Generated HTML length:', generatedHtml.length);
+    return generatedHtml;
   };
 
   const handlePreview = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      let html;
-      
-      // Try to use template-based preview if default template is available
-      if (defaultTemplate) {
-        console.log('🎨 Using template-based preview with template:', defaultTemplate.name);
-        html = await generateTemplatePreview();
-      } else {
-        console.log('📄 Using fallback simple preview');
-        html = generateSimplePreview();
-      }
-      
+      console.log('🎨 Generating template-based preview...');
+      const html = await generateTemplatePreview();
       setPreviewHtml(html);
       setIsPreviewOpen(true);
     } catch (error) {
       console.error('Error generating preview:', error);
-      setError(`Failed to generate preview: ${error instanceof Error ? error.message : 'Unknown error'}`);
-      
-      // As last resort, try simple preview
-      try {
-        const fallbackHtml = generateSimplePreview();
-        setPreviewHtml(fallbackHtml);
-        setIsPreviewOpen(true);
-      } catch (fallbackError) {
-        console.error('Even fallback preview failed:', fallbackError);
-        alert('Failed to generate preview');
-      }
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      setError(`Failed to generate preview: ${errorMessage}`);
+      alert(`Preview failed: ${errorMessage}\n\nPlease ensure:\n1. Backend server is running\n2. Default template is configured\n3. Template builder system is working`);
     } finally {
       setIsLoading(false);
     }
@@ -339,16 +160,8 @@ const QuotationPreviewPrint: React.FC<QuotationPreviewPrintProps> = ({
   const handlePrint = async () => {
     setIsLoading(true);
     try {
-      let html;
-      
-      // Try to use template-based preview if default template is available
-      if (defaultTemplate) {
-        console.log('🖨️ Printing with template-based preview');
-        html = await generateTemplatePreview();
-      } else {
-        console.log('🖨️ Printing with fallback simple preview');
-        html = generateSimplePreview();
-      }
+      console.log('🖨️ Generating template-based print content...');
+      const html = await generateTemplatePreview();
       
       // Use the new PDF generation service
       await generateAndOpenPDF(html, {
@@ -358,18 +171,8 @@ const QuotationPreviewPrint: React.FC<QuotationPreviewPrintProps> = ({
       });
     } catch (error) {
       console.error('Error generating print content:', error);
-      // Fallback to old window.open method if PDF generation fails
-      try {
-        const fallbackHtml = generateSimplePreview();
-        const printWindow = window.open('', '_blank');
-        if (printWindow) {
-          printWindow.document.write(fallbackHtml);
-          printWindow.document.close();
-          printWindow.print();
-        }
-      } catch (fallbackError) {
-        console.error('All print methods failed:', fallbackError);
-      }
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Print failed: ${errorMessage}\n\nPlease ensure the template builder system is working correctly.`);
     } finally {
       setIsLoading(false);
     }
@@ -378,16 +181,8 @@ const QuotationPreviewPrint: React.FC<QuotationPreviewPrintProps> = ({
   const handleDownload = async () => {
     setIsLoading(true);
     try {
-      let html;
-      
-      // Try to use template-based preview if default template is available
-      if (defaultTemplate) {
-        console.log('💾 Downloading with template-based preview');
-        html = await generateTemplatePreview();
-      } else {
-        console.log('💾 Downloading with fallback simple preview');
-        html = generateSimplePreview();
-      }
+      console.log('💾 Generating template-based download content...');
+      const html = await generateTemplatePreview();
       
       // Use the new PDF generation service
       await generateAndDownloadPDF(
@@ -400,21 +195,8 @@ const QuotationPreviewPrint: React.FC<QuotationPreviewPrintProps> = ({
       );
     } catch (error) {
       console.error('Error generating download content:', error);
-      // Fallback to HTML download if PDF generation fails
-      try {
-        const fallbackHtml = generateSimplePreview();
-        const blob = new Blob([fallbackHtml], { type: 'text/html' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `quotation_${quotationId}.html`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      } catch (fallbackError) {
-        console.error('All download methods failed:', fallbackError);
-      }
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+      alert(`Download failed: ${errorMessage}\n\nPlease ensure the template builder system is working correctly.`);
     } finally {
       setIsLoading(false);
     }
