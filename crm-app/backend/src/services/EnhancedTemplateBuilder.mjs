@@ -129,9 +129,22 @@ export class EnhancedTemplateBuilder {
    * Create a new template from scratch
    */
   createTemplate(templateData) {
+    // Normalize elements to ensure they have required properties
+    let normalizedElements = [];
+    if (templateData.elements && Array.isArray(templateData.elements)) {
+      normalizedElements = templateData.elements.map(element => ({
+        ...element,
+        visible: element.visible !== undefined ? element.visible : true,
+        id: element.id || this.generateElementId(),
+        style: element.style || {},
+        content: element.content || {}
+      }));
+    }
+
     this.template = {
       ...this.template,
       ...templateData,
+      elements: normalizedElements,
       id: this.generateTemplateId(),
       createdAt: new Date(),
       updatedAt: new Date()
@@ -571,73 +584,130 @@ export class EnhancedTemplateBuilder {
    * Render individual template element
    */
   renderElement(element, data) {
-    if (!element.visible) return '';
+    // Check if element should be visible (default to true if not specified)
+    if (element.visible === false) return '';
 
     const elementClass = `element-${element.type}`;
-    const elementStyle = this.generateElementStyle(element.style);
+    const elementStyle = this.generateElementStyle(element.style || {});
+
+    // Debug logging to trace element types
+    console.log('🔍 [DEBUG] Rendering element type:', element.type);
+    console.log('🔍 [DEBUG] Available TEMPLATE_ELEMENT_TYPES:', Object.values(TEMPLATE_ELEMENT_TYPES));
+    console.log('🔍 [DEBUG] Type match found:', Object.values(TEMPLATE_ELEMENT_TYPES).includes(element.type));
 
     switch (element.type) {
       case TEMPLATE_ELEMENT_TYPES.HEADER:
+      case 'header':
         return `
           <div class="${elementClass}" style="${elementStyle}">
-            <h1>${element.content.title}</h1>
-            ${element.content.subtitle ? `<h2>${element.content.subtitle}</h2>` : ''}
+            <h1>${element.content?.title || 'Header Title'}</h1>
+            ${element.content?.subtitle ? `<h2>${element.content.subtitle}</h2>` : ''}
           </div>`;
 
       case TEMPLATE_ELEMENT_TYPES.COMPANY_INFO:
+      case 'company_info':
+        const companyFields = element.content?.fields || ['Company Information'];
         return `
           <div class="${elementClass}" style="${elementStyle}">
-            ${element.content.fields.map(field => `<div>${field}</div>`).join('')}
+            ${companyFields.map(field => `<div>${field}</div>`).join('')}
           </div>`;
 
       case TEMPLATE_ELEMENT_TYPES.CLIENT_INFO:
+      case 'client_info':
+        const clientFields = element.content?.fields || ['Client Information'];
         return `
           <div class="${elementClass}" style="${elementStyle}">
-            <h3>${element.content.title}</h3>
-            ${element.content.fields.map(field => `<div>${field}</div>`).join('')}
+            <h3>${element.content?.title || 'Bill To:'}</h3>
+            ${clientFields.map(field => `<div>${field}</div>`).join('')}
           </div>`;
 
       case TEMPLATE_ELEMENT_TYPES.QUOTATION_INFO:
+      case 'quotation_info':
+        const quotationFields = element.content?.fields || [
+          { label: 'Quotation #', value: 'QUOTE-001' },
+          { label: 'Date', value: new Date().toLocaleDateString() }
+        ];
         return `
           <div class="${elementClass}" style="${elementStyle}">
             <table class="info-table">
-              ${element.content.fields.map(field => 
+              ${quotationFields.map(field => 
                 `<tr><td class="label">${field.label}:</td><td class="value">${field.value}</td></tr>`
               ).join('')}
             </table>
           </div>`;
 
       case TEMPLATE_ELEMENT_TYPES.ITEMS_TABLE:
+      case 'items_table':
         return this.renderItemsTable(element, data);
 
       case TEMPLATE_ELEMENT_TYPES.TOTALS:
+      case 'totals':
         return this.renderTotals(element, data);
 
       case TEMPLATE_ELEMENT_TYPES.TERMS:
+      case 'terms':
         return `
           <div class="${elementClass}" style="${elementStyle}">
-            ${element.content.showTitle ? `<h3>${element.content.title}</h3>` : ''}
-            <div class="terms-content">${element.content.text || element.content.defaultText}</div>
+            ${element.content?.showTitle ? `<h3>${element.content?.title || 'Terms & Conditions'}</h3>` : '<h3>Terms & Conditions</h3>'}
+            <div class="terms-content">${element.content?.text || element.content?.defaultText || 'Terms and conditions apply.'}</div>
           </div>`;
 
       case TEMPLATE_ELEMENT_TYPES.CUSTOM_TEXT:
+      case 'custom_text':
         return `
           <div class="${elementClass}" style="${elementStyle}">
-            ${element.content.text}
+            ${element.content?.text || 'Custom text content'}
           </div>`;
 
       case TEMPLATE_ELEMENT_TYPES.SIGNATURE:
+      case 'signature':
         return `
           <div class="${elementClass}" style="${elementStyle}">
             <div class="signature-area">
-              <h4>${element.content.title}</h4>
-              ${element.content.signatureLine ? '<div class="signature-line"></div>' : ''}
-              ${element.content.showDate ? '<div class="signature-date">Date: _______________</div>' : ''}
+              <h4>${element.content?.title || 'Authorized Signature'}</h4>
+              ${element.content?.signatureLine ? '<div class="signature-line" style="border-bottom: 1px solid #000; width: 200px; height: 50px; margin: 20px 0;"></div>' : ''}
+              ${element.content?.showDate ? '<div class="signature-date">Date: _______________</div>' : ''}
             </div>
           </div>`;
 
+      // Handle additional common element types
+      case 'text':
+      case 'content':
+        return `
+          <div class="${elementClass}" style="${elementStyle}">
+            <p>${element.content?.text || element.content || 'Text content'}</p>
+          </div>`;
+
+      case 'image':
+        return `
+          <div class="${elementClass}" style="${elementStyle}">
+            <img src="${element.content?.src || '/placeholder-image.png'}" 
+                 alt="${element.content?.alt || 'Image'}" 
+                 style="max-width: 100%; height: auto;" />
+          </div>`;
+
+      case 'spacer':
+      case 'divider':
+        return `
+          <div class="${elementClass}" style="${elementStyle}">
+            <hr style="border: 1px solid #e5e7eb; margin: 20px 0;" />
+          </div>`;
+
       default:
-        return `<div class="${elementClass}" style="${elementStyle}">Unknown element type</div>`;
+        console.warn(`⚠️ Unknown element type: ${element.type}`);
+        // Instead of showing "Unknown element type", render the element with available content
+        const fallbackContent = element.content?.text || 
+                               element.content?.title || 
+                               (element.content && typeof element.content === 'string' ? element.content : '') ||
+                               `Element type: ${element.type}`;
+        return `
+          <div class="${elementClass}" style="${elementStyle}">
+            <div style="padding: 10px; background: #f9f9f9; border: 1px dashed #ccc;">
+              <strong>Element (${element.type}):</strong><br>
+              ${fallbackContent}
+              ${element.content ? `<br><small>Content: ${JSON.stringify(element.content)}</small>` : ''}
+            </div>
+          </div>`;
     }
   }
 
@@ -645,29 +715,38 @@ export class EnhancedTemplateBuilder {
    * Render items table
    */
   renderItemsTable(element, data) {
-    const items = data.items || [];
-    const columns = element.content.columns;
+    const items = data?.items || [];
+    const columns = element.content?.columns || [
+      { key: 'description', label: 'Description', width: '40%', alignment: 'left' },
+      { key: 'quantity', label: 'Qty', width: '15%', alignment: 'center' },
+      { key: 'rate', label: 'Rate', width: '20%', alignment: 'right' },
+      { key: 'amount', label: 'Amount', width: '25%', alignment: 'right' }
+    ];
 
     return `
-      <div class="element-items-table" style="${this.generateElementStyle(element.style)}">
-        <table class="items-table">
-          ${element.content.showHeader ? `
+      <div class="element-items-table" style="${this.generateElementStyle(element.style || {})}">
+        <table class="items-table" style="width: 100%; border-collapse: collapse;">
+          ${element.content?.showHeader !== false ? `
             <thead>
-              <tr>
+              <tr style="background: #f9f9f9;">
                 ${columns.map(col => 
-                  `<th style="width: ${col.width}; text-align: ${col.alignment}">${col.label}</th>`
+                  `<th style="width: ${col.width}; text-align: ${col.alignment}; padding: 8px; border: 1px solid #ddd;">${col.label}</th>`
                 ).join('')}
               </tr>
             </thead>
           ` : ''}
           <tbody>
-            ${items.map((item, index) => `
-              <tr class="${element.content.alternateRows && index % 2 === 1 ? 'alternate-row' : ''}">
+            ${items.length > 0 ? items.map((item, index) => `
+              <tr class="${element.content?.alternateRows && index % 2 === 1 ? 'alternate-row' : ''}" style="${index % 2 === 1 ? 'background: #f9f9f9;' : ''}">
                 ${columns.map(col => `
-                  <td style="text-align: ${col.alignment}">${item[col.key] || '-'}</td>
+                  <td style="text-align: ${col.alignment}; padding: 8px; border: 1px solid #ddd;">${item[col.key] || '-'}</td>
                 `).join('')}
               </tr>
-            `).join('')}
+            `).join('') : `
+              <tr>
+                <td colspan="${columns.length}" style="text-align: center; padding: 20px; color: #666;">No items found</td>
+              </tr>
+            `}
           </tbody>
         </table>
       </div>`;
@@ -677,21 +756,25 @@ export class EnhancedTemplateBuilder {
    * Render totals section
    */
   renderTotals(element, data) {
-    const totals = data.totals || {};
+    const totals = data?.totals || {};
+    const fields = element.content?.fields || [
+      { label: 'Subtotal', value: '{{totals.subtotal}}', showIf: 'always' },
+      { label: 'Total', value: '{{totals.total}}', showIf: 'always', emphasized: true }
+    ];
     
     return `
-      <div class="element-totals" style="${this.generateElementStyle(element.style)}">
-        <table class="totals-table">
-          ${element.content.fields.map(field => {
+      <div class="element-totals" style="${this.generateElementStyle(element.style || {})}">
+        <table class="totals-table" style="width: 100%; max-width: 300px; margin-left: auto;">
+          ${fields.map(field => {
             const showField = this.shouldShowTotalField(field, data);
             if (!showField) return '';
             
             return `
-              <tr class="${field.emphasized ? 'emphasized' : ''}">
-                <td class="label">${field.label}:</td>
-                <td class="value">${field.value}</td>
+              <tr class="${field.emphasized ? 'emphasized' : ''}" style="${field.emphasized ? 'font-weight: bold; border-top: 2px solid #000;' : ''}">
+                <td class="label" style="text-align: right; padding: 5px 10px;">${field.label}:</td>
+                <td class="value" style="text-align: right; padding: 5px 10px;">${field.value}</td>
               </tr>`;
-          }).join('')}
+          }).filter(row => row).join('')}
         </table>
       </div>`;
   }

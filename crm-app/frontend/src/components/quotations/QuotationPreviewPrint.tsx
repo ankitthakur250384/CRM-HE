@@ -87,23 +87,70 @@ const QuotationPreviewPrint: React.FC<QuotationPreviewPrintProps> = ({
   }, []);
 
   const generateTemplatePreview = async () => {
-    if (!defaultTemplate) {
-      throw new Error('No default template available - Template builder system is required');
-    }
+    try {
+      if (!defaultTemplate) {
+        console.log('🎨 [QuotationPreview] No default template available, using enhanced template builder API');
+        
+        // Try to get any available template if no default is set
+        const apiUrl = import.meta.env.VITE_API_URL || '/api';
+        const templatesResponse = await fetch(`${apiUrl}/templates/enhanced/list`, {
+          headers: {
+            'X-Bypass-Auth': 'development-only-123'
+          }
+        });
+        
+        if (templatesResponse.ok) {
+          const templates = await templatesResponse.json();
+          const availableTemplates = templates.data || templates;
+          if (availableTemplates && availableTemplates.length > 0) {
+            console.log('📋 Using first available template:', availableTemplates[0].name);
+            // Use the first available template
+            const templateId = availableTemplates[0].id;
+            return await generatePreviewWithTemplate(templateId);
+          }
+        }
+        
+        throw new Error('No templates available in the system');
+      }
 
-    console.log('🎨 [QuotationPreview] Using template builder system with template:', defaultTemplate.name);
-    console.log('📋 Template data:', defaultTemplate);
-    console.log('📊 Quotation data:', data);
-    
-    // Use the template builder API to generate the preview
+      console.log('🎨 [QuotationPreview] Using default template:', defaultTemplate.name);
+      return await generatePreviewWithTemplate(defaultTemplate.id);
+      
+    } catch (error) {
+      console.error('❌ Template preview error:', error);
+      throw error;
+    }
+  };
+
+  const generatePreviewWithTemplate = async (templateId: string) => {
     const apiUrl = import.meta.env.VITE_API_URL || '/api';
-    console.log('🌐 API URL:', apiUrl);
     
+    // First, get the template data
+    console.log('📋 Fetching template data for ID:', templateId);
+    const templateResponse = await fetch(`${apiUrl}/templates/enhanced/${templateId}`, {
+      headers: {
+        'X-Bypass-Auth': 'development-only-123'
+      }
+    });
+    
+    if (!templateResponse.ok) {
+      throw new Error(`Failed to fetch template: ${templateResponse.status}`);
+    }
+    
+    const templateResult = await templateResponse.json();
+    const templateData = templateResult.data || templateResult;
+    
+    console.log('📋 Template data loaded:', templateData.name);
+    
+    // Now generate preview with the template data
     const requestPayload = {
-      templateId: defaultTemplate.id,
-      quotationData: data
+      templateData: templateData,
+      quotationData: data,
+      format: 'html'
     };
-    console.log('📤 Request payload:', requestPayload);
+    
+    console.log('📤 Generating preview with template data');
+    console.log('📊 Request payload keys:', Object.keys(requestPayload));
     
     const response = await fetch(`${apiUrl}/templates/enhanced/preview`, {
       method: 'POST',
@@ -115,7 +162,6 @@ const QuotationPreviewPrint: React.FC<QuotationPreviewPrintProps> = ({
     });
 
     console.log('📥 Response status:', response.status);
-    console.log('📥 Response headers:', Object.fromEntries(response.headers.entries()));
 
     if (!response.ok) {
       const errorText = await response.text();
@@ -124,13 +170,13 @@ const QuotationPreviewPrint: React.FC<QuotationPreviewPrintProps> = ({
     }
 
     const result = await response.json();
-    console.log('📋 API response:', result);
+    console.log('📋 API response structure:', Object.keys(result));
     
-    const generatedHtml = result.data?.html || result.html;
+    const generatedHtml = result.data?.html || result.html || result.generatedHtml;
     
     if (!generatedHtml) {
       console.error('❌ No HTML returned from template API');
-      console.log('Response structure:', Object.keys(result));
+      console.log('Full response:', result);
       throw new Error('Template API returned no HTML content');
     }
 

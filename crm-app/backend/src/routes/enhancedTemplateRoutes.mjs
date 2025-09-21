@@ -690,6 +690,12 @@ router.get('/:id', async (req, res) => {
       
       const template = result.rows[0];
       
+      // Debug: log element types
+      console.log('🔍 [DEBUG] Template elements from DB:', template.elements);
+      if (template.elements && Array.isArray(template.elements)) {
+        console.log('🔍 [DEBUG] Element types found:', template.elements.map(el => el.type));
+      }
+      
       res.json({
         success: true,
         data: {
@@ -1069,6 +1075,12 @@ router.post('/preview', async (req, res) => {
     }
     
     const { templateData, quotationData, format = 'html', options = {} } = req.body;
+    
+    // Debug: log template data
+    console.log('🔍 [DEBUG] Preview template data:', templateData);
+    if (templateData.elements && Array.isArray(templateData.elements)) {
+      console.log('🔍 [DEBUG] Preview element types:', templateData.elements.map(el => el.type));
+    }
     
     const templateBuilder = new EnhancedTemplateBuilder();
     
