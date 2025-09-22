@@ -14,6 +14,7 @@ import { LeadManagement } from './pages/LeadManagement';
 import ToastContainer from './components/common/ToastContainer';
 import QuotationManagement from './components/quotations/QuotationManagement';
 import { QuotationCreation } from './pages/QuotationCreation';
+import QuotationDetail from './pages/quotations/QuotationDetail';
 import DealSelectionPage from './pages/DealSelectionPage';
 import { JobScheduling } from './pages/JobScheduling';
 import { SiteAssessment } from './pages/SiteAssessment';
@@ -220,6 +221,12 @@ function AppContent() {
             <Route path="quotations" element={
               <ProtectedRoute allowedRoles={['admin', 'sales_agent', 'operations_manager']}>
                 <QuotationManagement />
+              </ProtectedRoute>
+            } />
+            
+            <Route path="quotations/:id" element={
+              <ProtectedRoute allowedRoles={['admin', 'sales_agent', 'operations_manager']}>
+                <QuotationDetail />
               </ProtectedRoute>
             } />
             

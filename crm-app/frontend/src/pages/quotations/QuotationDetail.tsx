@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import QuotationPrintSystem from '../../components/quotations/QuotationPrintSystem';
-import { ArrowLeft, Edit, FileText, Settings } from 'lucide-react';
+import { ArrowLeft, Edit, FileText, Settings, Eye, Printer, Download, Mail, X } from 'lucide-react';
 
 interface Quotation {
   id: number;
@@ -24,6 +24,7 @@ const QuotationDetail: React.FC = () => {
   const [quotation, setQuotation] = useState<Quotation | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   useEffect(() => {
     if (id) {
@@ -34,11 +35,15 @@ const QuotationDetail: React.FC = () => {
   const fetchQuotation = async (quotationId: number) => {
     try {
       setIsLoading(true);
-      const response = await fetch(`/api/quotations/${quotationId}`);
+      const response = await fetch(`/api/quotations/${quotationId}`, {
+        headers: {
+          'X-Bypass-Auth': 'development-only-123'
+        }
+      });
       const data = await response.json();
 
       if (data.success) {
-        setQuotation(data.quotation);
+        setQuotation(data.data);
       } else {
         setError(data.error || 'Failed to fetch quotation');
       }
@@ -47,6 +52,48 @@ const QuotationDetail: React.FC = () => {
       setError('Failed to fetch quotation');
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handlePreview = () => {
+    setIsPreviewOpen(!isPreviewOpen);
+  };
+
+  const handlePrint = () => {
+    if (id) {
+      window.open(`/api/quotations/${id}/preview/iframe`, '_blank');
+    }
+  };
+
+  const handleDownload = async () => {
+    try {
+      if (!id) return;
+      
+      const response = await fetch(`/api/quotations/print/pdf`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Bypass-Auth': 'development-only-123'
+        },
+        body: JSON.stringify({ quotationId: id })
+      });
+
+      if (response.ok) {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `quotation_${id}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        throw new Error('Failed to download PDF');
+      }
+    } catch (error) {
+      console.error('Download error:', error);
+      alert('Failed to download PDF. Please try again.');
     }
   };
 
@@ -211,10 +258,44 @@ const QuotationDetail: React.FC = () => {
 
           {/* Print System */}
           <div className="lg:col-span-2">
+            {/* Preview Section */}
+            <div className="bg-white rounded-lg shadow-sm border p-6 mb-6">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-gray-900 flex items-center">
+                  <Eye className="h-5 w-5 mr-2" />
+                  Quotation Preview
+                </h2>
+                <div className="flex items-center space-x-2">
+                  <Button onClick={handlePreview} variant="outline" size="sm">
+                    <Eye className="h-4 w-4 mr-2" />
+                    {isPreviewOpen ? 'Hide Preview' : 'Show Preview'}
+                  </Button>
+                  <Button onClick={handlePrint} variant="outline" size="sm">
+                    <Printer className="h-4 w-4 mr-2" />
+                    Print
+                  </Button>
+                  <Button onClick={handleDownload} size="sm">
+                    <Download className="h-4 w-4 mr-2" />
+                    Download PDF
+                  </Button>
+                </div>
+              </div>
+              
+              {isPreviewOpen && (
+                <div className="border rounded-lg overflow-hidden">
+                  <iframe
+                    src={`/api/quotations/${id}/preview/iframe`}
+                    className="w-full h-96 border-0"
+                    title="Quotation Preview"
+                  />
+                </div>
+              )}
+            </div>
+
             <div className="bg-white rounded-lg shadow-sm border p-6">
               <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
                 <Settings className="h-5 w-5 mr-2" />
-                Print & Export Options
+                Advanced Print & Export Options
               </h2>
               <QuotationPrintSystem 
                 quotationId={quotation.id}
@@ -227,32 +308,37 @@ const QuotationDetail: React.FC = () => {
         {/* Quick Actions */}
         <div className="bg-white rounded-lg shadow-sm border p-6">
           <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Button 
+              onClick={handlePreview}
+              className="flex items-center justify-center space-x-2"
+              variant={isPreviewOpen ? "default" : "outline"}
+            >
+              <Eye className="h-4 w-4" />
+              <span>{isPreviewOpen ? 'Hide Preview' : 'Show Preview'}</span>
+            </Button>
+            <Button 
+              onClick={handlePrint}
+              className="flex items-center justify-center space-x-2"
+              variant="outline"
+            >
+              <Printer className="h-4 w-4" />
+              <span>Print</span>
+            </Button>
+            <Button 
+              onClick={handleDownload}
+              className="flex items-center justify-center space-x-2"
+            >
+              <Download className="h-4 w-4" />
+              <span>Download PDF</span>
+            </Button>
             <Button 
               onClick={() => navigate(`/quotations/${quotation.id}/edit`)}
               className="flex items-center justify-center space-x-2"
+              variant="outline"
             >
               <Edit className="h-4 w-4" />
               <span>Edit Quotation</span>
-            </Button>
-            <Button 
-              onClick={() => {
-                // Create a new quotation based on this one
-                navigate('/quotations/new', { 
-                  state: { copyFrom: quotation.id } 
-                });
-              }}
-              className="flex items-center justify-center space-x-2"
-            >
-              <FileText className="h-4 w-4" />
-              <span>Duplicate Quotation</span>
-            </Button>
-            <Button 
-              onClick={() => navigate('/templates')}
-              className="flex items-center justify-center space-x-2"
-            >
-              <Settings className="h-4 w-4" />
-              <span>Manage Templates</span>
             </Button>
           </div>
         </div>

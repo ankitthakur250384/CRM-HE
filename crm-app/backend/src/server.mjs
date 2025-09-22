@@ -39,6 +39,7 @@ import dbConfigRoutes from './routes/dbConfigRoutes.mjs';
 // Import enhanced template routes for InvoiceNinja-style functionality
 import enhancedTemplateRoutes from './routes/enhancedTemplateRoutes.mjs';
 import quotationPrintRoutes from './routes/quotationPrintRoutes.mjs';
+import quotationPreviewRoutes from './routes/quotationPreviewRoutes.mjs';
 
 // Import AI routes for CrewAI integration
 import aiRoutes from './routes/aiRoutes.mjs';
@@ -197,6 +198,11 @@ console.log('✅ Enhanced template routes mounted successfully');
 console.log('🔧 Mounting /api/quotations/print route...');
 app.use('/api/quotations/print', quotationPrintRoutes);
 console.log('✅ Quotation print routes mounted successfully');
+
+// Mount quotation preview routes for enhanced preview functionality
+console.log('🔧 Mounting /api/quotations (preview) routes...');
+app.use('/api/quotations', quotationPreviewRoutes);
+console.log('✅ Quotation preview routes mounted successfully');
 
 // Mount database config routes
 app.use('/api/dbconfig', dbConfigRoutes);

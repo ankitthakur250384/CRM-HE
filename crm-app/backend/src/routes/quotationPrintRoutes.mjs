@@ -421,9 +421,23 @@ async function getQuotationWithDetails(quotationId) {
 }
 
 /**
- * GET /api/quotations/print/preview - Generate print preview (GET version)
+ * OLD PREVIEW ROUTES DISABLED
+ * Preview functionality has been moved to quotationPreviewRoutes.mjs
+ * to avoid route conflicts and use the new unified preview system.
  */
+
+/*
 router.get('/preview', async (req, res) => {
+  // DISABLED - Moved to quotationPreviewRoutes.mjs
+  res.status(410).json({
+    success: false,
+    error: 'Preview endpoint moved',
+    message: 'Use /api/quotations/:id/preview instead'
+  });
+});
+*/
+
+/**
   try {
     const { quotationId, templateId, format = 'html' } = req.query;
     
