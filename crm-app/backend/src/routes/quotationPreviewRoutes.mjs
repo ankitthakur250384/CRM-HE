@@ -10,6 +10,41 @@ import { EnhancedTemplateBuilder } from '../services/EnhancedTemplateBuilder.mjs
 
 const router = express.Router();
 
+// Simple test route to verify the routes are working
+router.get('/test', (req, res) => {
+  res.json({
+    success: true,
+    message: 'Preview routes are working!',
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Simple iframe test route
+router.get('/:id/preview/test', (req, res) => {
+  const { id } = req.params;
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Preview Test</title>
+      <style>
+        body { font-family: Arial, sans-serif; padding: 20px; background: #f0f0f0; }
+        .test-box { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+      </style>
+    </head>
+    <body>
+      <div class="test-box">
+        <h2>🧪 Preview Route Test</h2>
+        <p><strong>Quotation ID:</strong> ${id}</p>
+        <p><strong>Time:</strong> ${new Date().toISOString()}</p>
+        <p>✅ If you can see this, the iframe routing is working!</p>
+        <p>🔄 Now we need to debug the actual preview generation.</p>
+      </div>
+    </body>
+    </html>
+  `);
+});
+
 // Optional auth for selected endpoints: allows bypass header regardless of NODE_ENV
 const optionalAuth = (req, res, next) => {
   const bypassHeader = req.headers['x-bypass-auth'];
@@ -104,13 +139,15 @@ router.get('/:id/preview', optionalAuth, async (req, res) => {
 /**
  * GET /api/quotations/:id/preview/iframe - Iframe-friendly preview
  * Returns pure HTML without any wrapper
+ * BYPASS AUTH: Since iframes can't send custom headers, we bypass auth for iframe requests
  */
-router.get('/:id/preview/iframe', optionalAuth, async (req, res) => {
+router.get('/:id/preview/iframe', async (req, res) => {
   try {
     const { id: quotationId } = req.params;
     const { templateId } = req.query;
     
     console.log('🖼️ [Preview] Generating iframe preview for quotation:', quotationId);
+    console.log('🖼️ [Preview] Bypassing auth for iframe request');
     
     const quotationData = await getQuotationWithDetails(quotationId);
     if (!quotationData) {
@@ -122,6 +159,12 @@ router.get('/:id/preview/iframe', optionalAuth, async (req, res) => {
       `);
     }
 
+    console.log('✅ [Preview] Quotation data retrieved:', {
+      id: quotationData.id,
+      customerName: quotationData.customer_name,
+      machineType: quotationData.machine_type
+    });
+
     const templateBuilder = new EnhancedTemplateBuilder();
     let template;
     
@@ -129,15 +172,22 @@ router.get('/:id/preview/iframe', optionalAuth, async (req, res) => {
       try {
         await templateBuilder.loadTemplate(templateId);
         template = templateBuilder.template;
+        console.log('📋 [Preview] Using specific template:', template.name);
       } catch (error) {
+        console.warn('⚠️ [Preview] Specific template not found, using default');
         template = await getDefaultTemplate(templateBuilder);
       }
     } else {
       template = await getDefaultTemplate(templateBuilder);
     }
 
+    console.log('🎨 [Preview] Using template:', template.name);
+
     const previewData = mapQuotationToTemplateData(quotationData);
+    console.log('📋 [Preview] Mapped data keys:', Object.keys(previewData));
+    
     const html = templateBuilder.generatePreviewHTML(previewData);
+    console.log('✅ [Preview] HTML generated, length:', html.length);
 
     res.setHeader('Content-Type', 'text/html');
     res.setHeader('Cache-Control', 'no-cache');
@@ -145,11 +195,16 @@ router.get('/:id/preview/iframe', optionalAuth, async (req, res) => {
 
   } catch (error) {
     console.error('❌ [Preview] Iframe preview failed:', error);
+    console.error('❌ [Preview] Error stack:', error.stack);
     res.status(500).send(`
       <div style="padding: 40px; text-align: center; font-family: Arial, sans-serif;">
         <h2 style="color: #dc2626;">Preview Error</h2>
         <p>Failed to generate quotation preview.</p>
-        <p style="color: #666; font-size: 0.9em;">${error.message}</p>
+        <p style="color: #666; font-size: 0.9em;">Error: ${error.message}</p>
+        <details style="margin-top: 20px; text-align: left;">
+          <summary>Technical Details</summary>
+          <pre style="background: #f5f5f5; padding: 10px; overflow: auto;">${error.stack}</pre>
+        </details>
       </div>
     `);
   }

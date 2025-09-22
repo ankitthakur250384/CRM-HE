@@ -1,8 +1,81 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import QuotationPrintSystem from '../../components/quotations/QuotationPrintSystem';
 import { ArrowLeft, Edit, FileText, Settings, Eye, Printer, Download, Mail, X } from 'lucide-react';
+
+// Working preview generator (copied from QuotationPrintSystem)
+const generateLocalQuotationPreview = (quotationId: number, quotationData: any) => {
+  console.log('🎨 Generating local preview for quotation:', quotationId);
+  
+  return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ASP Cranes Quotation - ${quotationId}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
+        .header { text-align: center; border-bottom: 3px solid #2563eb; padding-bottom: 20px; margin-bottom: 30px; }
+        .company-name { color: #2563eb; font-size: 28px; font-weight: bold; margin-bottom: 10px; }
+        .tagline { color: #64748b; font-size: 14px; }
+        .section { margin-bottom: 25px; }
+        .section-title { color: #1e40af; font-size: 18px; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; }
+        .customer-info, .quotation-details { background: #f8fafc; padding: 15px; border-radius: 6px; }
+        .info-row { margin-bottom: 8px; }
+        .label { font-weight: bold; color: #374151; }
+        .value { color: #6b7280; }
+        .total-section { background: #2563eb; color: white; padding: 15px; border-radius: 6px; text-align: center; }
+        .total-amount { font-size: 24px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <div class="company-name">ASP CRANES</div>
+        <div class="tagline">Professional Crane Services | Your Trusted Lifting Partner</div>
+    </div>
+
+    <div style="text-align: center; background: #2563eb; color: white; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
+        <h1 style="margin: 0; font-size: 32px;">QUOTATION</h1>
+    </div>
+
+    <div style="display: flex; gap: 30px; margin-bottom: 30px;">
+        <div style="flex: 1;">
+            <h3 style="color: #2563eb; border-bottom: 2px solid #2563eb; padding-bottom: 8px;">📋 Quotation Details</h3>
+            <div style="background: #f8fafc; padding: 15px; border-radius: 6px;">
+                <p><strong>Quotation ID:</strong> ${quotationId}</p>
+                <p><strong>Machine Type:</strong> ${quotationData?.machine_type || 'N/A'}</p>
+                <p><strong>Order Type:</strong> ${quotationData?.order_type || 'N/A'}</p>
+                <p><strong>Date:</strong> ${new Date(quotationData?.created_at).toLocaleDateString()}</p>
+                <p><strong>Status:</strong> ${quotationData?.status || 'Draft'}</p>
+            </div>
+        </div>
+        
+        <div style="flex: 1;">
+            <h3 style="color: #2563eb; border-bottom: 2px solid #2563eb; padding-bottom: 8px;">👤 Customer Information</h3>
+            <div style="background: #f8fafc; padding: 15px; border-radius: 6px;">
+                <p><strong>Customer:</strong> ${quotationData?.customer_name || 'N/A'}</p>
+                <p><strong>Email:</strong> ${quotationData?.customer_email || 'N/A'}</p>
+                <p><strong>Phone:</strong> ${quotationData?.customer_phone || 'N/A'}</p>
+                <p><strong>Days:</strong> ${quotationData?.number_of_days || 'N/A'}</p>
+                <p><strong>Working Hours:</strong> ${quotationData?.working_hours || 'N/A'}</p>
+            </div>
+        </div>
+    </div>
+
+    <div style="text-align: center; background: #2563eb; color: white; padding: 20px; border-radius: 8px; margin: 30px 0;">
+        <h2 style="margin: 0;">Total Amount</h2>
+        <div style="font-size: 32px; font-weight: bold; margin-top: 10px;">₹${quotationData?.total_cost?.toLocaleString() || '0'}</div>
+    </div>
+
+    <div style="text-align: center; margin-top: 40px; color: #64748b; font-size: 12px;">
+        <p>ASP Cranes Professional Services | Industrial Area, New Delhi, India</p>
+        <p>Email: info@aspcranes.com | Phone: +91 9876543210</p>
+    </div>
+</body>
+</html>`;
+};
 
 interface Quotation {
   id: number;
@@ -25,6 +98,9 @@ const QuotationDetail: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  
+  // Ref for the preview iframe
+  const previewFrameRef = useRef<HTMLIFrameElement>(null);
 
   useEffect(() => {
     if (id) {
@@ -56,7 +132,25 @@ const QuotationDetail: React.FC = () => {
   };
 
   const handlePreview = () => {
-    setIsPreviewOpen(!isPreviewOpen);
+    // Toggle preview state
+    const newPreviewState = !isPreviewOpen;
+    setIsPreviewOpen(newPreviewState);
+    
+    // If opening preview, generate it
+    if (newPreviewState && quotation) {
+      setTimeout(() => {
+        if (previewFrameRef.current) {
+          const html = generateLocalQuotationPreview(quotation.id, quotation);
+          const iframe = previewFrameRef.current;
+          const doc = iframe.contentDocument || iframe.contentWindow?.document;
+          if (doc) {
+            doc.open();
+            doc.write(html);
+            doc.close();
+          }
+        }
+      }, 100);
+    }
   };
 
   const handlePrint = () => {
@@ -284,7 +378,7 @@ const QuotationDetail: React.FC = () => {
               {isPreviewOpen && (
                 <div className="border rounded-lg overflow-hidden">
                   <iframe
-                    src={`/api/quotations/${id}/preview/iframe`}
+                    ref={previewFrameRef}
                     className="w-full h-96 border-0"
                     title="Quotation Preview"
                   />

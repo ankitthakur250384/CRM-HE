@@ -64,11 +64,7 @@ const OTHER_FACTORS = [
   { value: 'helper', label: 'Helper' },
 ];
 
-const INCIDENTAL_OPTIONS = [
-  { value: 'incident1', label: 'Incident 1 - ₹5,000', amount: 5000 },
-  { value: 'incident2', label: 'Incident 2 - ₹10,000', amount: 10000 },
-  { value: 'incident3', label: 'Incident 3 - ₹15,000', amount: 15000 },
-];
+
 
 interface SelectedMachine {
   id: string;
@@ -548,7 +544,10 @@ export function QuotationCreation() {
       totalHours,
       effectiveBaseRate,
       hasMachines,
-      orderType: formData.orderType
+      orderType: formData.orderType,
+      shift: formData.shift,
+      dayNight: formData.dayNight,
+      additionalParams
     });
 
     // Calculate working cost based on whether we have machines or single equipment
@@ -570,31 +569,72 @@ export function QuotationCreation() {
       }
     }
 
-    console.log("💰 Working cost calculated:", workingCost);
+    // Apply shift type multiplier from configuration
+    let shiftMultiplier = 1;
+    if (additionalParams?.shiftFactors) {
+      if (formData.shift === 'single') {
+        shiftMultiplier = additionalParams.shiftFactors.single;
+      } else if (formData.shift === 'double') {
+        shiftMultiplier = additionalParams.shiftFactors.double;
+      }
+    }
+    workingCost = workingCost * shiftMultiplier;
+
+    // Apply day/night time multiplier from configuration  
+    let timeMultiplier = 1;
+    if (additionalParams?.dayNightFactors) {
+      if (formData.dayNight === 'day') {
+        timeMultiplier = additionalParams.dayNightFactors.day;
+      } else if (formData.dayNight === 'night') {
+        timeMultiplier = additionalParams.dayNightFactors.night;
+      }
+    }
+    workingCost = workingCost * timeMultiplier;
+
+    console.log("💰 Working cost calculated:", {
+      baseWorkingCost: workingCost / (shiftMultiplier * timeMultiplier),
+      shiftMultiplier,
+      timeMultiplier,
+      finalWorkingCost: workingCost
+    });
 
     // Food & Accommodation costs
-    const foodRate = resourceRates?.foodRate || 0;
-    const accomRate = resourceRates?.accommodationRate || 0;
-    const foodCost = (formData.foodResources || 0) * foodRate * numberOfDays;
-    const accomCost = (formData.accomResources || 0) * accomRate * numberOfDays;
+    const foodRate = resourceRates?.foodRate;
+    const accomRate = resourceRates?.accommodationRate;
+    const foodCost = foodRate ? (formData.foodResources || 0) * foodRate * numberOfDays : 0;
+    const accomCost = accomRate ? (formData.accomResources || 0) * accomRate * numberOfDays : 0;
     const foodAccomCost = foodCost + accomCost;
+
+    console.log("🍽️ Food & Accommodation:", {
+      foodResources: formData.foodResources,
+      accomResources: formData.accomResources,
+      foodRate,
+      accomRate,
+      numberOfDays,
+      foodCost,
+      accomCost,
+      foodAccomCost,
+      resourceRates
+    });
 
     // Mobilization/Demobilization costs
     let mobDemobCost = 0;
+    const transportRate = resourceRates?.transportRate;
+    
     if (formData.mobDemob > 0) {
       mobDemobCost = formData.mobDemob;
-    } else if (formData.siteDistance > 0) {
+    } else if (formData.siteDistance > 0 && transportRate) {
       if (hasMachines) {
         mobDemobCost = formData.selectedMachines.reduce((total, machine) => {
           const distance = formData.siteDistance || 0;
           const runningCostPerKm = machine.runningCostPerKm || 0;
-          const machineCost = (distance * 2 * runningCostPerKm) + 5000; // Default trailer cost
+          const machineCost = (distance * 2 * runningCostPerKm) + transportRate;
           return total + (machineCost * machine.quantity);
         }, 0);
       } else {
         const distance = formData.siteDistance || 0;
         const runningCostPerKm = formData.runningCostPerKm || 0;
-        mobDemobCost = (distance * 2 * runningCostPerKm) + 5000; // Default trailer cost
+        mobDemobCost = (distance * 2 * runningCostPerKm) + transportRate;
       }
       
       if (formData.mobRelaxation > 0) {
@@ -602,17 +642,52 @@ export function QuotationCreation() {
       }
     }
 
-    // Risk & Usage adjustments
+    console.log("🚚 Mob-Demob calculation:", {
+      mobDemobManual: formData.mobDemob,
+      siteDistance: formData.siteDistance,
+      transportRate,
+      mobRelaxation: formData.mobRelaxation,
+      mobDemobCost,
+      hasMachines,
+      selectedMachines: formData.selectedMachines?.map(m => ({ 
+        name: m.name, 
+        quantity: m.quantity, 
+        runningCostPerKm: m.runningCostPerKm 
+      }))
+    });
+
+    // Risk & Usage adjustments from configuration
     const baseForRiskCalc = workingCost;
     let riskPercentage = 0;
     let usagePercentage = 0;
 
-    if (formData.riskFactor === 'high') riskPercentage = 0.15;
-    else if (formData.riskFactor === 'medium') riskPercentage = 0.10;
-    else riskPercentage = 0.05;
+    // Get risk factor from configuration
+    if (additionalParams?.riskFactors) {
+      if (formData.riskFactor === 'high') {
+        riskPercentage = additionalParams.riskFactors.high;
+      } else if (formData.riskFactor === 'medium') {
+        riskPercentage = additionalParams.riskFactors.medium;
+      } else {
+        riskPercentage = additionalParams.riskFactors.low;
+      }
+    }
 
-    if (formData.usage === 'heavy') usagePercentage = 0.10;
-    else usagePercentage = 0.05;
+    // Get usage factor from configuration  
+    if (additionalParams?.usageFactors) {
+      if (formData.usage === 'heavy') {
+        usagePercentage = additionalParams.usageFactors.heavy;
+      } else {
+        usagePercentage = additionalParams.usageFactors.normal;
+      }
+    }
+
+    console.log("🔧 Risk & Usage factors:", {
+      riskFactor: formData.riskFactor,
+      riskPercentage,
+      usage: formData.usage,
+      usagePercentage,
+      baseForRiskCalc
+    });
 
     const riskAdjustment = baseForRiskCalc * riskPercentage;
     const usageLoadFactor = baseForRiskCalc * usagePercentage;
@@ -620,13 +695,30 @@ export function QuotationCreation() {
     // Additional charges
     const extraCharges = Number(formData.extraCharge) || 0;
     
+    // Incidental charges from configuration
+    const incidentalOptions = additionalParams?.incidentalOptions;
     const incidentalTotal = formData.incidentalCharges.reduce((sum, val) => {
-      const found = INCIDENTAL_OPTIONS.find(opt => opt.value === val);
+      const found = incidentalOptions?.find(opt => opt.value === val);
       return sum + (found ? found.amount : 0);
     }, 0);
 
-    const otherFactorsTotal = (formData.otherFactors.includes('rigger') ? (additionalParams?.riggerAmount || 40000) : 0) + 
-                            (formData.otherFactors.includes('helper') ? (additionalParams?.helperAmount || 12000) : 0);
+    console.log("📋 Incidental charges:", {
+      incidentalCharges: formData.incidentalCharges,
+      incidentalOptions,
+      incidentalTotal
+    });
+
+    const otherFactorsTotal = (formData.otherFactors.includes('rigger') && additionalParams?.riggerAmount ? additionalParams.riggerAmount : 0) + 
+                            (formData.otherFactors.includes('helper') && additionalParams?.helperAmount ? additionalParams.helperAmount : 0);
+
+    console.log("👷 Other factors (Rigger & Helper):", {
+      otherFactors: formData.otherFactors,
+      riggerAmount: additionalParams?.riggerAmount,
+      helperAmount: additionalParams?.helperAmount,
+      riggerSelected: formData.otherFactors.includes('rigger'),
+      helperSelected: formData.otherFactors.includes('helper'),
+      otherFactorsTotal
+    });
 
     // Calculate subtotal
     const subtotal = workingCost + foodAccomCost + mobDemobCost + riskAdjustment + usageLoadFactor + extraCharges + incidentalTotal + otherFactorsTotal;
@@ -1314,7 +1406,7 @@ export function QuotationCreation() {
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Incidental Charges</label>
                     <div className="space-y-2">
-                      {INCIDENTAL_OPTIONS.map(option => (
+                      {additionalParams?.incidentalOptions?.map(option => (
                         <label key={option.value} className="flex items-center">
                           <input
                             type="checkbox"
@@ -1365,8 +1457,8 @@ export function QuotationCreation() {
                           />
                           <span className="text-sm text-gray-700">
                             {factor.label}
-                            {factor.value === 'rigger' && ' (₹40,000)'}
-                            {factor.value === 'helper' && ' (₹12,000)'}
+                            {factor.value === 'rigger' && ` (₹${additionalParams?.riggerAmount?.toLocaleString('en-IN')})`}
+                            {factor.value === 'helper' && ` (₹${additionalParams?.helperAmount?.toLocaleString('en-IN')})`}
                           </span>
                         </label>
                       ))}
