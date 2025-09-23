@@ -10,6 +10,24 @@ import { EnhancedTemplateBuilder } from '../services/EnhancedTemplateBuilder.mjs
 
 const router = express.Router();
 
+// Helper function to generate quotation number from ID (same as quotationRoutes.mjs)
+function generateQuotationNumber(quotationId) {
+  // Extract number from quotation ID (quot_XXXXXXXX format)
+  const idParts = quotationId.split('_');
+  if (idParts.length >= 2) {
+    // Use the UUID part to generate a consistent number
+    const hashCode = idParts[1].split('').reduce((a, b) => {
+      a = ((a << 5) - a) + b.charCodeAt(0);
+      return a & a;
+    }, 0);
+    const num = Math.abs(hashCode) % 9999 + 1; // Ensure it's between 1-9999
+    return `ASP-Q-${num.toString().padStart(3, '0')}`;
+  }
+  
+  // Fallback: use full ID
+  return `ASP-Q-${quotationId.substring(5, 8).toUpperCase()}`;
+}
+
 // Simple test route to verify the routes are working
 router.get('/test', (req, res) => {
   res.json({
@@ -356,7 +374,7 @@ async function getQuotationWithDetails(quotationId) {
     // Structure the quotation data
     const quotation = {
       id: row.id,
-      quotation_number: `QUO-${row.id}`,
+      quotation_number: generateQuotationNumber(row.id), // Generate from ID
       description: row.notes || 'Crane Rental Service',
       status: row.status,
       machine_type: row.machine_type,
