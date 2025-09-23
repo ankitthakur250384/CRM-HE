@@ -3,80 +3,6 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
 import QuotationPrintSystem from '../../components/quotations/QuotationPrintSystem';
 import { ArrowLeft, Edit, FileText, Settings, Eye, Printer, Download, Mail, X } from 'lucide-react';
-
-// Working preview generator (copied from QuotationPrintSystem)
-const generateLocalQuotationPreview = (quotationId: number, quotationData: any) => {
-  console.log('🎨 Generating local preview for quotation:', quotationId);
-  
-  return `
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ASP Cranes Quotation - ${quotationId}</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 40px; line-height: 1.6; }
-        .header { text-align: center; border-bottom: 3px solid #2563eb; padding-bottom: 20px; margin-bottom: 30px; }
-        .company-name { color: #2563eb; font-size: 28px; font-weight: bold; margin-bottom: 10px; }
-        .tagline { color: #64748b; font-size: 14px; }
-        .section { margin-bottom: 25px; }
-        .section-title { color: #1e40af; font-size: 18px; font-weight: bold; margin-bottom: 10px; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px; }
-        .customer-info, .quotation-details { background: #f8fafc; padding: 15px; border-radius: 6px; }
-        .info-row { margin-bottom: 8px; }
-        .label { font-weight: bold; color: #374151; }
-        .value { color: #6b7280; }
-        .total-section { background: #2563eb; color: white; padding: 15px; border-radius: 6px; text-align: center; }
-        .total-amount { font-size: 24px; font-weight: bold; }
-    </style>
-</head>
-<body>
-    <div class="header">
-        <div class="company-name">ASP CRANES</div>
-        <div class="tagline">Professional Crane Services | Your Trusted Lifting Partner</div>
-    </div>
-
-    <div style="text-align: center; background: #2563eb; color: white; padding: 20px; border-radius: 8px; margin-bottom: 30px;">
-        <h1 style="margin: 0; font-size: 32px;">QUOTATION</h1>
-    </div>
-
-    <div style="display: flex; gap: 30px; margin-bottom: 30px;">
-        <div style="flex: 1;">
-            <h3 style="color: #2563eb; border-bottom: 2px solid #2563eb; padding-bottom: 8px;">📋 Quotation Details</h3>
-            <div style="background: #f8fafc; padding: 15px; border-radius: 6px;">
-                <p><strong>Quotation ID:</strong> ${quotationId}</p>
-                <p><strong>Machine Type:</strong> ${quotationData?.machine_type || 'N/A'}</p>
-                <p><strong>Order Type:</strong> ${quotationData?.order_type || 'N/A'}</p>
-                <p><strong>Date:</strong> ${new Date(quotationData?.created_at).toLocaleDateString()}</p>
-                <p><strong>Status:</strong> ${quotationData?.status || 'Draft'}</p>
-            </div>
-        </div>
-        
-        <div style="flex: 1;">
-            <h3 style="color: #2563eb; border-bottom: 2px solid #2563eb; padding-bottom: 8px;">👤 Customer Information</h3>
-            <div style="background: #f8fafc; padding: 15px; border-radius: 6px;">
-                <p><strong>Customer:</strong> ${quotationData?.customer_name || 'N/A'}</p>
-                <p><strong>Email:</strong> ${quotationData?.customer_email || 'N/A'}</p>
-                <p><strong>Phone:</strong> ${quotationData?.customer_phone || 'N/A'}</p>
-                <p><strong>Days:</strong> ${quotationData?.number_of_days || 'N/A'}</p>
-                <p><strong>Working Hours:</strong> ${quotationData?.working_hours || 'N/A'}</p>
-            </div>
-        </div>
-    </div>
-
-    <div style="text-align: center; background: #2563eb; color: white; padding: 20px; border-radius: 8px; margin: 30px 0;">
-        <h2 style="margin: 0;">Total Amount</h2>
-        <div style="font-size: 32px; font-weight: bold; margin-top: 10px;">₹${quotationData?.total_cost?.toLocaleString() || '0'}</div>
-    </div>
-
-    <div style="text-align: center; margin-top: 40px; color: #64748b; font-size: 12px;">
-        <p>ASP Cranes Professional Services | Industrial Area, New Delhi, India</p>
-        <p>Email: info@aspcranes.com | Phone: +91 9876543210</p>
-    </div>
-</body>
-</html>`;
-};
-
 interface Quotation {
   id: number;
   quotation_number?: string; // Add human-readable quotation number
@@ -99,6 +25,8 @@ const QuotationDetail: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [availableTemplates, setAvailableTemplates] = useState<any[]>([]);
+  const [selectedTemplate, setSelectedTemplate] = useState<string>('default');
   
   // Ref for the preview iframe
   const previewFrameRef = useRef<HTMLIFrameElement>(null);
@@ -106,8 +34,38 @@ const QuotationDetail: React.FC = () => {
   useEffect(() => {
     if (id) {
       fetchQuotation(parseInt(id));
+      loadAvailableTemplates();
     }
   }, [id]);
+
+  const loadAvailableTemplates = async () => {
+    try {
+      const response = await fetch('/api/templates/enhanced', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'X-Bypass-Auth': 'development-only-123'
+        }
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setAvailableTemplates([
+          { id: 'default', name: 'Default Template', description: 'Standard ASP Cranes template' },
+          ...(data.templates || [])
+        ]);
+      } else {
+        // If templates endpoint fails, just use default
+        setAvailableTemplates([
+          { id: 'default', name: 'Default Template', description: 'Standard ASP Cranes template' }
+        ]);
+      }
+    } catch (error) {
+      console.warn('Could not load templates, using default:', error);
+      setAvailableTemplates([
+        { id: 'default', name: 'Default Template', description: 'Standard ASP Cranes template' }
+      ]);
+    }
+  };
 
   const fetchQuotation = async (quotationId: number) => {
     try {
@@ -137,20 +95,24 @@ const QuotationDetail: React.FC = () => {
     const newPreviewState = !isPreviewOpen;
     setIsPreviewOpen(newPreviewState);
     
-    // If opening preview, generate it
-    if (newPreviewState && quotation) {
-      setTimeout(() => {
-        if (previewFrameRef.current) {
-          const html = generateLocalQuotationPreview(quotation.id, quotation);
-          const iframe = previewFrameRef.current;
-          const doc = iframe.contentDocument || iframe.contentWindow?.document;
-          if (doc) {
-            doc.open();
-            doc.write(html);
-            doc.close();
-          }
-        }
-      }, 100);
+    // If opening preview, load it from backend
+    if (newPreviewState && quotation && previewFrameRef.current) {
+      console.log('🎨 Loading preview from backend for quotation:', quotation.id);
+      console.log('🎨 Using template:', selectedTemplate);
+      // Use the backend iframe preview route with selected template
+      const templateParam = selectedTemplate !== 'default' ? `?templateId=${selectedTemplate}` : '';
+      previewFrameRef.current.src = `/api/quotations/${quotation.id}/preview/iframe${templateParam}`;
+    }
+  };
+
+  const handleTemplateChange = (templateId: string) => {
+    setSelectedTemplate(templateId);
+    
+    // If preview is open, refresh it with new template
+    if (isPreviewOpen && quotation && previewFrameRef.current) {
+      console.log('🔄 Refreshing preview with template:', templateId);
+      const templateParam = templateId !== 'default' ? `?templateId=${templateId}` : '';
+      previewFrameRef.current.src = `/api/quotations/${quotation.id}/preview/iframe${templateParam}`;
     }
   };
 
@@ -517,6 +479,29 @@ const QuotationDetail: React.FC = () => {
                     Download PDF
                   </Button>
                 </div>
+              </div>
+              
+              {/* Template Selection */}
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Template
+                </label>
+                <select
+                  value={selectedTemplate}
+                  onChange={(e) => handleTemplateChange(e.target.value)}
+                  className="block w-48 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 sm:text-sm"
+                >
+                  {availableTemplates.map((template) => (
+                    <option key={template.id} value={template.id}>
+                      {template.name}
+                    </option>
+                  ))}
+                </select>
+                {availableTemplates.find(t => t.id === selectedTemplate)?.description && (
+                  <p className="mt-1 text-sm text-gray-500">
+                    {availableTemplates.find(t => t.id === selectedTemplate)?.description}
+                  </p>
+                )}
               </div>
               
               {isPreviewOpen && (

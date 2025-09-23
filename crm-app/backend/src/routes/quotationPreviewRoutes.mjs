@@ -19,6 +19,71 @@ router.get('/test', (req, res) => {
   });
 });
 
+// Test route to verify template generation without database
+router.get('/test-template', async (req, res) => {
+  try {
+    console.log('🧪 [Test] Testing template generation...');
+    
+    const templateBuilder = new EnhancedTemplateBuilder();
+    const template = createDefaultQuotationTemplate(templateBuilder);
+    
+    console.log('🧪 [Test] Template created:', template.name);
+    
+    // Generate sample preview
+    const sampleData = {
+      company: {
+        name: 'ASP Cranes Pvt. Ltd.',
+        address: 'Industrial Area, Pune, Maharashtra',
+        phone: '+91 99999 88888',
+        email: 'sales@aspcranes.com'
+      },
+      client: {
+        name: 'Test Customer',
+        company: 'Test Company Ltd.',
+        address: 'Mumbai, Maharashtra',
+        phone: '+91 98765 43210',
+        email: 'test@company.com'
+      },
+      quotation: {
+        number: 'TEST-001',
+        date: new Date().toLocaleDateString('en-IN'),
+        machineType: 'Tower Crane',
+        duration: '30 days'
+      },
+      items: [
+        {
+          description: 'Tower Crane Rental',
+          quantity: '30',
+          unit: 'Days',
+          rate: 25000,
+          amount: 750000
+        }
+      ],
+      totals: {
+        subtotal: formatCurrency(750000),
+        tax: formatCurrency(135000),
+        total: formatCurrency(885000)
+      }
+    };
+    
+    const html = templateBuilder.generatePreviewHTML(sampleData);
+    
+    console.log('🧪 [Test] Preview HTML generated, length:', html.length);
+    
+    res.setHeader('Content-Type', 'text/html');
+    res.send(html);
+    
+  } catch (error) {
+    console.error('❌ [Test] Template generation failed:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Template generation failed',
+      message: error.message,
+      stack: error.stack
+    });
+  }
+});
+
 // Simple iframe test route
 router.get('/:id/preview/test', (req, res) => {
   const { id } = req.params;
@@ -368,19 +433,22 @@ async function getDefaultTemplate(templateBuilder) {
       
       if (result.rows.length > 0) {
         await templateBuilder.loadTemplate(result.rows[0].id);
-        console.log('📋 [Helper] Loaded existing default template');
+        console.log('📋 [Helper] Loaded existing default template:', result.rows[0].id);
         return templateBuilder.template;
       }
+    } catch (dbError) {
+      console.warn('⚠️ [Helper] Database query failed, creating fallback template:', dbError.message);
     } finally {
       client.release();
     }
     
-    // If no default template exists, create one
-    console.log('📋 [Helper] No default template found, creating new one');
+    // If no default template exists or DB is not available, create a fallback one
+    console.log('📋 [Helper] No default template found, creating fallback template');
     return createDefaultQuotationTemplate(templateBuilder);
     
   } catch (error) {
     console.error('❌ [Helper] Error getting default template:', error);
+    console.log('📋 [Helper] Creating emergency fallback template');
     return createDefaultQuotationTemplate(templateBuilder);
   }
 }
@@ -389,75 +457,118 @@ async function getDefaultTemplate(templateBuilder) {
  * Create a default quotation template using EnhancedTemplateBuilder
  */
 function createDefaultQuotationTemplate(templateBuilder) {
-  const templateData = {
-    name: 'ASP Cranes Default Template',
-    description: 'Professional quotation template for ASP Cranes',
-    theme: 'PROFESSIONAL',
-    isDefault: true,
-    isActive: true
-  };
-  
-  templateBuilder.createTemplate(templateData)
-    .addElement('header', {
-      content: {
-        title: 'ASP CRANES',
-        subtitle: 'QUOTATION',
-        showDate: true,
-        showQuotationNumber: true,
-        alignment: 'center'
-      }
-    })
-    .addElement('company_info', {
-      content: {
-        fields: [
-          '{{company.name}}',
-          '{{company.address}}',
-          '{{company.phone}}',
-          '{{company.email}}'
-        ],
-        layout: 'vertical',
-        alignment: 'left'
-      }
-    })
-    .addElement('client_info', {
-      content: {
-        title: 'Bill To:',
-        fields: [
-          '{{client.name}}',
-          '{{client.company}}',
-          '{{client.address}}',
-          '{{client.phone}}',
-          '{{client.email}}'
-        ],
-        layout: 'vertical',
-        alignment: 'left'
-      }
-    })
-    .addElement('quotation_info', {
-      content: {
-        fields: [
-          { label: 'Quotation #', value: '{{quotation.number}}' },
-          { label: 'Date', value: '{{quotation.date}}' },
-          { label: 'Machine Type', value: '{{quotation.machineType}}' },
-          { label: 'Duration', value: '{{quotation.duration}}' }
-        ],
-        layout: 'table',
-        alignment: 'right'
-      }
-    })
-    .addElement('items_table')
-    .addElement('totals')
-    .addElement('terms', {
-      content: {
-        title: 'Terms & Conditions',
-        text: 'Payment Terms: 50% advance, balance on completion. Equipment delivery within 2-3 working days from advance payment. Fuel charges extra as per actual consumption. All rates are subject to site conditions and accessibility. This quotation is valid for 15 days from date of issue.',
-        showTitle: true
-      }
-    })
-    .addElement('signature');
-  
-  console.log('✅ [Helper] Created default template');
-  return templateBuilder.template;
+  try {
+    const templateData = {
+      name: 'ASP Cranes Default Template',
+      description: 'Professional quotation template for ASP Cranes',
+      theme: 'PROFESSIONAL',
+      isDefault: true,
+      isActive: true
+    };
+    
+    console.log('🎨 [Helper] Creating template with theme: PROFESSIONAL');
+    
+    templateBuilder.createTemplate(templateData)
+      .addElement('header', {
+        content: {
+          title: 'ASP CRANES',
+          subtitle: 'QUOTATION',
+          showDate: true,
+          showQuotationNumber: true,
+          alignment: 'center'
+        }
+      })
+      .addElement('company_info', {
+        content: {
+          fields: [
+            '{{company.name}}',
+            '{{company.address}}',
+            '{{company.phone}}',
+            '{{company.email}}'
+          ],
+          layout: 'vertical',
+          alignment: 'left'
+        }
+      })
+      .addElement('client_info', {
+        content: {
+          title: 'Bill To:',
+          fields: [
+            '{{client.name}}',
+            '{{client.company}}',
+            '{{client.address}}',
+            '{{client.phone}}',
+            '{{client.email}}'
+          ],
+          layout: 'vertical',
+          alignment: 'left'
+        }
+      })
+      .addElement('quotation_info', {
+        content: {
+          fields: [
+            { label: 'Quotation #', value: '{{quotation.number}}' },
+            { label: 'Date', value: '{{quotation.date}}' },
+            { label: 'Machine Type', value: '{{quotation.machineType}}' },
+            { label: 'Duration', value: '{{quotation.duration}}' }
+          ],
+          layout: 'table',
+          alignment: 'right'
+        }
+      })
+      .addElement('items_table')
+      .addElement('totals')
+      .addElement('terms', {
+        content: {
+          title: 'Terms & Conditions',
+          text: 'Payment Terms: 50% advance, balance on completion. Equipment delivery within 2-3 working days from advance payment. Fuel charges extra as per actual consumption. All rates are subject to site conditions and accessibility. This quotation is valid for 15 days from date of issue.',
+          showTitle: true
+        }
+      })
+      .addElement('signature');
+    
+    console.log('✅ [Helper] Created default template successfully');
+    return templateBuilder.template;
+    
+  } catch (error) {
+    console.error('❌ [Helper] Error creating template:', error);
+    
+    // Create emergency minimal template
+    console.log('🚑 [Helper] Creating emergency minimal template');
+    const emergencyTemplate = {
+      id: 'emergency-default',
+      name: 'Emergency Default Template',
+      description: 'Emergency fallback template',
+      theme: 'MODERN',
+      elements: [
+        {
+          type: 'header',
+          content: { title: 'ASP CRANES', subtitle: 'QUOTATION' }
+        },
+        {
+          type: 'company_info',
+          content: { fields: ['{{company.name}}', '{{company.address}}'] }
+        },
+        {
+          type: 'client_info',
+          content: { title: 'Bill To:', fields: ['{{client.name}}'] }
+        },
+        {
+          type: 'items_table',
+          content: {}
+        },
+        {
+          type: 'totals',
+          content: {}
+        }
+      ],
+      isDefault: true,
+      isActive: true
+    };
+    
+    templateBuilder.template = emergencyTemplate;
+    return emergencyTemplate;
+  }
 }
 
 /**
