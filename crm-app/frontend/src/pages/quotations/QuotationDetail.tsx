@@ -79,6 +79,7 @@ const generateLocalQuotationPreview = (quotationId: number, quotationData: any) 
 
 interface Quotation {
   id: number;
+  quotation_number?: string; // Add human-readable quotation number
   customer_name: string;
   customer_email: string;
   customer_phone: string;
@@ -155,6 +156,7 @@ const QuotationDetail: React.FC = () => {
 
   const handlePrint = () => {
     if (id) {
+      // Open the iframe preview route in a new tab for printing
       window.open(`/api/quotations/${id}/preview/iframe`, '_blank');
     }
   };
@@ -163,31 +165,53 @@ const QuotationDetail: React.FC = () => {
     try {
       if (!id) return;
       
+      // Use the correct endpoint for PDF generation
       const response = await fetch(`/api/quotations/print/pdf`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-Bypass-Auth': 'development-only-123'
         },
-        body: JSON.stringify({ quotationId: id })
+        body: JSON.stringify({ 
+          quotationId: id,
+          templateId: 'default' // Use default template
+        })
       });
 
       if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `quotation_${id}.pdf`;
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
+        const contentType = response.headers.get('content-type');
+        
+        if (contentType && contentType.includes('application/pdf')) {
+          // Handle PDF response
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `quotation_${id}.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+        } else {
+          // Handle HTML fallback (when PDF generation fails)
+          const html = await response.text();
+          const printWindow = window.open('', '_blank');
+          if (printWindow) {
+            printWindow.document.write(html);
+            printWindow.document.close();
+            printWindow.print();
+          } else {
+            alert('Please allow popups to download/print the quotation');
+          }
+        }
       } else {
-        throw new Error('Failed to download PDF');
+        const error = await response.text();
+        throw new Error(`Failed to download PDF: ${error}`);
       }
     } catch (error) {
       console.error('Download error:', error);
-      alert('Failed to download PDF. Please try again.');
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      alert(`Failed to download PDF: ${errorMessage}`);
     }
   };
 
@@ -204,6 +228,48 @@ const QuotationDetail: React.FC = () => {
       year: 'numeric',
       month: 'long',
       day: 'numeric'
+    });
+  };
+
+  const handleStatusChange = async (newStatus: string) => {
+    try {
+      if (!id) return;
+      
+      const response = await fetch(`/api/quotations/${id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Bypass-Auth': 'development-only-123'
+        },
+        body: JSON.stringify({ status: newStatus })
+      });
+
+      if (response.ok) {
+        // Update local state
+        setQuotation(prev => prev ? { ...prev, status: newStatus } : null);
+        alert(`Quotation status updated to ${newStatus}`);
+      } else {
+        throw new Error('Failed to update status');
+      }
+    } catch (error) {
+      console.error('Error updating status:', error);
+      alert('Failed to update quotation status. Please try again.');
+    }
+  };
+
+  const handleCreateDeal = () => {
+    if (!quotation) return;
+    
+    // Navigate to deal creation with quotation data
+    navigate('/deals/create', {
+      state: {
+        quotation: quotation,
+        customer: {
+          name: quotation.customer_name,
+          email: quotation.customer_email,
+          phone: quotation.customer_phone
+        }
+      }
     });
   };
 
@@ -270,7 +336,7 @@ const QuotationDetail: React.FC = () => {
               </Button>
               <div>
                 <h1 className="text-2xl font-bold text-gray-900">
-                  Quotation #{quotation.id}
+                  {quotation.quotation_number ? `Quotation ${quotation.quotation_number}` : `Quotation #${quotation.id}`}
                 </h1>
                 <p className="text-gray-600">
                   Created on {formatDate(quotation.created_at)}
@@ -286,7 +352,7 @@ const QuotationDetail: React.FC = () => {
               }`}>
                 {quotation.status.charAt(0).toUpperCase() + quotation.status.slice(1)}
               </span>
-              <Button onClick={() => navigate(`/quotations/${quotation.id}/edit`)}>
+              <Button onClick={() => navigate(`/quotation-creation?edit=${quotation.id}`)}>
                 <Edit className="h-4 w-4 mr-2" />
                 Edit
               </Button>
@@ -346,6 +412,84 @@ const QuotationDetail: React.FC = () => {
                     </span>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            {/* Status Management Section */}
+            <div className="bg-white rounded-lg shadow-sm border p-6 mt-6">
+              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
+                <Settings className="h-5 w-5 mr-2" />
+                Status Management
+              </h2>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Current Status</label>
+                  <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${
+                    quotation.status === 'accepted' ? 'bg-green-100 text-green-800' :
+                    quotation.status === 'sent' ? 'bg-blue-100 text-blue-800' :
+                    quotation.status === 'rejected' ? 'bg-red-100 text-red-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {quotation.status.charAt(0).toUpperCase() + quotation.status.slice(1)}
+                  </span>
+                </div>
+                
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Update Status</label>
+                  <div className="grid grid-cols-2 gap-2">
+                    {quotation.status === 'draft' && (
+                      <Button 
+                        onClick={() => handleStatusChange('sent')}
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                        size="sm"
+                      >
+                        Send to Customer
+                      </Button>
+                    )}
+                    {quotation.status === 'sent' && (
+                      <>
+                        <Button 
+                          onClick={() => handleStatusChange('accepted')}
+                          className="bg-green-600 hover:bg-green-700 text-white"
+                          size="sm"
+                        >
+                          Mark Accepted
+                        </Button>
+                        <Button 
+                          onClick={() => handleStatusChange('rejected')}
+                          className="bg-red-600 hover:bg-red-700 text-white"
+                          size="sm"
+                        >
+                          Mark Rejected
+                        </Button>
+                      </>
+                    )}
+                    {(quotation.status === 'accepted' || quotation.status === 'rejected') && (
+                      <Button 
+                        onClick={() => handleStatusChange('draft')}
+                        variant="outline"
+                        size="sm"
+                      >
+                        Reset to Draft
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                
+                {quotation.status === 'accepted' && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+                    <p className="text-sm text-green-700">
+                      ✅ This quotation has been accepted. Consider creating a deal from this quotation.
+                    </p>
+                    <Button 
+                      onClick={() => handleCreateDeal()}
+                      className="mt-2 bg-green-600 hover:bg-green-700 text-white"
+                      size="sm"
+                    >
+                      Create Deal
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -427,7 +571,7 @@ const QuotationDetail: React.FC = () => {
               <span>Download PDF</span>
             </Button>
             <Button 
-              onClick={() => navigate(`/quotations/${quotation.id}/edit`)}
+              onClick={() => navigate(`/quotation-creation?edit=${quotation.id}`)}
               className="flex items-center justify-center space-x-2"
               variant="outline"
             >

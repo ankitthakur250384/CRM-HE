@@ -14,8 +14,8 @@ interface ModalProps {
 const sizeClasses = {
   sm: 'max-w-sm',
   md: 'max-w-md',
-  lg: 'max-w-lg',
-  xl: 'max-w-3xl',
+  lg: 'max-w-2xl',
+  xl: 'max-w-4xl',
   full: 'max-w-[95%] sm:max-w-6xl',
 };
 

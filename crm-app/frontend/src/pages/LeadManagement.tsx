@@ -31,6 +31,7 @@ const LEAD_STATUS_OPTIONS = [
   { value: 'qualified', label: 'Qualified' },
   { value: 'unqualified', label: 'Unqualified' },
   { value: 'lost', label: 'Lost' },
+  { value: 'converted', label: 'Converted' },
 ];
 
 const MACHINERY_OPTIONS = [
@@ -252,6 +253,14 @@ export function LeadManagement() {
         !formData.machineryType || !formData.location || !formData.startDate || 
         !formData.rentalDays) {
       showToast('Please fill in all required fields', 'error');
+      return;
+    }
+
+    // Validate start date is not in the past
+    const selectedDate = new Date(formData.startDate);
+    const todayDate = new Date(today);
+    if (selectedDate < todayDate) {
+      showToast('Start date cannot be in the past', 'error');
       return;
     }
 
@@ -490,6 +499,14 @@ export function LeadManagement() {
       return;
     }
 
+    // Validate start date is not in the past (for future dates only)
+    const selectedDate = new Date(editForm.startDate);
+    const todayDate = new Date(today);
+    if (selectedDate < todayDate) {
+      showToast('Start date cannot be in the past', 'error');
+      return;
+    }
+
     // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(editForm.email)) {
@@ -620,6 +637,9 @@ export function LeadManagement() {
                       Location
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
+                      Notes
+                    </th>
+                    <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
                       Status
                     </th>
                     <th className="px-6 py-4 text-left text-xs font-semibold text-gray-700 uppercase tracking-wider">
@@ -656,13 +676,32 @@ export function LeadManagement() {
                           {lead.siteLocation || 'Not specified'}
                         </div>
                       </td>
+                      <td className="px-6 py-4 max-w-xs">
+                        <div className="text-sm text-gray-900">
+                          {lead.notes ? (
+                            <div className="truncate" title={lead.notes}>
+                              {lead.notes.length > 50 ? `${lead.notes.substring(0, 50)}...` : lead.notes}
+                            </div>
+                          ) : (
+                            <span className="text-gray-400 italic">No notes</span>
+                          )}
+                        </div>
+                      </td>
                       <td className="px-6 py-4 whitespace-nowrap">
-                        <Select
-                          value={lead.status}
-                          onChange={(value) => handleStatusChange(lead.id, value as LeadStatus)}
-                          options={LEAD_STATUS_OPTIONS}
-                          className="min-w-[130px]"
-                        />
+                        {lead.status === 'converted' ? (
+                          // Show read-only badge for converted leads
+                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                            Converted
+                          </span>
+                        ) : (
+                          // Show editable select for other statuses
+                          <Select
+                            value={lead.status}
+                            onChange={(value) => handleStatusChange(lead.id, value as LeadStatus)}
+                            options={LEAD_STATUS_OPTIONS.filter(option => option.value !== 'converted')}
+                            className="min-w-[130px]"
+                          />
+                        )}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">                        {user?.role === 'admin' ? (
                           <Select
@@ -727,7 +766,7 @@ export function LeadManagement() {
           resetForm();
         }}
         title="Create New Lead"
-        size="full"
+        size="xl"
       >
         <form onSubmit={handleCreateLead} className="space-y-8">
           <RequiredFieldsInfo />
@@ -953,7 +992,7 @@ export function LeadManagement() {
           setSelectedLead(null);
         }}
         title="Edit Lead Details"
-        size="lg"
+        size="xl"
       >
         {selectedLead && (
           <form onSubmit={handleEditLead} className="space-y-6">
@@ -1001,6 +1040,7 @@ export function LeadManagement() {
                 label="Start Date"
                 type="date"
                 value={editForm.startDate}
+                min={today}
                 onChange={(e) => setEditForm(prev => ({ ...prev, startDate: e.target.value }))}
                 required
               />

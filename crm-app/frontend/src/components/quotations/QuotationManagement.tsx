@@ -21,6 +21,7 @@ import SuiteCRMQuotationSystem from './SuiteCRMQuotationSystem';
 
 interface QuotationListItem {
   id: string;
+  quotation_number?: string; // Add human-readable quotation number
   customer_name: string;
   customer_email?: string;
   customer_phone?: string;
@@ -76,6 +77,7 @@ const QuotationManagementComplete: React.FC = () => {
         // Transform API data to match our interface
         const transformedQuotations: QuotationListItem[] = result.data.map((item: any) => ({
           id: item.id || item.quotationId,
+          quotation_number: item.quotation_number || item.quotationNumber, // Handle both field names
           customer_name: item.customerName || item.customer_name || 'Unknown Customer',
           customer_email: item.customerEmail || item.customer_email,
           customer_phone: item.customerPhone || item.customer_phone,
@@ -122,7 +124,8 @@ const QuotationManagementComplete: React.FC = () => {
   const filteredQuotations = quotations.filter(quotation => {
     const matchesSearch = quotation.customer_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          quotation.machine_type.toLowerCase().includes(searchTerm.toLowerCase()) ||
-                         quotation.id.toLowerCase().includes(searchTerm.toLowerCase());
+                         quotation.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         (quotation.quotation_number && quotation.quotation_number.toLowerCase().includes(searchTerm.toLowerCase()));
     
     const matchesStatus = statusFilter === 'all' || quotation.status === statusFilter;
     
@@ -561,7 +564,9 @@ ASP Cranes Team`;
                   <tr key={quotation.id} className="hover:bg-gray-50">
                     <td className="px-6 py-4 whitespace-nowrap">
                       <div>
-                        <div className="font-medium text-gray-900">{quotation.id}</div>
+                        <div className="font-medium text-gray-900">
+                          {quotation.quotation_number || quotation.id}
+                        </div>
                         <div className="text-sm text-gray-500 flex items-center">
                           <Calendar className="h-3 w-3 mr-1" />
                           {new Date(quotation.created_at).toLocaleDateString()}

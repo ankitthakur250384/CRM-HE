@@ -135,6 +135,7 @@ router.get('/', async (req, res) => {
       const result = await client.query(`
         SELECT 
           q.id,
+          q.quotation_number,
           q.customer_name,
           q.customer_contact->>'email' as customer_email,
           q.customer_contact->>'phone' as customer_phone,
@@ -166,6 +167,7 @@ router.get('/', async (req, res) => {
       const quotations = result.rows.map(q => ({
         id: q.id,
         quotationId: q.id,
+        quotation_number: q.quotation_number, // Add human-readable quotation number
         customer_name: q.customer_name,
         customer_email: q.customer_email,
         customer_phone: q.customer_phone,
@@ -261,6 +263,7 @@ router.get('/:id', async (req, res) => {
       const transformedQuotation = {
         id: quotation.id,
         quotationId: quotation.id,
+        quotationNumber: quotation.quotation_number, // Add human-readable quotation number
         dealId: quotation.deal_id,
         leadId: quotation.lead_id,
         customerId: quotation.customer_id,
@@ -608,6 +611,171 @@ router.put('/:id/status', async (req, res) => {
     return res.status(500).json({
       success: false,
       message: 'Internal server error'
+    });
+  }
+});
+
+/**
+ * PUT /api/quotations/:id
+ * Update a quotation
+ */
+router.put('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      customer_name,
+      customer_contact,
+      machine_type,
+      order_type,
+      number_of_days,
+      working_hours,
+      site_distance,
+      usage,
+      risk_factor,
+      shift,
+      day_night,
+      food_resources,
+      accom_resources,
+      mob_demob,
+      mob_relaxation,
+      extra_charges,
+      working_cost,
+      mob_demob_cost,
+      food_accom_cost,
+      risk_adjustment,
+      usage_load_factor,
+      incidental_total,
+      other_factors_total,
+      subtotal,
+      gst_amount,
+      total_rent,
+      total_cost,
+      notes,
+      status,
+      selectedMachines,
+      incidentalCharges,
+      otherFactors
+    } = req.body;
+
+    const client = await pool.connect();
+    
+    try {
+      // Update the main quotation record
+      const result = await client.query(`
+        UPDATE quotations 
+        SET 
+          customer_name = $1,
+          customer_contact = $2,
+          machine_type = $3,
+          order_type = $4,
+          number_of_days = $5,
+          working_hours = $6,
+          site_distance = $7,
+          usage = $8,
+          risk_factor = $9,
+          shift = $10,
+          day_night = $11,
+          food_resources = $12,
+          accom_resources = $13,
+          mob_demob = $14,
+          mob_relaxation = $15,
+          extra_charges = $16,
+          working_cost = $17,
+          mob_demob_cost = $18,
+          food_accom_cost = $19,
+          risk_adjustment = $20,
+          usage_load_factor = $21,
+          incidental_total = $22,
+          other_factors_total = $23,
+          subtotal = $24,
+          gst_amount = $25,
+          total_rent = $26,
+          total_cost = $27,
+          notes = $28,
+          status = $29,
+          incidental_charges = $30,
+          other_factors = $31,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = $32
+        RETURNING *
+      `, [
+        customer_name,
+        JSON.stringify(customer_contact),
+        machine_type,
+        order_type,
+        number_of_days,
+        working_hours,
+        site_distance,
+        usage,
+        risk_factor,
+        shift,
+        day_night,
+        food_resources,
+        accom_resources,
+        mob_demob,
+        mob_relaxation,
+        extra_charges,
+        working_cost,
+        mob_demob_cost,
+        food_accom_cost,
+        risk_adjustment,
+        usage_load_factor,
+        incidental_total,
+        other_factors_total,
+        subtotal,
+        gst_amount,
+        total_rent,
+        total_cost,
+        notes,
+        status || 'draft',
+        JSON.stringify(incidentalCharges || []),
+        JSON.stringify(otherFactors || []),
+        id
+      ]);
+      
+      if (result.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Quotation not found'
+        });
+      }
+      
+      // Update quotation machines
+      if (selectedMachines && Array.isArray(selectedMachines)) {
+        // Delete existing machines
+        await client.query('DELETE FROM quotation_machines WHERE quotation_id = $1', [id]);
+        
+        // Insert updated machines
+        for (const machine of selectedMachines) {
+          await client.query(`
+            INSERT INTO quotation_machines (
+              quotation_id, equipment_id, quantity, base_rate, running_cost_per_km
+            ) VALUES ($1, $2, $3, $4, $5)
+          `, [
+            id,
+            machine.id || machine.equipmentId,
+            machine.quantity || 1,
+            machine.baseRate || 0,
+            machine.runningCostPerKm || 0
+          ]);
+        }
+      }
+      
+      return res.status(200).json({
+        success: true,
+        message: 'Quotation updated successfully',
+        data: result.rows[0]
+      });
+      
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Error updating quotation:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
     });
   }
 });

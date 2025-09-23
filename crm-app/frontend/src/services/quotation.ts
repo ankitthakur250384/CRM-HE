@@ -72,7 +72,7 @@ export async function getQuotationsForLead(leadId: string): Promise<any[]> {
   if (!res.ok) throw new Error('Failed to fetch quotations');
   return await res.json();
 }
-import { OrderType, BaseRates } from './equipment';
+import { OrderType, BaseRates } from '../types/equipment';
 
 export interface CustomerContact {
   name: string;
@@ -129,6 +129,7 @@ export interface SelectedMachine {
 
 export interface Quotation extends QuotationInputs {
   id: string;
+  quotationNumber?: string; // Add human-readable quotation number like ASP-Q-001
   dealId?: string;  // Add dealId to support quotations from deals
   leadId?: string;  // Make leadId optional since we might have quotations from deals instead
   customerId: string;
