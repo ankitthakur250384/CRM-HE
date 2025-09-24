@@ -201,6 +201,8 @@ console.log('✅ Quotation print routes mounted successfully');
 
 // Mount quotation preview routes for enhanced preview functionality
 console.log('🔧 Mounting /api/quotations-preview routes...');
+console.log('📋 quotationPreviewRoutes type:', typeof quotationPreviewRoutes);
+console.log('📋 quotationPreviewRoutes keys:', Object.keys(quotationPreviewRoutes || {}));
 app.use('/api/quotations-preview', quotationPreviewRoutes);
 console.log('✅ Quotation preview routes mounted successfully');
 
