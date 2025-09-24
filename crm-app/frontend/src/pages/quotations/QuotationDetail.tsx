@@ -101,7 +101,7 @@ const QuotationDetail: React.FC = () => {
       console.log('🎨 Using template:', selectedTemplate);
       // Use the backend iframe preview route with selected template
       const templateParam = selectedTemplate !== 'default' ? `?templateId=${selectedTemplate}` : '';
-      previewFrameRef.current.src = `/api/quotations/${quotation.id}/preview/iframe${templateParam}`;
+      previewFrameRef.current.src = `/api/quotations-preview/${quotation.id}/preview/iframe${templateParam}`;
     }
   };
 
@@ -112,14 +112,14 @@ const QuotationDetail: React.FC = () => {
     if (isPreviewOpen && quotation && previewFrameRef.current) {
       console.log('🔄 Refreshing preview with template:', templateId);
       const templateParam = templateId !== 'default' ? `?templateId=${templateId}` : '';
-      previewFrameRef.current.src = `/api/quotations/${quotation.id}/preview/iframe${templateParam}`;
+      previewFrameRef.current.src = `/api/quotations-preview/${quotation.id}/preview/iframe${templateParam}`;
     }
   };
 
   const handlePrint = () => {
     if (id) {
       // Open the iframe preview route in a new tab for printing
-      window.open(`/api/quotations/${id}/preview/iframe`, '_blank');
+      window.open(`/api/quotations-preview/${id}/preview/iframe`, '_blank');
     }
   };
 

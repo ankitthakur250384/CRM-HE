@@ -10,6 +10,29 @@ import { EnhancedTemplateBuilder } from '../services/EnhancedTemplateBuilder.mjs
 
 const router = express.Router();
 
+// Test route to verify the module is loading
+router.get('/test', (req, res) => {
+  res.json({ message: 'QuotationPreviewRoutes module loaded successfully' });
+});
+
+// Helper function to generate quotation number from ID
+function generateQuotationNumber(quotationId) {
+  // Extract number from quotation ID (quot_XXXXXXXX format)
+  const idParts = quotationId.split('_');
+  if (idParts.length >= 2) {
+    // Use the UUID part to generate a consistent number
+    const hashCode = idParts[1].split('').reduce((a, b) => {
+      a = ((a << 5) - a) + b.charCodeAt(0);
+      return a & a;
+    }, 0);
+    const num = Math.abs(hashCode) % 9999 + 1; // Ensure it's between 1-9999
+    return `ASP-Q-${num.toString().padStart(3, '0')}`;
+  }
+  
+  // Fallback: use full ID
+  return `ASP-Q-${quotationId.substring(5, 8).toUpperCase()}`;
+}
+
 // Helper function to generate quotation number from ID (same as quotationRoutes.mjs)
 function generateQuotationNumber(quotationId) {
   // Extract number from quotation ID (quot_XXXXXXXX format)
