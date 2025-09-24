@@ -4,7 +4,7 @@ import { Button } from '../../components/ui/button';
 import QuotationPrintSystem from '../../components/quotations/QuotationPrintSystem';
 import { ArrowLeft, Edit, FileText, Settings, Eye, Printer, Download, Mail, X } from 'lucide-react';
 interface Quotation {
-  id: number;
+  id: string;
   quotation_number?: string; // Add human-readable quotation number
   customer_name: string;
   customer_email: string;
@@ -33,7 +33,7 @@ const QuotationDetail: React.FC = () => {
 
   useEffect(() => {
     if (id) {
-      fetchQuotation(parseInt(id));
+      fetchQuotation(id);
       loadAvailableTemplates();
     }
   }, [id]);
@@ -67,7 +67,7 @@ const QuotationDetail: React.FC = () => {
     }
   };
 
-  const fetchQuotation = async (quotationId: number) => {
+  const fetchQuotation = async (quotationId: string) => {
     try {
       setIsLoading(true);
       const response = await fetch(`/api/quotations/${quotationId}`, {
