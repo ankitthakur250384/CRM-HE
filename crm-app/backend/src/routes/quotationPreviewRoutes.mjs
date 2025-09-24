@@ -10,10 +10,6 @@ import { EnhancedTemplateBuilder } from '../services/EnhancedTemplateBuilder.mjs
 
 const router = express.Router();
 
-// Test route to verify the module is loading
-router.get('/test', (req, res) => {
-  res.json({ message: 'QuotationPreviewRoutes module loaded successfully' });
-});
 
 // Helper function to generate quotation number from ID
 function generateQuotationNumber(quotationId) {
