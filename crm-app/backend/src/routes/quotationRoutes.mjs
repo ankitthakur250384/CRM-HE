@@ -167,7 +167,6 @@ router.get('/', async (req, res) => {
           q.updated_at,
           q.site_distance,
           q.usage,
-          q.shift,
           q.day_night,
           q.food_resources,
           q.accom_resources,
@@ -199,7 +198,7 @@ router.get('/', async (req, res) => {
         updated_at: q.updated_at,
         site_distance: parseFloat(q.site_distance || 0),
         usage: q.usage,
-        shift: q.shift === 'single' ? 'Day Shift' : 'Double Shift',
+        shift: q.day_night === 'day' ? 'Day Shift' : 'Night Shift', // FIX: use day_night for shift
         food_resources: q.food_resources > 0 ? 'ASP Provided' : 'Client Provided',
         accom_resources: q.accom_resources > 0 ? 'ASP Provided' : 'Client Provided',
         risk_factor: q.risk_factor?.charAt(0).toUpperCase() + q.risk_factor?.slice(1) || 'Medium',
@@ -303,7 +302,7 @@ router.get('/:id', async (req, res) => {
         siteDistance: quotation.site_distance,
         usage: quotation.usage,
         riskFactor: quotation.risk_factor,
-        shift: quotation.shift,
+        shift: quotation.day_night,
         dayNight: quotation.day_night,
         mobDemob: quotation.mob_demob,
         mobRelaxation: quotation.mob_relaxation,
@@ -474,19 +473,22 @@ router.post('/', authenticateToken, async (req, res) => {
         'specialized_rental': 'monthly'
       };
       
-      const shiftMapping = {
-        'Day Shift': 'single',
-        'Night Shift': 'single',
-        'Double Shift': 'double',
-        'Round the Clock': 'double'
-      };
-      
       const riskMapping = {
         'Low': 'low',
         'Medium': 'medium',
         'High': 'high',
         'Very High': 'high'
       };
+      
+      // Incident mapping
+      const incidentAmounts = {
+        incident1: 5000,
+        incident2: 10000,
+        incident3: 15000
+      };
+      const incident1 = quotationData.incidentalCharges?.includes('incident1') ? incidentAmounts.incident1 : 0;
+      const incident2 = quotationData.incidentalCharges?.includes('incident2') ? incidentAmounts.incident2 : 0;
+      const incident3 = quotationData.incidentalCharges?.includes('incident3') ? incidentAmounts.incident3 : 0;
       
       // Calculate costs (simplified for now)
       const totalCost = quotationData.totalCost || 100000;
@@ -506,16 +508,17 @@ router.post('/', authenticateToken, async (req, res) => {
         INSERT INTO quotations (
           id, customer_id, customer_name, machine_type, order_type, 
           number_of_days, working_hours, food_resources, accom_resources,
-          site_distance, usage, risk_factor, shift, day_night,
+          site_distance, usage, risk_factor, day_night,
           mob_demob, mob_relaxation, extra_charge, other_factors_charge,
           billing, include_gst, sunday_working, customer_contact,
           total_rent, total_cost, working_cost, mob_demob_cost,
           food_accom_cost, gst_amount, created_by, status, notes,
-          deal_id, lead_id
+          deal_id, lead_id,
+          incident1, incident2, incident3
         ) VALUES (
-          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
-          $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26,
-          $27, $28, $29, $30, $31, $32, $33
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13,
+          $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26,
+          $27, $28, $29, $30, $31, $32, $33, $34, $35
         )
       `;
       const values = [
@@ -531,7 +534,6 @@ router.post('/', authenticateToken, async (req, res) => {
         quotationData.siteDistance || 0,
         'normal', // usage (will be enhanced later)
         riskMapping[quotationData.riskFactor] || 'medium',
-        shiftMapping[quotationData.shift] || 'single',
         'day', // day_night (will be enhanced later)
         15000, // mob_demob (default)
         0, // mob_relaxation
@@ -548,11 +550,14 @@ router.post('/', authenticateToken, async (req, res) => {
         quotationData.foodResources === 'ASP Provided' || quotationData.accomResources === 'ASP Provided' ? 
           (quotationData.numberOfDays || 1) * 6500 : 0, // food_accom_cost
         gstAmount,
-        'system', // created_by (will be replaced with actual user)
+        req.user.id, // created_by (will be replaced with actual user)
         'draft',
         quotationData.notes || '',
         quotationData.dealId || null,
-        quotationData.leadId || null
+        quotationData.leadId || null,
+        incident1,
+        incident2,
+        incident3
       ];
       await client.query(insertQuery, values);
       
