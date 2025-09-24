@@ -69,21 +69,41 @@ const QuotationDetail: React.FC = () => {
 
   const fetchQuotation = async (quotationId: string) => {
     try {
+      console.log('📋 Fetching quotation with ID:', quotationId);
       setIsLoading(true);
       const response = await fetch(`/api/quotations/${quotationId}`, {
         headers: {
           'X-Bypass-Auth': 'development-only-123'
         }
       });
+      console.log('📋 Quotation API response status:', response.status);
       const data = await response.json();
+      console.log('📋 Quotation API response data:', data);
 
       if (data.success) {
-        setQuotation(data.data);
+        console.log('✅ Quotation loaded successfully:', data.data.id);
+        // Map API response fields to match interface
+        const mappedQuotation = {
+          ...data.data,
+          quotation_number: data.data.quotationNumber || data.data.quotation_number,
+          customer_name: data.data.customerName || data.data.customer_name,
+          customer_email: data.data.customerEmail || data.data.customer_email,
+          customer_phone: data.data.customerPhone || data.data.customer_phone,
+          machine_type: data.data.machineType || data.data.machine_type,
+          order_type: data.data.orderType || data.data.order_type,
+          number_of_days: data.data.numberOfDays || data.data.number_of_days,
+          working_hours: data.data.workingHours || data.data.working_hours,
+          total_cost: data.data.totalCost || data.data.total_cost,
+          created_at: data.data.createdAt || data.data.created_at
+        };
+        console.log('📋 Mapped quotation data:', mappedQuotation);
+        setQuotation(mappedQuotation);
       } else {
+        console.error('❌ Quotation API error:', data.error);
         setError(data.error || 'Failed to fetch quotation');
       }
     } catch (error) {
-      console.error('Error fetching quotation:', error);
+      console.error('💥 Error fetching quotation:', error);
       setError('Failed to fetch quotation');
     } finally {
       setIsLoading(false);
@@ -91,6 +111,11 @@ const QuotationDetail: React.FC = () => {
   };
 
   const handlePreview = () => {
+    console.log('🚀 Preview button clicked!');
+    console.log('🚀 Current state - isPreviewOpen:', isPreviewOpen);
+    console.log('🚀 Current quotation:', quotation ? quotation.id : 'null');
+    console.log('🚀 Iframe ref exists:', !!previewFrameRef.current);
+    
     // Toggle preview state
     const newPreviewState = !isPreviewOpen;
     console.log('🎨 Preview state changing from', isPreviewOpen, 'to', newPreviewState);
@@ -105,6 +130,10 @@ const QuotationDetail: React.FC = () => {
       const iframeSrc = `/api/quotations-preview/${quotation.id}/preview/iframe${templateParam}`;
       console.log('🎨 Setting iframe src:', iframeSrc);
       previewFrameRef.current.src = iframeSrc;
+    } else if (newPreviewState) {
+      console.warn('⚠️ Cannot load preview - quotation or iframe ref missing');
+      console.warn('⚠️ Quotation exists:', !!quotation);
+      console.warn('⚠️ Iframe ref exists:', !!previewFrameRef.current);
     }
   };
 
