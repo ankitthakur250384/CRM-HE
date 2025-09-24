@@ -148,7 +148,7 @@ const optionalAuth = (req, res, next) => {
  * GET /api/quotations/:id/preview - Generate quotation preview
  * Main preview endpoint that uses EnhancedTemplateBuilder
  */
-router.get('/:id/preview', optionalAuth, async (req, res) => {
+router.get('/:id/preview', async (req, res) => {
   try {
     const { id: quotationId } = req.params;
     const { templateId, format = 'html' } = req.query;
