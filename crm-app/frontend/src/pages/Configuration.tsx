@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Settings, IndianRupee, Save } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/common/Card';
 import { Input } from '../components/common/Input';
@@ -6,8 +6,8 @@ import { Button } from '../components/common/Button';
 import { Toast } from '../components/common/Toast';
 import { useAuthStore } from '../store/authStore';
 import { Equipment, OrderType } from '../types/equipment';
-import { getEquipment, updateEquipment } from '../services/equipmentService';
-import { getQuotationConfig, updateQuotationConfig, getConfig, updateConfig } from '../services/configService';
+import { getEquipment, updateEquipment } from '../services/api/equipmentService';
+import { getQuotationConfig, updateQuotationConfig } from '../services/configService';
 import { formatCurrency } from '../utils/formatters';
 
 export function Configuration() {
@@ -53,21 +53,33 @@ export function Configuration() {
     }
   };
 
+  const computeBaseRates = (eq: Equipment) => {
+    // Prefer precomputed baseRates, fallback to individual fields
+    if (eq.baseRates && typeof eq.baseRates === 'object') return eq.baseRates;
+    return {
+      micro: (eq as any).baseRateMicro ?? 0,
+      small: (eq as any).baseRateSmall ?? 0,
+      monthly: (eq as any).baseRateMonthly ?? 0,
+      yearly: (eq as any).baseRateYearly ?? 0
+    } as Record<OrderType, number>;
+  };
+
   const fetchEquipment = async () => {
     try {
       const data = await getEquipment();
       setEquipment(data);
       
-      // Initialize edited rates with current base rates
+      // Initialize edited rates with current base rates (safe fallback)
       const rates: Record<string, Record<OrderType, number>> = {};
-      data.forEach(eq => {
-        rates[eq.id] = { ...eq.baseRates };
+      data.forEach((eq: Equipment) => {
+        rates[eq.id] = computeBaseRates(eq);
       });
       setEditedRates(rates);
       setIsLoading(false);
     } catch (error) {
       console.error('Error fetching equipment:', error);
       showToast('Error fetching equipment', 'error');
+      setIsLoading(false);
     }
   };
 
@@ -160,7 +172,9 @@ export function Configuration() {
             <div className="text-center py-4">Loading equipment...</div>
           ) : (
             <div className="space-y-4">
-              {equipment.map(eq => (
+              {equipment.map(eq => {
+                const currentRates = computeBaseRates(eq);
+                return (
                 <div 
                   key={eq.id} 
                   className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50"
@@ -169,7 +183,7 @@ export function Configuration() {
                     <div className="font-medium">{eq.name}</div>
                     <div className="text-sm text-gray-500">{eq.equipmentId}</div>
                     <div className="text-sm text-gray-500">
-                      Current Rate: {formatCurrency(eq.baseRates[activeRateType])}/{activeRateType === 'yearly' || activeRateType === 'monthly' ? 'month' : 'hr'}
+                      Current Rate: {formatCurrency(currentRates[activeRateType])}/{activeRateType === 'yearly' || activeRateType === 'monthly' ? 'month' : 'hr'}
                     </div>
                   </div>
                   <div className="flex items-center gap-3">
@@ -177,7 +191,7 @@ export function Configuration() {
                       <IndianRupee className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
                       <Input
                         type="number"
-                        value={editedRates[eq.id]?.[activeRateType] || 0}
+                        value={editedRates[eq.id]?.[activeRateType] ?? 0}
                         onChange={(e) => handleRateChange(eq.id, e.target.value)}
                         className="pl-9 w-32"
                         min={0}
@@ -187,14 +201,15 @@ export function Configuration() {
                       variant="outline"
                       size="sm"
                       onClick={() => handleSave(eq.id)}
-                      disabled={eq.baseRates[activeRateType] === editedRates[eq.id]?.[activeRateType]}
+                      disabled={currentRates[activeRateType] === editedRates[eq.id]?.[activeRateType]}
                     >
                       <Save size={16} className="mr-2" />
                       Save
                     </Button>
                   </div>
                 </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </CardContent>

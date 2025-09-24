@@ -37,6 +37,17 @@ CREATE TRIGGER update_users_updated_at
 BEFORE UPDATE ON users
 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- Insert default super admin user
+INSERT INTO users (uid, email, password_hash, display_name, role)
+VALUES (
+    'usr_1d343437',
+    'admin@avariq.com',
+    '$2b$12$qLJzsn5tWgdtU2orakO1O.ZEjMxk.GDETrjbclwhX/w0WM5KUnlyK',
+    'Super Admin',
+    'admin'
+)
+ON CONFLICT (email) DO NOTHING;
+
 -- Create authentication tokens table for JWT refresh tokens
 CREATE TABLE IF NOT EXISTS auth_tokens (
     id SERIAL PRIMARY KEY,
@@ -234,7 +245,8 @@ CREATE TABLE quotations (
     site_distance NUMERIC(10, 2) NOT NULL CHECK (site_distance >= 0),
     usage VARCHAR(20) NOT NULL CHECK (usage IN ('normal', 'heavy')),
     risk_factor VARCHAR(20) NOT NULL CHECK (risk_factor IN ('low', 'medium', 'high')),
-    shift VARCHAR(20) NOT NULL CHECK (shift IN ('single', 'double')),
+    -- `shift` defaults to 'single' and must be either 'single' or 'double'
+    shift VARCHAR(20) NOT NULL DEFAULT 'single' CHECK (shift IN ('single', 'double')),
     day_night VARCHAR(20) NOT NULL CHECK (day_night IN ('day', 'night')),
     mob_demob NUMERIC(10, 2) NOT NULL DEFAULT 0 CHECK (mob_demob >= 0),
     mob_relaxation NUMERIC(10, 2) NOT NULL DEFAULT 0 CHECK (mob_relaxation >= 0),
@@ -254,6 +266,12 @@ CREATE TABLE quotations (
     usage_load_factor NUMERIC(10, 2) CHECK (usage_load_factor >= 0),
     risk_adjustment NUMERIC(10, 2) CHECK (risk_adjustment >= 0),
     gst_amount NUMERIC(10, 2) CHECK (gst_amount >= 0),
+    -- Fields required by backend queries
+    incident1 TEXT,
+    incident2 TEXT,
+    incident3 TEXT,
+    rigger_amount NUMERIC(12, 2),
+    helper_amount NUMERIC(12, 2),
     version INTEGER NOT NULL DEFAULT 1 CHECK (version > 0),
     created_by VARCHAR(50) NOT NULL REFERENCES users(uid) ON DELETE SET NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'sent', 'accepted', 'rejected')),

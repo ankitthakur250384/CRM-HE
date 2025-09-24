@@ -167,7 +167,6 @@ router.get('/', async (req, res) => {
           q.updated_at,
           q.site_distance,
           q.usage,
-          q.shift,
           q.day_night,
           q.food_resources,
           q.accom_resources,
@@ -176,7 +175,12 @@ router.get('/', async (req, res) => {
           q.working_cost,
           q.food_accom_cost,
           q.gst_amount,
-          q.total_rent
+          q.total_rent,
+          q.incident1,
+          q.incident2,
+          q.incident3,
+          q.rigger_amount,
+          q.helper_amount
         FROM quotations q
         ORDER BY q.created_at DESC;
       `);
@@ -199,7 +203,7 @@ router.get('/', async (req, res) => {
         updated_at: q.updated_at,
         site_distance: parseFloat(q.site_distance || 0),
         usage: q.usage,
-        shift: q.shift === 'single' ? 'Day Shift' : 'Double Shift',
+        shift: q.day_night === 'day' ? 'Day Shift' : 'Night Shift', // FIX: use day_night for shift
         food_resources: q.food_resources > 0 ? 'ASP Provided' : 'Client Provided',
         accom_resources: q.accom_resources > 0 ? 'ASP Provided' : 'Client Provided',
         risk_factor: q.risk_factor?.charAt(0).toUpperCase() + q.risk_factor?.slice(1) || 'Medium',
@@ -207,7 +211,12 @@ router.get('/', async (req, res) => {
         working_cost: parseFloat(q.working_cost || 0),
         food_accom_cost: parseFloat(q.food_accom_cost || 0),
         gst_amount: parseFloat(q.gst_amount || 0),
-        total_rent: parseFloat(q.total_rent || 0)
+        total_rent: parseFloat(q.total_rent || 0),
+        incident1: parseFloat(q.incident1 || 0),
+        incident2: parseFloat(q.incident2 || 0),
+        incident3: parseFloat(q.incident3 || 0),
+        rigger_amount: parseFloat(q.rigger_amount || 0),
+        helper_amount: parseFloat(q.helper_amount || 0)
       }));
       
       return res.status(200).json({
@@ -303,7 +312,7 @@ router.get('/:id', async (req, res) => {
         siteDistance: quotation.site_distance,
         usage: quotation.usage,
         riskFactor: quotation.risk_factor,
-        shift: quotation.shift,
+        shift: quotation.day_night,
         dayNight: quotation.day_night,
         mobDemob: quotation.mob_demob,
         mobRelaxation: quotation.mob_relaxation,
@@ -319,6 +328,8 @@ router.get('/:id', async (req, res) => {
         workingCost: quotation.working_cost,
         mobDemobCost: quotation.mob_demob_cost,
         foodAccomCost: quotation.food_accom_cost,
+        riggerAmount: quotation.rigger_amount || null,
+        helperAmount: quotation.helper_amount || null,
         usageLoadFactor: quotation.usage_load_factor,
         riskAdjustment: quotation.risk_adjustment,
         gstAmount: quotation.gst_amount,
@@ -436,6 +447,28 @@ router.post('/', authenticateToken, async (req, res) => {
     }
     const client = await pool.connect();
     try {
+      // Load additionalParams config to get rigger/helper default amounts
+      let additionalParams = {};
+      try {
+        const cfgRes = await client.query(`SELECT value FROM config WHERE name = 'additionalParams' LIMIT 1`);
+        let raw = cfgRes.rows[0]?.value;
+        if (typeof raw === 'string') {
+          try {
+            raw = JSON.parse(raw);
+          } catch (e) {
+            raw = {};
+          }
+        }
+        additionalParams = raw || {};
+      } catch (cfgErr) {
+        console.warn('[QuotationRoutes] Could not load additionalParams config, proceeding with defaults');
+        additionalParams = {};
+      }
+      
+      // Compute numeric defaults
+      const defaultRiggerAmount = additionalParams && additionalParams.riggerAmount ? Number(additionalParams.riggerAmount) : null;
+      const defaultHelperAmount = additionalParams && additionalParams.helperAmount ? Number(additionalParams.helperAmount) : null;
+      
       // Check if customer exists, if not create one
       let customerId;
       const customerResult = await client.query(
@@ -474,19 +507,22 @@ router.post('/', authenticateToken, async (req, res) => {
         'specialized_rental': 'monthly'
       };
       
-      const shiftMapping = {
-        'Day Shift': 'single',
-        'Night Shift': 'single',
-        'Double Shift': 'double',
-        'Round the Clock': 'double'
-      };
-      
       const riskMapping = {
         'Low': 'low',
         'Medium': 'medium',
         'High': 'high',
         'Very High': 'high'
       };
+      
+      // Incident mapping
+      const incidentAmounts = {
+        incident1: 5000,
+        incident2: 10000,
+        incident3: 15000
+      };
+      const incident1 = quotationData.incidentalCharges?.includes('incident1') ? incidentAmounts.incident1 : 0;
+      const incident2 = quotationData.incidentalCharges?.includes('incident2') ? incidentAmounts.incident2 : 0;
+      const incident3 = quotationData.incidentalCharges?.includes('incident3') ? incidentAmounts.incident3 : 0;
       
       // Calculate costs (simplified for now)
       const totalCost = quotationData.totalCost || 100000;
@@ -511,11 +547,13 @@ router.post('/', authenticateToken, async (req, res) => {
           billing, include_gst, sunday_working, customer_contact,
           total_rent, total_cost, working_cost, mob_demob_cost,
           food_accom_cost, gst_amount, created_by, status, notes,
-          deal_id, lead_id
+          deal_id, lead_id,
+          incident1, incident2, incident3,
+          rigger_amount, helper_amount
         ) VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
           $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26,
-          $27, $28, $29, $30, $31, $32, $33
+          $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38
         )
       `;
       const values = [
@@ -526,13 +564,14 @@ router.post('/', authenticateToken, async (req, res) => {
         orderTypeMapping[quotationData.orderType] || 'monthly',
         quotationData.numberOfDays || 1,
         quotationData.workingHours || 8,
-        quotationData.foodResources === 'ASP Provided' ? 2 : 0,
-        quotationData.accomResources === 'ASP Provided' ? 2 : 0,
+        // Store numeric counts for food and accommodation provided
+        quotationData.foodResources || 0,
+        quotationData.accomResources || 0,
         quotationData.siteDistance || 0,
         'normal', // usage (will be enhanced later)
         riskMapping[quotationData.riskFactor] || 'medium',
-        shiftMapping[quotationData.shift] || 'single',
-        'day', // day_night (will be enhanced later)
+        quotationData.shift || 'single', // shift (ensure not null)
+        quotationData.dayNight || quotationData.day_night || 'day', // day_night (will be enhanced later)
         15000, // mob_demob (default)
         0, // mob_relaxation
         quotationData.extraCharge || 0,
@@ -545,14 +584,20 @@ router.post('/', authenticateToken, async (req, res) => {
         finalTotal,
         totalCost * 0.8, // working_cost
         15000, // mob_demob_cost
-        quotationData.foodResources === 'ASP Provided' || quotationData.accomResources === 'ASP Provided' ? 
-          (quotationData.numberOfDays || 1) * 6500 : 0, // food_accom_cost
+        // Use frontend-provided computed foodAccomCost if available, fallback to 0
+        quotationData.foodAccomCost || 0,
         gstAmount,
-        'system', // created_by (will be replaced with actual user)
+        req.user.id, // created_by (will be replaced with actual user)
         'draft',
         quotationData.notes || '',
         quotationData.dealId || null,
-        quotationData.leadId || null
+        quotationData.leadId || null,
+        incident1,
+        incident2,
+        incident3,
+        // rigger_amount/helper_amount: store configured amounts when selected
+        (quotationData.otherFactors || []).includes('rigger') ? (quotationData.riggerAmount ?? defaultRiggerAmount ?? null) : (quotationData.riggerAmount !== undefined ? quotationData.riggerAmount : null),
+        (quotationData.otherFactors || []).includes('helper') ? (quotationData.helperAmount ?? defaultHelperAmount ?? null) : (quotationData.helperAmount !== undefined ? quotationData.helperAmount : null)
       ];
       await client.query(insertQuery, values);
       
@@ -677,10 +722,27 @@ router.put('/:id', async (req, res) => {
     const client = await pool.connect();
     
     try {
+      // Load additionalParams to get default amounts
+      let additionalParams = {};
+      try {
+        const cfgRes = await client.query(`SELECT value FROM config WHERE name = 'additionalParams' LIMIT 1`);
+        additionalParams = cfgRes.rows[0]?.value || {};
+      } catch (cfgErr) {
+        additionalParams = {};
+      }
+      
+      // Compute numeric defaults
+      const defaultRiggerAmount = additionalParams && additionalParams.riggerAmount ? Number(additionalParams.riggerAmount) : null;
+      const defaultHelperAmount = additionalParams && additionalParams.helperAmount ? Number(additionalParams.helperAmount) : null;
+      
+      // rigger/helper amounts: map presence in otherFactors or explicit amounts; default null
+      const riggerAmountVal = (otherFactors || []).includes('rigger') ? (req.body.riggerAmount ?? defaultRiggerAmount ?? null) : (req.body.riggerAmount !== undefined ? req.body.riggerAmount : null);
+      const helperAmountVal = (otherFactors || []).includes('helper') ? (req.body.helperAmount ?? defaultHelperAmount ?? null) : (req.body.helperAmount !== undefined ? req.body.helperAmount : null);
+      
       // Update the main quotation record
       const result = await client.query(`
-        UPDATE quotations 
-        SET 
+        UPDATE quotations
+        SET
           customer_name = $1,
           customer_contact = $2,
           machine_type = $3,
@@ -696,7 +758,7 @@ router.put('/:id', async (req, res) => {
           accom_resources = $13,
           mob_demob = $14,
           mob_relaxation = $15,
-          extra_charges = $16,
+          extra_charge = $16,
           working_cost = $17,
           mob_demob_cost = $18,
           food_accom_cost = $19,
@@ -712,8 +774,10 @@ router.put('/:id', async (req, res) => {
           status = $29,
           incidental_charges = $30,
           other_factors = $31,
+          rigger_amount = $32,
+          helper_amount = $33,
           updated_at = CURRENT_TIMESTAMP
-        WHERE id = $32
+        WHERE id = $34
         RETURNING *
       `, [
         customer_name,
@@ -725,8 +789,8 @@ router.put('/:id', async (req, res) => {
         site_distance,
         usage,
         risk_factor,
-        shift,
-        day_night,
+        shift || 'single',
+        day_night || day_night || 'day',
         food_resources,
         accom_resources,
         mob_demob,
@@ -747,15 +811,17 @@ router.put('/:id', async (req, res) => {
         status || 'draft',
         JSON.stringify(incidentalCharges || []),
         JSON.stringify(otherFactors || []),
+        riggerAmountVal,
+        helperAmountVal,
         id
       ]);
-      
-      if (result.rows.length === 0) {
-        return res.status(404).json({
-          success: false,
-          message: 'Quotation not found'
-        });
-      }
+       
+       if (result.rows.length === 0) {
+         return res.status(404).json({
+           success: false,
+           message: 'Quotation not found'
+         });
+       }
       
       // Update quotation machines
       if (selectedMachines && Array.isArray(selectedMachines)) {

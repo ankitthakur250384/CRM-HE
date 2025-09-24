@@ -73,7 +73,7 @@ console.log(`Environment check: NODE_ENV=${process.env.NODE_ENV || 'undefined'},
 console.log(`ALLOWED_ORIGINS env var: "${process.env.ALLOWED_ORIGINS}"`);
 
 // Set allowed origin for CORS
-const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || 'http://103.224.243.242:3000';
+const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:3000';
 
 // Security middleware
 if (isProduction) {
@@ -84,8 +84,8 @@ if (isProduction) {
 // CORS configuration - allow credentials and set origin to frontend
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin || origin === FRONTEND_ORIGIN) {
-      callback(null, FRONTEND_ORIGIN);
+    if (!origin || origin === CORS_ORIGIN) {
+      callback(null, CORS_ORIGIN);
     } else {
       callback(new Error('Not allowed by CORS'));
     }

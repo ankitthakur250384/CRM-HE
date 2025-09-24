@@ -25,7 +25,7 @@ export interface Contact {
   role: string;
 }
 
-interface Deal {
+export interface Deal {
   id: string;
   leadId: string;
   customerId: string;

@@ -35,7 +35,7 @@ services:
       JWT_ACCESS_TOKEN_EXPIRY: 15m
       JWT_REFRESH_TOKEN_EXPIRY: 7d
       SESSION_SECRET: ${SESSION_SECRET:-hhxqD54L9QVzZkLZ+s9WXswDQPOS6SvUgBYhxKMUndw=}
-      CORS_ORIGIN: http://103.224.243.242:3000
+      CORS_ORIGIN: http://localhost:3000
       LOG_LEVEL: info
       RATE_LIMIT_WINDOW_MS: 900000
       RATE_LIMIT_MAX_REQUESTS: 100
@@ -57,7 +57,7 @@ services:
       - "3000:3000"
     environment:
       NODE_ENV: production
-      VITE_API_URL: http://103.224.243.242:3001/api
+      VITE_API_URL: http://Localhost:3001/api
     depends_on:
       - backend
     restart: unless-stopped
@@ -70,8 +70,9 @@ services:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/nginx.prod.conf:/etc/nginx/nginx.conf:ro
-      - ./nginx/ssl:/etc/nginx/ssl:ro
+       - ./crm-app/nginx/ssl:/etc/nginx/ssl:ro
+       - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+       # The above mounts the self-signed SSL certs generated for local development
     depends_on:
       - backend
       - frontend
