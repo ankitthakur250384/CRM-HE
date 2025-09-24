@@ -93,6 +93,7 @@ const QuotationDetail: React.FC = () => {
   const handlePreview = () => {
     // Toggle preview state
     const newPreviewState = !isPreviewOpen;
+    console.log('🎨 Preview state changing from', isPreviewOpen, 'to', newPreviewState);
     setIsPreviewOpen(newPreviewState);
     
     // If opening preview, load it from backend
@@ -101,7 +102,9 @@ const QuotationDetail: React.FC = () => {
       console.log('🎨 Using template:', selectedTemplate);
       // Use the backend iframe preview route with selected template
       const templateParam = selectedTemplate !== 'default' ? `?templateId=${selectedTemplate}` : '';
-      previewFrameRef.current.src = `/api/quotations-preview/${quotation.id}/preview/iframe${templateParam}`;
+      const iframeSrc = `/api/quotations-preview/${quotation.id}/preview/iframe${templateParam}`;
+      console.log('🎨 Setting iframe src:', iframeSrc);
+      previewFrameRef.current.src = iframeSrc;
     }
   };
 
@@ -504,13 +507,19 @@ const QuotationDetail: React.FC = () => {
                 )}
               </div>
               
-              {isPreviewOpen && (
+              {isPreviewOpen ? (
                 <div className="border rounded-lg overflow-hidden">
                   <iframe
                     ref={previewFrameRef}
                     className="w-full h-96 border-0"
                     title="Quotation Preview"
                   />
+                </div>
+              ) : (
+                <div className="border rounded-lg p-8 text-center bg-gray-50">
+                  <Eye className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Preview Not Active</h3>
+                  <p className="text-gray-500">Click "Show Preview" to view the quotation preview.</p>
                 </div>
               )}
             </div>
