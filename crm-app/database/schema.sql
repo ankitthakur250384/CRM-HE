@@ -105,6 +105,7 @@ CREATE TABLE leads (
     company_name VARCHAR(100),
     email VARCHAR(255) NOT NULL CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'),
     phone VARCHAR(20) NOT NULL,
+    address VARCHAR(255),
     service_needed TEXT NOT NULL,
     site_location TEXT NOT NULL,
     start_date DATE NOT NULL,
@@ -221,6 +222,7 @@ CREATE INDEX IF NOT EXISTS idx_quotation_templates_is_default ON quotation_templ
 DROP TABLE IF EXISTS quotations CASCADE;
 CREATE TABLE quotations (
     id VARCHAR(50) PRIMARY KEY DEFAULT 'quot_' || SUBSTRING(uuid_generate_v4()::text FROM 1 FOR 8),
+    quotation_number VARCHAR,
     deal_id VARCHAR(50) REFERENCES deals(id) ON DELETE SET NULL,
     lead_id VARCHAR(50) REFERENCES leads(id) ON DELETE SET NULL,
     customer_id VARCHAR(50) NOT NULL REFERENCES customers(id) ON DELETE CASCADE,

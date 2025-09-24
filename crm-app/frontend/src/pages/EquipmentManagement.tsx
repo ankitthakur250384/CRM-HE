@@ -81,7 +81,7 @@ export function EquipmentManagement() {
     description?: string;
     variant?: 'success' | 'error' | 'warning';
   }>({ show: false, title: '' });
-
+  const today = new Date().toISOString().split("T")[0];
   const [formData, setFormData] = useState({
     name: '',
     category: 'mobile_crane' as CraneCategory,
@@ -158,7 +158,7 @@ export function EquipmentManagement() {
     }
 
     // Validate date formats (YYYY-MM)
-    const dateRegex = /^\d{4}-\d{2}$/;
+      const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(formData.manufacturingDate) || !dateRegex.test(formData.registrationDate)) {
       showToast('Please enter valid dates in YYYY-MM format', 'error');
       return false;
@@ -578,12 +578,13 @@ export function EquipmentManagement() {
               onChange={(e) => setFormData({ ...formData, unladenWeight: e.target.value })}
               required
             />
-
+           
             <FormInput
-              label="Manufacturing Date (YYYY-MM)"
+              label="Manufacturing Date"
+              type="date"
+              max={today}
               value={formData.manufacturingDate}
               onChange={(e) => setFormData({ ...formData, manufacturingDate: e.target.value })}
-              placeholder="YYYY-MM"
               required
             />
 
@@ -595,13 +596,14 @@ export function EquipmentManagement() {
               required
             />
 
-            <FormInput
-              label="Registration Date (YYYY-MM)"
+             <FormInput
+              label="Registration Date"
+              type="date"
+              max={today}   
               value={formData.registrationDate}
               onChange={(e) => setFormData({ ...formData, registrationDate: e.target.value })}
-              placeholder="YYYY-MM"
               required
-            />
+             />
 
             <Select
               label="Status"
