@@ -9,6 +9,24 @@ import pg from 'pg';
 import { v4 as uuidv4 } from 'uuid';
 import { authenticateToken } from '../middleware/authMiddleware.mjs';
 import { generateQuotationTemplate } from '../utils/pdfGenerator.js';
+
+// Helper function to generate quotation number from ID
+function generateQuotationNumber(quotationId) {
+  // Extract number from quotation ID (quot_XXXXXXXX format)
+  const idParts = quotationId.split('_');
+  if (idParts.length >= 2) {
+    // Use the UUID part to generate a consistent number
+    const hashCode = idParts[1].split('').reduce((a, b) => {
+      a = ((a << 5) - a) + b.charCodeAt(0);
+      return a & a;
+    }, 0);
+    const num = Math.abs(hashCode) % 9999 + 1; // Ensure it's between 1-9999
+    return `ASP-Q-${num.toString().padStart(3, '0')}`;
+  }
+  
+  // Fallback: use full ID
+  return `ASP-Q-${quotationId.substring(5, 8).toUpperCase()}`;
+}
 import { QuotationTableBuilder } from '../utils/quotationTableBuilder.mjs';
 
 const router = express.Router();
@@ -135,7 +153,6 @@ router.get('/', async (req, res) => {
       const result = await client.query(`
         SELECT 
           q.id,
-          q.quotation_number,
           q.customer_name,
           q.customer_contact->>'email' as customer_email,
           q.customer_contact->>'phone' as customer_phone,
@@ -167,7 +184,7 @@ router.get('/', async (req, res) => {
       const quotations = result.rows.map(q => ({
         id: q.id,
         quotationId: q.id,
-        quotation_number: q.quotation_number, // Add human-readable quotation number
+        quotation_number: generateQuotationNumber(q.id), // Generate quotation number from ID
         customer_name: q.customer_name,
         customer_email: q.customer_email,
         customer_phone: q.customer_phone,
@@ -263,7 +280,7 @@ router.get('/:id', async (req, res) => {
       const transformedQuotation = {
         id: quotation.id,
         quotationId: quotation.id,
-        quotationNumber: quotation.quotation_number, // Add human-readable quotation number
+        quotationNumber: generateQuotationNumber(quotation.id), // Generate quotation number from ID
         dealId: quotation.deal_id,
         leadId: quotation.lead_id,
         customerId: quotation.customer_id,
@@ -855,7 +872,7 @@ router.post('/print', authenticateToken, async (req, res) => {
 
     console.log('✅ [QuotationRoutes] Quotation data fetched:', {
       id: quotationData.id,
-      number: quotationData.quotation_number,
+      number: generateQuotationNumber(quotationData.id),
       itemsCount: quotationData.items?.length || 0
     });
 
@@ -875,7 +892,7 @@ router.post('/print', authenticateToken, async (req, res) => {
       html,
       quotation: {
         id: quotationData.id,
-        number: quotationData.quotation_number
+        number: generateQuotationNumber(quotationData.id)
       },
       method: 'Twenty CRM Table Builder',
       timestamp: new Date().toISOString()
@@ -941,7 +958,7 @@ async function getQuotationWithFullDetails(quotationId) {
     // Structure the complete data
     return {
       id: quotation.id,
-      quotation_number: quotation.quotation_number,
+      quotation_number: generateQuotationNumber(quotation.id),
       description: quotation.description,
       status: quotation.status,
       valid_until: quotation.valid_until,

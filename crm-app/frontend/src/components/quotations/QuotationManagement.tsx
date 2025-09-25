@@ -17,7 +17,7 @@ import {
   Mail,
   FileText
 } from 'lucide-react';
-import SuiteCRMQuotationSystem from './SuiteCRMQuotationSystem';
+
 
 interface QuotationListItem {
   id: string;
@@ -52,7 +52,7 @@ const QuotationManagementComplete: React.FC = () => {
   const [quotations, setQuotations] = useState<QuotationListItem[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [selectedQuotation, setSelectedQuotation] = useState<string | null>(null);
+
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(10);
 
@@ -151,7 +151,7 @@ const QuotationManagementComplete: React.FC = () => {
   const handleQuickAction = (action: string, quotationId: string) => {
     switch (action) {
       case 'view':
-        setSelectedQuotation(quotationId);
+        navigate(`/quotations/${quotationId}`);
         break;
       case 'edit':
         // Navigate to quotation creation page with edit mode
@@ -353,16 +353,7 @@ ASP Cranes Team`;
     navigate('/select-deal');
   };
 
-  if (selectedQuotation) {
-    const quotationData = quotations.find(q => q.id === selectedQuotation);
-    return (
-      <SuiteCRMQuotationSystem
-        quotationId={selectedQuotation}
-        quotationData={quotationData}
-        onClose={() => setSelectedQuotation(null)}
-      />
-    );
-  }
+
 
   // Loading state
   if (loading) {

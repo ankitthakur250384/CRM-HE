@@ -4,7 +4,7 @@ import { Button } from '../../components/ui/button';
 import QuotationPrintSystem from '../../components/quotations/QuotationPrintSystem';
 import { ArrowLeft, Edit, FileText, Settings, Eye, Printer, Download, Mail, X } from 'lucide-react';
 interface Quotation {
-  id: number;
+  id: string;
   quotation_number?: string; // Add human-readable quotation number
   customer_name: string;
   customer_email: string;
@@ -33,7 +33,7 @@ const QuotationDetail: React.FC = () => {
 
   useEffect(() => {
     if (id) {
-      fetchQuotation(parseInt(id));
+      fetchQuotation(id);
       loadAvailableTemplates();
     }
   }, [id]);
@@ -67,23 +67,43 @@ const QuotationDetail: React.FC = () => {
     }
   };
 
-  const fetchQuotation = async (quotationId: number) => {
+  const fetchQuotation = async (quotationId: string) => {
     try {
+      console.log('📋 Fetching quotation with ID:', quotationId);
       setIsLoading(true);
       const response = await fetch(`/api/quotations/${quotationId}`, {
         headers: {
           'X-Bypass-Auth': 'development-only-123'
         }
       });
+      console.log('📋 Quotation API response status:', response.status);
       const data = await response.json();
+      console.log('📋 Quotation API response data:', data);
 
       if (data.success) {
-        setQuotation(data.data);
+        console.log('✅ Quotation loaded successfully:', data.data.id);
+        // Map API response fields to match interface
+        const mappedQuotation = {
+          ...data.data,
+          quotation_number: data.data.quotationNumber || data.data.quotation_number,
+          customer_name: data.data.customerName || data.data.customer_name,
+          customer_email: data.data.customerEmail || data.data.customer_email,
+          customer_phone: data.data.customerPhone || data.data.customer_phone,
+          machine_type: data.data.machineType || data.data.machine_type,
+          order_type: data.data.orderType || data.data.order_type,
+          number_of_days: data.data.numberOfDays || data.data.number_of_days,
+          working_hours: data.data.workingHours || data.data.working_hours,
+          total_cost: data.data.totalCost || data.data.total_cost,
+          created_at: data.data.createdAt || data.data.created_at
+        };
+        console.log('📋 Mapped quotation data:', mappedQuotation);
+        setQuotation(mappedQuotation);
       } else {
+        console.error('❌ Quotation API error:', data.error);
         setError(data.error || 'Failed to fetch quotation');
       }
     } catch (error) {
-      console.error('Error fetching quotation:', error);
+      console.error('💥 Error fetching quotation:', error);
       setError('Failed to fetch quotation');
     } finally {
       setIsLoading(false);
@@ -91,8 +111,14 @@ const QuotationDetail: React.FC = () => {
   };
 
   const handlePreview = () => {
+    console.log('🚀 Preview button clicked!');
+    console.log('🚀 Current state - isPreviewOpen:', isPreviewOpen);
+    console.log('🚀 Current quotation:', quotation ? quotation.id : 'null');
+    console.log('🚀 Iframe ref exists:', !!previewFrameRef.current);
+    
     // Toggle preview state
     const newPreviewState = !isPreviewOpen;
+    console.log('🎨 Preview state changing from', isPreviewOpen, 'to', newPreviewState);
     setIsPreviewOpen(newPreviewState);
     
     // If opening preview, load it from backend
@@ -101,7 +127,13 @@ const QuotationDetail: React.FC = () => {
       console.log('🎨 Using template:', selectedTemplate);
       // Use the backend iframe preview route with selected template
       const templateParam = selectedTemplate !== 'default' ? `?templateId=${selectedTemplate}` : '';
-      previewFrameRef.current.src = `/api/quotations/${quotation.id}/preview/iframe${templateParam}`;
+      const iframeSrc = `/api/quotations-preview/${quotation.id}/preview/iframe${templateParam}`;
+      console.log('🎨 Setting iframe src:', iframeSrc);
+      previewFrameRef.current.src = iframeSrc;
+    } else if (newPreviewState) {
+      console.warn('⚠️ Cannot load preview - quotation or iframe ref missing');
+      console.warn('⚠️ Quotation exists:', !!quotation);
+      console.warn('⚠️ Iframe ref exists:', !!previewFrameRef.current);
     }
   };
 
@@ -112,14 +144,14 @@ const QuotationDetail: React.FC = () => {
     if (isPreviewOpen && quotation && previewFrameRef.current) {
       console.log('🔄 Refreshing preview with template:', templateId);
       const templateParam = templateId !== 'default' ? `?templateId=${templateId}` : '';
-      previewFrameRef.current.src = `/api/quotations/${quotation.id}/preview/iframe${templateParam}`;
+      previewFrameRef.current.src = `/api/quotations-preview/${quotation.id}/preview/iframe${templateParam}`;
     }
   };
 
   const handlePrint = () => {
     if (id) {
       // Open the iframe preview route in a new tab for printing
-      window.open(`/api/quotations/${id}/preview/iframe`, '_blank');
+      window.open(`/api/quotations-preview/${id}/preview/iframe`, '_blank');
     }
   };
 
@@ -504,13 +536,19 @@ const QuotationDetail: React.FC = () => {
                 )}
               </div>
               
-              {isPreviewOpen && (
+              {isPreviewOpen ? (
                 <div className="border rounded-lg overflow-hidden">
                   <iframe
                     ref={previewFrameRef}
                     className="w-full h-96 border-0"
                     title="Quotation Preview"
                   />
+                </div>
+              ) : (
+                <div className="border rounded-lg p-8 text-center bg-gray-50">
+                  <Eye className="w-12 h-12 mx-auto text-gray-400 mb-4" />
+                  <h3 className="text-lg font-medium text-gray-900 mb-2">Preview Not Active</h3>
+                  <p className="text-gray-500">Click "Show Preview" to view the quotation preview.</p>
                 </div>
               )}
             </div>
