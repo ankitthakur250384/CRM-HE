@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 
 // Generate local template preview without backend call
-const generateLocalQuotationPreview = (quotationId: number, templateId: string) => {
+const generateLocalQuotationPreview = (quotationId: string, templateId: string) => {
   console.log('🎨 Generating local preview for quotation:', quotationId, 'template:', templateId);
   
   return `
@@ -83,7 +83,7 @@ const generateLocalQuotationPreview = (quotationId: number, templateId: string) 
 };
 
 interface QuotationPrintSystemProps {
-  quotationId: number;
+  quotationId: string;
   onClose?: () => void;
 }
 

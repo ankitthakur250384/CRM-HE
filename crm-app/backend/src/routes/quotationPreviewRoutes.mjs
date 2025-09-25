@@ -10,7 +10,8 @@ import { EnhancedTemplateBuilder } from '../services/EnhancedTemplateBuilder.mjs
 
 const router = express.Router();
 
-// Helper function to generate quotation number from ID (same as quotationRoutes.mjs)
+
+// Helper function to generate quotation number from ID
 function generateQuotationNumber(quotationId) {
   // Extract number from quotation ID (quot_XXXXXXXX format)
   const idParts = quotationId.split('_');
@@ -143,7 +144,7 @@ const optionalAuth = (req, res, next) => {
  * GET /api/quotations/:id/preview - Generate quotation preview
  * Main preview endpoint that uses EnhancedTemplateBuilder
  */
-router.get('/:id/preview', optionalAuth, async (req, res) => {
+router.get('/:id/preview', async (req, res) => {
   try {
     const { id: quotationId } = req.params;
     const { templateId, format = 'html' } = req.query;
