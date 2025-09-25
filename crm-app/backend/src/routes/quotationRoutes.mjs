@@ -250,7 +250,7 @@ router.get('/:id', async (req, res) => {
     try {
       const quotationResult = await client.query(`
         SELECT q.*, c.name as customer_name, c.email as customer_email,
-               c.phone as customer_phone, c.company as customer_company,
+               c.phone as customer_phone, c.company_name as customer_company,
                c.address as customer_address, c.designation as customer_designation,
                d.title as deal_title
         FROM quotations q
