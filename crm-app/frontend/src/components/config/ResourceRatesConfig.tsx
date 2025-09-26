@@ -98,10 +98,7 @@ export function ResourceRatesConfig() {
                 />
               </div>
             </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-500">Daily Rate:</span>
-              <span className="font-medium text-gray-900">₹{(rates.foodRatePerMonth / 26).toFixed(2)}/day</span>
-            </div>
+
           </div>
         </div>
 
@@ -131,10 +128,7 @@ export function ResourceRatesConfig() {
                 />
               </div>
             </div>
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-gray-500">Daily Rate:</span>
-              <span className="font-medium text-gray-900">₹{(rates.accommodationRatePerMonth / 26).toFixed(2)}/day</span>
-            </div>
+
           </div>
         </div>
       </div>

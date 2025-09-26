@@ -217,8 +217,8 @@ export function QuotationCreation() {
         const baseRate = getEquipmentBaseRate(selected, formData.orderType);
         setSelectedEquipmentBaseRate(baseRate);
       }
-    }
-    
+      }
+
     if (formData.selectedMachines.length > 0 && Array.isArray(availableEquipment) && availableEquipment.length > 0) {
       setFormData(prev => ({
         ...prev,
@@ -634,8 +634,8 @@ export function QuotationCreation() {
     });
 
     // Food & Accommodation costs
-    const foodRate = resourceRates?.foodRate;
-    const accomRate = resourceRates?.accommodationRate;
+    const foodRate = resourceRates?.foodRatePerMonth;
+    const accomRate = resourceRates?.accommodationRatePerMonth;
     const foodCost = foodRate ? (formData.foodResources || 0) * foodRate * numberOfDays : 0;
     const accomCost = accomRate ? (formData.accomResources || 0) * accomRate * numberOfDays : 0;
     const foodAccomCost = foodCost + accomCost;
@@ -831,7 +831,7 @@ export function QuotationCreation() {
           address: formData.customerContact?.address || deal?.customer?.address || '',
           designation: formData.customerContact?.designation || deal?.customer?.designation || ''
         },
-        // Include all calculation fields directly in the quotation data
+          // Include all calculation fields directly in the quotation data
         calculations,
         totalAmount: calculations.totalAmount,
         totalCost: calculations.totalAmount,
