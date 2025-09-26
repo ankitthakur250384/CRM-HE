@@ -498,6 +498,7 @@ router.post('/', authenticateToken, async (req, res) => {
       }
       
       const id = uuidv4();
+<<<<<<< HEAD
 
       // Determine primary equipment and snapshot from payload
       const primaryEquipmentId = (quotationData.selectedMachines && quotationData.selectedMachines.length > 0)
@@ -509,6 +510,48 @@ router.post('/', authenticateToken, async (req, res) => {
         : (quotationData.selectedEquipment ? JSON.stringify([quotationData.selectedEquipment]) : JSON.stringify([]));
 
       // Insert quotation (include primary_equipment_id and equipment_snapshot)
+=======
+      
+      // Map frontend data to database schema
+      const orderTypeMapping = {
+       // 'rental': 'monthly',
+        //'long_term_rental': 'yearly',
+        //'project_rental': 'monthly',
+        //'specialized_rental': 'monthly'
+      };
+      
+      const riskMapping = {
+        'Low': 'low',
+        'Medium': 'medium',
+        'High': 'high',
+        'Very High': 'high'
+      };
+      
+      // Incident mapping
+      const incidentAmounts = {
+        incident1: 5000,
+        incident2: 10000,
+        incident3: 15000
+      };
+      const incident1 = quotationData.incidentalCharges?.includes('incident1') ? incidentAmounts.incident1 : 0;
+      const incident2 = quotationData.incidentalCharges?.includes('incident2') ? incidentAmounts.incident2 : 0;
+      const incident3 = quotationData.incidentalCharges?.includes('incident3') ? incidentAmounts.incident3 : 0;
+      
+      // Calculate costs (simplified for now)
+      const totalCost = quotationData.totalCost || 100000;
+      const gstAmount = totalCost * 0.18;
+      const finalTotal = totalCost + gstAmount;
+      
+      const customerContact = {
+        name: quotationData.customerName,
+        email: quotationData.customerEmail || '',
+        phone: quotationData.customerPhone || '',
+        address: quotationData.customerAddress || '',
+        company: quotationData.customerName
+      };
+      
+      // Insert quotation
+>>>>>>> e0d593603851da764710d4f530de3329af449880
       const insertQuery = `
         INSERT INTO quotations (
           id, customer_id, customer_name, machine_type, primary_equipment_id, equipment_snapshot, order_type, 
@@ -532,14 +575,18 @@ router.post('/', authenticateToken, async (req, res) => {
         customerId,
         quotationData.customerName,
         quotationData.machineType,
+<<<<<<< HEAD
         primaryEquipmentId,
         equipmentSnapshot,
         orderTypeMapping[quotationData.orderType] || 'monthly',
+=======
+        quotationData.orderType,
+>>>>>>> e0d593603851da764710d4f530de3329af449880
         quotationData.numberOfDays || 1,
         quotationData.workingHours || 8,
         // Store numeric counts for food and accommodation provided
-        quotationData.foodResources || 0,
-        quotationData.accomResources || 0,
+        quotationData.foodResources ?? 0,
+        quotationData.accomResources ?? 0,
         quotationData.siteDistance || 0,
         'normal', // usage (will be enhanced later)
         riskMapping[quotationData.riskFactor] || 'medium',
