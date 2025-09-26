@@ -634,21 +634,7 @@ export function QuotationCreation() {
     });
 
     // Food & Accommodation costs
-<<<<<<< HEAD
     // Resolve daily rate with priority: additionalParams daily -> resourceRates daily -> additionalParams monthly -> resourceRates monthly -> defaults
-    const resolveDailyRate = (dailyFieldName, monthlyFieldName, defaultMonthly) => {
-      // dailyFieldName and monthlyFieldName are just hints; we access known properties
-      if (additionalParams && (additionalParams.foodRate !== undefined || additionalParams.accommodationRate !== undefined)) {
-        // check specific keys on additionalParams
-      }
-      // try additionalParams daily
-      if (additionalParams?.foodRate !== undefined || additionalParams?.accommodationRate !== undefined) {
-        // handled below per-call
-      }
-
-      return null;
-    };
-
     const resolvedFoodDaily = (() => {
       // additionalParams may store either a daily rate (foodRate) or monthly (foodRatePerMonth)
       if (additionalParams?.foodRate !== undefined && additionalParams.foodRate !== null) return Number(additionalParams.foodRate);
@@ -671,12 +657,7 @@ export function QuotationCreation() {
     const accomRate = resolvedAccomDaily;
     const foodCost = (formData.foodResources || 0) * foodRate * numberOfDays;
     const accomCost = (formData.accomResources || 0) * accomRate * numberOfDays;
-=======
-    const foodRate = resourceRates?.foodRatePerMonth;
-    const accomRate = resourceRates?.accommodationRatePerMonth;
-    const foodCost = foodRate ? (formData.foodResources || 0) * foodRate * numberOfDays : 0;
-    const accomCost = accomRate ? (formData.accomResources || 0) * accomRate * numberOfDays : 0;
->>>>>>> e0d593603851da764710d4f530de3329af449880
+
     const foodAccomCost = foodCost + accomCost;
 
     console.log("🍽️ Food & Accommodation:", {
@@ -774,8 +755,8 @@ export function QuotationCreation() {
     const incidentalOptions = additionalParams?.incidentalOptions;
     const incidentalTotal = (formData.incidentalCharges || []).reduce((sum, val) => {
       if (val === 'incident1') return sum + (formData.incident1 ?? (incidentalOptions?.find(opt => opt.value === 'incident1')?.amount ?? 0));
-      if (val === 'incident2') return sum + (formData.incident2 ?? (incidentalOptions?.find(opt => opt.value === 'incident2')?.amount ?? 0));
-      if (val === 'incident3') return sum + (formData.incident3 ?? (incidentalOptions?.find(opt => opt.value === 'incident3')?.amount ?? 0));
+      if (val === 'incident2') return sum + (formData.incident2 ?? (incidentalOptions?.find(opt => opt.value==='incident2')?.amount ?? 0));
+      if (val === 'incident3') return sum + (formData.incident3 ?? (incidentalOptions?.find(opt => opt.value==='incident3')?.amount ?? 0));
       // fallback to config value
       const found = incidentalOptions?.find(opt => opt.value === val);
       return sum + (found ? found.amount : 0);

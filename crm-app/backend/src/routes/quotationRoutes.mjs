@@ -498,9 +498,8 @@ router.post('/', authenticateToken, async (req, res) => {
       }
       
       const id = uuidv4();
-<<<<<<< HEAD
 
-      // Determine primary equipment and snapshot from payload
+      // Determine primary equipment and snapshot from payload (if provided)
       const primaryEquipmentId = (quotationData.selectedMachines && quotationData.selectedMachines.length > 0)
         ? (quotationData.selectedMachines[0].id || quotationData.selectedMachines[0].equipmentId || null)
         : (quotationData.selectedEquipment ? (quotationData.selectedEquipment.id || quotationData.selectedEquipment.equipmentId || null) : null);
@@ -509,15 +508,12 @@ router.post('/', authenticateToken, async (req, res) => {
         ? JSON.stringify(quotationData.selectedMachines)
         : (quotationData.selectedEquipment ? JSON.stringify([quotationData.selectedEquipment]) : JSON.stringify([]));
 
-      // Insert quotation (include primary_equipment_id and equipment_snapshot)
-=======
-      
       // Map frontend data to database schema
       const orderTypeMapping = {
-       // 'rental': 'monthly',
-        //'long_term_rental': 'yearly',
-        //'project_rental': 'monthly',
-        //'specialized_rental': 'monthly'
+        'rental': 'monthly',
+        'long_term_rental': 'yearly',
+        'project_rental': 'monthly',
+        'specialized_rental': 'monthly'
       };
       
       const riskMapping = {
@@ -550,8 +546,7 @@ router.post('/', authenticateToken, async (req, res) => {
         company: quotationData.customerName
       };
       
-      // Insert quotation
->>>>>>> e0d593603851da764710d4f530de3329af449880
+      // Insert quotation (include primary_equipment_id and equipment_snapshot)
       const insertQuery = `
         INSERT INTO quotations (
           id, customer_id, customer_name, machine_type, primary_equipment_id, equipment_snapshot, order_type, 
@@ -575,13 +570,9 @@ router.post('/', authenticateToken, async (req, res) => {
         customerId,
         quotationData.customerName,
         quotationData.machineType,
-<<<<<<< HEAD
         primaryEquipmentId,
         equipmentSnapshot,
         orderTypeMapping[quotationData.orderType] || 'monthly',
-=======
-        quotationData.orderType,
->>>>>>> e0d593603851da764710d4f530de3329af449880
         quotationData.numberOfDays || 1,
         quotationData.workingHours || 8,
         // Store numeric counts for food and accommodation provided
