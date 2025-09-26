@@ -237,6 +237,10 @@ CREATE TABLE quotations (
     customer_id VARCHAR(50) NOT NULL REFERENCES customers(id) ON DELETE CASCADE,
     customer_name VARCHAR(255) NOT NULL,
     machine_type VARCHAR(100) NOT NULL,
+    -- Primary equipment selected for this quotation (if any)
+    primary_equipment_id VARCHAR(50) REFERENCES equipment(id) ON DELETE SET NULL,
+    -- Snapshot of selected equipment/machines stored as JSON for audit and calculation reproducibility
+    equipment_snapshot JSONB,
     order_type VARCHAR(50) NOT NULL CHECK (order_type IN ('micro', 'small', 'monthly', 'yearly')),
     number_of_days INTEGER NOT NULL CHECK (number_of_days > 0),
     working_hours INTEGER NOT NULL CHECK (working_hours > 0),
@@ -294,6 +298,8 @@ CREATE INDEX IF NOT EXISTS idx_quotations_deal_id ON quotations(deal_id);
 CREATE INDEX IF NOT EXISTS idx_quotations_status ON quotations(status);
 CREATE INDEX IF NOT EXISTS idx_quotations_order_type ON quotations(order_type);
 CREATE INDEX IF NOT EXISTS idx_quotations_created_by ON quotations(created_by);
+-- Index for quick lookups by primary equipment selection
+CREATE INDEX IF NOT EXISTS idx_quotations_primary_equipment ON quotations(primary_equipment_id);
 
 -- Create quotation machines junction table
 DROP TABLE IF EXISTS quotation_machines CASCADE;
@@ -521,6 +527,23 @@ VALUES ('quotation', '{
     "yearly": { "minDays": 366, "maxDays": 3650 }
   }
 }')
+ON CONFLICT (name) DO NOTHING;
+
+-- Insert default additionalParams config (incidental, rigger, helper, factors)
+INSERT INTO config (name, value)
+VALUES ('additionalParams', '{
+  "riggerAmount": 40000,
+  "helperAmount": 12000,
+  "incidentalOptions": [
+    {"value":"incident1","label":"Incident 1 - \u20b95,000","amount":5000},
+    {"value":"incident2","label":"Incident 2 - \u20b910,000","amount":10000},
+    {"value":"incident3","label":"Incident 3 - \u20b915,000","amount":15000}
+  ],
+  "usageFactors": {"normal":1.0,"medium":1.2,"heavy":1.5},
+  "riskFactors": {"low":0,"medium":8000,"high":15000},
+  "shiftFactors": {"single":1.0,"double":1.8},
+  "dayNightFactors": {"day":1.0,"night":1.3}
+}'::jsonb)
 ON CONFLICT (name) DO NOTHING;
 
 -- Create indexes for full text search on common search fields

@@ -46,29 +46,46 @@ export function calculateQuotationTotals(quotation: Quotation): QuotationCalcula
   // Prioritize database values over calculations
   const workingCost = quotation.workingCost || (quotation.totalRent || 0);
   
-  // Food & accommodation cost - use database value first
+  // Food & accommodation cost - use configured rates from quotation/resource configs if available
+  const foodRatePerMonth = (
+    // priority: quotation.resourceRates -> direct fields on quotation -> additionalParams
+    (quotation as any).resourceRates?.foodRatePerMonth ??
+    (quotation as any).foodRatePerMonth ??
+    (quotation as any).additionalParams?.foodRatePerMonth ??
+    2500
+  );
+  const accomRatePerMonth = (
+    (quotation as any).resourceRates?.accommodationRatePerMonth ??
+    (quotation as any).accommodationRatePerMonth ??
+    (quotation as any).additionalParams?.accommodationRatePerMonth ??
+    4000
+  );
+
+  // Convert monthly rates to per-day using 26 working days as in ResourceRatesConfig
+  const foodRatePerDay = Number(foodRatePerMonth) / 26;
+  const accomRatePerDay = Number(accomRatePerMonth) / 26;
+
   const foodAccomCost = quotation.foodAccomCost ?? (() => {
-    const foodRate = 2500;
-    const accomRate = 4000;
-    return ((quotation.foodResources || 0) * foodRate + 
-            (quotation.accomResources || 0) * accomRate) * 
+    return ((quotation.foodResources || 0) * foodRatePerDay + 
+            (quotation.accomResources || 0) * accomRatePerDay) * 
             (quotation.numberOfDays || 1);
   })();
-  
+
   console.log('🍽️ Food & Accom calculation:', {
     fromDatabase: quotation.foodAccomCost,
     finalValue: foodAccomCost,
     foodResources: quotation.foodResources || 0,
     accomResources: quotation.accomResources || 0,
     numberOfDays: quotation.numberOfDays || 1,
-    usingDatabaseValue: quotation.foodAccomCost !== undefined && quotation.foodAccomCost !== null
+    usingDatabaseValue: quotation.foodAccomCost !== undefined && quotation.foodAccomCost !== null,
+    rates: { foodRatePerMonth, accomRatePerMonth, foodRatePerDay, accomRatePerDay }
   });
-  
+
   const transportCost = (quotation.siteDistance || 0) * (quotation.runningCostPerKm || 100);
-  
+
   // Use database mob/demob cost first
   const mobDemobCost = quotation.mobDemobCost ?? (quotation.mobDemob || 0);
-  
+
   console.log('🚚 Transport & Mob/Demob:', {
     siteDistance: quotation.siteDistance || 0,
     runningCostPerKm: quotation.runningCostPerKm || 100,

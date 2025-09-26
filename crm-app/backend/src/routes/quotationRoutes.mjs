@@ -260,7 +260,7 @@ router.get('/:id', async (req, res) => {
     try {
       const quotationResult = await client.query(`
         SELECT q.*, c.name as customer_name, c.email as customer_email,
-               c.phone as customer_phone, c.company as customer_company,
+               c.phone as customer_phone, c.company_name as customer_company,
                c.address as customer_address, c.designation as customer_designation,
                d.title as deal_title
         FROM quotations q
@@ -498,49 +498,20 @@ router.post('/', authenticateToken, async (req, res) => {
       }
       
       const id = uuidv4();
-      
-      // Map frontend data to database schema
-      const orderTypeMapping = {
-        'rental': 'monthly',
-        'long_term_rental': 'yearly',
-        'project_rental': 'monthly',
-        'specialized_rental': 'monthly'
-      };
-      
-      const riskMapping = {
-        'Low': 'low',
-        'Medium': 'medium',
-        'High': 'high',
-        'Very High': 'high'
-      };
-      
-      // Incident mapping
-      const incidentAmounts = {
-        incident1: 5000,
-        incident2: 10000,
-        incident3: 15000
-      };
-      const incident1 = quotationData.incidentalCharges?.includes('incident1') ? incidentAmounts.incident1 : 0;
-      const incident2 = quotationData.incidentalCharges?.includes('incident2') ? incidentAmounts.incident2 : 0;
-      const incident3 = quotationData.incidentalCharges?.includes('incident3') ? incidentAmounts.incident3 : 0;
-      
-      // Calculate costs (simplified for now)
-      const totalCost = quotationData.totalCost || 100000;
-      const gstAmount = totalCost * 0.18;
-      const finalTotal = totalCost + gstAmount;
-      
-      const customerContact = {
-        name: quotationData.customerName,
-        email: quotationData.customerEmail || '',
-        phone: quotationData.customerPhone || '',
-        address: quotationData.customerAddress || '',
-        company: quotationData.customerName
-      };
-      
-      // Insert quotation
+
+      // Determine primary equipment and snapshot from payload
+      const primaryEquipmentId = (quotationData.selectedMachines && quotationData.selectedMachines.length > 0)
+        ? (quotationData.selectedMachines[0].id || quotationData.selectedMachines[0].equipmentId || null)
+        : (quotationData.selectedEquipment ? (quotationData.selectedEquipment.id || quotationData.selectedEquipment.equipmentId || null) : null);
+
+      const equipmentSnapshot = (quotationData.selectedMachines && quotationData.selectedMachines.length > 0)
+        ? JSON.stringify(quotationData.selectedMachines)
+        : (quotationData.selectedEquipment ? JSON.stringify([quotationData.selectedEquipment]) : JSON.stringify([]));
+
+      // Insert quotation (include primary_equipment_id and equipment_snapshot)
       const insertQuery = `
         INSERT INTO quotations (
-          id, customer_id, customer_name, machine_type, order_type, 
+          id, customer_id, customer_name, machine_type, primary_equipment_id, equipment_snapshot, order_type, 
           number_of_days, working_hours, food_resources, accom_resources,
           site_distance, usage, risk_factor, shift, day_night,
           mob_demob, mob_relaxation, extra_charge, other_factors_charge,
@@ -553,7 +524,7 @@ router.post('/', authenticateToken, async (req, res) => {
         ) VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
           $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26,
-          $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38
+          $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40
         )
       `;
       const values = [
@@ -561,6 +532,8 @@ router.post('/', authenticateToken, async (req, res) => {
         customerId,
         quotationData.customerName,
         quotationData.machineType,
+        primaryEquipmentId,
+        equipmentSnapshot,
         orderTypeMapping[quotationData.orderType] || 'monthly',
         quotationData.numberOfDays || 1,
         quotationData.workingHours || 8,
@@ -600,6 +573,44 @@ router.post('/', authenticateToken, async (req, res) => {
         (quotationData.otherFactors || []).includes('helper') ? (quotationData.helperAmount ?? defaultHelperAmount ?? null) : (quotationData.helperAmount !== undefined ? quotationData.helperAmount : null)
       ];
       await client.query(insertQuery, values);
+
+      // Persist selected machines / equipment into quotation_machines so the equipment selection is stored
+      try {
+        // If frontend provided an array of selected machines, insert them
+        if (quotationData.selectedMachines && Array.isArray(quotationData.selectedMachines) && quotationData.selectedMachines.length > 0) {
+          for (const m of quotationData.selectedMachines) {
+            const equipmentId = m.id || m.equipmentId || null;
+            if (!equipmentId) continue;
+            const quantity = m.quantity || 1;
+            const baseRate = (m.baseRate ?? m.base_rate ?? m.price ?? 0);
+            const runningCost = (m.runningCostPerKm ?? m.running_cost_per_km ?? 0);
+
+            await client.query(`
+              INSERT INTO quotation_machines (
+                quotation_id, equipment_id, quantity, base_rate, running_cost_per_km
+              ) VALUES ($1, $2, $3, $4, $5)
+            `, [id, equipmentId, quantity, baseRate, runningCost]);
+          }
+        } else if (quotationData.selectedEquipment) {
+          // Single selectedEquipment object fallback
+          const eq = quotationData.selectedEquipment;
+          const equipmentId = eq.id || eq.equipmentId || null;
+          if (equipmentId) {
+            const quantity = eq.quantity || 1;
+            const baseRate = (eq.baseRate ?? eq.base_rate ?? quotationData.workingCost ?? 0);
+            const runningCost = (eq.runningCostPerKm ?? eq.running_cost_per_km ?? 0);
+
+            await client.query(`
+              INSERT INTO quotation_machines (
+                quotation_id, equipment_id, quantity, base_rate, running_cost_per_km
+              ) VALUES ($1, $2, $3, $4, $5)
+            `, [id, equipmentId, quantity, baseRate, runningCost]);
+          }
+        }
+      } catch (mErr) {
+        // Log but don't fail the entire quotation creation if machine persistence fails
+        console.warn('[QuotationRoutes] Failed to persist selected machines:', mErr.message);
+      }
       
       return res.status(201).json({ 
         success: true,
@@ -738,8 +749,14 @@ router.put('/:id', async (req, res) => {
       // rigger/helper amounts: map presence in otherFactors or explicit amounts; default null
       const riggerAmountVal = (otherFactors || []).includes('rigger') ? (req.body.riggerAmount ?? defaultRiggerAmount ?? null) : (req.body.riggerAmount !== undefined ? req.body.riggerAmount : null);
       const helperAmountVal = (otherFactors || []).includes('helper') ? (req.body.helperAmount ?? defaultHelperAmount ?? null) : (req.body.helperAmount !== undefined ? req.body.helperAmount : null);
+
+      // Determine primary equipment and snapshot from payload for update
+      const updPrimaryEquipmentId = (selectedMachines && Array.isArray(selectedMachines) && selectedMachines.length > 0)
+        ? (selectedMachines[0].id || selectedMachines[0].equipmentId || null)
+        : null;
+      const updEquipmentSnapshot = selectedMachines && Array.isArray(selectedMachines) ? JSON.stringify(selectedMachines) : JSON.stringify([]);
       
-      // Update the main quotation record
+      // Update the main quotation record (added primary_equipment_id and equipment_snapshot)
       const result = await client.query(`
         UPDATE quotations
         SET
@@ -776,8 +793,10 @@ router.put('/:id', async (req, res) => {
           other_factors = $31,
           rigger_amount = $32,
           helper_amount = $33,
+          primary_equipment_id = $34,
+          equipment_snapshot = $35,
           updated_at = CURRENT_TIMESTAMP
-        WHERE id = $34
+        WHERE id = $36
         RETURNING *
       `, [
         customer_name,
@@ -813,6 +832,8 @@ router.put('/:id', async (req, res) => {
         JSON.stringify(otherFactors || []),
         riggerAmountVal,
         helperAmountVal,
+        updPrimaryEquipmentId,
+        updEquipmentSnapshot,
         id
       ]);
        
@@ -965,7 +986,7 @@ router.post('/print', authenticateToken, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ [QuotationRoutes] Print generation failed:', error);
+    console.error('❌ [QuotationRoutes] Print generation_FAILED:', error);
     console.error('❌ [QuotationRoutes] Error stack:', error.stack);
     res.status(500).json({
       success: false,
@@ -974,7 +995,6 @@ router.post('/print', authenticateToken, async (req, res) => {
     });
   }
 });
-
 
 
 /**
@@ -992,7 +1012,7 @@ async function getQuotationWithFullDetails(quotationId) {
         c.email as customer_email,
         c.phone as customer_phone,
         c.address as customer_address,
-        c.company as customer_company
+        c.company_name as customer_company
       FROM quotations q
       LEFT JOIN customers c ON q.customer_id = c.id
       WHERE q.id = $1 AND q.deleted_at IS NULL
@@ -1047,6 +1067,10 @@ async function getQuotationWithFullDetails(quotationId) {
         phone: '+91-XXXX-XXXX',
         email: 'info@aspcranes.com'
       },
+
+      // Include equipment selection persisted on quotation
+      primaryEquipmentId: quotation.primary_equipment_id || null,
+      equipmentSnapshot: quotation.equipment_snapshot ? (typeof quotation.equipment_snapshot === 'string' ? JSON.parse(quotation.equipment_snapshot) : quotation.equipment_snapshot) : [],
       
       items: itemsResult.rows || []
     };

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Settings, 
   FileText, 
@@ -16,6 +16,7 @@ import { ResourceRatesConfig } from '../components/config/ResourceRatesConfig';
 import { AdditionalParamsConfig } from '../components/config/AdditionalParamsConfig';
 import { DefaultTemplateConfig } from '../components/config/DefaultTemplateConfig';
 import { useAuthStore } from '../store/authStore';
+import { useConfigWithRefresh, useQuotationConfig, useResourceRatesConfig, useAdditionalParamsConfig } from '../store/configStore';
 
 const configTabs = [
   {
@@ -56,6 +57,25 @@ export function Config() {
   const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState('templates');
 
+  // Use config store to preload all configs from DB
+  const store = useConfigWithRefresh();
+  const quotationHook = useQuotationConfig();
+  const resourceHook = useResourceRatesConfig();
+  const additionalHook = useAdditionalParamsConfig();
+
+  useEffect(() => {
+    // Always ensure we have fresh values from DB when opening config page
+    (async () => {
+      try {
+        await store.ensureFreshConfig('quotation');
+        await store.ensureFreshConfig('resourceRates');
+        await store.ensureFreshConfig('additionalParams');
+      } catch (e) {
+        console.error('Error fetching configs on Config page mount', e);
+      }
+    })();
+  }, []); // run once on mount
+
   if (!user || (user.role !== 'admin' && user.role !== 'operations_manager')) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-50 via-blue-50 to-indigo-100 flex items-center justify-center">
@@ -73,6 +93,17 @@ export function Config() {
 
   const ActiveComponent = configTabs.find(tab => tab.id === activeTab)?.component || DefaultTemplateConfig;
   const activeTabData = configTabs.find(tab => tab.id === activeTab);
+
+  // Prepare props to pass down: current config values and update functions
+  const injectedProps = {
+    quotationConfig: quotationHook.orderTypeLimits ?? null,
+    resourceRatesConfig: resourceHook.config ?? null,
+    additionalParamsConfig: additionalHook.config ?? null,
+    // update functions (if components want to use them)
+    updateQuotationConfig: quotationHook.updateConfig,
+    updateResourceRatesConfig: resourceHook.updateConfig,
+    updateAdditionalParamsConfig: additionalHook.updateConfig
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -213,7 +244,10 @@ export function Config() {
               {/* Content Body */}
               <div className="p-6">
                 <div className="min-h-[400px]">
-                  <ActiveComponent />
+                  { /* Render ActiveComponent and inject current config + update fns */ }
+                  {ActiveComponent && (
+                    React.createElement(ActiveComponent, injectedProps)
+                  )}
                 </div>
               </div>
             </div>

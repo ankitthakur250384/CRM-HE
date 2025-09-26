@@ -634,10 +634,42 @@ export function QuotationCreation() {
     });
 
     // Food & Accommodation costs
-    const foodRate = resourceRates?.foodRate;
-    const accomRate = resourceRates?.accommodationRate;
-    const foodCost = foodRate ? (formData.foodResources || 0) * foodRate * numberOfDays : 0;
-    const accomCost = accomRate ? (formData.accomResources || 0) * accomRate * numberOfDays : 0;
+    // Resolve daily rate with priority: additionalParams daily -> resourceRates daily -> additionalParams monthly -> resourceRates monthly -> defaults
+    const resolveDailyRate = (dailyFieldName, monthlyFieldName, defaultMonthly) => {
+      // dailyFieldName and monthlyFieldName are just hints; we access known properties
+      if (additionalParams && (additionalParams.foodRate !== undefined || additionalParams.accommodationRate !== undefined)) {
+        // check specific keys on additionalParams
+      }
+      // try additionalParams daily
+      if (additionalParams?.foodRate !== undefined || additionalParams?.accommodationRate !== undefined) {
+        // handled below per-call
+      }
+
+      return null;
+    };
+
+    const resolvedFoodDaily = (() => {
+      // additionalParams may store either a daily rate (foodRate) or monthly (foodRatePerMonth)
+      if (additionalParams?.foodRate !== undefined && additionalParams.foodRate !== null) return Number(additionalParams.foodRate);
+      if (resourceRates?.foodRate !== undefined && resourceRates.foodRate !== null) return Number(resourceRates.foodRate);
+      if (additionalParams?.foodRatePerMonth !== undefined && additionalParams.foodRatePerMonth !== null) return Number(additionalParams.foodRatePerMonth) / 26;
+      if (resourceRates?.foodRatePerMonth !== undefined && resourceRates.foodRatePerMonth !== null) return Number(resourceRates.foodRatePerMonth) / 26;
+      // fallback default monthly 2500 -> per day
+      return 2500 / 26;
+    })();
+
+    const resolvedAccomDaily = (() => {
+      if (additionalParams?.accommodationRate !== undefined && additionalParams.accommodationRate !== null) return Number(additionalParams.accommodationRate);
+      if (resourceRates?.accommodationRate !== undefined && resourceRates.accommodationRate !== null) return Number(resourceRates.accommodationRate);
+      if (additionalParams?.accommodationRatePerMonth !== undefined && additionalParams.accommodationRatePerMonth !== null) return Number(additionalParams.accommodationRatePerMonth) / 26;
+      if (resourceRates?.accommodationRatePerMonth !== undefined && resourceRates.accommodationRatePerMonth !== null) return Number(resourceRates.accommodationRatePerMonth) / 26;
+      return 4000 / 26;
+    })();
+
+    const foodRate = resolvedFoodDaily;
+    const accomRate = resolvedAccomDaily;
+    const foodCost = (formData.foodResources || 0) * foodRate * numberOfDays;
+    const accomCost = (formData.accomResources || 0) * accomRate * numberOfDays;
     const foodAccomCost = foodCost + accomCost;
 
     console.log("🍽️ Food & Accommodation:", {
@@ -649,7 +681,8 @@ export function QuotationCreation() {
       foodCost,
       accomCost,
       foodAccomCost,
-      resourceRates
+      resourceRates,
+      additionalParams
     });
 
     // Mobilization/Demobilization costs
