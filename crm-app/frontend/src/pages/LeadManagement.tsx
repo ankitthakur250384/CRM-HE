@@ -736,17 +736,18 @@ export function LeadManagement() {
                           >
                             Edit
                           </Button>
-                          {lead.status === 'qualified' && (
+                          
                             <Button
                               variant="outline"
                               size="sm"
                               onClick={() => handleConvertToDeal(lead)}
                               leftIcon={<ArrowRight size={16} />}
-                              className="hover:bg-blue-50 hover:border-blue-300"
+                              disabled={lead.status !== 'qualified'}
+                              className={`hover:bg-blue-50 hover:border-blue-300 ${lead.status !== 'qualified' ? 'opacity-50 cursor-not-allowed' : ''
+                              }`}
                             >
                               Convert to Deal
                             </Button>
-                          )}
                         </div>
                       </td>
                     </tr>

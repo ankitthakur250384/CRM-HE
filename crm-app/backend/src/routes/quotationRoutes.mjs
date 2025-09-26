@@ -260,7 +260,7 @@ router.get('/:id', async (req, res) => {
     try {
       const quotationResult = await client.query(`
         SELECT q.*, c.name as customer_name, c.email as customer_email,
-               c.phone as customer_phone, c.company as customer_company,
+               c.phone as customer_phone, c.company_name as customer_company,
                c.address as customer_address, c.designation as customer_designation,
                d.title as deal_title
         FROM quotations q
@@ -501,10 +501,10 @@ router.post('/', authenticateToken, async (req, res) => {
       
       // Map frontend data to database schema
       const orderTypeMapping = {
-        'rental': 'monthly',
-        'long_term_rental': 'yearly',
-        'project_rental': 'monthly',
-        'specialized_rental': 'monthly'
+       // 'rental': 'monthly',
+        //'long_term_rental': 'yearly',
+        //'project_rental': 'monthly',
+        //'specialized_rental': 'monthly'
       };
       
       const riskMapping = {
@@ -561,12 +561,12 @@ router.post('/', authenticateToken, async (req, res) => {
         customerId,
         quotationData.customerName,
         quotationData.machineType,
-        orderTypeMapping[quotationData.orderType] || 'monthly',
+        quotationData.orderType,
         quotationData.numberOfDays || 1,
         quotationData.workingHours || 8,
         // Store numeric counts for food and accommodation provided
-        quotationData.foodResources || 0,
-        quotationData.accomResources || 0,
+        quotationData.foodResources ?? 0,
+        quotationData.accomResources ?? 0,
         quotationData.siteDistance || 0,
         'normal', // usage (will be enhanced later)
         riskMapping[quotationData.riskFactor] || 'medium',

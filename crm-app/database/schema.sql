@@ -116,6 +116,7 @@ CREATE TABLE leads (
     company_name VARCHAR(100),
     email VARCHAR(255) NOT NULL CHECK (email ~* '^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$'),
     phone VARCHAR(20) NOT NULL,
+    address VARCHAR(255),
     service_needed TEXT NOT NULL,
     site_location TEXT NOT NULL,
     start_date DATE NOT NULL,
