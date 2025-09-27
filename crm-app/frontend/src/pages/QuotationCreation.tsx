@@ -1308,32 +1308,45 @@ export function QuotationCreation() {
                                     </div>
                                   </div>
 
-                                  {/* Rate */}
-                                  <div className="space-y-2">
-                                    <label className="block text-xs font-medium text-gray-700 uppercase tracking-wider">
-                                      Rate{getRateUnit(formData.orderType)}
-                                    </label>
-                                    <div className="relative">
-                                      <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">₹</span>
-                                      <input
-                                        type="number"
-                                        value={machine.baseRate}
-                                        onChange={(e) => {
-                                          const baseRate = Math.max(0, parseFloat(e.target.value) || 0);
-                                          setFormData(prev => ({
-                                            ...prev,
-                                            selectedMachines: prev.selectedMachines.map((m, i) => 
-                                              i === index ? { ...m, baseRate } : m
-                                            )
-                                          }));
-                                        }}
-                                        className="w-full pl-6 pr-2 py-1 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                                        min="0"
-                                        step="100"
-                                        placeholder="0"
-                                      />
-                                    </div>
-                                  </div>
+                                        {/* Rate */}
+                                        <div className="space-y-2">
+                                            <label className="block text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                                Rate {getRateUnit(formData.orderType)} {/* ✅ Shows unit like per hour/month based on orderType */}
+                                            </label>
+                                            <div className="relative">
+                                                {/* ₹ symbol prefix */}
+                                                <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">₹</span>
+
+                                                <input
+                                                    type="number"
+                                                    min="1" // ✅ Changed from 0 to 1 to prevent zero or negative rates
+                                                    step="1" // ✅ Changed from 100 to 1 to allow flexible input like ₹4, ₹9, ₹150
+                                                    value={
+                                                        machine.baseRate !== undefined
+                                                            ? machine.baseRate
+                                                            : machine.baseRates?.[formData.orderType] ?? ''
+                                                    } // ✅ Uses correct rate from config if not manually set
+
+                                                    onChange={(e) => {
+                                                        const baseRate = parseFloat(e.target.value); // ✅ Removed Math.max(0, ...) to avoid silent clamping
+                                                        if (!isNaN(baseRate) && baseRate > 0) {
+                                                            setFormData(prev => ({
+                                                                ...prev,
+                                                                selectedMachines: prev.selectedMachines.map((m, i) =>
+                                                                    i === index ? { ...m, baseRate } : m
+                                                                )
+                                                            }));
+                                                        } else {
+                                                            showToast('Please enter a valid rate above ₹0', 'error'); // ✅ Optional feedback for invalid input
+                                                        }
+                                                    }}
+
+                                                    className="w-full pl-6 pr-2 py-1 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                                    placeholder={`Rate ${getRateUnit(formData.orderType)}`} // ✅ Dynamic placeholder based on orderType
+                                                />
+                                            </div>
+                                        </div>
+
 
                                   {/* Subtotal */}
                                   <div className="space-y-2">
