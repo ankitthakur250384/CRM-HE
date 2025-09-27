@@ -114,6 +114,7 @@ export function QuotationCreation() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedEquipmentBaseRate, setSelectedEquipmentBaseRate] = useState<number>(0);
+  const [isLoadingExistingData, setIsLoadingExistingData] = useState(false);
 
   const [toast, setToast] = useState<{
     show: boolean;
@@ -196,9 +197,11 @@ export function QuotationCreation() {
 
   useConfigChangeListener('quotationConfigUpdated', (detail) => {
     console.log('Quotation configuration updated, checking order type...', detail);
-    if (formData.numberOfDays > 0) {
+    // Only auto-update order type if we're not loading existing quotation data AND config is available
+    if (formData.numberOfDays > 0 && !isLoadingExistingData && quotationConfig?.orderTypeLimits) {
       const newOrderType = determineOrderType(formData.numberOfDays);
       if (newOrderType !== formData.orderType) {
+        console.log('[QuotationCreation] Auto-updating order type from config change:', newOrderType);
         setFormData(prev => ({ ...prev, orderType: newOrderType }));
       }
     }
@@ -363,24 +366,30 @@ export function QuotationCreation() {
           console.log('[QuotationCreation] Full quotation data received:', quotationToLoad);
           console.log('[QuotationCreation] Customer data:', quotationToLoad.customerContact);
           console.log('[QuotationCreation] Working hours:', quotationToLoad.workingHours);
+          console.log('[QuotationCreation] Number of days:', quotationToLoad.numberOfDays);
+          console.log('[QuotationCreation] Order type:', quotationToLoad.orderType);
           console.log('[QuotationCreation] Food resources:', quotationToLoad.foodResources);
           
+          // Set loading flag to prevent auto-calculations from overriding loaded data
+          setIsLoadingExistingData(true);
+          
+          // Use proper null/undefined checks instead of || operator for numeric values
           const updatedFormData = {
             ...formData,
             machineType: quotationToLoad.machineType || '',
             selectedEquipment: quotationToLoad.selectedEquipment || formData.selectedEquipment,
             selectedMachines: quotationToLoad.selectedMachines || [],
             orderType: quotationToLoad.orderType || 'micro',
-            numberOfDays: quotationToLoad.numberOfDays || 0,
-            workingHours: quotationToLoad.workingHours || 8,
-            foodResources: quotationToLoad.foodResources || 0,
-            accomResources: quotationToLoad.accomResources || 0,
-            siteDistance: quotationToLoad.siteDistance || 0,
+            numberOfDays: quotationToLoad.numberOfDays !== null && quotationToLoad.numberOfDays !== undefined ? quotationToLoad.numberOfDays : 0,
+            workingHours: quotationToLoad.workingHours !== null && quotationToLoad.workingHours !== undefined ? quotationToLoad.workingHours : 8,
+            foodResources: quotationToLoad.foodResources !== null && quotationToLoad.foodResources !== undefined ? quotationToLoad.foodResources : 0,
+            accomResources: quotationToLoad.accomResources !== null && quotationToLoad.accomResources !== undefined ? quotationToLoad.accomResources : 0,
+            siteDistance: quotationToLoad.siteDistance !== null && quotationToLoad.siteDistance !== undefined ? quotationToLoad.siteDistance : 0,
             usage: quotationToLoad.usage || 'normal',
             riskFactor: quotationToLoad.riskFactor || 'low',
-            extraCharge: quotationToLoad.extraCharge || 0,
+            extraCharge: quotationToLoad.extraCharge !== null && quotationToLoad.extraCharge !== undefined ? quotationToLoad.extraCharge : 0,
             incidentalCharges: quotationToLoad.incidentalCharges || [],
-            otherFactorsCharge: quotationToLoad.otherFactorsCharge || 0,
+            otherFactorsCharge: quotationToLoad.otherFactorsCharge !== null && quotationToLoad.otherFactorsCharge !== undefined ? quotationToLoad.otherFactorsCharge : 0,
             billing: quotationToLoad.billing || 'gst',
             includeGst: quotationToLoad.includeGst !== undefined ? quotationToLoad.includeGst : true,
             shift: quotationToLoad.shift || 'single',
@@ -417,10 +426,20 @@ export function QuotationCreation() {
             numberOfDays: updatedFormData.numberOfDays,
             workingHours: updatedFormData.workingHours,
             foodResources: updatedFormData.foodResources,
+            orderType: updatedFormData.orderType,
             customerName: updatedFormData.customerName,
             customerContact: updatedFormData.customerContact
           });
+          
+          console.log('[QuotationCreation] Before setFormData - Current formData:', {
+            numberOfDays: formData.numberOfDays,
+            workingHours: formData.workingHours,
+            orderType: formData.orderType
+          });
+          
           setFormData(updatedFormData);
+          
+          console.log('[QuotationCreation] After setFormData call completed');
 
           // If we have calculations from the loaded quotation, use them to set initial state
           if (quotationToLoad.calculations) {
@@ -440,6 +459,10 @@ export function QuotationCreation() {
           setTimeout(() => {
             console.log('[QuotationCreation] Forcing recalculation after data load');
             calculateQuotation();
+            // Clear the loading flag after a short delay to allow auto-calculations again
+            setTimeout(() => {
+              setIsLoadingExistingData(false);
+            }, 500);
           }, 100);
 
           if (!dealData && quotationToLoad.dealId) {
@@ -512,16 +535,28 @@ export function QuotationCreation() {
   };
 
   const determineOrderType = (days: number): OrderType => {
-    if (!quotationConfig?.orderTypeLimits) return 'micro';
+    console.log('[determineOrderType] Called with days:', days, 'configLoaded:', !!quotationConfig?.orderTypeLimits);
+    
+    if (!quotationConfig?.orderTypeLimits) {
+      console.log('[determineOrderType] Config not loaded, returning micro fallback');
+      return 'micro';
+    }
     
     const limits = quotationConfig.orderTypeLimits;
-    if (days <= 0) return 'micro';
+    if (days <= 0) {
+      console.log('[determineOrderType] Invalid days (<=0), returning micro');
+      return 'micro';
+    }
     
     // Check in correct order: micro -> small -> monthly -> yearly
-    if (days <= limits.micro.maxDays) return 'micro';
-    if (days <= limits.small.maxDays) return 'small';
-    if (days <= limits.monthly.maxDays) return 'monthly';
-    return 'yearly';
+    let result: OrderType;
+    if (days <= limits.micro.maxDays) result = 'micro';
+    else if (days <= limits.small.maxDays) result = 'small';
+    else if (days <= limits.monthly.maxDays) result = 'monthly';
+    else result = 'yearly';
+    
+    console.log('[determineOrderType] Result for', days, 'days:', result, 'limits:', limits);
+    return result;
   };
 
   const calculateQuotation = () => {
@@ -1059,10 +1094,22 @@ export function QuotationCreation() {
                     style={{ color: '#1a202c', WebkitTextFillColor: '#1a202c' }}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                       const days = e.target.value === '' ? 0 : Number(e.target.value);
-                      const newOrderType = determineOrderType(days);
                       
                       setFormData(prev => {
-                        const orderTypeChanged = days > 0 && newOrderType !== prev.orderType;
+                        // Only auto-update order type if not loading existing data AND config is loaded
+                        const shouldAutoUpdateOrderType = !isLoadingExistingData && days > 0 && quotationConfig?.orderTypeLimits;
+                        const newOrderType = shouldAutoUpdateOrderType ? determineOrderType(days) : prev.orderType;
+                        const orderTypeChanged = shouldAutoUpdateOrderType && newOrderType !== prev.orderType;
+                        
+                        console.log('[QuotationCreation] numberOfDays onChange:', {
+                          days,
+                          isLoadingExistingData,
+                          shouldAutoUpdateOrderType,
+                          currentOrderType: prev.orderType,
+                          newOrderType,
+                          orderTypeChanged
+                        });
+                        
                         let updatedMachines = [...prev.selectedMachines];
                         if (orderTypeChanged) {
                           updatedMachines = prev.selectedMachines.map(machine => {
@@ -1085,7 +1132,7 @@ export function QuotationCreation() {
                         return {
                           ...prev,
                           numberOfDays: days,
-                          orderType: days > 0 ? newOrderType : prev.orderType,
+                          orderType: newOrderType,
                           selectedMachines: updatedMachines
                         };
                       });
