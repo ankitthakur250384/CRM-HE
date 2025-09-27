@@ -329,6 +329,14 @@ router.get('/:id', async (req, res) => {
         notes: quotation.notes,
         createdAt: quotation.created_at,
         updatedAt: quotation.updated_at,
+        // New fields from schema migration
+        primaryEquipmentId: quotation.primary_equipment_id,
+        equipmentSnapshot: quotation.equipment_snapshot,
+        incident1: quotation.incident1,
+        incident2: quotation.incident2,
+        incident3: quotation.incident3,
+        riggerAmount: quotation.rigger_amount,
+        helperAmount: quotation.helper_amount,
         calculations: {
           baseRate: 0, // Will be calculated on frontend
           totalHours: quotation.working_hours * quotation.number_of_days,
@@ -488,10 +496,10 @@ router.post('/', authenticateToken, async (req, res) => {
         'Very High': 'high'
       };
       
-      // Calculate costs (simplified for now)
-      const totalCost = quotationData.totalCost || 100000;
-      const gstAmount = totalCost * 0.18;
-      const finalTotal = totalCost + gstAmount;
+      // Use calculated costs from frontend or defaults
+      const totalCost = quotationData.totalCost || quotationData.calculations?.totalAmount || 100000;
+      const gstAmount = quotationData.gstAmount || quotationData.calculations?.gstAmount || (totalCost * 0.18);
+      const finalTotal = quotationData.totalAmount || (totalCost + gstAmount);
       
       const customerContact = {
         name: quotationData.customerName,
@@ -510,12 +518,13 @@ router.post('/', authenticateToken, async (req, res) => {
           mob_demob, mob_relaxation, extra_charge, other_factors_charge,
           billing, include_gst, sunday_working, customer_contact,
           total_rent, total_cost, working_cost, mob_demob_cost,
-          food_accom_cost, gst_amount, created_by, status, notes,
-          deal_id, lead_id
+          food_accom_cost, risk_adjustment, usage_load_factor, gst_amount, created_by, status, notes,
+          deal_id, lead_id, primary_equipment_id, equipment_snapshot,
+          incident1, incident2, incident3, rigger_amount, helper_amount
         ) VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
           $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26,
-          $27, $28, $29, $30, $31, $32, $33
+          $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42
         )
       `;
       const values = [
@@ -543,16 +552,26 @@ router.post('/', authenticateToken, async (req, res) => {
         JSON.stringify(customerContact),
         totalCost,
         finalTotal,
-        totalCost * 0.8, // working_cost
-        15000, // mob_demob_cost
-        quotationData.foodResources === 'ASP Provided' || quotationData.accomResources === 'ASP Provided' ? 
-          (quotationData.numberOfDays || 1) * 6500 : 0, // food_accom_cost
+        quotationData.workingCost || quotationData.calculations?.workingCost || (totalCost * 0.8), // working_cost
+        quotationData.mobDemobCost || quotationData.calculations?.mobDemobCost || 15000, // mob_demob_cost
+        quotationData.foodAccomCost || quotationData.calculations?.foodAccomCost || 
+          (quotationData.foodResources === 'ASP Provided' || quotationData.accomResources === 'ASP Provided' ? 
+          (quotationData.numberOfDays || 1) * 6500 : 0), // food_accom_cost
+        quotationData.riskAdjustment || quotationData.calculations?.riskAdjustment || 0, // risk_adjustment
+        quotationData.usageLoadFactor || quotationData.calculations?.usageLoadFactor || 0, // usage_load_factor
         gstAmount,
         req.user.id, // created_by (will be replaced with actual user)
         'draft',
         quotationData.notes || '',
         quotationData.dealId || null,
-        quotationData.leadId || null
+        quotationData.leadId || null,
+        quotationData.primaryEquipmentId || null, // primary_equipment_id
+        quotationData.equipmentSnapshot ? JSON.stringify(quotationData.equipmentSnapshot) : null, // equipment_snapshot
+        quotationData.incident1 || null, // incident1
+        quotationData.incident2 || null, // incident2
+        quotationData.incident3 || null, // incident3
+        quotationData.riggerAmount || 0, // rigger_amount
+        quotationData.helperAmount || 0  // helper_amount
       ];
       await client.query(insertQuery, values);
       
@@ -655,15 +674,13 @@ router.put('/:id', async (req, res) => {
       accom_resources,
       mob_demob,
       mob_relaxation,
-      extra_charges,
+      extra_charge,
+      other_factors_charge,
       working_cost,
       mob_demob_cost,
       food_accom_cost,
       risk_adjustment,
       usage_load_factor,
-      incidental_total,
-      other_factors_total,
-      subtotal,
       gst_amount,
       total_rent,
       total_cost,
@@ -671,7 +688,18 @@ router.put('/:id', async (req, res) => {
       status,
       selectedMachines,
       incidentalCharges,
-      otherFactors
+      otherFactors,
+      // New fields from schema migration
+      primary_equipment_id,
+      equipment_snapshot,
+      incident1,
+      incident2,
+      incident3,
+      rigger_amount,
+      helper_amount,
+      billing,
+      include_gst,
+      sunday_working
     } = req.body;
 
     const client = await pool.connect();
@@ -696,24 +724,32 @@ router.put('/:id', async (req, res) => {
           accom_resources = $13,
           mob_demob = $14,
           mob_relaxation = $15,
-          extra_charges = $16,
-          working_cost = $17,
-          mob_demob_cost = $18,
-          food_accom_cost = $19,
-          risk_adjustment = $20,
-          usage_load_factor = $21,
-          incidental_total = $22,
-          other_factors_total = $23,
-          subtotal = $24,
-          gst_amount = $25,
-          total_rent = $26,
-          total_cost = $27,
-          notes = $28,
-          status = $29,
-          incidental_charges = $30,
-          other_factors = $31,
+          extra_charge = $16,
+          other_factors_charge = $17,
+          working_cost = $18,
+          mob_demob_cost = $19,
+          food_accom_cost = $20,
+          risk_adjustment = $21,
+          usage_load_factor = $22,
+          gst_amount = $23,
+          total_rent = $24,
+          total_cost = $25,
+          notes = $26,
+          status = $27,
+          incidental_charges = $28,
+          other_factors = $29,
+          billing = $30,
+          include_gst = $31,
+          sunday_working = $32,
+          primary_equipment_id = $33,
+          equipment_snapshot = $34,
+          incident1 = $35,
+          incident2 = $36,
+          incident3 = $37,
+          rigger_amount = $38,
+          helper_amount = $39,
           updated_at = CURRENT_TIMESTAMP
-        WHERE id = $32
+        WHERE id = $40
         RETURNING *
       `, [
         customer_name,
@@ -731,15 +767,13 @@ router.put('/:id', async (req, res) => {
         accom_resources,
         mob_demob,
         mob_relaxation,
-        extra_charges,
+        extra_charge,
+        other_factors_charge,
         working_cost,
         mob_demob_cost,
         food_accom_cost,
         risk_adjustment,
         usage_load_factor,
-        incidental_total,
-        other_factors_total,
-        subtotal,
         gst_amount,
         total_rent,
         total_cost,
@@ -747,6 +781,16 @@ router.put('/:id', async (req, res) => {
         status || 'draft',
         JSON.stringify(incidentalCharges || []),
         JSON.stringify(otherFactors || []),
+        billing,
+        include_gst,
+        sunday_working,
+        primary_equipment_id,
+        JSON.stringify(equipment_snapshot),
+        incident1,
+        incident2,
+        incident3,
+        rigger_amount,
+        helper_amount,
         id
       ]);
       

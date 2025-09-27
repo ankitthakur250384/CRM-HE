@@ -80,14 +80,15 @@ export function calculateQuotationTotals(quotation: Quotation): QuotationCalcula
   
   // Use database risk adjustment first
   const riskAdjustment = quotation.riskAdjustment ?? (() => {
-    if (quotation.riskFactor === 'high') return 15000;
-    if (quotation.riskFactor === 'medium') return 8000;
+    // Calculate risk as percentage of working cost
+    if (quotation.riskFactor === 'high') return Math.round(workingCost * 0.20); // 20%
+    if (quotation.riskFactor === 'medium') return Math.round(workingCost * 0.10); // 10%
     return 0;
   })();
   
   // Use database usage load factor first
   const usageLoadFactor = quotation.usageLoadFactor ?? (() => {
-    if (quotation.usage === 'heavy') return Math.round(workingCost * 0.5);
+    if (quotation.usage === 'heavy') return Math.round(workingCost * 0.50); // 50%
     return 0;
   })();
   

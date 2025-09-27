@@ -92,7 +92,7 @@ interface ConfigState {
 // Fallbacks for first load or error only
 const DEFAULT_QUOTATION_CONFIG: QuotationConfig = { orderTypeLimits: { micro: { minDays: 1, maxDays: 10 }, small: { minDays: 11, maxDays: 25 }, monthly: { minDays: 26, maxDays: 365 }, yearly: { minDays: 366, maxDays: 3650 } } };
 const DEFAULT_RESOURCE_RATES: ResourceRatesConfig = { foodRate: 2500, accommodationRate: 4000, transportRate: 0 };
-const DEFAULT_ADDITIONAL_PARAMS: AdditionalParamsConfig = { riggerAmount: 40000, helperAmount: 12000, incidentalOptions: [ { value: "incident1", label: "Incident 1 - ₹5,000", amount: 5000 }, { value: "incident2", label: "Incident 2 - ₹10,000", amount: 10000 }, { value: "incident3", label: "Incident 3 - ₹15,000", amount: 15000 } ], usageFactors: { normal: 1.0, medium: 1.2, heavy: 1.5 }, riskFactors: { low: 0, medium: 8000, high: 15000 }, shiftFactors: { single: 1.0, double: 1.8 }, dayNightFactors: { day: 1.0, night: 1.3 } };
+const DEFAULT_ADDITIONAL_PARAMS: AdditionalParamsConfig = { riggerAmount: 40000, helperAmount: 12000, incidentalOptions: [ { value: "incident1", label: "Incident 1 - ₹5,000", amount: 5000 }, { value: "incident2", label: "Incident 2 - ₹10,000", amount: 10000 }, { value: "incident3", label: "Incident 3 - ₹15,000", amount: 15000 } ], usageFactors: { normal: 0, medium: 20, heavy: 50 }, riskFactors: { low: 0, medium: 10, high: 20 }, shiftFactors: { single: 0, double: 80 }, dayNightFactors: { day: 0, night: 30 } };
 
 const CONFIG_CACHE_TIME = 5 * 60 * 1000; // 5 minutes
 

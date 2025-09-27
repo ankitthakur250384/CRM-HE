@@ -10,22 +10,22 @@ export function AdditionalParamsConfig() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);  const [params, setParams] = useState({
     usageFactors: {
-      normal: 1.0,
-      medium: 1.2,
-      heavy: 1.5
+      normal: 0,
+      medium: 20,
+      heavy: 50
     },
     riskFactors: {
       low: 0,
-      medium: 8000,
-      high: 15000
+      medium: 10,
+      high: 20
     },
     shiftFactors: {
-      single: 1.0,
-      double: 1.8
+      single: 0,
+      double: 80
     },
     dayNightFactors: {
-      day: 1.0,
-      night: 1.3
+      day: 0,
+      night: 30
     }
   });
 

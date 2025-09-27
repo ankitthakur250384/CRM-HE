@@ -573,9 +573,9 @@ export function QuotationCreation() {
     let shiftMultiplier = 1;
     if (additionalParams?.shiftFactors) {
       if (formData.shift === 'single') {
-        shiftMultiplier = additionalParams.shiftFactors.single;
+        shiftMultiplier = 1 + (additionalParams.shiftFactors.single / 100);
       } else if (formData.shift === 'double') {
-        shiftMultiplier = additionalParams.shiftFactors.double;
+        shiftMultiplier = 1 + (additionalParams.shiftFactors.double / 100);
       }
     }
     workingCost = workingCost * shiftMultiplier;
@@ -584,9 +584,9 @@ export function QuotationCreation() {
     let timeMultiplier = 1;
     if (additionalParams?.dayNightFactors) {
       if (formData.dayNight === 'day') {
-        timeMultiplier = additionalParams.dayNightFactors.day;
+        timeMultiplier = 1 + (additionalParams.dayNightFactors.day / 100);
       } else if (formData.dayNight === 'night') {
-        timeMultiplier = additionalParams.dayNightFactors.night;
+        timeMultiplier = 1 + (additionalParams.dayNightFactors.night / 100);
       }
     }
     workingCost = workingCost * timeMultiplier;
@@ -689,8 +689,9 @@ export function QuotationCreation() {
       baseForRiskCalc
     });
 
-    const riskAdjustment = baseForRiskCalc * riskPercentage;
-    const usageLoadFactor = baseForRiskCalc * usagePercentage;
+    // Convert percentages to decimal multipliers (e.g., 15% = 0.15)
+    const riskAdjustment = baseForRiskCalc * (riskPercentage / 100);
+    const usageLoadFactor = baseForRiskCalc * (usagePercentage / 100);
 
     // Additional charges
     const extraCharges = Number(formData.extraCharge) || 0;
