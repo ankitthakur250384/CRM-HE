@@ -93,6 +93,7 @@ interface QuotationFormState extends QuotationInputs {
   };
 }
 
+// Enhanced UI v2.0 - Clean design with inline custom amounts - Updated 2025
 export function QuotationCreation() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
@@ -1461,178 +1462,181 @@ export function QuotationCreation() {
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Incidental Charges</label>
-                    <div className="space-y-2">
-                      {additionalParams?.incidentalOptions?.map(option => (
-                        <label key={option.value} className="flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={formData.incidentalCharges.includes(option.value)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setFormData(prev => ({
-                                  ...prev,
-                                  incidentalCharges: [...prev.incidentalCharges, option.value]
-                                }));
-                              } else {
-                                setFormData(prev => ({
-                                  ...prev,
-                                  incidentalCharges: prev.incidentalCharges.filter(val => val !== option.value)
-                                }));
-                              }
-                            }}
-                            className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                          />
-                          <span className="text-sm text-gray-700">{option.label}</span>
-                        </label>
-                      ))}
+                    <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                      {additionalParams?.incidentalOptions?.map(option => {
+                        const isSelected = formData.incidentalCharges.includes(option.value);
+                        const customAmountKey = option.value as 'incident1' | 'incident2' | 'incident3';
+                        const customAmount = formData.customIncidentAmounts?.[customAmountKey];
+                        const displayAmount = customAmount ?? option.amount;
+                        
+                        return (
+                          <div key={option.value} className={`rounded-md border-2 p-3 transition-all duration-200 ${
+                            isSelected ? 'border-blue-200 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'
+                          }`}>
+                            <div className="flex items-center justify-between">
+                              <label className="flex items-center cursor-pointer flex-1">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        incidentalCharges: [...prev.incidentalCharges, option.value]
+                                      }));
+                                    } else {
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        incidentalCharges: prev.incidentalCharges.filter(val => val !== option.value)
+                                      }));
+                                    }
+                                  }}
+                                  className="mr-3 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                />
+                                <div className="flex-1">
+                                  <div className="text-sm font-medium text-gray-900">
+                                    {option.label.split(' - ')[0]}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    Default: ₹{option.amount?.toLocaleString('en-IN')}
+                                  </div>
+                                </div>
+                              </label>
+                              
+                              {isSelected && (
+                                <div className="ml-4 flex items-center gap-2">
+                                  <span className="text-xs text-gray-600 whitespace-nowrap">Custom:</span>
+                                  <input
+                                    type="number"
+                                    value={customAmount ?? ''}
+                                    onChange={(e) => {
+                                      const value = e.target.value === '' ? null : Number(e.target.value);
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        customIncidentAmounts: {
+                                          ...prev.customIncidentAmounts,
+                                          [customAmountKey]: value
+                                        }
+                                      }));
+                                    }}
+                                    placeholder={`${option.amount}`}
+                                    className="w-24 px-2 py-1 text-xs border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                                    min="0"
+                                  />
+                                </div>
+                              )}
+                            </div>
+                            
+                            {isSelected && (
+                              <div className="mt-2 pt-2 border-t border-gray-200">
+                                <div className="text-xs font-medium text-blue-700">
+                                  Amount Applied: ₹{displayAmount?.toLocaleString('en-IN')}
+                                  {customAmount && customAmount !== option.amount && (
+                                    <span className="ml-1 text-green-600">(Custom)</span>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Other Factors</label>
-                    <div className="space-y-2">
-                      {OTHER_FACTORS.map(factor => (
-                        <label key={factor.value} className="flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={formData.otherFactors.includes(factor.value)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setFormData(prev => ({
-                                  ...prev,
-                                  otherFactors: [...prev.otherFactors, factor.value]
-                                }));
-                              } else {
-                                setFormData(prev => ({
-                                  ...prev,
-                                  otherFactors: prev.otherFactors.filter(val => val !== factor.value)
-                                }));
-                              }
-                            }}
-                            className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                          />
-                          <span className="text-sm text-gray-700">
-                            {factor.label}
-                            {factor.value === 'rigger' && ` (₹${(formData.customRiggerAmount ?? additionalParams?.riggerAmount)?.toLocaleString('en-IN')})`}
-                            {factor.value === 'helper' && ` (₹${(formData.customHelperAmount ?? additionalParams?.helperAmount)?.toLocaleString('en-IN')})`}
-                          </span>
-                        </label>
-                      ))}
+                    <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                      {OTHER_FACTORS.map(factor => {
+                        const isSelected = formData.otherFactors.includes(factor.value);
+                        const isRigger = factor.value === 'rigger';
+                        const isHelper = factor.value === 'helper';
+                        const defaultAmount = isRigger ? additionalParams?.riggerAmount : 
+                                            isHelper ? additionalParams?.helperAmount : null;
+                        const customAmount = isRigger ? formData.customRiggerAmount : 
+                                           isHelper ? formData.customHelperAmount : null;
+                        const displayAmount = customAmount ?? defaultAmount;
+                        
+                        return (
+                          <div key={factor.value} className={`rounded-md border-2 p-3 transition-all duration-200 ${
+                            isSelected ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-white hover:border-gray-300'
+                          }`}>
+                            <div className="flex items-center justify-between">
+                              <label className="flex items-center cursor-pointer flex-1">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        otherFactors: [...prev.otherFactors, factor.value]
+                                      }));
+                                    } else {
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        otherFactors: prev.otherFactors.filter(val => val !== factor.value)
+                                      }));
+                                    }
+                                  }}
+                                  className="mr-3 h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                                />
+                                <div className="flex-1">
+                                  <div className="text-sm font-medium text-gray-900">
+                                    {factor.label}
+                                  </div>
+                                  {(isRigger || isHelper) && defaultAmount && (
+                                    <div className="text-xs text-gray-500">
+                                      Default: ₹{defaultAmount?.toLocaleString('en-IN')}
+                                    </div>
+                                  )}
+                                </div>
+                              </label>
+                              
+                              {isSelected && (isRigger || isHelper) && (
+                                <div className="ml-4 flex items-center gap-2">
+                                  <span className="text-xs text-gray-600 whitespace-nowrap">Custom:</span>
+                                  <input
+                                    type="number"
+                                    value={customAmount ?? ''}
+                                    onChange={(e) => {
+                                      const value = e.target.value === '' ? null : Number(e.target.value);
+                                      if (isRigger) {
+                                        setFormData(prev => ({
+                                          ...prev,
+                                          customRiggerAmount: value
+                                        }));
+                                      } else {
+                                        setFormData(prev => ({
+                                          ...prev,
+                                          customHelperAmount: value
+                                        }));
+                                      }
+                                    }}
+                                    placeholder={`${defaultAmount}`}
+                                    className="w-24 px-2 py-1 text-xs border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"
+                                    min="0"
+                                  />
+                                </div>
+                              )}
+                            </div>
+                            
+                            {isSelected && (isRigger || isHelper) && displayAmount && (
+                              <div className="mt-2 pt-2 border-t border-gray-200">
+                                <div className="text-xs font-medium text-green-700">
+                                  Amount Applied: ₹{displayAmount?.toLocaleString('en-IN')}
+                                  {customAmount && customAmount !== defaultAmount && (
+                                    <span className="ml-1 text-blue-600">(Custom)</span>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
 
-                  {/* Custom Amount Overrides */}
-                  <div className="mt-4 pt-4 border-t border-gray-200">
-                    <label className="block text-sm font-medium text-gray-700 mb-3">💰 Custom Amounts for this Quotation</label>
-                    <div className="space-y-3">
-                      
-                      {/* Incident Amounts */}
-                      <div className="grid grid-cols-3 gap-3">
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">Incident 1</label>
-                          <input
-                            type="number"
-                            value={formData.customIncidentAmounts?.incident1 ?? ''}
-                            onChange={(e) => {
-                              const value = e.target.value === '' ? null : Number(e.target.value);
-                              setFormData(prev => ({
-                                ...prev,
-                                customIncidentAmounts: {
-                                  ...prev.customIncidentAmounts,
-                                  incident1: value
-                                }
-                              }));
-                            }}
-                            placeholder={`₹${additionalParams?.incidentalOptions?.find(opt => opt.value === 'incident1')?.amount?.toLocaleString('en-IN') || '5,000'}`}
-                            className="w-full p-2 text-xs border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                            min="0"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">Incident 2</label>
-                          <input
-                            type="number"
-                            value={formData.customIncidentAmounts?.incident2 ?? ''}
-                            onChange={(e) => {
-                              const value = e.target.value === '' ? null : Number(e.target.value);
-                              setFormData(prev => ({
-                                ...prev,
-                                customIncidentAmounts: {
-                                  ...prev.customIncidentAmounts,
-                                  incident2: value
-                                }
-                              }));
-                            }}
-                            placeholder={`₹${additionalParams?.incidentalOptions?.find(opt => opt.value === 'incident2')?.amount?.toLocaleString('en-IN') || '10,000'}`}
-                            className="w-full p-2 text-xs border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                            min="0"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">Incident 3</label>
-                          <input
-                            type="number"
-                            value={formData.customIncidentAmounts?.incident3 ?? ''}
-                            onChange={(e) => {
-                              const value = e.target.value === '' ? null : Number(e.target.value);
-                              setFormData(prev => ({
-                                ...prev,
-                                customIncidentAmounts: {
-                                  ...prev.customIncidentAmounts,
-                                  incident3: value
-                                }
-                              }));
-                            }}
-                            placeholder={`₹${additionalParams?.incidentalOptions?.find(opt => opt.value === 'incident3')?.amount?.toLocaleString('en-IN') || '15,000'}`}
-                            className="w-full p-2 text-xs border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                            min="0"
-                          />
-                        </div>
-                      </div>
 
-                      {/* Rigger and Helper Amounts */}
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">Rigger Amount</label>
-                          <input
-                            type="number"
-                            value={formData.customRiggerAmount ?? ''}
-                            onChange={(e) => {
-                              const value = e.target.value === '' ? null : Number(e.target.value);
-                              setFormData(prev => ({
-                                ...prev,
-                                customRiggerAmount: value
-                              }));
-                            }}
-                            placeholder={`₹${additionalParams?.riggerAmount?.toLocaleString('en-IN') || '40,000'}`}
-                            className="w-full p-2 text-xs border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                            min="0"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-xs font-medium text-gray-600 mb-1">Helper Amount</label>
-                          <input
-                            type="number"
-                            value={formData.customHelperAmount ?? ''}
-                            onChange={(e) => {
-                              const value = e.target.value === '' ? null : Number(e.target.value);
-                              setFormData(prev => ({
-                                ...prev,
-                                customHelperAmount: value
-                              }));
-                            }}
-                            placeholder={`₹${additionalParams?.helperAmount?.toLocaleString('en-IN') || '12,000'}`}
-                            className="w-full p-2 text-xs border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
-                            min="0"
-                          />
-                        </div>
-                      </div>
-                      
-                      <p className="text-xs text-gray-500 mt-2">
-                        💡 Leave empty to use config defaults. Custom values apply only to this quotation.
-                      </p>
-                    </div>
-                  </div>
                 </div>
               </CardContent>
             </Card>
