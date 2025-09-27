@@ -516,10 +516,12 @@ export function QuotationCreation() {
     
     const limits = quotationConfig.orderTypeLimits;
     if (days <= 0) return 'micro';
-    if (days >= limits.yearly.minDays) return 'yearly';
-    if (days >= limits.monthly.minDays) return 'monthly';
-    if (days >= limits.small.minDays) return 'small';
-    return 'micro';
+    
+    // Check in correct order: micro -> small -> monthly -> yearly
+    if (days <= limits.micro.maxDays) return 'micro';
+    if (days <= limits.small.maxDays) return 'small';
+    if (days <= limits.monthly.maxDays) return 'monthly';
+    return 'yearly';
   };
 
   const calculateQuotation = () => {
@@ -1100,10 +1102,10 @@ export function QuotationCreation() {
                       <div className="text-sm font-medium text-blue-900">Order Type</div>
                       <div className="text-lg font-bold text-blue-700 capitalize">
                         {formData.orderType}
-                        {formData.orderType === 'micro' && ' (≤ 7 days)'}
-                        {formData.orderType === 'small' && ' (8-25 days)'}
-                        {formData.orderType === 'monthly' && ' (26-300 days)'}
-                        {formData.orderType === 'yearly' && ' (≥ 300 days)'}
+                        {formData.orderType === 'micro' && ' (1-10 days)'}
+                        {formData.orderType === 'small' && ' (11-25 days)'}
+                        {formData.orderType === 'monthly' && ' (26-365 days)'}
+                        {formData.orderType === 'yearly' && ' (366+ days)'}
                       </div>
                     </div>
                   )}
