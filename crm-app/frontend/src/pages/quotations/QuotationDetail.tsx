@@ -40,7 +40,7 @@ const QuotationDetail: React.FC = () => {
 
   const loadAvailableTemplates = async () => {
     try {
-      const response = await fetch('/api/templates/enhanced', {
+      const response = await fetch('/api/templates/enhanced/list', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'X-Bypass-Auth': 'development-only-123'
@@ -51,7 +51,11 @@ const QuotationDetail: React.FC = () => {
         const data = await response.json();
         setAvailableTemplates([
           { id: 'default', name: 'Default Template', description: 'Standard ASP Cranes template' },
-          ...(data.templates || [])
+          ...(data.data || []).map((template: any) => ({
+            id: template.id,
+            name: template.name,
+            description: template.description || 'Enhanced template'
+          }))
         ]);
       } else {
         // If templates endpoint fails, just use default

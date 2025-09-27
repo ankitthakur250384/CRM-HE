@@ -140,7 +140,7 @@ const QuotationPrintSystem: React.FC<QuotationPrintSystemProps> = ({
   const loadTemplates = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(`${apiUrl}/templates/quotation`);
+      const response = await fetch(`${apiUrl}/templates/enhanced/quotation`);
       const data = await response.json();
 
       if (data.success) {
