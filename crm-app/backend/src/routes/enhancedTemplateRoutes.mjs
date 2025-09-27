@@ -477,46 +477,83 @@ router.get('/quotation', async (req, res) => {
   try {
     console.log('📋 [Enhanced Templates] Loading templates for quotation printing');
     
-    const client = new Client(dbConfig);
-    await client.connect();
-    
+    // Try database first
     try {
-      const query = `
-        SELECT 
-          id, name, description, theme, category, 
-          is_default, is_active, created_by, created_at, updated_at
-        FROM enhanced_templates 
-        WHERE is_active = true
-        ORDER BY is_default DESC, updated_at DESC
-      `;
+      const client = new Client(dbConfig);
+      await client.connect();
       
-      const result = await client.query(query);
+      try {
+        const query = `
+          SELECT 
+            id, name, description, theme, category, 
+            is_default, is_active, created_by, created_at, updated_at
+          FROM enhanced_templates 
+          WHERE is_active = true
+          ORDER BY is_default DESC, updated_at DESC
+        `;
+        
+        const result = await client.query(query);
+        
+        // Convert to format expected by QuotationPrintSystem
+        const templates = result.rows.map(row => ({
+          id: row.id, // Keep as string for Enhanced Templates
+          name: row.name,
+          description: row.description,
+          is_active: row.is_active,
+          is_default: row.is_default,
+          theme: row.theme,
+          category: row.category
+        }));
+        
+        console.log(`✅ [Enhanced Templates] Found ${templates.length} active templates for quotation printing`);
+        
+        res.json({
+          success: true,
+          templates: templates,
+          count: templates.length
+        });
+        
+      } finally {
+        await client.end();
+      }
       
-      // Convert to format expected by QuotationPrintSystem
-      const templates = result.rows.map(row => ({
-        id: row.id, // Keep as string for Enhanced Templates
-        name: row.name,
-        description: row.description,
-        is_active: row.is_active,
-        is_default: row.is_default,
-        theme: row.theme,
-        category: row.category
-      }));
+    } catch (dbError) {
+      console.warn('⚠️ [Enhanced Templates] Database error, using fallback templates:', dbError.message);
       
-      console.log(`✅ [Enhanced Templates] Found ${templates.length} active templates for quotation printing`);
+      // Fallback templates when database is unavailable
+      const fallbackTemplates = [
+        {
+          id: 'tpl_default_001',
+          name: 'ASP Cranes Professional',
+          description: 'Professional quotation template with company branding',
+          is_active: true,
+          is_default: true,
+          theme: 'PROFESSIONAL',
+          category: 'quotation'
+        },
+        {
+          id: 'tpl_simple_001',
+          name: 'Simple Clean',
+          description: 'Clean and simple quotation layout',
+          is_active: true,
+          is_default: false,
+          theme: 'MINIMAL',
+          category: 'quotation'
+        }
+      ];
+      
+      console.log(`✅ [Enhanced Templates] Using ${fallbackTemplates.length} fallback templates`);
       
       res.json({
         success: true,
-        templates: templates,
-        count: templates.length
+        templates: fallbackTemplates,
+        count: fallbackTemplates.length,
+        fallback: true
       });
-      
-    } finally {
-      await client.end();
     }
     
   } catch (error) {
-    console.error('❌ [Enhanced Templates] Error loading quotation templates:', error);
+    console.error('❌ [Enhanced Templates] Critical error loading quotation templates:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to load quotation templates',

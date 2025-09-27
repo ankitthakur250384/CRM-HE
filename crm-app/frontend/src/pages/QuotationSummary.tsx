@@ -77,9 +77,12 @@ export const QuotationSummary: React.FC<QuotationSummaryProps> = ({ calculations
         <span className="text-sm font-semibold text-gray-900">Other Factors</span>
       </div>
       <span className="font-bold text-gray-900">
-        {formatCurrency(calculations?.otherFactorsCost || 
-          ((formData?.otherFactors || []).includes('rigger') ? (additionalParams?.riggerAmount || 40000) : 0) +
-          ((formData?.otherFactors || []).includes('helper') ? (additionalParams?.helperAmount || 12000) : 0))}
+        {formatCurrency(calculations?.otherFactorsCost || (() => {
+          const riggerAmount = formData?.customRiggerAmount ?? additionalParams?.riggerAmount ?? 40000;
+          const helperAmount = formData?.customHelperAmount ?? additionalParams?.helperAmount ?? 12000;
+          return ((formData?.otherFactors || []).includes('rigger') ? riggerAmount : 0) +
+                 ((formData?.otherFactors || []).includes('helper') ? helperAmount : 0);
+        })())}
       </span>
     </div>
     

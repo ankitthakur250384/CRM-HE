@@ -861,6 +861,7 @@ export function QuotationCreation() {
       usageLoadFactor,
       extraCharges,
       riskAdjustment,
+      otherFactorsCost: otherFactorsTotal,
       gstAmount,
       totalAmount,
     };

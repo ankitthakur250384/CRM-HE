@@ -230,6 +230,13 @@ router.get('/:id/preview/iframe', async (req, res) => {
     const { id: quotationId } = req.params;
     const { templateId } = req.query;
     
+    // Fix CORS and origin policy issues for iframe embedding
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('Content-Security-Policy', "frame-ancestors 'self'");
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    
     console.log('🖼️ [Preview] Generating iframe preview for quotation:', quotationId);
     console.log('🖼️ [Preview] Bypassing auth for iframe request');
     
