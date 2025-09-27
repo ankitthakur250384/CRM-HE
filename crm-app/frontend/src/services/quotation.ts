@@ -114,6 +114,14 @@ export interface QuotationInputs {
   dealType: string;
   sundayWorking: SundayWorking;
   otherFactors: string[];
+  // Custom amounts for this quotation (override config defaults)
+  customIncidentAmounts?: {
+    incident1?: number | null;
+    incident2?: number | null;
+    incident3?: number | null;
+  };
+  customRiggerAmount?: number | null;
+  customHelperAmount?: number | null;
 }
 
 export interface SelectedMachine {

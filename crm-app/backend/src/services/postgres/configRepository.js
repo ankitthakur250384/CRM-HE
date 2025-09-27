@@ -35,8 +35,8 @@ export const DEFAULT_CONFIGS = {
     }
   },
   resourceRates: {
-    foodRate: 2500,
-    accommodationRate: 4000,
+    foodRatePerMonth: null,
+    accommodationRatePerMonth: null,
     transportRate: 0
   },
   additionalParams: {
@@ -72,6 +72,9 @@ export const getConfig = async (configName) => {
   const isDbAvailable = await testDbConnection();
   
   if (!isDbAvailable) {
+    if (configName === 'resourceRates') {
+      throw new Error('Database connection required for resource rates configuration');
+    }
     console.log(`� Using default config for ${configName} (DB unavailable)`);
     return DEFAULT_CONFIGS[configName] || {};
   }
@@ -85,16 +88,38 @@ export const getConfig = async (configName) => {
         try {
           configValue = JSON.parse(configValue);
         } catch (e) {
+          if (configName === 'resourceRates') {
+            throw new Error('Invalid resource rates configuration in database');
+          }
           configValue = DEFAULT_CONFIGS[configName] || {};
         }
       }
+      
+      // Validate required resource rates
+      if (configName === 'resourceRates') {
+        if (!configValue.foodRatePerMonth || !configValue.accommodationRatePerMonth) {
+          throw new Error('Resource rates must be properly configured in database (foodRatePerMonth and accommodationRatePerMonth are required)');
+        }
+      }
+      
       return { ...configValue, updatedAt: result.updated_at };
+    }
+    
+    // For resourceRates, require database configuration
+    if (configName === 'resourceRates') {
+      throw new Error('Resource rates not found in database - please configure them first');
     }
     
     return DEFAULT_CONFIGS[configName] || {};
   } catch (error) {
     console.error(`Error fetching ${configName}:`, error);
     dbConnectionAvailable = false; // Mark DB as unavailable
+    
+    // For resourceRates, don't fall back to defaults
+    if (configName === 'resourceRates') {
+      throw error;
+    }
+    
     return DEFAULT_CONFIGS[configName] || {};
   }
 };

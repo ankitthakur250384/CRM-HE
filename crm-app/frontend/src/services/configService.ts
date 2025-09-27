@@ -19,13 +19,20 @@ export interface QuotationConfig {
 }
 
 export interface ResourceRatesConfig {
-  foodRate: number;
-  accommodationRate: number;
+  foodRatePerMonth: number;
+  accommodationRatePerMonth: number;
   transportRate: number;
   updatedAt?: string;
 }
 
 export interface AdditionalParamsConfig {
+  riggerAmount: number;
+  helperAmount: number;
+  incidentalOptions: Array<{
+    value: string;
+    label: string;
+    amount: number;
+  }>;
   usageFactors: {
     normal: number;
     medium: number;

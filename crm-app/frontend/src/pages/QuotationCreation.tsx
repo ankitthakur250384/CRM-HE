@@ -158,7 +158,15 @@ export function QuotationCreation() {
     status: 'draft',
     otherFactors: [],
     dealType: DEAL_TYPES[0].value,
-    sundayWorking: 'no'
+    sundayWorking: 'no',
+    // Custom amounts for this quotation (override config defaults)
+    customIncidentAmounts: {
+      incident1: null,
+      incident2: null,
+      incident3: null,
+    },
+    customRiggerAmount: null,
+    customHelperAmount: null,
   });
 
   const [calculations, setCalculations] = useState({
@@ -391,7 +399,15 @@ export function QuotationCreation() {
               company: dealData?.customer?.company || '',
               address: dealData?.customer?.address || '',
               designation: dealData?.customer?.designation || ''
-            }
+            },
+            // Load custom amounts from database fields
+            customIncidentAmounts: {
+              incident1: quotationToLoad.incident1 ? Number(quotationToLoad.incident1) : null,
+              incident2: quotationToLoad.incident2 ? Number(quotationToLoad.incident2) : null,
+              incident3: quotationToLoad.incident3 ? Number(quotationToLoad.incident3) : null,
+            },
+            customRiggerAmount: quotationToLoad.riggerAmount || null,
+            customHelperAmount: quotationToLoad.helperAmount || null
           };
           
           console.log('[QuotationCreation] Form data populated with', Object.keys(updatedFormData).length, 'fields');
@@ -598,24 +614,36 @@ export function QuotationCreation() {
       finalWorkingCost: workingCost
     });
 
-    // Food & Accommodation costs
-    const foodRate = resourceRates?.foodRate;
-    const accomRate = resourceRates?.accommodationRate;
-    const foodCost = foodRate ? (formData.foodResources || 0) * foodRate * numberOfDays : 0;
-    const accomCost = accomRate ? (formData.accomResources || 0) * accomRate * numberOfDays : 0;
+    // Food & Accommodation costs - convert monthly rates to daily rates
+    const foodRatePerMonth = resourceRates?.foodRatePerMonth;
+    const accomRatePerMonth = resourceRates?.accommodationRatePerMonth;
+    
+    // Convert monthly rates to daily rates (assuming 26 working days per month)
+    const foodRatePerDay = foodRatePerMonth ? foodRatePerMonth / 26 : 0;
+    const accomRatePerDay = accomRatePerMonth ? accomRatePerMonth / 26 : 0;
+    
+    const foodCost = foodRatePerDay ? (formData.foodResources || 0) * foodRatePerDay * numberOfDays : 0;
+    const accomCost = accomRatePerDay ? (formData.accomResources || 0) * accomRatePerDay * numberOfDays : 0;
     const foodAccomCost = foodCost + accomCost;
 
     console.log("🍽️ Food & Accommodation:", {
       foodResources: formData.foodResources,
       accomResources: formData.accomResources,
-      foodRate,
-      accomRate,
+      foodRatePerMonth,
+      accomRatePerMonth,
+      foodRatePerDay,
+      accomRatePerDay,
       numberOfDays,
       foodCost,
       accomCost,
       foodAccomCost,
       resourceRates
     });
+
+    // Warn if resource rates are not configured
+    if ((formData.foodResources > 0 || formData.accomResources > 0) && (!foodRatePerMonth || !accomRatePerMonth)) {
+      console.warn("⚠️ Resource rates not configured! Food & Accommodation costs will be ₹0. Please configure rates in Settings.");
+    }
 
     // Mobilization/Demobilization costs
     let mobDemobCost = 0;
@@ -696,26 +724,47 @@ export function QuotationCreation() {
     // Additional charges
     const extraCharges = Number(formData.extraCharge) || 0;
     
-    // Incidental charges from configuration
-    const incidentalOptions = additionalParams?.incidentalOptions;
+    // Incidental charges - use custom amounts if provided, otherwise use config
     const incidentalTotal = formData.incidentalCharges.reduce((sum, val) => {
-      const found = incidentalOptions?.find(opt => opt.value === val);
-      return sum + (found ? found.amount : 0);
+      let amount = 0;
+      
+      // Use custom amount if provided, otherwise use config default
+      if (val === 'incident1') {
+        amount = formData.customIncidentAmounts?.incident1 ?? 
+                additionalParams?.incidentalOptions?.find(opt => opt.value === 'incident1')?.amount ?? 5000;
+      } else if (val === 'incident2') {
+        amount = formData.customIncidentAmounts?.incident2 ?? 
+                additionalParams?.incidentalOptions?.find(opt => opt.value === 'incident2')?.amount ?? 10000;
+      } else if (val === 'incident3') {
+        amount = formData.customIncidentAmounts?.incident3 ?? 
+                additionalParams?.incidentalOptions?.find(opt => opt.value === 'incident3')?.amount ?? 15000;
+      } else {
+        // Fallback for any other incident types
+        const found = additionalParams?.incidentalOptions?.find(opt => opt.value === val);
+        amount = found ? found.amount : 0;
+      }
+      
+      return sum + amount;
     }, 0);
 
     console.log("📋 Incidental charges:", {
       incidentalCharges: formData.incidentalCharges,
-      incidentalOptions,
+      customIncidentAmounts: formData.customIncidentAmounts,
       incidentalTotal
     });
 
-    const otherFactorsTotal = (formData.otherFactors.includes('rigger') && additionalParams?.riggerAmount ? additionalParams.riggerAmount : 0) + 
-                            (formData.otherFactors.includes('helper') && additionalParams?.helperAmount ? additionalParams.helperAmount : 0);
+    const riggerAmount = formData.customRiggerAmount ?? additionalParams?.riggerAmount ?? 40000;
+    const helperAmount = formData.customHelperAmount ?? additionalParams?.helperAmount ?? 12000;
+    
+    const otherFactorsTotal = (formData.otherFactors.includes('rigger') ? riggerAmount : 0) + 
+                            (formData.otherFactors.includes('helper') ? helperAmount : 0);
 
     console.log("👷 Other factors (Rigger & Helper):", {
       otherFactors: formData.otherFactors,
-      riggerAmount: additionalParams?.riggerAmount,
-      helperAmount: additionalParams?.helperAmount,
+      riggerAmountUsed: riggerAmount,
+      helperAmountUsed: helperAmount,
+      customRiggerAmount: formData.customRiggerAmount,
+      customHelperAmount: formData.customHelperAmount,
       riggerSelected: formData.otherFactors.includes('rigger'),
       helperSelected: formData.otherFactors.includes('helper'),
       otherFactorsTotal
@@ -802,7 +851,13 @@ export function QuotationCreation() {
         riskAdjustment: calculations.riskAdjustment,
         gstAmount: calculations.gstAmount,
         createdBy: user?.id || '',
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
+        // Custom per-quotation amounts (will be stored in database fields)
+        incident1: formData.customIncidentAmounts?.incident1?.toString() || null,
+        incident2: formData.customIncidentAmounts?.incident2?.toString() || null,
+        incident3: formData.customIncidentAmounts?.incident3?.toString() || null,
+        riggerAmount: formData.customRiggerAmount || null,
+        helperAmount: formData.customHelperAmount || null
       };
 
       if (quotationId) {
@@ -1458,11 +1513,124 @@ export function QuotationCreation() {
                           />
                           <span className="text-sm text-gray-700">
                             {factor.label}
-                            {factor.value === 'rigger' && ` (₹${additionalParams?.riggerAmount?.toLocaleString('en-IN')})`}
-                            {factor.value === 'helper' && ` (₹${additionalParams?.helperAmount?.toLocaleString('en-IN')})`}
+                            {factor.value === 'rigger' && ` (₹${(formData.customRiggerAmount ?? additionalParams?.riggerAmount)?.toLocaleString('en-IN')})`}
+                            {factor.value === 'helper' && ` (₹${(formData.customHelperAmount ?? additionalParams?.helperAmount)?.toLocaleString('en-IN')})`}
                           </span>
                         </label>
                       ))}
+                    </div>
+                  </div>
+
+                  {/* Custom Amount Overrides */}
+                  <div className="mt-4 pt-4 border-t border-gray-200">
+                    <label className="block text-sm font-medium text-gray-700 mb-3">💰 Custom Amounts for this Quotation</label>
+                    <div className="space-y-3">
+                      
+                      {/* Incident Amounts */}
+                      <div className="grid grid-cols-3 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Incident 1</label>
+                          <input
+                            type="number"
+                            value={formData.customIncidentAmounts?.incident1 ?? ''}
+                            onChange={(e) => {
+                              const value = e.target.value === '' ? null : Number(e.target.value);
+                              setFormData(prev => ({
+                                ...prev,
+                                customIncidentAmounts: {
+                                  ...prev.customIncidentAmounts,
+                                  incident1: value
+                                }
+                              }));
+                            }}
+                            placeholder={`₹${additionalParams?.incidentalOptions?.find(opt => opt.value === 'incident1')?.amount?.toLocaleString('en-IN') || '5,000'}`}
+                            className="w-full p-2 text-xs border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                            min="0"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Incident 2</label>
+                          <input
+                            type="number"
+                            value={formData.customIncidentAmounts?.incident2 ?? ''}
+                            onChange={(e) => {
+                              const value = e.target.value === '' ? null : Number(e.target.value);
+                              setFormData(prev => ({
+                                ...prev,
+                                customIncidentAmounts: {
+                                  ...prev.customIncidentAmounts,
+                                  incident2: value
+                                }
+                              }));
+                            }}
+                            placeholder={`₹${additionalParams?.incidentalOptions?.find(opt => opt.value === 'incident2')?.amount?.toLocaleString('en-IN') || '10,000'}`}
+                            className="w-full p-2 text-xs border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                            min="0"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Incident 3</label>
+                          <input
+                            type="number"
+                            value={formData.customIncidentAmounts?.incident3 ?? ''}
+                            onChange={(e) => {
+                              const value = e.target.value === '' ? null : Number(e.target.value);
+                              setFormData(prev => ({
+                                ...prev,
+                                customIncidentAmounts: {
+                                  ...prev.customIncidentAmounts,
+                                  incident3: value
+                                }
+                              }));
+                            }}
+                            placeholder={`₹${additionalParams?.incidentalOptions?.find(opt => opt.value === 'incident3')?.amount?.toLocaleString('en-IN') || '15,000'}`}
+                            className="w-full p-2 text-xs border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                            min="0"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Rigger and Helper Amounts */}
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Rigger Amount</label>
+                          <input
+                            type="number"
+                            value={formData.customRiggerAmount ?? ''}
+                            onChange={(e) => {
+                              const value = e.target.value === '' ? null : Number(e.target.value);
+                              setFormData(prev => ({
+                                ...prev,
+                                customRiggerAmount: value
+                              }));
+                            }}
+                            placeholder={`₹${additionalParams?.riggerAmount?.toLocaleString('en-IN') || '40,000'}`}
+                            className="w-full p-2 text-xs border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                            min="0"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 mb-1">Helper Amount</label>
+                          <input
+                            type="number"
+                            value={formData.customHelperAmount ?? ''}
+                            onChange={(e) => {
+                              const value = e.target.value === '' ? null : Number(e.target.value);
+                              setFormData(prev => ({
+                                ...prev,
+                                customHelperAmount: value
+                              }));
+                            }}
+                            placeholder={`₹${additionalParams?.helperAmount?.toLocaleString('en-IN') || '12,000'}`}
+                            className="w-full p-2 text-xs border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                            min="0"
+                          />
+                        </div>
+                      </div>
+                      
+                      <p className="text-xs text-gray-500 mt-2">
+                        💡 Leave empty to use config defaults. Custom values apply only to this quotation.
+                      </p>
                     </div>
                   </div>
                 </div>

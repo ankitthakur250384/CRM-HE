@@ -17,8 +17,8 @@ interface QuotationConfigHookReturn {
     };
   } | null;
   resourceRates: {
-    foodRate: number;
-    accommodationRate: number;
+    foodRatePerMonth: number;
+    accommodationRatePerMonth: number;
     transportRate: number;
   } | null;
   additionalParams: {

@@ -24,8 +24,8 @@ interface QuotationConfig {
 }
 
 interface ResourceRatesConfig {
-  foodRate: number;
-  accommodationRate: number;
+  foodRatePerMonth: number;
+  accommodationRatePerMonth: number;
   transportRate: number;
   updatedAt?: string;
 }
@@ -91,8 +91,20 @@ interface ConfigState {
 // Default configurations
 // Fallbacks for first load or error only
 const DEFAULT_QUOTATION_CONFIG: QuotationConfig = { orderTypeLimits: { micro: { minDays: 1, maxDays: 10 }, small: { minDays: 11, maxDays: 25 }, monthly: { minDays: 26, maxDays: 365 }, yearly: { minDays: 366, maxDays: 3650 } } };
-const DEFAULT_RESOURCE_RATES: ResourceRatesConfig = { foodRate: 2500, accommodationRate: 4000, transportRate: 0 };
-const DEFAULT_ADDITIONAL_PARAMS: AdditionalParamsConfig = { riggerAmount: 40000, helperAmount: 12000, incidentalOptions: [ { value: "incident1", label: "Incident 1 - ₹5,000", amount: 5000 }, { value: "incident2", label: "Incident 2 - ₹10,000", amount: 10000 }, { value: "incident3", label: "Incident 3 - ₹15,000", amount: 15000 } ], usageFactors: { normal: 0, medium: 20, heavy: 50 }, riskFactors: { low: 0, medium: 10, high: 20 }, shiftFactors: { single: 0, double: 80 }, dayNightFactors: { day: 0, night: 30 } };
+// No default resource rates - must be configured in database
+const DEFAULT_ADDITIONAL_PARAMS: AdditionalParamsConfig = { 
+  riggerAmount: 40000, 
+  helperAmount: 12000, 
+  incidentalOptions: [ 
+    { value: "incident1", label: "Incident 1 - ₹5,000", amount: 5000 }, 
+    { value: "incident2", label: "Incident 2 - ₹10,000", amount: 10000 }, 
+    { value: "incident3", label: "Incident 3 - ₹15,000", amount: 15000 } 
+  ], 
+  usageFactors: { normal: 0, medium: 20, heavy: 50 }, 
+  riskFactors: { low: 0, medium: 10, high: 20 }, 
+  shiftFactors: { single: 0, double: 80 }, 
+  dayNightFactors: { day: 0, night: 30 } 
+};
 
 const CONFIG_CACHE_TIME = 5 * 60 * 1000; // 5 minutes
 
@@ -155,16 +167,19 @@ export const useConfigStore = create<ConfigState>((set, get) => {
     fetchResourceRatesConfig: async () => {
       try {
         const config = await getResourceRatesConfig();
+        if (!config || !config.foodRatePerMonth || !config.accommodationRatePerMonth) {
+          throw new Error('Resource rates not properly configured in database');
+        }
         set(state => ({
-          resourceRatesConfig: config || DEFAULT_RESOURCE_RATES,
+          resourceRatesConfig: config,
           lastFetchTimes: { ...state.lastFetchTimes, resourceRates: Date.now() },
           errors: { ...state.errors, resourceRates: '' }
         }));
       } catch (error) {
         console.error('Error fetching resource rates config:', error);
         set(state => ({
-          resourceRatesConfig: DEFAULT_RESOURCE_RATES,
-          errors: { ...state.errors, resourceRates: 'Failed to fetch resource rates configuration' }
+          resourceRatesConfig: null,
+          errors: { ...state.errors, resourceRates: 'Resource rates must be configured in database first' }
         }));
       }
     },

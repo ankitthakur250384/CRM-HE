@@ -46,14 +46,8 @@ export function calculateQuotationTotals(quotation: Quotation): QuotationCalcula
   // Prioritize database values over calculations
   const workingCost = quotation.workingCost || (quotation.totalRent || 0);
   
-  // Food & accommodation cost - use database value first
-  const foodAccomCost = quotation.foodAccomCost ?? (() => {
-    const foodRate = 2500;
-    const accomRate = 4000;
-    return ((quotation.foodResources || 0) * foodRate + 
-            (quotation.accomResources || 0) * accomRate) * 
-            (quotation.numberOfDays || 1);
-  })();
+  // Food & accommodation cost - use database value only
+  const foodAccomCost = quotation.foodAccomCost || 0;
   
   console.log('🍽️ Food & Accom calculation:', {
     fromDatabase: quotation.foodAccomCost,

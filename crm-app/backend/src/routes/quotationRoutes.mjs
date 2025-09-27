@@ -554,9 +554,7 @@ router.post('/', authenticateToken, async (req, res) => {
         finalTotal,
         quotationData.workingCost || quotationData.calculations?.workingCost || (totalCost * 0.8), // working_cost
         quotationData.mobDemobCost || quotationData.calculations?.mobDemobCost || 15000, // mob_demob_cost
-        quotationData.foodAccomCost || quotationData.calculations?.foodAccomCost || 
-          (quotationData.foodResources === 'ASP Provided' || quotationData.accomResources === 'ASP Provided' ? 
-          (quotationData.numberOfDays || 1) * 6500 : 0), // food_accom_cost
+        quotationData.foodAccomCost || quotationData.calculations?.foodAccomCost || 0, // food_accom_cost - requires proper calculation
         quotationData.riskAdjustment || quotationData.calculations?.riskAdjustment || 0, // risk_adjustment
         quotationData.usageLoadFactor || quotationData.calculations?.usageLoadFactor || 0, // usage_load_factor
         gstAmount,

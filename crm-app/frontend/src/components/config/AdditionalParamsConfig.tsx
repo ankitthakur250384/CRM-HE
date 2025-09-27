@@ -9,6 +9,13 @@ import { Card, CardHeader, CardTitle, CardContent } from '../common/Card';
 export function AdditionalParamsConfig() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);  const [params, setParams] = useState({
+    riggerAmount: 40000,
+    helperAmount: 12000,
+    incidentalOptions: [
+      { value: "incident1", label: "Incident 1 - ₹5,000", amount: 5000 },
+      { value: "incident2", label: "Incident 2 - ₹10,000", amount: 10000 },
+      { value: "incident3", label: "Incident 3 - ₹15,000", amount: 15000 }
+    ],
     usageFactors: {
       normal: 0,
       medium: 20,
@@ -52,7 +59,22 @@ export function AdditionalParamsConfig() {
         usageFactors: {
           ...params.usageFactors,
           ...(config?.usageFactors || {})
-        }
+        },
+        riskFactors: {
+          ...params.riskFactors,
+          ...(config?.riskFactors || {})
+        },
+        shiftFactors: {
+          ...params.shiftFactors,
+          ...(config?.shiftFactors || {})
+        },
+        dayNightFactors: {
+          ...params.dayNightFactors,
+          ...(config?.dayNightFactors || {})
+        },
+        incidentalOptions: config?.incidentalOptions || params.incidentalOptions,
+        riggerAmount: config?.riggerAmount !== undefined ? config.riggerAmount : params.riggerAmount,
+        helperAmount: config?.helperAmount !== undefined ? config.helperAmount : params.helperAmount
       };
       
       setParams(safeConfig);
@@ -260,6 +282,69 @@ export function AdditionalParamsConfig() {
               }))}
               isPercentage
             />
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Additional Configuration Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Other Factors */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Wrench className="h-5 w-5 text-primary-500" />
+              <CardTitle>Other Factors</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <RateInput
+              label="Rigger Amount"
+              value={params.riggerAmount}
+              onChange={(value) => setParams(prev => ({
+                ...prev,
+                riggerAmount: value
+              }))}
+            />
+            <RateInput
+              label="Helper Amount"
+              value={params.helperAmount}
+              onChange={(value) => setParams(prev => ({
+                ...prev,
+                helperAmount: value
+              }))}
+            />
+          </CardContent>
+        </Card>
+
+        {/* Incidental Options */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-primary-500" />
+              <CardTitle>Incidental Options</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {params.incidentalOptions.map((option, index) => (
+              <div key={option.value} className="space-y-2">
+                <RateInput
+                  label={`${option.label.split(' - ')[0]} Amount`}
+                  value={option.amount}
+                  onChange={(value) => {
+                    const updatedOptions = [...params.incidentalOptions];
+                    updatedOptions[index] = {
+                      ...option,
+                      amount: value,
+                      label: `${option.label.split(' - ')[0]} - ₹${value.toLocaleString('en-IN')}`
+                    };
+                    setParams(prev => ({
+                      ...prev,
+                      incidentalOptions: updatedOptions
+                    }));
+                  }}
+                />
+              </div>
+            ))}
           </CardContent>
         </Card>
       </div>
