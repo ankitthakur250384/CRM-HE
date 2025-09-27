@@ -197,7 +197,10 @@ export function EquipmentManagement() {
           yearly: Number(formData.baseRates.yearly),
         } as BaseRates,
         runningCost: Number(formData.runningCostPerKm),
-        runningCostPerKm: Number(formData.runningCostPerKm),
+          runningCostPerKm: Number(formData.runningCostPerKm),
+          manufacturingDate: formData.manufacturingDate,     
+          registrationDate: formData.registrationDate   
+
       };
       
       console.log('Form submission data:', equipmentData);
@@ -496,8 +499,9 @@ export function EquipmentManagement() {
                               setSelectedEquipment(item);                              setFormData({
                                 name: item.name || '',
                                 category: item.category || 'mobile_crane',
-                                manufacturingDate: item.manufacturingDate || '',
-                                registrationDate: item.registrationDate || '',
+                                  manufacturingDate: item.manufacturingDate ? item.manufacturingDate.slice(0, 10) : '',
+                                  registrationDate: item.registrationDate ? item.registrationDate.slice(0, 10) : '',
+
                                 maxLiftingCapacity: item.maxLiftingCapacity !== undefined ? String(item.maxLiftingCapacity) : '',
                                 unladenWeight: item.unladenWeight !== undefined ? String(item.unladenWeight) : '',
                                 baseRates: {

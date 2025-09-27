@@ -510,10 +510,10 @@ router.post('/', authenticateToken, async (req, res) => {
 
       // Map frontend data to database schema
       const orderTypeMapping = {
-        'rental': 'monthly',
-        'long_term_rental': 'yearly',
-        'project_rental': 'monthly',
-        'specialized_rental': 'monthly'
+       // 'rental': 'monthly',
+        //'long_term_rental': 'yearly',
+        //'project_rental': 'monthly',
+        //'specialized_rental': 'monthly'
       };
       
       const riskMapping = {
@@ -572,7 +572,7 @@ router.post('/', authenticateToken, async (req, res) => {
         quotationData.machineType,
         primaryEquipmentId,
         equipmentSnapshot,
-        orderTypeMapping[quotationData.orderType] || 'monthly',
+        quotationData.orderType,
         quotationData.numberOfDays || 1,
         quotationData.workingHours || 8,
         // Store numeric counts for food and accommodation provided
