@@ -37,7 +37,7 @@ export const DEFAULT_CONFIGS = {
   resourceRates: {
     foodRatePerMonth: null,
     accommodationRatePerMonth: null,
-    transportRate: 0
+    transportRate: 5000  // Default transport base cost for mob/demob
   },
   additionalParams: {
     riggerAmount: 40000,

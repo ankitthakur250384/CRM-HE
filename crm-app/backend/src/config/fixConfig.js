@@ -17,7 +17,7 @@ export const fixConfigData = async () => {
     `, [JSON.stringify({
       foodRate: 2500,
       accommodationRate: 4000,
-      transportRate: 0
+      transportRate: 5000  // Default transport base cost for mob/demob
     })]);
     
     // Update additionalParams
@@ -59,7 +59,7 @@ export const fixConfigData = async () => {
       JSON.stringify({
         foodRate: 2500,
         accommodationRate: 4000,
-        transportRate: 0
+        transportRate: 5000  // Default transport base cost for mob/demob
       }),
       JSON.stringify({
         riggerAmount: 40000,
