@@ -548,7 +548,7 @@ router.post('/', authenticateToken, async (req, res) => {
         quotationData.foodResources === 'ASP Provided' || quotationData.accomResources === 'ASP Provided' ? 
           (quotationData.numberOfDays || 1) * 6500 : 0, // food_accom_cost
         gstAmount,
-        'system', // created_by (will be replaced with actual user)
+        req.user.id, // created_by (will be replaced with actual user)
         'draft',
         quotationData.notes || '',
         quotationData.dealId || null,

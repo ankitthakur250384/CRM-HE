@@ -35,7 +35,7 @@ services:
       JWT_ACCESS_TOKEN_EXPIRY: 15m
       JWT_REFRESH_TOKEN_EXPIRY: 7d
       SESSION_SECRET: ${SESSION_SECRET:-hhxqD54L9QVzZkLZ+s9WXswDQPOS6SvUgBYhxKMUndw=}
-      CORS_ORIGIN: http://103.224.243.242:3000
+      FRONTEND_ORIGIN: http://localhost:3000
       LOG_LEVEL: info
       RATE_LIMIT_WINDOW_MS: 900000
       RATE_LIMIT_MAX_REQUESTS: 100
@@ -57,7 +57,7 @@ services:
       - "3000:3000"
     environment:
       NODE_ENV: production
-      VITE_API_URL: http://103.224.243.242:3001/api
+      VITE_API_URL: http://localhost:3001/api
     depends_on:
       - backend
     restart: unless-stopped
