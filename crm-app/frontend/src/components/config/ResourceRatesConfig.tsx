@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, RefreshCw, IndianRupee, Users, AlertTriangle, Wrench } from 'lucide-react';
+import { Save, RefreshCw, Users, AlertTriangle, Wrench } from 'lucide-react';
 import { Input } from '../common/Input';
 import { Button } from '../common/Button';
 import { Toast } from '../common/Toast';
@@ -10,8 +10,7 @@ export function ResourceRatesConfig() {
   const [isSaving, setIsSaving] = useState(false);
   const [rates, setRates] = useState({
     foodRatePerMonth: 2500,
-    accommodationRatePerMonth: 4000,
-    transportRate: 5000  // Default transport base cost
+    accommodationRatePerMonth: 4000
   });
   
   const [additionalParams, setAdditionalParams] = useState({
@@ -43,8 +42,7 @@ export function ResourceRatesConfig() {
       
       setRates({
         foodRatePerMonth: ratesConfig.foodRatePerMonth || 2500,
-        accommodationRatePerMonth: ratesConfig.accommodationRatePerMonth || 4000,
-        transportRate: ratesConfig.transportRate || 5000  // Default transport base cost
+        accommodationRatePerMonth: ratesConfig.accommodationRatePerMonth || 4000
       });
       
       setAdditionalParams({
@@ -78,10 +76,7 @@ export function ResourceRatesConfig() {
         return;
       }
 
-      // Warn if transport rate is 0 (optional but affects mob/demob calculations)
-      if (!rates.transportRate || rates.transportRate <= 0) {
-        console.warn('⚠️ Transport rate is 0 - automatic mobilization/demobilization calculations will not work in quotations');
-      }
+
 
       // Validate additional parameters
       if (!additionalParams.riggerAmount || additionalParams.riggerAmount <= 0 || !additionalParams.helperAmount || additionalParams.helperAmount <= 0) {
@@ -188,37 +183,7 @@ export function ResourceRatesConfig() {
             </div>
           </div>
 
-          <div className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-sm transition-shadow duration-200">
-            <div className="flex items-center gap-2 mb-4">
-              <IndianRupee className="h-5 w-5 text-green-500" />
-              <h3 className="font-medium text-gray-900">Transport Rate</h3>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Base Transport Cost
-                </label>
-                <div className="relative mt-1">
-                  <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <span className="text-gray-500 sm:text-sm">₹</span>
-                  </div>
-                  <Input
-                    type="number"
-                    value={rates.transportRate}
-                    onChange={(e) => setRates(prev => ({
-                      ...prev,
-                      transportRate: Number(e.target.value)
-                    }))}
-                    className="pl-7"
-                    min="0"
-                  />
-                </div>
-              </div>
-              <div className="text-xs text-gray-500">
-                Base cost for mobilization/demobilization (added to distance-based calculation)
-              </div>
-            </div>
-          </div>
+
         </div>
       </div>
 

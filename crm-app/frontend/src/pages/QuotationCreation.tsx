@@ -237,7 +237,8 @@ export function QuotationCreation() {
             return {
               ...machine,
               baseRate: getEquipmentBaseRate(equipmentDetails, formData.orderType),
-              baseRates: getEquipmentBaseRates(equipmentDetails)
+              baseRates: getEquipmentBaseRates(equipmentDetails),
+              runningCostPerKm: equipmentDetails.runningCostPerKm || machine.runningCostPerKm || 0
             };
           }
           return machine;
@@ -648,12 +649,10 @@ export function QuotationCreation() {
 
     // Mobilization/Demobilization costs
     let mobDemobCost = 0;
-    const transportRate = resourceRates?.transportRate;
     
     console.log("🚚 MOB/DEMOB CALCULATION DEBUG:", {
       mobDemobManual: formData.mobDemob,
       siteDistance: formData.siteDistance,
-      transportRate,
       hasMachines,
       selectedMachinesCount: formData.selectedMachines?.length,
       selectedMachinesData: formData.selectedMachines?.map(m => ({
@@ -667,17 +666,22 @@ export function QuotationCreation() {
     if (formData.mobDemob > 0) {
       mobDemobCost = formData.mobDemob;
       console.log("🚚 Using manual mob/demob cost:", mobDemobCost);
-    } else if (formData.siteDistance > 0 && transportRate) {
+    } else if (formData.siteDistance > 0) {
       if (hasMachines) {
         console.log("🚚 Calculating mob/demob for machines...");
         mobDemobCost = formData.selectedMachines.reduce((total, machine) => {
           const distance = formData.siteDistance || 0;
           const runningCostPerKm = machine.runningCostPerKm || 0;
-          const machineCost = (distance * 2 * runningCostPerKm) + transportRate;
+          const machineCost = distance * 2 * runningCostPerKm; // Round trip cost only
           const totalForMachine = machineCost * machine.quantity;
           
-          console.log(`  - Machine: ${machine.name}, Distance: ${distance}km, Running Cost: ₹${runningCostPerKm}/km, Transport: ₹${transportRate}, Qty: ${machine.quantity}`);
-          console.log(`    Calculation: (${distance} * 2 * ${runningCostPerKm}) + ${transportRate} = ₹${machineCost} per machine`);
+          // Warn if equipment has no running cost data
+          if (!runningCostPerKm) {
+            console.warn(`⚠️ Equipment "${machine.name}" has no running cost per km configured! Mob/demob will be ₹0 for this equipment.`);
+          }
+          
+          console.log(`  - Machine: ${machine.name}, Distance: ${distance}km, Running Cost: ₹${runningCostPerKm}/km, Qty: ${machine.quantity}`);
+          console.log(`    Calculation: ${distance} * 2 * ${runningCostPerKm} = ₹${machineCost} per machine`);
           console.log(`    Total for ${machine.quantity} machine(s): ₹${totalForMachine}`);
           
           return total + totalForMachine;
@@ -687,8 +691,8 @@ export function QuotationCreation() {
         console.log("🚚 No machines selected, using fallback calculation...");
         const distance = formData.siteDistance || 0;
         const runningCostPerKm = formData.runningCostPerKm || 0;
-        mobDemobCost = (distance * 2 * runningCostPerKm) + transportRate;
-        console.log(`  Fallback calculation: (${distance} * 2 * ${runningCostPerKm}) + ${transportRate} = ₹${mobDemobCost}`);
+        mobDemobCost = distance * 2 * runningCostPerKm; // Round trip cost only
+        console.log(`  Fallback calculation: ${distance} * 2 * ${runningCostPerKm} = ₹${mobDemobCost}`);
       }
       
       if (formData.mobRelaxation > 0) {
@@ -697,13 +701,12 @@ export function QuotationCreation() {
         console.log(`🚚 Applied ${formData.mobRelaxation}% relaxation: ₹${beforeRelaxation} -> ₹${mobDemobCost}`);
       }
     } else {
-      console.log("🚚 No mob/demob calculation: siteDistance =", formData.siteDistance, "transportRate =", transportRate);
+      console.log("🚚 No mob/demob calculation: siteDistance =", formData.siteDistance);
     }
 
     console.log("🚚 FINAL Mob-Demob calculation result:", {
       mobDemobManual: formData.mobDemob,
       siteDistance: formData.siteDistance,
-      transportRate,
       mobRelaxation: formData.mobRelaxation,
       finalMobDemobCost: mobDemobCost,
       hasMachines,
@@ -714,8 +717,8 @@ export function QuotationCreation() {
       })),
       conditionChecks: {
         hasManualMobDemob: formData.mobDemob > 0,
-        hasDistanceAndTransport: formData.siteDistance > 0 && !!transportRate,
-        shouldCalculate: (formData.mobDemob === 0 && formData.siteDistance > 0 && !!transportRate)
+        hasDistance: formData.siteDistance > 0,
+        shouldCalculate: (formData.mobDemob === 0 && formData.siteDistance > 0)
       }
     });
 
@@ -1203,6 +1206,13 @@ export function QuotationCreation() {
                                 runningCostPerKm: selected.runningCostPerKm || 0,
                                 quantity: 1
                               };
+                              
+                              console.log(`🏗️ Added equipment to selection:`, {
+                                name: selected.name,
+                                runningCostPerKm: selected.runningCostPerKm,
+                                hasRunningCost: !!selected.runningCostPerKm,
+                                equipmentData: selected
+                              });
                               
                               setFormData(prev => ({
                                 ...prev,
