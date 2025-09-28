@@ -1,7 +1,7 @@
 FROM node:20-alpine
 WORKDIR /app
 
-# Install essential dependencies only
+# Install only essential build dependencies
 RUN apk update && apk add --no-cache \
     python3 \
     make \
@@ -9,13 +9,8 @@ RUN apk update && apk add --no-cache \
     wget \
     ca-certificates
 
-# Try to install Chromium, but don't fail if it doesn't work
-RUN apk add --no-cache chromium || echo "Chromium installation failed, continuing without it"
-RUN apk add --no-cache ttf-dejavu || echo "Font installation failed, continuing without additional fonts"
-
-# Set environment variable for puppeteer to use installed chromium
-ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser
-ENV PUPPETEER_SKIP_DOWNLOAD=true
+# Set environment variables (Puppeteer will use bundled Chromium)
+ENV PUPPETEER_SKIP_DOWNLOAD=false
 
 # Copy package files
 COPY package*.json ./
