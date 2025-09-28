@@ -482,14 +482,19 @@ export function QuotationCreation() {
 
           if (!dealData && quotationToLoad.dealId) {
             try {
+              console.log('[QuotationCreation] Loading deal from quotation dealId:', quotationToLoad.dealId);
               const quotationDeal = await getDealById(quotationToLoad.dealId);
               if (quotationDeal) {
                 console.log('[QuotationCreation] Loaded deal from quotation:', quotationDeal);
                 setDeal(quotationDeal);
+              } else {
+                console.warn('[QuotationCreation] Deal not found for ID:', quotationToLoad.dealId);
               }
             } catch (dealError) {
               console.warn('[QuotationCreation] Could not load deal for quotation:', dealError);
             }
+          } else {
+            console.log('[QuotationCreation] Skipping deal load - dealData exists:', !!dealData, 'quotation dealId:', quotationToLoad.dealId);
           }
         } else {
           console.warn('[QuotationCreation] No quotation found with ID:', quotationId);
@@ -931,14 +936,17 @@ export function QuotationCreation() {
     try {
       setIsSaving(true);
       
-      // Ensure we have either a deal or lead ID
-      if (!dealId) {
+      // Ensure we have either a deal or lead ID (for updates, deal should be loaded from quotation)
+      const currentDealId = dealId || deal?.id;
+      console.log('🔍 DEBUG: Submit validation - dealId:', dealId, 'deal?.id:', deal?.id, 'currentDealId:', currentDealId, 'quotationId:', quotationId);
+      
+      if (!currentDealId && !quotationId) {
         showToast('A deal must be selected to create a quotation', 'error');
         return;
       }
 
-      // Validate deal stage
-      if (!deal?.stage || !['qualification', 'proposal', 'negotiation'].includes(deal.stage)) {
+      // Validate deal stage (skip validation for updates if deal couldn't be loaded)
+      if (deal && (!deal?.stage || !['qualification', 'proposal', 'negotiation'].includes(deal.stage))) {
         showToast('Quotations can only be created for deals in Qualification, Proposal, or Negotiation stages', 'error');
         return;
       }
@@ -965,7 +973,7 @@ export function QuotationCreation() {
 
       const quotationData = {
         ...formData,  // Use EXACT form data without overrides
-        dealId: dealId,
+        dealId: currentDealId,
         leadId: leadId,
         customerName: formData.customerName || deal?.customer?.name || '',
         customerContact: {
