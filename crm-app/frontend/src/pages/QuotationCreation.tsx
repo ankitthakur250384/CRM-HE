@@ -141,8 +141,8 @@ export function QuotationCreation() {
     orderType: 'micro',
     numberOfDays: 0,
     workingHours: 8,
-    foodResources: 0,
-    accomResources: 0,
+    foodResources: 0,  // Always number (number of people)
+    accomResources: 0, // Always number (number of people)
     siteDistance: 0,
     usage: 'normal',
     riskFactor: 'low',
@@ -383,8 +383,8 @@ export function QuotationCreation() {
             orderType: quotationToLoad.orderType || 'micro',
             numberOfDays: Number(quotationToLoad.numberOfDays) || 1,
             workingHours: Number(quotationToLoad.workingHours) || 8,
-            foodResources: Number(quotationToLoad.foodResources) || 0,
-            accomResources: Number(quotationToLoad.accomResources) || 0,
+            foodResources: typeof quotationToLoad.foodResources === 'number' ? quotationToLoad.foodResources : (quotationToLoad.foodResources === 'ASP Provided' ? 2 : 0),
+            accomResources: typeof quotationToLoad.accomResources === 'number' ? quotationToLoad.accomResources : (quotationToLoad.accomResources === 'ASP Provided' ? 2 : 0),
             siteDistance: Number(quotationToLoad.siteDistance) || 0,
             usage: quotationToLoad.usage || 'normal',
             riskFactor: quotationToLoad.riskFactor || 'low',

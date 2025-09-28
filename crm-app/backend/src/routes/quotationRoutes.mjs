@@ -566,8 +566,25 @@ router.post('/', authenticateToken, async (req, res) => {
       const mappedOrderType = quotationData.orderType; // Direct use, no fallback that overrides user selection
       const mappedRiskFactor = quotationData.riskFactor; // Direct use, no mapping override
       // Handle food and accommodation resources as numeric values (number of people)
-      const mappedFoodResources = Number(quotationData.foodResources) || 0;
-      const mappedAccomResources = Number(quotationData.accomResources) || 0;
+      // Convert string values to numbers if needed for backward compatibility
+      let mappedFoodResources = 0;
+      let mappedAccomResources = 0;
+      
+      if (typeof quotationData.foodResources === 'number') {
+        mappedFoodResources = quotationData.foodResources;
+      } else if (quotationData.foodResources === 'ASP Provided') {
+        mappedFoodResources = 2; // Default 2 people
+      } else {
+        mappedFoodResources = Number(quotationData.foodResources) || 0;
+      }
+      
+      if (typeof quotationData.accomResources === 'number') {
+        mappedAccomResources = quotationData.accomResources;
+      } else if (quotationData.accomResources === 'ASP Provided') {
+        mappedAccomResources = 2; // Default 2 people
+      } else {
+        mappedAccomResources = Number(quotationData.accomResources) || 0;
+      }
       
       console.log('🔄 DEBUG: Mapping process:', {
         originalOrderType: quotationData.orderType,
@@ -602,9 +619,9 @@ router.post('/', authenticateToken, async (req, res) => {
         quotationData.workingHours || 8,
         mappedFoodResources,
         mappedAccomResources,
-        quotationData.siteDistance || 0,
-        quotationData.usage, // EXACT usage from frontend
-        mappedRiskFactor,
+        Number(quotationData.siteDistance) || 0,
+        quotationData.usage || 'normal', // EXACT usage from frontend with safe fallback
+        mappedRiskFactor || 'low',
         shiftMapping[quotationData.shift] || 'single',
         'day', // day_night (will be enhanced later)
         15000, // mob_demob (default)
@@ -643,7 +660,8 @@ router.post('/', authenticateToken, async (req, res) => {
         riskFactor: mappedRiskFactor,
         foodResources: mappedFoodResources,
         accomResources: mappedAccomResources,
-        numberOfDays: quotationData.numberOfDays
+        numberOfDays: quotationData.numberOfDays,
+        usage: quotationData.usage
       });
 
       // Insert selected machines if provided (support for multiple equipment)
@@ -676,11 +694,14 @@ router.post('/', authenticateToken, async (req, res) => {
       client.release();
     }
   } catch (error) {
-    console.error('Error creating quotation:', error);
+    console.error('❌ ERROR creating quotation:', error);
+    console.error('❌ ERROR stack:', error.stack);
+    console.error('❌ Quotation data that caused error:', JSON.stringify(quotationData, null, 2));
     return res.status(500).json({ 
       success: false,
       message: 'Internal server error',
-      error: error.message
+      error: error.message,
+      details: error.stack
     });
   }
 });
