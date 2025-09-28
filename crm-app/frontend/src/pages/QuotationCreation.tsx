@@ -373,35 +373,36 @@ export function QuotationCreation() {
           // Set loading flag to prevent auto-calculations from overriding loaded data
           setIsLoadingExistingData(true);
           
-          // Use proper null/undefined checks instead of || operator for numeric values
+          // Use proper null/undefined checks and data type conversion for all fields
           const updatedFormData = {
             ...formData,
             machineType: quotationToLoad.machineType || '',
             selectedEquipment: quotationToLoad.selectedEquipment || formData.selectedEquipment,
             selectedMachines: quotationToLoad.selectedMachines || [],
             orderType: quotationToLoad.orderType || 'micro',
-            numberOfDays: quotationToLoad.numberOfDays !== null && quotationToLoad.numberOfDays !== undefined ? quotationToLoad.numberOfDays : 0,
-            workingHours: quotationToLoad.workingHours !== null && quotationToLoad.workingHours !== undefined ? quotationToLoad.workingHours : 8,
-            foodResources: quotationToLoad.foodResources !== null && quotationToLoad.foodResources !== undefined ? quotationToLoad.foodResources : 0,
-            accomResources: quotationToLoad.accomResources !== null && quotationToLoad.accomResources !== undefined ? quotationToLoad.accomResources : 0,
-            siteDistance: quotationToLoad.siteDistance !== null && quotationToLoad.siteDistance !== undefined ? quotationToLoad.siteDistance : 0,
-            usage: quotationToLoad.usage || 'normal',
-            riskFactor: quotationToLoad.riskFactor || 'low',
-            extraCharge: quotationToLoad.extraCharge !== null && quotationToLoad.extraCharge !== undefined ? quotationToLoad.extraCharge : 0,
+            numberOfDays: Number(quotationToLoad.numberOfDays) || 1,
+            workingHours: Number(quotationToLoad.workingHours) || 8,
+            foodResources: quotationToLoad.foodResources || 'Client Provided',
+            accomResources: quotationToLoad.accomResources || 'Client Provided',
+            siteDistance: Number(quotationToLoad.siteDistance) || 0,
+            usage: quotationToLoad.usage || 'Construction',
+            riskFactor: quotationToLoad.riskFactor || 'Medium',
+            extraCharge: Number(quotationToLoad.extraCharge) || 0,
             incidentalCharges: quotationToLoad.incidentalCharges || [],
-            otherFactorsCharge: quotationToLoad.otherFactorsCharge !== null && quotationToLoad.otherFactorsCharge !== undefined ? quotationToLoad.otherFactorsCharge : 0,
+            otherFactorsCharge: Number(quotationToLoad.otherFactorsCharge) || 0,
             billing: quotationToLoad.billing || 'gst',
             includeGst: quotationToLoad.includeGst !== undefined ? quotationToLoad.includeGst : true,
-            shift: quotationToLoad.shift || 'single',
+            shift: quotationToLoad.shift === 'single' ? 'Day Shift' : quotationToLoad.shift === 'double' ? 'Night Shift' : (quotationToLoad.shift || 'Day Shift'),
             dayNight: quotationToLoad.dayNight || 'day',
-            mobDemob: quotationToLoad.mobDemob || 0,
-            mobRelaxation: quotationToLoad.mobRelaxation || 0,
+            mobDemob: Number(quotationToLoad.mobDemob) || 0,
+            mobRelaxation: Number(quotationToLoad.mobRelaxation) || 0,
             runningCostPerKm: quotationToLoad.runningCostPerKm || 0,
             otherFactors: quotationToLoad.otherFactors || [],
             dealType: quotationToLoad.dealType || DEAL_TYPES[0].value,
             sundayWorking: quotationToLoad.sundayWorking || 'no',
             version: quotationToLoad.version || 1,
             status: quotationToLoad.status || 'draft',
+            notes: quotationToLoad.notes || '',
             customerName: quotationToLoad.customerName || (dealData?.customer?.name || ''),
             customerContact: quotationToLoad.customerContact || {
               name: dealData?.customer?.name || '',
@@ -411,14 +412,27 @@ export function QuotationCreation() {
               address: dealData?.customer?.address || '',
               designation: dealData?.customer?.designation || ''
             },
-            // Load custom amounts from database fields
+            // Load custom amounts from database fields with proper conversion
             customIncidentAmounts: {
               incident1: quotationToLoad.incident1 ? Number(quotationToLoad.incident1) : null,
               incident2: quotationToLoad.incident2 ? Number(quotationToLoad.incident2) : null,
               incident3: quotationToLoad.incident3 ? Number(quotationToLoad.incident3) : null,
             },
-            customRiggerAmount: quotationToLoad.riggerAmount || null,
-            customHelperAmount: quotationToLoad.helperAmount || null
+            customRiggerAmount: Number(quotationToLoad.riggerAmount) || null,
+            customHelperAmount: Number(quotationToLoad.helperAmount) || null,
+            // Load date fields
+            startDate: quotationToLoad.startDate || null,
+            endDate: quotationToLoad.endDate || null,
+            createdAt: quotationToLoad.createdAt || new Date().toISOString(),
+            updatedAt: quotationToLoad.updatedAt || new Date().toISOString(),
+            expectedCloseDate: quotationToLoad.expectedCloseDate || null,
+            // Ensure all calculation-related fields are loaded
+            totalRent: Number(quotationToLoad.totalRent) || 0,
+            totalCost: Number(quotationToLoad.totalCost) || 0,
+            workingCost: Number(quotationToLoad.workingCost) || 0,
+            mobDemobCost: Number(quotationToLoad.mobDemobCost) || 0,
+            foodAccomCost: Number(quotationToLoad.foodAccomCost) || 0,
+            gstAmount: Number(quotationToLoad.gstAmount) || 0
           };
           
           console.log('[QuotationCreation] Form data populated with', Object.keys(updatedFormData).length, 'fields');
