@@ -665,22 +665,19 @@ router.post('/', authenticateToken, async (req, res) => {
       });
 
       // Insert selected machines if provided (support for multiple equipment)
-      if (quotationData.selectedMachines && Array.isArray(quotationData.selectedMachines)) {
+      if (quotationData.selectedMachines && Array.isArray(quotationData.selectedMachines) && quotationData.selectedMachines.length > 0) {
+        console.log('🔧 Inserting', quotationData.selectedMachines.length, 'selected machines');
         for (const machine of quotationData.selectedMachines) {
           await client.query(`
             INSERT INTO quotation_machines (
-              quotation_id, equipment_id, machine_type, name, base_rate, 
-              running_cost_per_km, quantity, base_rates
-            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+              quotation_id, equipment_id, quantity, base_rate, running_cost_per_km
+            ) VALUES ($1, $2, $3, $4, $5)
           `, [
             id,
             machine.equipmentId || machine.id,
-            machine.machineType || machine.name,
-            machine.name,
-            machine.baseRate || 0,
-            machine.runningCostPerKm || 0,
             machine.quantity || 1,
-            JSON.stringify(machine.baseRates || {})
+            machine.baseRate || 0,
+            machine.runningCostPerKm || 0
           ]);
         }
       }
@@ -696,7 +693,7 @@ router.post('/', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('❌ ERROR creating quotation:', error);
     console.error('❌ ERROR stack:', error.stack);
-    console.error('❌ Quotation data that caused error:', JSON.stringify(quotationData, null, 2));
+    console.error('❌ Request body that caused error:', JSON.stringify(req.body, null, 2));
     return res.status(500).json({ 
       success: false,
       message: 'Internal server error',
