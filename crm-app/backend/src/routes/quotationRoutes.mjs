@@ -674,7 +674,7 @@ router.post('/', authenticateToken, async (req, res) => {
             ) VALUES ($1, $2, $3, $4, $5)
           `, [
             id,
-            machine.equipmentId || machine.id,
+            machine.id, // Use the primary key id, not equipmentId (business identifier)
             machine.quantity || 1,
             machine.baseRate || 0,
             machine.runningCostPerKm || 0
