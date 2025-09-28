@@ -101,6 +101,7 @@ export function QuotationCreation() {
   const location = useLocation();
   const navState = location.state as any;
   const dealId = searchParams.get('dealId') || navState?.dealId || '';
+  const leadId = searchParams.get('leadId') || navState?.leadId || '';
   const quotationId = searchParams.get('quotationId') || searchParams.get('edit');
 
   // Configuration management with auto-refresh
@@ -921,6 +922,7 @@ export function QuotationCreation() {
       const quotationData = {
         ...formData,
         dealId: dealId,
+        leadId: leadId,
         customerName: formData.customerName || deal?.customer?.name || '',
         customerContact: {
           name: formData.customerContact?.name || deal?.customer?.name || '',
@@ -942,6 +944,9 @@ export function QuotationCreation() {
         gstAmount: calculations.gstAmount,
         createdBy: user?.id || '',
         updatedAt: new Date().toISOString(),
+        // Equipment information for database storage
+        primaryEquipmentId: formData.selectedEquipment?.equipmentId || formData.selectedEquipment?.id || null,
+        equipmentSnapshot: formData.selectedEquipment || null,
         // Custom per-quotation amounts (will be stored in database fields)
         incident1: formData.customIncidentAmounts?.incident1?.toString() || null,
         incident2: formData.customIncidentAmounts?.incident2?.toString() || null,

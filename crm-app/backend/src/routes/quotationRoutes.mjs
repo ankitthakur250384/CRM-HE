@@ -486,8 +486,14 @@ router.post('/', authenticateToken, async (req, res) => {
       
       const id = uuidv4();
       
-      // Map frontend data to database schema
+      // Map frontend data to database schema - comprehensive mapping
       const orderTypeMapping = {
+        'micro': 'micro',
+        'hourly': 'hourly',
+        'daily': 'daily',
+        'weekly': 'weekly',
+        'monthly': 'monthly',
+        'yearly': 'yearly',
         'rental': 'monthly',
         'long_term_rental': 'yearly',
         'project_rental': 'monthly',
@@ -503,9 +509,15 @@ router.post('/', authenticateToken, async (req, res) => {
       
       const riskMapping = {
         'Low': 'low',
+        'Low Risk': 'low',
         'Medium': 'medium',
+        'Medium Risk': 'medium',
         'High': 'high',
-        'Very High': 'high'
+        'High Risk': 'high',
+        'Very High': 'high',
+        'low': 'low',
+        'medium': 'medium',
+        'high': 'high'
       };
       
       // Use calculated costs from frontend or defaults
@@ -544,14 +556,14 @@ router.post('/', authenticateToken, async (req, res) => {
         customerId,
         quotationData.customerName,
         quotationData.machineType,
-        orderTypeMapping[quotationData.orderType] || 'monthly',
+        orderTypeMapping[quotationData.orderType] || quotationData.orderType || 'micro',
         quotationData.numberOfDays || 1,
         quotationData.workingHours || 8,
-        quotationData.foodResources === 'ASP Provided' ? 2 : 0,
-        quotationData.accomResources === 'ASP Provided' ? 2 : 0,
+        typeof quotationData.foodResources === 'number' ? quotationData.foodResources : (quotationData.foodResources === 'ASP Provided' ? 2 : 0),
+        typeof quotationData.accomResources === 'number' ? quotationData.accomResources : (quotationData.accomResources === 'ASP Provided' ? 2 : 0),
         quotationData.siteDistance || 0,
-        'normal', // usage (will be enhanced later)
-        riskMapping[quotationData.riskFactor] || 'medium',
+        quotationData.usage || 'Construction', // usage from frontend
+        riskMapping[quotationData.riskFactor] || quotationData.riskFactor?.toLowerCase() || 'low',
         shiftMapping[quotationData.shift] || 'single',
         'day', // day_night (will be enhanced later)
         15000, // mob_demob (default)
@@ -575,8 +587,8 @@ router.post('/', authenticateToken, async (req, res) => {
         quotationData.notes || '',
         quotationData.dealId || null,
         quotationData.leadId || null,
-        quotationData.primaryEquipmentId || null, // primary_equipment_id
-        quotationData.equipmentSnapshot ? JSON.stringify(quotationData.equipmentSnapshot) : null, // equipment_snapshot
+        quotationData.primaryEquipmentId || quotationData.selectedEquipment?.equipmentId || quotationData.selectedEquipment?.id || null, // primary_equipment_id
+        quotationData.equipmentSnapshot ? JSON.stringify(quotationData.equipmentSnapshot) : (quotationData.selectedEquipment ? JSON.stringify(quotationData.selectedEquipment) : null), // equipment_snapshot
         quotationData.incident1 || null, // incident1
         quotationData.incident2 || null, // incident2
         quotationData.incident3 || null, // incident3
@@ -584,6 +596,27 @@ router.post('/', authenticateToken, async (req, res) => {
         quotationData.helperAmount || 0  // helper_amount
       ];
       await client.query(insertQuery, values);
+
+      // Insert selected machines if provided (support for multiple equipment)
+      if (quotationData.selectedMachines && Array.isArray(quotationData.selectedMachines)) {
+        for (const machine of quotationData.selectedMachines) {
+          await client.query(`
+            INSERT INTO quotation_machines (
+              quotation_id, equipment_id, machine_type, name, base_rate, 
+              running_cost_per_km, quantity, base_rates
+            ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+          `, [
+            id,
+            machine.equipmentId || machine.id,
+            machine.machineType || machine.name,
+            machine.name,
+            machine.baseRate || 0,
+            machine.runningCostPerKm || 0,
+            machine.quantity || 1,
+            JSON.stringify(machine.baseRates || {})
+          ]);
+        }
+      }
       
       return res.status(201).json({ 
         success: true,
