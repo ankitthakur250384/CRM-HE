@@ -125,19 +125,25 @@ const QuotationDetail: React.FC = () => {
     console.log('🎨 Preview state changing from', isPreviewOpen, 'to', newPreviewState);
     setIsPreviewOpen(newPreviewState);
     
-    // If opening preview, load it from backend
-    if (newPreviewState && quotation && previewFrameRef.current) {
+    // If opening preview, load it from backend after iframe is rendered
+    if (newPreviewState && quotation) {
       console.log('🎨 Loading preview from backend for quotation:', quotation.id);
       console.log('🎨 Using template:', selectedTemplate);
-      // Use the backend iframe preview route with selected template
-      const templateParam = selectedTemplate !== 'default' ? `?templateId=${selectedTemplate}` : '';
-      const iframeSrc = `/api/quotations-preview/${quotation.id}/preview/iframe${templateParam}`;
-      console.log('🎨 Setting iframe src:', iframeSrc);
-      previewFrameRef.current.src = iframeSrc;
+      
+      // Wait for iframe to be rendered before setting src
+      setTimeout(() => {
+        if (previewFrameRef.current) {
+          const templateParam = selectedTemplate !== 'default' ? `?templateId=${selectedTemplate}` : '';
+          const iframeSrc = `/api/quotations-preview/${quotation.id}/preview/iframe${templateParam}`;
+          console.log('🎨 Setting iframe src:', iframeSrc);
+          previewFrameRef.current.src = iframeSrc;
+        } else {
+          console.warn('⚠️ Iframe ref still not available after timeout');
+        }
+      }, 100);
     } else if (newPreviewState) {
-      console.warn('⚠️ Cannot load preview - quotation or iframe ref missing');
+      console.warn('⚠️ Cannot load preview - quotation missing');
       console.warn('⚠️ Quotation exists:', !!quotation);
-      console.warn('⚠️ Iframe ref exists:', !!previewFrameRef.current);
     }
   };
 

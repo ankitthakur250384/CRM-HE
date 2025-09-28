@@ -77,17 +77,28 @@ const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || 'http://103.224.243.242:3
 
 // Security middleware
 if (isProduction) {
-  app.use(helmet());
+  app.use(helmet({
+    // Disable problematic headers for iframe compatibility
+    crossOriginOpenerPolicy: false,
+    originAgentCluster: false,
+    contentSecurityPolicy: {
+      directives: {
+        frameAncestors: ["'self'"]
+      }
+    }
+  }));
   app.use(compression());
 }
 
 // CORS configuration - allow credentials and set origin to frontend
 app.use(cors({
   origin: function (origin, callback) {
-    if (!origin || origin === FRONTEND_ORIGIN) {
-      callback(null, FRONTEND_ORIGIN);
+    // Allow same-origin and iframe requests
+    if (!origin || origin === FRONTEND_ORIGIN || origin === 'http://localhost:3000') {
+      callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      console.log('🚫 CORS blocked origin:', origin);
+      callback(null, false);
     }
   },
   credentials: true,

@@ -687,7 +687,7 @@ router.put('/:id', async (req, res) => {
       selectedMachines,
       incidentalCharges,
       otherFactors,
-      // New fields from schema migration
+      // Fields that will be added to database schema
       primary_equipment_id,
       equipment_snapshot,
       incident1,
