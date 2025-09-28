@@ -383,11 +383,11 @@ export function QuotationCreation() {
             orderType: quotationToLoad.orderType || 'micro',
             numberOfDays: Number(quotationToLoad.numberOfDays) || 1,
             workingHours: Number(quotationToLoad.workingHours) || 8,
-            foodResources: quotationToLoad.foodResources || 'Client Provided',
-            accomResources: quotationToLoad.accomResources || 'Client Provided',
+            foodResources: Number(quotationToLoad.foodResources) || 0,
+            accomResources: Number(quotationToLoad.accomResources) || 0,
             siteDistance: Number(quotationToLoad.siteDistance) || 0,
-            usage: quotationToLoad.usage || 'Construction',
-            riskFactor: quotationToLoad.riskFactor || 'Medium',
+            usage: quotationToLoad.usage || 'normal',
+            riskFactor: quotationToLoad.riskFactor || 'low',
             extraCharge: Number(quotationToLoad.extraCharge) || 0,
             incidentalCharges: quotationToLoad.incidentalCharges || [],
             otherFactorsCharge: Number(quotationToLoad.otherFactorsCharge) || 0,
@@ -551,10 +551,11 @@ export function QuotationCreation() {
 
   const determineOrderType = (days: number): OrderType => {
     console.log('[determineOrderType] Called with days:', days, 'configLoaded:', !!quotationConfig?.orderTypeLimits);
+    console.log('[determineOrderType] Full config:', quotationConfig?.orderTypeLimits);
     
     if (!quotationConfig?.orderTypeLimits) {
-      console.log('[determineOrderType] Config not loaded, returning micro fallback');
-      return 'micro';
+      console.warn('⚠️ [determineOrderType] Configuration not loaded! Returning micro as temporary fallback.');
+      return 'micro'; // Return a safe fallback, but this should not be the final saved value
     }
     
     const limits = quotationConfig.orderTypeLimits;
@@ -571,6 +572,23 @@ export function QuotationCreation() {
     else result = 'yearly';
     
     console.log('[determineOrderType] Result for', days, 'days:', result, 'limits:', limits);
+    
+    // Test case verification
+    if (days === 21) {
+      console.log('🧪 TEST: 21 days should be "small" (11-25 range). Got:', result);
+      if (result !== 'small') {
+        console.error('❌ TEST FAILED: 21 days returned', result, 'instead of "small"');
+        console.log('Limits check:', {
+          microMax: limits.micro.maxDays,
+          smallMax: limits.small.maxDays,
+          monthlyMax: limits.monthly.maxDays,
+          evaluation: `21 <= ${limits.micro.maxDays} = ${days <= limits.micro.maxDays}, 21 <= ${limits.small.maxDays} = ${days <= limits.small.maxDays}`
+        });
+      } else {
+        console.log('✅ TEST PASSED: 21 days correctly mapped to "small"');
+      }
+    }
+    
     return result;
   };
 
@@ -899,6 +917,12 @@ export function QuotationCreation() {
       return;
     }
 
+    // Ensure configuration is loaded before submitting
+    if (!quotationConfig?.orderTypeLimits) {
+      showToast('Configuration is still loading. Please wait a moment and try again.', 'error');
+      return;
+    }
+
     if (formData.selectedMachines.length === 0) {
       showToast('Please select at least one equipment', 'error');
       return;
@@ -919,8 +943,28 @@ export function QuotationCreation() {
         return;
       }
 
+      console.log('🔍 DEBUG: About to submit quotation with EXACT form values:', {
+        orderType: formData.orderType,
+        numberOfDays: formData.numberOfDays,
+        usage: formData.usage,
+        riskFactor: formData.riskFactor,
+        foodResources: formData.foodResources,
+        accomResources: formData.accomResources,
+        configurationLoaded: !!quotationConfig?.orderTypeLimits,
+        quotationConfigLimits: quotationConfig?.orderTypeLimits,
+        determineOrderTypeResult: determineOrderType(formData.numberOfDays)
+      });
+
+      // Double-check that the order type is correctly determined
+      const finalOrderType = determineOrderType(formData.numberOfDays);
+      if (finalOrderType !== formData.orderType) {
+        console.warn('⚠️ Order type mismatch! Form has:', formData.orderType, 'but determination gives:', finalOrderType);
+        // Update form data to use the correctly determined order type
+        setFormData(prev => ({ ...prev, orderType: finalOrderType }));
+      }
+
       const quotationData = {
-        ...formData,
+        ...formData,  // Use EXACT form data without overrides
         dealId: dealId,
         leadId: leadId,
         customerName: formData.customerName || deal?.customer?.name || '',

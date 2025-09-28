@@ -438,6 +438,17 @@ router.get('/:id', async (req, res) => {
 router.post('/', authenticateToken, async (req, res) => {
   try {
     const quotationData = req.body;
+    console.log('🔍 DEBUG: Received quotation data:', {
+      orderType: quotationData.orderType,
+      usage: quotationData.usage,
+      riskFactor: quotationData.riskFactor,
+      foodResources: quotationData.foodResources,
+      accomResources: quotationData.accomResources,
+      numberOfDays: quotationData.numberOfDays,
+      leadId: quotationData.leadId,
+      selectedEquipment: quotationData.selectedEquipment,
+      primaryEquipmentId: quotationData.primaryEquipmentId
+    });
     // Validate required fields
     const requiredFields = ['customerName', 'machineType', 'orderType', 'numberOfDays'];
     const missingFields = requiredFields.filter(field => !quotationData[field]);
@@ -551,19 +562,49 @@ router.post('/', authenticateToken, async (req, res) => {
           $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42
         )
       `;
+      // Debug the mapping process - use EXACT values from frontend
+      const mappedOrderType = quotationData.orderType; // Direct use, no fallback that overrides user selection
+      const mappedRiskFactor = quotationData.riskFactor; // Direct use, no mapping override
+      // Handle food and accommodation resources as numeric values (number of people)
+      const mappedFoodResources = Number(quotationData.foodResources) || 0;
+      const mappedAccomResources = Number(quotationData.accomResources) || 0;
+      
+      console.log('🔄 DEBUG: Mapping process:', {
+        originalOrderType: quotationData.orderType,
+        mappedOrderType,
+        originalRiskFactor: quotationData.riskFactor,
+        mappedRiskFactor,
+        originalUsage: quotationData.usage,
+        originalFoodResources: quotationData.foodResources,
+        mappedFoodResources,
+        originalAccomResources: quotationData.accomResources,
+        mappedAccomResources,
+        numberOfDays: quotationData.numberOfDays,
+        orderTypeMapping: orderTypeMapping
+      });
+      
+      // Test specific case
+      if (quotationData.numberOfDays === 21) {
+        console.log('🧪 BACKEND TEST: 21 days with orderType:', quotationData.orderType);
+        console.log('Expected: "small", Mapped to:', mappedOrderType);
+        if (mappedOrderType !== 'small' && quotationData.orderType === 'small') {
+          console.error('❌ BACKEND ISSUE: Order type mapping failed for 21 days');
+        }
+      }
+
       const values = [
         id,
         customerId,
         quotationData.customerName,
         quotationData.machineType,
-        orderTypeMapping[quotationData.orderType] || quotationData.orderType || 'micro',
+        mappedOrderType,
         quotationData.numberOfDays || 1,
         quotationData.workingHours || 8,
-        typeof quotationData.foodResources === 'number' ? quotationData.foodResources : (quotationData.foodResources === 'ASP Provided' ? 2 : 0),
-        typeof quotationData.accomResources === 'number' ? quotationData.accomResources : (quotationData.accomResources === 'ASP Provided' ? 2 : 0),
+        mappedFoodResources,
+        mappedAccomResources,
         quotationData.siteDistance || 0,
-        quotationData.usage || 'Construction', // usage from frontend
-        riskMapping[quotationData.riskFactor] || quotationData.riskFactor?.toLowerCase() || 'low',
+        quotationData.usage, // EXACT usage from frontend
+        mappedRiskFactor,
         shiftMapping[quotationData.shift] || 'single',
         'day', // day_night (will be enhanced later)
         15000, // mob_demob (default)
@@ -596,6 +637,14 @@ router.post('/', authenticateToken, async (req, res) => {
         quotationData.helperAmount || 0  // helper_amount
       ];
       await client.query(insertQuery, values);
+      
+      console.log('✅ DEBUG: Quotation inserted with ID:', id, 'Values used:', {
+        orderType: mappedOrderType,
+        riskFactor: mappedRiskFactor,
+        foodResources: mappedFoodResources,
+        accomResources: mappedAccomResources,
+        numberOfDays: quotationData.numberOfDays
+      });
 
       // Insert selected machines if provided (support for multiple equipment)
       if (quotationData.selectedMachines && Array.isArray(quotationData.selectedMachines)) {
