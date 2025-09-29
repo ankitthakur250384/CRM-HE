@@ -46,7 +46,7 @@ export const QuotationSummary: React.FC<QuotationSummaryProps> = ({ calculations
         <AlertTriangle className="w-4 h-4 text-red-600" />
         <span className="text-sm font-semibold text-gray-900">Risk & Usage</span>
       </div>
-      <span className="font-bold text-gray-900">{formatCurrency((calculations?.riskAdjustment || 0) + (calculations?.usageLoadFactor || 0))}</span>
+      <span className="font-bold text-gray-900">{formatCurrency(calculations?.riskandusagecost || 0 )}</span>
     </div>
     
     <div className="flex justify-between items-center">

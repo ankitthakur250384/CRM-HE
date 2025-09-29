@@ -153,43 +153,49 @@ export function AdditionalParamsConfig() {
         <RefreshCw className="w-6 h-6 animate-spin text-primary-600" />
       </div>
     );
-  }
+    }
 
-  const RateInput = ({ 
-    value, 
-    onChange, 
-    label, 
-    isPercentage = false,
-    errorKey
-  }) => (
-    <div>
-      <label className="block text-sm font-medium text-gray-700 mb-1">
-        {label}
-      </label>
-      <div className="relative mt-1">
-        {!isPercentage && (
-          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-            <span className="text-gray-500 sm:text-sm">₹</span>
-          </div>
-        )}
-        <Input
-          type="number"
-          value={value}
-          onChange={(e) => onChange(Number(e.target.value))}
-          className={isPercentage ? "pr-8" : "pl-7"}
-          min="0"
-        />
-        {isPercentage && (
-          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-            <Percent className="h-4 w-4 text-gray-400" />
-          </div>
-        )}
-      </div>
-      {errorKey && errors[errorKey] && (
-        <div className="text-xs text-red-600 mt-1">{errors[errorKey]}</div>
-      )}
-    </div>
-  );
+    const RateInput = ({
+        value,
+        onChange,
+        label,
+        isPercentage = false,
+        errorKey
+    }) => (
+        <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+                {label}
+            </label>
+            <div className="relative mt-1">
+                {!isPercentage && (
+                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                        <span className="text-gray-500 sm:text-sm">₹</span>
+                    </div>
+                )}
+                <Input
+                    type="number"
+                    value={value ?? ''} // ✅ Ensures input is always controlled (prevents cursor jump)
+                    onChange={(e) => {
+                        const raw = e.target.value; // ✅ Capture raw string
+                        const parsed = parseFloat(raw); // ✅ Parse safely
+                        onChange(raw === '' ? '' : isNaN(parsed) ? 0 : parsed); // ✅ Allow clearing, prevent NaN
+                    }}
+                    className={isPercentage ? "pr-8" : "pl-7"}
+                    min="0"
+                />
+                {isPercentage && (
+                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                        <Percent className="h-4 w-4 text-gray-400" />
+                    </div>
+                )}
+            </div>
+            {errorKey && errors?.[errorKey] && ( // ✅ Optional chaining prevents crash if errors is undefined
+                <div className="text-xs text-red-600 mt-1">{errors[errorKey]}</div>
+            )}
+        </div>
+    );
+
+
 
   const setIncidentAmount = (key, amount) => {
     setParams((prev) => {
