@@ -93,6 +93,7 @@ interface PropertiesPanelProps {
 
 interface EnhancedTemplateBuilderProps {
   quotationId?: string | null;
+  templateId?: string | null;  // Add templateId prop for editing existing templates
   onClose: () => void;
   onSave: (template: Template) => void;
 }
@@ -429,9 +430,9 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedElement, onUp
 };
 
 // Main Enhanced Template Builder Component
-const EnhancedTemplateBuilder: React.FC<EnhancedTemplateBuilderProps> = ({ quotationId, onClose, onSave }) => {
+const EnhancedTemplateBuilder: React.FC<EnhancedTemplateBuilderProps> = ({ quotationId, templateId, onClose, onSave }) => {
   const [template, setTemplate] = useState<Template>({
-    id: quotationId || null,
+    id: templateId || null,
     name: 'New Template',
     description: '',
     theme: 'MODERN',
@@ -452,10 +453,13 @@ const EnhancedTemplateBuilder: React.FC<EnhancedTemplateBuilderProps> = ({ quota
   
   const previewRef = useRef<HTMLIFrameElement>(null);
 
-  // Load sample data on mount
+  // Load sample data and template data on mount
   useEffect(() => {
     loadSampleData();
-  }, []);
+    if (templateId) {
+      loadTemplateData(templateId);
+    }
+  }, [templateId]);
 
   const loadSampleData = async () => {
     try {
@@ -470,6 +474,46 @@ const EnhancedTemplateBuilder: React.FC<EnhancedTemplateBuilderProps> = ({ quota
       }
     } catch (error) {
       console.error('Error loading sample data:', error);
+    }
+  };
+
+  // Load existing template data for editing
+  const loadTemplateData = async (templateId: string) => {
+    try {
+      setIsLoading(true);
+      console.log('🔍 Loading template data for ID:', templateId);
+      
+      const response = await fetch(`/api/templates/enhanced/${templateId}`);
+      const result = await response.json();
+      
+      if (result.success && result.data) {
+        const templateData = result.data;
+        console.log('✅ Template data loaded successfully:', templateData);
+        
+        // Update template state with loaded data
+        setTemplate({
+          id: templateData.id,
+          name: templateData.name || 'Untitled Template',
+          description: templateData.description || '',
+          theme: templateData.theme || 'MODERN',
+          elements: templateData.elements || [],
+          settings: templateData.settings || {},
+          branding: templateData.branding || {}
+        });
+        
+        setMessage('Template loaded successfully');
+        setTimeout(() => setMessage(''), 3000);
+      } else {
+        console.error('Failed to load template data:', result.error || result.message);
+        setMessage('Failed to load template data');
+        setTimeout(() => setMessage(''), 5000);
+      }
+    } catch (error) {
+      console.error('Error loading template data:', error);
+      setMessage('Error loading template data');
+      setTimeout(() => setMessage(''), 5000);
+    } finally {
+      setIsLoading(false);
     }
   };
 

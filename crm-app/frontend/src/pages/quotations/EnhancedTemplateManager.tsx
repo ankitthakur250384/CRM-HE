@@ -243,7 +243,7 @@ const EnhancedTemplateManager = () => {
   if (showBuilder) {
     return (
       <EnhancedTemplateBuilder
-        quotationId={selectedTemplate?.id || null}
+        templateId={selectedTemplate?.id || null}
         onClose={handleCloseBuilder}
         onSave={handleSaveTemplate}
       />

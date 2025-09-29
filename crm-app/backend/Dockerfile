@@ -1,17 +1,18 @@
 FROM node:20-alpine
 WORKDIR /app
 
-# Install essential dependencies only
-RUN apk update && apk add --no-cache \
+# Install dependencies needed for native modules, puppeteer, and wget for health check
+RUN apk add --no-cache \
     python3 \
     make \
     g++ \
     wget \
-    ca-certificates
-
-# Try to install Chromium, but don't fail if it doesn't work
-RUN apk add --no-cache chromium || echo "Chromium installation failed, continuing without it"
-RUN apk add --no-cache ttf-dejavu || echo "Font installation failed, continuing without additional fonts"
+    chromium \
+    nss \
+    freetype \
+    harfbuzz \
+    ca-certificates \
+    ttf-freefont
 
 # Set environment variable for puppeteer to use installed chromium
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium-browser

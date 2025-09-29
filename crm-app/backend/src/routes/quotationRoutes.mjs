@@ -285,11 +285,11 @@ router.get('/:id', async (req, res) => {
         leadId: quotation.lead_id,
         customerId: quotation.customer_id,
         customerName: quotation.customer_name,
-        customerContact: quotation.customer_contact || {
-          name: quotation.customer_name,
+        customerContact: {
+          name: quotation.customer_name || quotation.contact_name,
           email: quotation.customer_email,
           phone: quotation.customer_phone,
-          company: quotation.customer_company,
+          company: quotation.customer_company || quotation.company_name,
           address: quotation.customer_address,
           designation: quotation.customer_designation
         },
@@ -337,8 +337,11 @@ router.get('/:id', async (req, res) => {
         incident1: quotation.incident1,
         incident2: quotation.incident2,
         incident3: quotation.incident3,
-        riggerAmount: Number(quotation.rigger_amount) || 0,
-        helperAmount: Number(quotation.helper_amount) || 0,
+        riggerAmount: Number(quotation.rigger_amount) || null,
+        helperAmount: Number(quotation.helper_amount) || null,
+        // Add parsed incidental charges and other factors arrays
+        incidentalCharges: quotation.incidental_charges || [],
+        otherFactors: quotation.other_factors || [],
         // Add selected machines data
         selectedMachines: machinesResult.rows.map(machine => ({
           id: machine.equipment_id,
@@ -805,12 +808,16 @@ router.put('/:id', async (req, res) => {
       incident1,
       incident2,
       incident3,
-      rigger_amount,
-      helper_amount,
+      riggerAmount,
+      helperAmount,
       billing,
       include_gst,
       sunday_working
     } = req.body;
+
+    // Map frontend field names to backend expectations
+    const rigger_amount_mapped = riggerAmount;
+    const helper_amount_mapped = helperAmount;
 
     const client = await pool.connect();
     
@@ -899,8 +906,8 @@ router.put('/:id', async (req, res) => {
         incident1,
         incident2,
         incident3,
-        rigger_amount,
-        helper_amount,
+        rigger_amount_mapped,
+        helper_amount_mapped,
         id
       ]);
       

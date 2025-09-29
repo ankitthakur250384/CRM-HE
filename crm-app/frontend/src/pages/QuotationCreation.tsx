@@ -419,8 +419,8 @@ export function QuotationCreation() {
               incident2: quotationToLoad.incident2 ? Number(quotationToLoad.incident2) : null,
               incident3: quotationToLoad.incident3 ? Number(quotationToLoad.incident3) : null,
             },
-            customRiggerAmount: Number(quotationToLoad.riggerAmount) || null,
-            customHelperAmount: Number(quotationToLoad.helperAmount) || null,
+            customRiggerAmount: quotationToLoad.riggerAmount ? Number(quotationToLoad.riggerAmount) : null,
+            customHelperAmount: quotationToLoad.helperAmount ? Number(quotationToLoad.helperAmount) : null,
             // Load date fields
             startDate: quotationToLoad.startDate || null,
             endDate: quotationToLoad.endDate || null,
@@ -444,6 +444,50 @@ export function QuotationCreation() {
             orderType: updatedFormData.orderType,
             customerName: updatedFormData.customerName,
             customerContact: updatedFormData.customerContact
+          });
+          
+          // Reconstruct incidentalCharges array based on loaded values
+          const reconstructedIncidentalCharges = [];
+          if (quotationToLoad.incident1 && Number(quotationToLoad.incident1) > 0) {
+            reconstructedIncidentalCharges.push('incident1');
+          }
+          if (quotationToLoad.incident2 && Number(quotationToLoad.incident2) > 0) {
+            reconstructedIncidentalCharges.push('incident2');
+          }
+          if (quotationToLoad.incident3 && Number(quotationToLoad.incident3) > 0) {
+            reconstructedIncidentalCharges.push('incident3');
+          }
+          
+          // Reconstruct otherFactors array based on loaded values
+          const reconstructedOtherFactors = [];
+          if (quotationToLoad.riggerAmount && Number(quotationToLoad.riggerAmount) > 0) {
+            reconstructedOtherFactors.push('rigger');
+          }
+          if (quotationToLoad.helperAmount && Number(quotationToLoad.helperAmount) > 0) {
+            reconstructedOtherFactors.push('helper');
+          }
+          
+          // Update the form data with reconstructed arrays
+          updatedFormData.incidentalCharges = quotationToLoad.incidentalCharges?.length > 0 
+            ? quotationToLoad.incidentalCharges 
+            : reconstructedIncidentalCharges;
+          updatedFormData.otherFactors = quotationToLoad.otherFactors?.length > 0 
+            ? quotationToLoad.otherFactors 
+            : reconstructedOtherFactors;
+          
+          console.log('[QuotationCreation] Incident values loading:', {
+            incident1: quotationToLoad.incident1,
+            incident2: quotationToLoad.incident2,
+            incident3: quotationToLoad.incident3,
+            reconstructedIncidentalCharges,
+            finalIncidentalCharges: updatedFormData.incidentalCharges
+          });
+          
+          console.log('[QuotationCreation] Helper/Rigger values loading:', {
+            riggerAmount: quotationToLoad.riggerAmount,
+            helperAmount: quotationToLoad.helperAmount,
+            reconstructedOtherFactors,
+            finalOtherFactors: updatedFormData.otherFactors
           });
           
           console.log('[QuotationCreation] Before setFormData - Current formData:', {
@@ -1846,16 +1890,16 @@ export function QuotationCreation() {
                       type="button"
                       variant="outline"
                       onClick={() => navigate('/quotations')}
-                      className="w-full"
+                      className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-gray-900 hover:border-gray-400"
                     >
                       Cancel
                     </Button>
                     <Button 
                       type="submit"
                       disabled={isSaving || (formData.selectedMachines.length === 0 && !formData.selectedEquipment.id)}
-                      className="w-full bg-primary-600 hover:bg-primary-700"
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-lg hover:shadow-xl"
                       leftIcon={isSaving ? <Clock className="animate-spin" /> : <Save />}
-                      variant="accent"
+                      variant="default"
                     >
                       {isSaving ? 'Saving...' : quotationId ? 'Update Quotation' : 'Create Quotation'}
                     </Button>
