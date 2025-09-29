@@ -643,6 +643,18 @@ export class EnhancedTemplateBuilder {
       case 'table': // Support legacy 'table' type from database
         return this.renderItemsTable(element, data);
 
+      case 'section': // Legacy section -> custom text
+        return this.renderCustomText({ ...element, type: 'custom_text' }, data);
+
+      case 'field': // Legacy field -> quotation info
+        return this.renderQuotationInfo({ ...element, type: 'quotation_info' }, data);
+
+      case 'customer': // Legacy customer -> client info
+        return this.renderClientInfo({ ...element, type: 'client_info' }, data);
+
+      case 'total': // Legacy total -> totals
+        return this.renderTotals({ ...element, type: 'totals' }, data);
+
       case TEMPLATE_ELEMENT_TYPES.TOTALS:
       case 'totals':
         return this.renderTotals(element, data);
