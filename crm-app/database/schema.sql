@@ -270,6 +270,7 @@ CREATE TABLE quotations (
     food_accom_cost NUMERIC(12, 2) CHECK (food_accom_cost >= 0),
     usage_load_factor NUMERIC(10, 2) CHECK (usage_load_factor >= 0),
     risk_adjustment NUMERIC(10, 2) CHECK (risk_adjustment >= 0),
+    riskandusagecost NUMERIC(12, 2) CHECK (riskandusagecost >= 0),
     gst_amount NUMERIC(10, 2) CHECK (gst_amount >= 0),
     -- Fields required by backend queries
     incident1 TEXT,
