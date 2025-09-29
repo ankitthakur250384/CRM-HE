@@ -43,8 +43,9 @@ const TIME_OPTIONS = [
 ];
 
 const USAGE_OPTIONS = [
-  { value: 'normal', label: 'Normal' },
-  { value: 'heavy', label: 'Heavy' },
+    { value: 'normal', label: 'Normal' },
+    { value: 'medium', label: 'Medium' }, // ✅ Add this line
+    { value: 'heavy', label: 'Heavy' },
 ];
 
 const DEAL_TYPES = [
@@ -172,6 +173,7 @@ export function QuotationCreation() {
     riskAdjustment: 0,
     gstAmount: 0,
     totalAmount: 0,
+    riskandusagecost: 0,
   });
 
   // Listen for configuration changes and recalculate quotations
@@ -565,6 +567,7 @@ export function QuotationCreation() {
         riskAdjustment: 0,
         gstAmount: 0,
         totalAmount: 0,
+        riskandusagecost: 0,
       });
       return;
     }
@@ -603,150 +606,213 @@ export function QuotationCreation() {
         workingCost = effectiveBaseRate * totalHours;
       }
     }
+      // ✅ Apply shift and day/night factors as direct multipliers
+      const shiftFactor = additionalParams?.shiftFactors?.[formData.shift] ?? 1;
+      const timeFactor = additionalParams?.dayNightFactors?.[formData.dayNight] ?? 1;
 
-    // Apply shift type multiplier from configuration
-    let shiftMultiplier = 1;
-    if (additionalParams?.shiftFactors) {
-      if (formData.shift === 'single') {
-        shiftMultiplier = additionalParams.shiftFactors.single;
-      } else if (formData.shift === 'double') {
-        shiftMultiplier = additionalParams.shiftFactors.double;
+      workingCost = workingCost * (shiftFactor + timeFactor);
+
+      // ✅ Log the breakdown for validation
+      console.log("💰 Working cost calculated:", {
+          baseWorkingCost: workingCost / (shiftFactor + timeFactor),
+          shiftFactor,
+          timeFactor,
+          finalWorkingCost: workingCost
+      });
+
+    //// Food & Accommodation costs
+    //// Resolve daily rate with priority: additionalParams daily -> resourceRates daily -> additionalParams monthly -> resourceRates monthly -> defaults
+    //const resolvedFoodDaily = (() => {
+    //  // additionalParams may store either a daily rate (foodRate) or monthly (foodRatePerMonth)
+    //  if (additionalParams?.foodRate !== undefined && additionalParams.foodRate !== null) return Number(additionalParams.foodRate);
+    //  if (resourceRates?.foodRate !== undefined && resourceRates.foodRate !== null) return Number(resourceRates.foodRate);
+    //  if (additionalParams?.foodRatePerMonth !== undefined && additionalParams.foodRatePerMonth !== null) return Number(additionalParams.foodRatePerMonth) / 26;
+    //  if (resourceRates?.foodRatePerMonth !== undefined && resourceRates.foodRatePerMonth !== null) return Number(resourceRates.foodRatePerMonth) / 26;
+    //  // fallback default monthly 2500 -> per day
+    //  return 2500 / 26;
+    //})();
+
+    //const resolvedAccomDaily = (() => {
+    //  if (additionalParams?.accommodationRate !== undefined && additionalParams.accommodationRate !== null) return Number(additionalParams.accommodationRate);
+    //  if (resourceRates?.accommodationRate !== undefined && resourceRates.accommodationRate !== null) return Number(resourceRates.accommodationRate);
+    //  if (additionalParams?.accommodationRatePerMonth !== undefined && additionalParams.accommodationRatePerMonth !== null) return Number(additionalParams.accommodationRatePerMonth) / 26;
+    //  if (resourceRates?.accommodationRatePerMonth !== undefined && resourceRates.accommodationRatePerMonth !== null) return Number(resourceRates.accommodationRatePerMonth) / 26;
+    //  return 4000 / 26;
+    //})();
+
+    //const foodRate = resolvedFoodDaily;
+    //const accomRate = resolvedAccomDaily;
+    //const foodCost = (formData.foodResources || 0) * foodRate * numberOfDays;
+    //const accomCost = (formData.accomResources || 0) * accomRate * numberOfDays;
+
+    //const foodAccomCost = foodCost + accomCost;
+
+    //console.log("🍽️ Food & Accommodation:", {
+    //  foodResources: formData.foodResources,
+    //  accomResources: formData.accomResources,
+    //  foodRate,
+    //  accomRate,
+    //  numberOfDays,
+    //  foodCost,
+    //  accomCost,
+    //  foodAccomCost,
+    //  resourceRates,
+    //  additionalParams
+    //});
+
+
+      //// Safely extract monthly rates from resourceRates config
+      //const foodRatePerMonth = Number(resourceRates?.foodRatePerMonth ?? 2500); // fallback default
+      //const accomRatePerMonth = Number(resourceRates?.accommodationRatePerMonth ?? 4000); // fallback default
+
+      //// Extract number of resources from formData
+      //const foodResources = Number(formData.foodResources ?? 0);
+      //const accomResources = Number(formData.accomResources ?? 0);
+
+      //// Multiply monthly rate × number of resources
+      //const foodCost = foodResources * foodRatePerMonth;
+      //const accomCost = accomResources * accomRatePerMonth;
+
+      //const foodAccomCost = foodCost + accomCost;
+
+      //// Log breakdown for validation
+      //console.log("🍽️ Monthly Food & Accommodation Cost:", {
+      //    foodResources,
+      //    accomResources,
+      //    foodRatePerMonth,
+      //    accomRatePerMonth,
+      //    foodCost,
+      //    accomCost,
+      //    foodAccomCost,
+      //    resourceRates
+      //});
+
+      // Food & Accommodation costs (monthly — DO NOT convert to daily)
+      // Priority: resourceRates.foodRatePerMonth -> additionalParams.foodRatePerMonth
+      // Fallbacks: resourceRates.foodRate (daily → monthly), additionalParams.foodRate (daily → monthly)
+      const resolvedFoodMonthly = (() => {
+          if (resourceRates?.foodRatePerMonth != null) return Number(resourceRates.foodRatePerMonth);
+          if (additionalParams?.foodRatePerMonth != null) return Number(additionalParams.foodRatePerMonth);
+          if (resourceRates?.foodRate != null) return Number(resourceRates.foodRate) * 26;
+          if (additionalParams?.foodRate != null) return Number(additionalParams.foodRate) * 26;
+          return 2500; // final fallback
+      })();
+
+      const resolvedAccomMonthly = (() => {
+          if (resourceRates?.accommodationRatePerMonth != null) return Number(resourceRates.accommodationRatePerMonth);
+          if (additionalParams?.accommodationRatePerMonth != null) return Number(additionalParams.accommodationRatePerMonth);
+          if (resourceRates?.accommodationRate != null) return Number(resourceRates.accommodationRate) * 26;
+          if (additionalParams?.accommodationRate != null) return Number(additionalParams.accommodationRate) * 26;
+          return 4000; // final fallback
+      })();
+
+      // Multiply monthly rate × number of resources (NOT by number of days)
+      const foodResources = Number(formData.foodResources ?? 0);
+      const accomResources = Number(formData.accomResources ?? 0);
+
+      const foodCost = foodResources * resolvedFoodMonthly;
+      const accomCost = accomResources * resolvedAccomMonthly;
+      const foodAccomCost = foodCost + accomCost;
+
+      console.log("🍽️ Food & Accommodation (monthly):", {
+          foodResources,
+          accomResources,
+          resolvedFoodMonthly,
+          resolvedAccomMonthly,
+          foodCost,
+          accomCost,
+          foodAccomCost,
+          resourceRates,
+          additionalParams
+      });
+
+      let mobDemobCost = 0;
+
+      // Extract distance and relaxation
+      const distance = Number(formData.siteDistance ?? 0);
+      const mobRelaxation = Number(formData.mobRelaxation ?? 0);
+
+      // Extract usage/risk factors from config
+      const usageFactor = additionalParams?.usageFactors?.[formData.usage] ?? 1.0;
+      const riskFactor = additionalParams?.riskFactors?.[formData.siteRisk] ?? 0;
+
+      // Manual override
+      if (formData.mobDemob > 0) {
+          mobDemobCost = formData.mobDemob;
+      } else if (distance > 0) {
+          if (hasMachines && Array.isArray(formData.selectedMachines)) {
+              mobDemobCost = formData.selectedMachines.reduce((total, machine) => {
+                  const runningCostPerKm = Number(machine.runningCostPerKm ?? 0);
+                  const machineCost = (distance * 2 * runningCostPerKm);
+                  return total + (machineCost * machine.quantity);
+              }, 0);
+          } else {
+              const runningCostPerKm = Number(formData.runningCostPerKm ?? 0);
+              mobDemobCost = (distance * 2 * runningCostPerKm);
+          }
+
+          // Apply usage and risk factors
+         // mobDemobCost *= usageFactor;
+          //mobDemobCost += riskFactor;
+
+          // Apply relaxation discount
+          //if (mobRelaxation > 0) {
+             // mobDemobCost *= (1 - mobRelaxation / 100);
+         // }
       }
-    }
-    workingCost = workingCost * shiftMultiplier;
 
-    // Apply day/night time multiplier from configuration  
-    let timeMultiplier = 1;
-    if (additionalParams?.dayNightFactors) {
-      if (formData.dayNight === 'day') {
-        timeMultiplier = additionalParams.dayNightFactors.day;
-      } else if (formData.dayNight === 'night') {
-        timeMultiplier = additionalParams.dayNightFactors.night;
-      }
-    }
-    workingCost = workingCost * timeMultiplier;
+      console.log("🚚 Mob-Demob calculation:", {
+          mobDemobManual: formData.mobDemob,
+          siteDistance: distance,
+          usage: formData.usage,
+          usageFactor,
+          siteRisk: formData.siteRisk,
+          riskFactor,
+          mobRelaxation,
+          mobDemobCost,
+          hasMachines,
+          selectedMachines: formData.selectedMachines?.map(m => ({
+              name: m.name,
+              quantity: m.quantity,
+              runningCostPerKm: m.runningCostPerKm
+          }))
+      });
 
-    console.log("💰 Working cost calculated:", {
-      baseWorkingCost: workingCost / (shiftMultiplier * timeMultiplier),
-      shiftMultiplier,
-      timeMultiplier,
-      finalWorkingCost: workingCost
-    });
-
-    // Food & Accommodation costs
-    // Resolve daily rate with priority: additionalParams daily -> resourceRates daily -> additionalParams monthly -> resourceRates monthly -> defaults
-    const resolvedFoodDaily = (() => {
-      // additionalParams may store either a daily rate (foodRate) or monthly (foodRatePerMonth)
-      if (additionalParams?.foodRate !== undefined && additionalParams.foodRate !== null) return Number(additionalParams.foodRate);
-      if (resourceRates?.foodRate !== undefined && resourceRates.foodRate !== null) return Number(resourceRates.foodRate);
-      if (additionalParams?.foodRatePerMonth !== undefined && additionalParams.foodRatePerMonth !== null) return Number(additionalParams.foodRatePerMonth) / 26;
-      if (resourceRates?.foodRatePerMonth !== undefined && resourceRates.foodRatePerMonth !== null) return Number(resourceRates.foodRatePerMonth) / 26;
-      // fallback default monthly 2500 -> per day
-      return 2500 / 26;
-    })();
-
-    const resolvedAccomDaily = (() => {
-      if (additionalParams?.accommodationRate !== undefined && additionalParams.accommodationRate !== null) return Number(additionalParams.accommodationRate);
-      if (resourceRates?.accommodationRate !== undefined && resourceRates.accommodationRate !== null) return Number(resourceRates.accommodationRate);
-      if (additionalParams?.accommodationRatePerMonth !== undefined && additionalParams.accommodationRatePerMonth !== null) return Number(additionalParams.accommodationRatePerMonth) / 26;
-      if (resourceRates?.accommodationRatePerMonth !== undefined && resourceRates.accommodationRatePerMonth !== null) return Number(resourceRates.accommodationRatePerMonth) / 26;
-      return 4000 / 26;
-    })();
-
-    const foodRate = resolvedFoodDaily;
-    const accomRate = resolvedAccomDaily;
-    const foodCost = (formData.foodResources || 0) * foodRate * numberOfDays;
-    const accomCost = (formData.accomResources || 0) * accomRate * numberOfDays;
-
-    const foodAccomCost = foodCost + accomCost;
-
-    console.log("🍽️ Food & Accommodation:", {
-      foodResources: formData.foodResources,
-      accomResources: formData.accomResources,
-      foodRate,
-      accomRate,
-      numberOfDays,
-      foodCost,
-      accomCost,
-      foodAccomCost,
-      resourceRates,
-      additionalParams
-    });
-
-    // Mobilization/Demobilization costs
-    let mobDemobCost = 0;
-    const transportRate = resourceRates?.transportRate;
-    
-    if (formData.mobDemob > 0) {
-      mobDemobCost = formData.mobDemob;
-    } else if (formData.siteDistance > 0 && transportRate) {
-      if (hasMachines) {
-        mobDemobCost = formData.selectedMachines.reduce((total, machine) => {
-          const distance = formData.siteDistance || 0;
-          const runningCostPerKm = machine.runningCostPerKm || 0;
-          const machineCost = (distance * 2 * runningCostPerKm) + transportRate;
-          return total + (machineCost * machine.quantity);
-        }, 0);
-      } else {
-        const distance = formData.siteDistance || 0;
-        const runningCostPerKm = formData.runningCostPerKm || 0;
-        mobDemobCost = (distance * 2 * runningCostPerKm) + transportRate;
-      }
-      
-      if (formData.mobRelaxation > 0) {
-        mobDemobCost = mobDemobCost * (1 - (formData.mobRelaxation / 100));
-      }
-    }
-
-    console.log("🚚 Mob-Demob calculation:", {
-      mobDemobManual: formData.mobDemob,
-      siteDistance: formData.siteDistance,
-      transportRate,
-      mobRelaxation: formData.mobRelaxation,
-      mobDemobCost,
-      hasMachines,
-      selectedMachines: formData.selectedMachines?.map(m => ({ 
-        name: m.name, 
-        quantity: m.quantity, 
-        runningCostPerKm: m.runningCostPerKm 
-      }))
-    });
 
     // Risk & Usage adjustments from configuration
-    const baseForRiskCalc = workingCost;
-    let riskPercentage = 0;
-    let usagePercentage = 0;
+      const baseForRiskCalc = (() => {
+          if (!formData.selectedMachines || formData.selectedMachines.length === 0) return 0;
 
-    // Get risk factor from configuration
-    if (additionalParams?.riskFactors) {
-      if (formData.riskFactor === 'high') {
-        riskPercentage = additionalParams.riskFactors.high;
-      } else if (formData.riskFactor === 'medium') {
-        riskPercentage = additionalParams.riskFactors.medium;
-      } else {
-        riskPercentage = additionalParams.riskFactors.low;
-      }
-    }
+          return formData.selectedMachines.reduce((total, machine) => {
+              const baseRateMonthly = Number(machine.base_rate_monthly ?? 0);
+              return total + (baseRateMonthly * machine.quantity);
+          }, 0);
+      })();
 
-    // Get usage factor from configuration  
-    if (additionalParams?.usageFactors) {
-      if (formData.usage === 'heavy') {
-        usagePercentage = additionalParams.usageFactors.heavy;
-      } else {
-        usagePercentage = additionalParams.usageFactors.normal;
-      }
-    }
 
-    console.log("🔧 Risk & Usage factors:", {
-      riskFactor: formData.riskFactor,
-      riskPercentage,
-      usage: formData.usage,
-      usagePercentage,
-      baseForRiskCalc
-    });
+      // Step 1: Calculate baseForRiskCalc
+      const baseForRiskCalc = (() => {
+          if (!formData.selectedMachines || formData.selectedMachines.length === 0) return 0;
 
-    const riskAdjustment = baseForRiskCalc * riskPercentage;
-    const usageLoadFactor = baseForRiskCalc * usagePercentage;
+          return formData.selectedMachines.reduce((total, machine) => {
+              const baseRateMonthly = Number(machine.base_rate_monthly ?? 0);
+              const quantity = Number(machine.quantity ?? 1);
+              return total + (baseRateMonthly * quantity);
+          }, 0);
+      })();
+
+      // Step 2: Pull selected config values
+      const selectedRiskLevel = formData.riskFactor ?? 'low';     // 'low', 'medium', 'high'
+      const selectedUsageLevel = formData.usage ?? 'normal';       // 'normal', 'medium', 'heavy'
+
+      const riskFactor = additionalParams.riskFactors?.[selectedRiskLevel] ?? 0;
+      const usageFactor = additionalParams.usageFactors?.[selectedUsageLevel] ?? 1.0;
+
+      // Step 3: Calculate values exactly as you said
+      const riskAdjustment = baseForRiskCalc * riskFactor;
+      const usageLoadFactor = baseForRiskCalc * usageFactor;
+      const riskandusagecost = riskAdjustment + usageLoadFactor;
+
 
     // Additional charges
     const extraCharges = Number(formData.extraCharge) || 0;
@@ -800,6 +866,7 @@ export function QuotationCreation() {
       riskAdjustment,
       gstAmount,
       totalAmount,
+      riskandusagecost,
     };
 
     console.log("🎯 Final calculations:", newCalculations);
@@ -862,6 +929,7 @@ export function QuotationCreation() {
         usageLoadFactor: calculations.usageLoadFactor,
         riskAdjustment: calculations.riskAdjustment,
         gstAmount: calculations.gstAmount,
+        riskandusagecost: calculations.riskandusagecost,
         createdBy: user?.id || '',
         updatedAt: new Date().toISOString(),
         // Map rigger/helper selections to explicit amounts for backend
@@ -1471,7 +1539,7 @@ export function QuotationCreation() {
                     <Select
                       label="Usage"
                       value={formData.usage}
-                      onChange={(value: string) => setFormData(prev => ({ ...prev, usage: value as 'normal' | 'heavy' }))}
+                      onChange={(value: string) => setFormData(prev => ({ ...prev, usage: value as 'normal' | 'medium' |  'heavy' }))}
                       options={USAGE_OPTIONS}
                     />
                     <Select

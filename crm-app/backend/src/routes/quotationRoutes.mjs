@@ -593,7 +593,7 @@ router.post('/', authenticateToken, async (req, res) => {
         JSON.stringify(customerContact),
         totalCost,
         finalTotal,
-        totalCost * 0.8, // working_cost
+        quotationData.workingCost ?? totalCost * 0.8, // working_cost
         15000, // mob_demob_cost
         // Use frontend-provided computed foodAccomCost if available, fallback to 0
         quotationData.foodAccomCost || 0,
@@ -607,8 +607,8 @@ router.post('/', authenticateToken, async (req, res) => {
         incident2,
         incident3,
         // rigger_amount/helper_amount: store configured amounts when selected
-        (quotationData.otherFactors || []).includes('rigger') ? (quotationData.riggerAmount ?? defaultRiggerAmount ?? null) : (quotationData.riggerAmount !== undefined ? quotationData.riggerAmount : null),
-        (quotationData.otherFactors || []).includes('helper') ? (quotationData.helperAmount ?? defaultHelperAmount ?? null) : (quotationData.helperAmount !== undefined ? quotationData.helperAmount : null)
+        (quotationData.otherFactors || []).includes('rigger') ? (quotationData.riggerAmount ?? defaultRiggerAmount ?? null) : null,
+        (quotationData.otherFactors || []).includes('helper') ? (quotationData.helperAmount ?? defaultHelperAmount ?? null) : null
       ];
       await client.query(insertQuery, values);
 
