@@ -19,6 +19,8 @@ export interface QuotationConfig {
 }
 
 export interface ResourceRatesConfig {
+  foodRatePerMonth: number;
+  accommodationRatePerMonth: number;
   foodRate: number;
   accommodationRate: number;
   transportRate: number;

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Save, RefreshCw, IndianRupee, Users } from 'lucide-react';
+import * as Icons from 'lucide-react';
 import { Input } from '../common/Input';
 import { Button } from '../common/Button';
 import { Toast } from '../common/Toast';
@@ -26,9 +26,12 @@ export function ResourceRatesConfig() {
     try {
       setIsLoading(true);
       const config = await getResourceRatesConfig();
+
+      // Map whatever the backend has to UI-friendly monthly fields.
+      // backend may expose foodRate / accommodationRate (or foodRatePerMonth); handle both.
       setRates({
-        foodRatePerMonth: config.foodRatePerMonth,
-        accommodationRatePerMonth: config.accommodationRatePerMonth
+        foodRatePerMonth: (config?.foodRatePerMonth ?? config?.foodRate ?? 2500),
+        accommodationRatePerMonth: (config?.accommodationRatePerMonth ?? config?.accommodationRate ?? 4000)
       });
     } catch (error) {
       showToast('Error loading configuration', 'error');
@@ -52,7 +55,13 @@ export function ResourceRatesConfig() {
         return;
       }
 
-      await updateResourceRatesConfig(rates);
+      // Backend config shape historically uses `foodRate` / `accommodationRate`.
+      // Map UI monthly fields to backend expected shape.
+      await updateResourceRatesConfig({
+        foodRate: rates.foodRatePerMonth,
+        accommodationRate: rates.accommodationRatePerMonth
+      });
+
       showToast('Rates updated successfully');
     } catch (error) {
       showToast('Error saving rates', 'error');
@@ -64,7 +73,7 @@ export function ResourceRatesConfig() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-48">
-        <RefreshCw className="w-6 h-6 animate-spin text-primary-600" />
+        <Icons.RefreshCw className="w-6 h-6 animate-spin text-primary-600" />
       </div>
     );
   }
@@ -74,7 +83,7 @@ export function ResourceRatesConfig() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <div className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-sm transition-shadow duration-200">
           <div className="flex items-center gap-2 mb-4">
-            <Users className="h-5 w-5 text-primary-500" />
+            <Icons.Users className="h-5 w-5 text-primary-500" />
             <h3 className="font-medium text-gray-900">Food Allowance</h3>
           </div>
           <div className="space-y-4">
@@ -104,7 +113,7 @@ export function ResourceRatesConfig() {
 
         <div className="bg-white rounded-lg border border-gray-200 p-4 hover:shadow-sm transition-shadow duration-200">
           <div className="flex items-center gap-2 mb-4">
-            <Users className="h-5 w-5 text-primary-500" />
+            <Icons.Users className="h-5 w-5 text-primary-500" />
             <h3 className="font-medium text-gray-900">Accommodation Allowance</h3>
           </div>
           <div className="space-y-4">
@@ -137,7 +146,7 @@ export function ResourceRatesConfig() {
         <Button
           onClick={handleSave}
           disabled={isSaving}
-          leftIcon={isSaving ? <RefreshCw className="animate-spin" /> : <Save />}
+          leftIcon={isSaving ? <Icons.RefreshCw className="animate-spin" /> : <Icons.Save />}
           className="w-full sm:w-auto"
         >
           {isSaving ? 'Saving Changes...' : 'Save Changes'}
@@ -154,4 +163,4 @@ export function ResourceRatesConfig() {
       )}
     </div>
   );
-} 
+}
