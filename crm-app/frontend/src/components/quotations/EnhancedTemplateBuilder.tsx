@@ -468,7 +468,9 @@ const EnhancedTemplateBuilder: React.FC<EnhancedTemplateBuilderProps> = ({ quota
       const result = await response.json();
       if (result.success) {
         setPreviewData(result.data);
-        console.log('✅ Sample data loaded successfully');
+        console.log('✅ Sample data loaded successfully:', result.data);
+        console.log('📊 Items array:', result.data.items);
+        console.log('🔢 Items count:', result.data.items?.length || 0);
       } else {
         console.error('Failed to load sample data:', result.message);
       }

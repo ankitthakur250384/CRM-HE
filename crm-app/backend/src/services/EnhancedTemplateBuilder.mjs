@@ -274,6 +274,7 @@ export class EnhancedTemplateBuilder {
         };
 
       case TEMPLATE_ELEMENT_TYPES.ITEMS_TABLE:
+      case 'table': // Support legacy 'table' type from database
         return {
           ...baseElement,
           content: {
@@ -383,6 +384,7 @@ export class EnhancedTemplateBuilder {
         };
 
       case TEMPLATE_ELEMENT_TYPES.ITEMS_TABLE:
+      case 'table': // Support legacy 'table' type from database
         return {
           ...baseStyle,
           border: '1px solid #e5e7eb',
@@ -638,6 +640,7 @@ export class EnhancedTemplateBuilder {
 
       case TEMPLATE_ELEMENT_TYPES.ITEMS_TABLE:
       case 'items_table':
+      case 'table': // Support legacy 'table' type from database
         return this.renderItemsTable(element, data);
 
       case TEMPLATE_ELEMENT_TYPES.TOTALS:
