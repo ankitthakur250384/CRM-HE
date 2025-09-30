@@ -245,12 +245,20 @@ router.get('/sample-data', async (req, res) => {
         const quotation = quotationResult.rows[0];
         
         // Get associated machines/equipment
+        console.log('🔍 [DEBUG] Looking for equipment for quotation ID:', quotation.id);
         const machinesResult = await client.query(`
-          SELECT qm.*, e.name as equipment_name, e.category
+          SELECT qm.id, qm.quotation_id, qm.equipment_id, qm.quantity, 
+                 qm.base_rate, qm.running_cost_per_km, qm.created_at,
+                 e.name as equipment_name, e.category, e.type as equipment_type
           FROM quotation_machines qm
           LEFT JOIN equipment e ON qm.equipment_id = e.id
           WHERE qm.quotation_id = $1;
         `, [quotation.id]);
+        
+        console.log('🔍 [DEBUG] Found equipment records:', machinesResult.rows.length);
+        if (machinesResult.rows.length > 0) {
+          console.log('🔍 [DEBUG] Equipment data:', machinesResult.rows);
+        }
 
         // Generate quotation number
         function generateQuotationNumber(quotationId) {
@@ -289,12 +297,18 @@ router.get('/sample-data', async (req, res) => {
             paymentTerms: '50% advance, balance on completion',
             terms: 'This quotation is valid for 30 days. All rates are inclusive of GST.'
           },
-          items: machinesResult.rows.map((machine, index) => ({
-            description: `${machine.equipment_name || machine.machine_type || 'Equipment'} - ${machine.category || 'Rental Service'}`,
-            quantity: `${quotation.number_of_days || 1} days`,
-            rate: `₹${(machine.daily_rate || quotation.total_rent || 10000).toLocaleString('en-IN')}`,
-            amount: `₹${((machine.daily_rate || quotation.total_rent || 10000) * (quotation.number_of_days || 1)).toLocaleString('en-IN')}`
-          })),
+          items: machinesResult.rows.map((machine, index) => {
+            const dailyRate = machine.base_rate || quotation.total_rent || 10000;
+            const totalDays = quotation.number_of_days || 1;
+            const item = {
+              description: `${machine.equipment_name || machine.equipment_type || quotation.machine_type || 'Equipment'} - ${machine.category || 'Rental Service'}`,
+              quantity: `${totalDays} days`,
+              rate: `₹${dailyRate.toLocaleString('en-IN')}/day`,
+              amount: `₹${(dailyRate * totalDays).toLocaleString('en-IN')}`
+            };
+            console.log('🔍 [DEBUG] Created equipment item:', item);
+            return item;
+          }),
           totals: {
             subtotal: `₹${(quotation.working_cost || quotation.total_cost || 100000).toLocaleString('en-IN')}`,
             discount: '₹0',
@@ -303,15 +317,33 @@ router.get('/sample-data', async (req, res) => {
           }
         };
 
-        // If no items from machines, add a default item
+        // If no items from machines, add a default item based on quotation data
         if (quotationData.items.length === 0) {
-          quotationData.items.push({
-            description: `${quotation.machine_type || 'Crane Rental'} - ${quotation.order_type || 'Rental Service'}`,
-            quantity: `${quotation.number_of_days || 1} days`,
-            rate: `₹${(quotation.total_rent || 10000).toLocaleString('en-IN')}`,
-            amount: `₹${(quotation.total_cost || 10000).toLocaleString('en-IN')}`
+          console.log('🔍 [DEBUG] No equipment found in quotation_machines, creating fallback item');
+          console.log('🔍 [DEBUG] Quotation data for fallback:', {
+            machine_type: quotation.machine_type,
+            order_type: quotation.order_type,
+            number_of_days: quotation.number_of_days,
+            total_rent: quotation.total_rent,
+            total_cost: quotation.total_cost,
+            working_hours: quotation.working_hours
           });
+          
+          const totalDays = quotation.number_of_days || 1;
+          const dailyRate = quotation.total_rent || (quotation.total_cost / totalDays) || 10000;
+          
+          const fallbackItem = {
+            description: `${quotation.machine_type || 'Crane Rental'} - ${quotation.order_type || 'Rental Service'}`,
+            quantity: `${totalDays} days @ ${quotation.working_hours || 8}hrs/day`,
+            rate: `₹${dailyRate.toLocaleString('en-IN')}/day`,
+            amount: `₹${quotation.total_cost.toLocaleString('en-IN')}`
+          };
+          
+          console.log('🔍 [DEBUG] Created fallback item:', fallbackItem);
+          quotationData.items.push(fallbackItem);
         }
+        
+        console.log('🔍 [DEBUG] Final items array:', quotationData.items);
       } else {
         // Fallback to sample data if no quotations in database
         const templateBuilder = new EnhancedTemplateBuilder();
