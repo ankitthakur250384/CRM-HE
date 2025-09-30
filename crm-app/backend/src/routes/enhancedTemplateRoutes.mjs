@@ -1176,14 +1176,22 @@ router.post('/preview', async (req, res) => {
     if (templateData.elements && Array.isArray(templateData.elements)) {
       console.log('🔍 [DEBUG] Preview element types:', templateData.elements.map(el => el.type));
     }
+    console.log('🔍 [DEBUG] Preview quotation data:', quotationData);
     
     const templateBuilder = new EnhancedTemplateBuilder();
     
     // Always create template from data for preview (don't try to load from DB)
     templateBuilder.createTemplate(templateData);
     
+    // If no quotation data provided, get sample data
+    let finalQuotationData = quotationData;
+    if (!finalQuotationData) {
+      console.log('📝 No quotation data provided, using sample data');
+      finalQuotationData = templateBuilder.getSampleQuotationData();
+    }
+    
     if (format === 'html') {
-      const html = templateBuilder.generatePreviewHTML(quotationData);
+      const html = templateBuilder.generatePreviewHTML(finalQuotationData);
       res.json({
         success: true,
         data: { html },
@@ -1191,7 +1199,7 @@ router.post('/preview', async (req, res) => {
         timestamp: new Date()
       });
     } else if (format === 'pdf') {
-      const html = templateBuilder.generateQuotationHTML(quotationData);
+      const html = templateBuilder.generateQuotationHTML(finalQuotationData);
       const pdfGenerator = new AdvancedPDFGenerator();
       
       const pdfOptions = {

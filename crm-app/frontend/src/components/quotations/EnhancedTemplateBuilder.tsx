@@ -359,6 +359,156 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedElement, onUp
           </>
         )}
 
+        {(selectedElement.type === ELEMENT_TYPES.ITEMS_TABLE || selectedElement.type === 'table') && (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Table Title</label>
+              <input
+                type="text"
+                value={selectedElement.content?.title || 'Equipment & Services'}
+                onChange={(e) => onUpdate(selectedElement.id, {
+                  content: { ...selectedElement.content, title: e.target.value }
+                })}
+                className="w-full p-2 border border-gray-300 rounded-md"
+              />
+            </div>
+            <div>
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={selectedElement.content?.showHeader !== false}
+                  onChange={(e) => onUpdate(selectedElement.id, {
+                    content: { ...selectedElement.content, showHeader: e.target.checked }
+                  })}
+                  className="rounded border-gray-300"
+                />
+                <span className="text-sm font-medium text-gray-700">Show Table Header</span>
+              </label>
+            </div>
+            <div>
+              <label className="flex items-center space-x-2">
+                <input
+                  type="checkbox"
+                  checked={selectedElement.content?.alternateRows || false}
+                  onChange={(e) => onUpdate(selectedElement.id, {
+                    content: { ...selectedElement.content, alternateRows: e.target.checked }
+                  })}
+                  className="rounded border-gray-300"
+                />
+                <span className="text-sm font-medium text-gray-700">Alternate Row Colors</span>
+              </label>
+            </div>
+          </>
+        )}
+
+        {(selectedElement.type === 'section') && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Section Title</label>
+            <input
+              type="text"
+              value={selectedElement.content?.title || ''}
+              onChange={(e) => onUpdate(selectedElement.id, {
+                content: { ...selectedElement.content, title: e.target.value }
+              })}
+              className="w-full p-2 border border-gray-300 rounded-md"
+            />
+          </div>
+        )}
+
+        {(selectedElement.type === 'field') && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Field Content</label>
+            <textarea
+              value={selectedElement.content?.fields ? selectedElement.content.fields.join('\n') : ''}
+              onChange={(e) => onUpdate(selectedElement.id, {
+                content: { ...selectedElement.content, fields: e.target.value.split('\n').filter(f => f.trim()) }
+              })}
+              rows={4}
+              className="w-full p-2 border border-gray-300 rounded-md"
+              placeholder="Enter field content (one per line)"
+            />
+          </div>
+        )}
+
+        {(selectedElement.type === 'customer') && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Customer Section Title</label>
+            <input
+              type="text"
+              value={selectedElement.content?.title || 'Bill To:'}
+              onChange={(e) => onUpdate(selectedElement.id, {
+                content: { ...selectedElement.content, title: e.target.value }
+              })}
+              className="w-full p-2 border border-gray-300 rounded-md"
+            />
+          </div>
+        )}
+
+        {(selectedElement.type === 'total') && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Total Section Title</label>
+            <input
+              type="text"
+              value={selectedElement.content?.title || 'Total Amount'}
+              onChange={(e) => onUpdate(selectedElement.id, {
+                content: { ...selectedElement.content, title: e.target.value }
+              })}
+              className="w-full p-2 border border-gray-300 rounded-md"
+            />
+          </div>
+        )}
+
+        {selectedElement.type === ELEMENT_TYPES.IMAGE && (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Image Title</label>
+              <input
+                type="text"
+                value={selectedElement.content?.title || 'Image'}
+                onChange={(e) => onUpdate(selectedElement.id, {
+                  content: { ...selectedElement.content, title: e.target.value }
+                })}
+                className="w-full p-2 border border-gray-300 rounded-md"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Alt Text</label>
+              <input
+                type="text"
+                value={selectedElement.content?.alt || ''}
+                onChange={(e) => onUpdate(selectedElement.id, {
+                  content: { ...selectedElement.content, alt: e.target.value }
+                })}
+                className="w-full p-2 border border-gray-300 rounded-md"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Width</label>
+              <input
+                type="text"
+                value={selectedElement.style?.width || '120px'}
+                onChange={(e) => onUpdate(selectedElement.id, {
+                  style: { ...selectedElement.style, width: e.target.value }
+                })}
+                className="w-full p-2 border border-gray-300 rounded-md"
+                placeholder="e.g., 120px, 50%, auto"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Height</label>
+              <input
+                type="text"
+                value={selectedElement.style?.height || 'auto'}
+                onChange={(e) => onUpdate(selectedElement.id, {
+                  style: { ...selectedElement.style, height: e.target.value }
+                })}
+                className="w-full p-2 border border-gray-300 rounded-md"
+                placeholder="e.g., 80px, 50%, auto"
+              />
+            </div>
+          </>
+        )}
+
         {/* Styling */}
         <div>
           <h4 className="text-sm font-semibold text-gray-700 mb-3">Styling</h4>
@@ -460,6 +610,13 @@ const EnhancedTemplateBuilder: React.FC<EnhancedTemplateBuilderProps> = ({ quota
       loadTemplateData(templateId);
     }
   }, [templateId]);
+
+  // Auto-generate preview when data is loaded
+  useEffect(() => {
+    if (previewData && template.elements.length > 0) {
+      generatePreview();
+    }
+  }, [previewData, template.elements]);
 
   const loadSampleData = async () => {
     try {
@@ -806,10 +963,56 @@ const EnhancedTemplateBuilder: React.FC<EnhancedTemplateBuilderProps> = ({ quota
     }
   };
 
-  const handleLogoUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+  const handleLogoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
-      uploadLogo(file);
+      try {
+        setIsLoading(true);
+        
+        // Upload the logo first
+        await uploadLogo(file);
+        
+        // Create a new image element with the uploaded logo
+        const imageElement: TemplateElement = {
+          id: `element_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+          type: ELEMENT_TYPES.IMAGE,
+          visible: true,
+          content: {
+            src: template.branding?.logoUrl,
+            alt: 'Company Logo',
+            title: 'Logo'
+          },
+          style: {
+            width: '120px',
+            height: 'auto',
+            fontSize: '14px',
+            fontWeight: 'normal',
+            color: '#000000',
+            backgroundColor: 'transparent'
+          },
+          position: {
+            x: 20,
+            y: 20,
+            width: '120px',
+            height: 'auto'
+          }
+        };
+        
+        // Add the logo as a template element
+        setTemplate(prev => ({
+          ...prev,
+          elements: [...prev.elements, imageElement]
+        }));
+        
+        setMessage('Logo uploaded and added to template!');
+        setTimeout(() => setMessage(''), 3000);
+        
+      } catch (error) {
+        console.error('Error handling logo upload:', error);
+        setMessage('Failed to upload logo');
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
