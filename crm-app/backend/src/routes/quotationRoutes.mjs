@@ -818,6 +818,28 @@ router.put('/:id', async (req, res) => {
       sunday_working
     } = req.body;
 
+    // Parse incidentalCharges if it comes as a string
+    let parsedIncidentalCharges = incidentalCharges;
+    if (typeof incidentalCharges === 'string') {
+      try {
+        parsedIncidentalCharges = JSON.parse(incidentalCharges);
+      } catch (e) {
+        console.log('Could not parse incidentalCharges, using as array:', incidentalCharges);
+        parsedIncidentalCharges = Array.isArray(incidentalCharges) ? incidentalCharges : [];
+      }
+    }
+
+    // Parse otherFactors if it comes as a string  
+    let parsedOtherFactors = otherFactors;
+    if (typeof otherFactors === 'string') {
+      try {
+        parsedOtherFactors = JSON.parse(otherFactors);
+      } catch (e) {
+        console.log('Could not parse otherFactors, using as array:', otherFactors);
+        parsedOtherFactors = Array.isArray(otherFactors) ? otherFactors : [];
+      }
+    }
+
     // Map frontend field names to backend expectations
     const rigger_amount_mapped = riggerAmount;
     const helper_amount_mapped = helperAmount;
@@ -863,14 +885,14 @@ router.put('/:id', async (req, res) => {
           include_gst = $32,
           sunday_working = $33,
           primary_equipment_id = $34,
-          equipment_snapshot = $34,
-          incident1 = $35,
-          incident2 = $36,
-          incident3 = $37,
-          rigger_amount = $38,
-          helper_amount = $39,
+          equipment_snapshot = $35,
+          incident1 = $36,
+          incident2 = $37,
+          incident3 = $38,
+          rigger_amount = $39,
+          helper_amount = $40,
           updated_at = CURRENT_TIMESTAMP
-        WHERE id = $40
+        WHERE id = $41
         RETURNING *
       `, [
         customer_name,
@@ -901,8 +923,8 @@ router.put('/:id', async (req, res) => {
         total_cost,
         notes,
         status || 'draft',
-        JSON.stringify(incidentalCharges || []),
-        JSON.stringify(otherFactors || []),
+        JSON.stringify(parsedIncidentalCharges || []),
+        JSON.stringify(parsedOtherFactors || []),
         billing,
         include_gst,
         sunday_working,
