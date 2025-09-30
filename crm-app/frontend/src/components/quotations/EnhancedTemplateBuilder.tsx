@@ -124,6 +124,175 @@ const THEMES: Record<string, Theme> = {
 };
 
 // Element Library Components
+// Placeholder Library Component
+interface PlaceholderLibraryProps {
+  previewData: any;
+}
+
+const PlaceholderLibrary: React.FC<PlaceholderLibraryProps> = ({ previewData }) => {
+  const [selectedCategory, setSelectedCategory] = useState<string>('quotation');
+  
+  const placeholderCategories = {
+    quotation: {
+      icon: '📄',
+      title: 'Quotation Data',
+      color: 'bg-blue-50 border-blue-200',
+      placeholders: [
+        { code: '{{quotation.number}}', source: 'quotations.quotation_number', description: 'Quotation number/ID' },
+        { code: '{{quotation.date}}', source: 'quotations.created_at', description: 'Creation date' },
+        { code: '{{quotation.valid_until}}', source: 'quotations.valid_until', description: 'Expiry date' },
+        { code: '{{quotation.terms}}', source: 'quotations.terms_conditions', description: 'Terms & conditions' }
+      ]
+    },
+    customer: {
+      icon: '👤',
+      title: 'Customer Data',
+      color: 'bg-green-50 border-green-200',
+      placeholders: [
+        { code: '{{client.name}}', source: 'customers.name', description: 'Customer name' },
+        { code: '{{client.company}}', source: 'customers.company', description: 'Company name' },
+        { code: '{{client.email}}', source: 'customers.email', description: 'Email address' },
+        { code: '{{client.phone}}', source: 'customers.phone', description: 'Phone number' },
+        { code: '{{client.address}}', source: 'customers.address', description: 'Full address' }
+      ]
+    },
+    equipment: {
+      icon: '🏗️',
+      title: 'Equipment Data',
+      color: 'bg-yellow-50 border-yellow-200',
+      placeholders: [
+        { code: '{{items.table}}', source: 'equipment join quotation_machines', description: 'Complete equipment table' },
+        { code: '{{equipment.name}}', source: 'equipment.name', description: 'Equipment name' },
+        { code: '{{equipment.rate}}', source: 'quotation_machines.rate', description: 'Hourly/daily rate' },
+        { code: '{{equipment.quantity}}', source: 'quotation_machines.quantity', description: 'Quantity/duration' }
+      ]
+    },
+    financial: {
+      icon: '💰',
+      title: 'Financial Data',
+      color: 'bg-purple-50 border-purple-200',
+      placeholders: [
+        { code: '{{totals.subtotal}}', source: 'Calculated: Σ(quantity × rate)', description: 'Subtotal amount' },
+        { code: '{{totals.tax}}', source: 'quotations.tax_amount', description: 'Tax amount' },
+        { code: '{{totals.total}}', source: 'quotations.total_amount', description: 'Final total' },
+        { code: '{{totals.discount}}', source: 'quotations.discount_amount', description: 'Discount amount' }
+      ]
+    },
+    company: {
+      icon: '🏢',
+      title: 'Company Data',
+      color: 'bg-indigo-50 border-indigo-200',
+      placeholders: [
+        { code: '{{company.name}}', source: 'Static: ASP Cranes', description: 'Company name' },
+        { code: '{{company.address}}', source: 'Static: Company Address', description: 'Company address' },
+        { code: '{{company.phone}}', source: 'Static: Company Phone', description: 'Company phone' },
+        { code: '{{company.email}}', source: 'Static: Company Email', description: 'Company email' }
+      ]
+    }
+  };
+
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      // You could add a toast notification here
+    } catch (err) {
+      console.error('Failed to copy to clipboard:', err);
+    }
+  };
+
+  const currentCategory = placeholderCategories[selectedCategory as keyof typeof placeholderCategories];
+
+  return (
+    <div className="p-4 h-full overflow-y-auto">
+      <h3 className="text-lg font-semibold text-gray-900 mb-4">Placeholders</h3>
+      
+      {/* Category Selection */}
+      <div className="space-y-2 mb-6">
+        {Object.entries(placeholderCategories).map(([key, category]) => (
+          <button
+            key={key}
+            onClick={() => setSelectedCategory(key)}
+            className={`w-full text-left p-3 rounded-lg border-2 transition-all ${ 
+              selectedCategory === key 
+                ? `${category.color} border-opacity-100` 
+                : 'bg-gray-50 border-gray-200 hover:bg-gray-100'
+            }`}
+          >
+            <div className="flex items-center space-x-3">
+              <span className="text-lg">{category.icon}</span>
+              <div>
+                <div className="font-medium text-sm">{category.title}</div>
+                <div className="text-xs text-gray-500">{category.placeholders.length} items</div>
+              </div>
+            </div>
+          </button>
+        ))}
+      </div>
+
+      {/* Placeholder List */}
+      <div className="space-y-3">
+        <h4 className="text-sm font-semibold text-gray-700 flex items-center space-x-2">
+          <span>{currentCategory.icon}</span>
+          <span>{currentCategory.title}</span>
+        </h4>
+        
+        {currentCategory.placeholders.map((placeholder, index) => (
+          <div key={index} className="border border-gray-200 rounded-lg p-3 hover:shadow-sm transition-shadow">
+            <div className="flex items-center justify-between mb-2">
+              <code 
+                className="bg-gray-100 px-2 py-1 rounded text-xs font-mono cursor-pointer hover:bg-gray-200 transition-colors"
+                onClick={() => copyToClipboard(placeholder.code)}
+                title="Click to copy"
+              >
+                {placeholder.code}
+              </code>
+              <button
+                onClick={() => copyToClipboard(placeholder.code)}
+                className="text-blue-500 hover:text-blue-700 text-xs"
+              >
+                📋 Copy
+              </button>
+            </div>
+            <div className="text-xs text-gray-600 mb-1">{placeholder.description}</div>
+            <div className="text-xs text-gray-500">
+              <strong>Source:</strong> {placeholder.source}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {/* Live Data Preview */}
+      {previewData && (
+        <div className="mt-6 p-3 bg-blue-50 rounded-lg border border-blue-200">
+          <h5 className="text-sm font-semibold text-blue-800 mb-2">📊 Live Data Preview</h5>
+          <div className="text-xs text-blue-700 space-y-1">
+            <div><strong>Quotation:</strong> {previewData.quotation?.number || 'N/A'}</div>
+            <div><strong>Customer:</strong> {previewData.client?.name || 'N/A'}</div>
+            <div><strong>Company:</strong> {previewData.client?.company || 'N/A'}</div>
+            <div><strong>Total:</strong> {previewData.totals?.total || '₹0.00'}</div>
+            <div><strong>Items:</strong> {previewData.items?.length || 0} equipment</div>
+            <div><strong>Valid Until:</strong> {previewData.quotation?.validUntil || 'N/A'}</div>
+          </div>
+          <div className="mt-2 text-xs text-blue-600">
+            ✅ Data loaded from database - placeholders will show real values
+          </div>
+        </div>
+      )}
+      
+      {/* Usage Instructions */}
+      <div className="mt-4 p-3 bg-gray-50 rounded-lg border border-gray-200">
+        <h5 className="text-sm font-semibold text-gray-700 mb-2">💡 How to Use</h5>
+        <div className="text-xs text-gray-600 space-y-1">
+          <div>• Click any placeholder code to copy it</div>
+          <div>• Paste into text fields in Elements tab</div>
+          <div>• Preview will show actual data from database</div>
+          <div>• Each quotation gets unique data automatically</div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 const ElementLibrary: React.FC<ElementLibraryProps> = ({ onAddElement, onLogoUpload }) => {
   const elementTypes = [
     { type: ELEMENT_TYPES.HEADER, icon: Type, label: 'Header', color: 'bg-blue-100 text-blue-600' },
@@ -139,7 +308,7 @@ const ElementLibrary: React.FC<ElementLibraryProps> = ({ onAddElement, onLogoUpl
   ];
 
   return (
-    <div className="w-64 bg-white border-r border-gray-200 p-4">
+    <div className="p-4 h-full overflow-y-auto">
       <h3 className="text-lg font-semibold text-gray-900 mb-4">Elements</h3>
       <div className="space-y-2">
         {elementTypes.map(({ type, icon: Icon, label, color }) => (
@@ -721,142 +890,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedElement, onUp
           </div>
         </div>
 
-        {/* Comprehensive Placeholder Reference */}
-        <div className="mt-6">
-          <details className="group">
-            <summary className="text-sm font-semibold text-gray-700 mb-3 cursor-pointer hover:text-blue-600 transition-colors">
-              📋 Placeholder Reference & Data Sources
-            </summary>
-            <div className="mt-3 space-y-4 text-xs text-gray-600 bg-gray-50 p-3 rounded-lg">
-              
-              {/* Quotation Data Section */}
-              <div>
-                <h5 className="font-semibold text-gray-800 mb-2">📄 Quotation Data</h5>
-                <div className="grid grid-cols-1 gap-1">
-                  <div className="flex justify-between">
-                    <code className="bg-blue-100 px-2 py-1 rounded">{'{{quotation.number}}'}</code>
-                    <span className="text-gray-500">→ quotations.quotation_number</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <code className="bg-blue-100 px-2 py-1 rounded">{'{{quotation.date}}'}</code>
-                    <span className="text-gray-500">→ quotations.created_at</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <code className="bg-blue-100 px-2 py-1 rounded">{'{{quotation.valid_until}}'}</code>
-                    <span className="text-gray-500">→ quotations.valid_until</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <code className="bg-blue-100 px-2 py-1 rounded">{'{{quotation.terms}}'}</code>
-                    <span className="text-gray-500">→ quotations.terms_conditions</span>
-                  </div>
-                </div>
-              </div>
 
-              {/* Customer Data Section */}
-              <div>
-                <h5 className="font-semibold text-gray-800 mb-2">👤 Customer Data</h5>
-                <div className="grid grid-cols-1 gap-1">
-                  <div className="flex justify-between">
-                    <code className="bg-green-100 px-2 py-1 rounded">{'{{client.name}}'}</code>
-                    <span className="text-gray-500">→ customers.name</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <code className="bg-green-100 px-2 py-1 rounded">{'{{client.company}}'}</code>
-                    <span className="text-gray-500">→ customers.company</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <code className="bg-green-100 px-2 py-1 rounded">{'{{client.email}}'}</code>
-                    <span className="text-gray-500">→ customers.email</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <code className="bg-green-100 px-2 py-1 rounded">{'{{client.phone}}'}</code>
-                    <span className="text-gray-500">→ customers.phone</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <code className="bg-green-100 px-2 py-1 rounded">{'{{client.address}}'}</code>
-                    <span className="text-gray-500">→ customers.address</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Equipment Data Section */}
-              <div>
-                <h5 className="font-semibold text-gray-800 mb-2">🏗️ Equipment Data</h5>
-                <div className="grid grid-cols-1 gap-1">
-                  <div className="flex justify-between">
-                    <code className="bg-yellow-100 px-2 py-1 rounded">{'{{items.table}}'}</code>
-                    <span className="text-gray-500">→ equipment join quotation_machines</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <code className="bg-yellow-100 px-2 py-1 rounded">{'{{equipment.name}}'}</code>
-                    <span className="text-gray-500">→ equipment.name</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <code className="bg-yellow-100 px-2 py-1 rounded">{'{{equipment.rate}}'}</code>
-                    <span className="text-gray-500">→ quotation_machines.rate</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <code className="bg-yellow-100 px-2 py-1 rounded">{'{{equipment.quantity}}'}</code>
-                    <span className="text-gray-500">→ quotation_machines.quantity</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Financial Data Section */}
-              <div>
-                <h5 className="font-semibold text-gray-800 mb-2">💰 Financial Data</h5>
-                <div className="grid grid-cols-1 gap-1">
-                  <div className="flex justify-between">
-                    <code className="bg-purple-100 px-2 py-1 rounded">{'{{totals.subtotal}}'}</code>
-                    <span className="text-gray-500">→ Calculated: Σ(quantity × rate)</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <code className="bg-purple-100 px-2 py-1 rounded">{'{{totals.tax}}'}</code>
-                    <span className="text-gray-500">→ quotations.tax_amount</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <code className="bg-purple-100 px-2 py-1 rounded">{'{{totals.total}}'}</code>
-                    <span className="text-gray-500">→ quotations.total_amount</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <code className="bg-purple-100 px-2 py-1 rounded">{'{{totals.discount}}'}</code>
-                    <span className="text-gray-500">→ quotations.discount_amount</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Company Data Section */}
-              <div>
-                <h5 className="font-semibold text-gray-800 mb-2">🏢 Company Data</h5>
-                <div className="grid grid-cols-1 gap-1">
-                  <div className="flex justify-between">
-                    <code className="bg-indigo-100 px-2 py-1 rounded">{'{{company.name}}'}</code>
-                    <span className="text-gray-500">→ Static: ASP Cranes</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <code className="bg-indigo-100 px-2 py-1 rounded">{'{{company.address}}'}</code>
-                    <span className="text-gray-500">→ Static: Company Address</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <code className="bg-indigo-100 px-2 py-1 rounded">{'{{company.phone}}'}</code>
-                    <span className="text-gray-500">→ Static: Company Phone</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <code className="bg-indigo-100 px-2 py-1 rounded">{'{{company.email}}'}</code>
-                    <span className="text-gray-500">→ Static: Company Email</span>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-3 p-2 bg-blue-50 rounded border-l-4 border-blue-400">
-                <p className="text-xs text-blue-700">
-                  💡 <strong>Usage:</strong> Copy any placeholder code and paste into text fields above. 
-                  Data is automatically fetched from the database tables shown.
-                </p>
-              </div>
-            </div>
-          </details>
-        </div>
 
       </div>
     </div>
@@ -878,6 +912,7 @@ const EnhancedTemplateBuilder: React.FC<EnhancedTemplateBuilderProps> = ({ quota
   const [selectedElement, setSelectedElement] = useState<TemplateElement | null>(null);
   const [previewMode, setPreviewMode] = useState(false);
   const [previewData, setPreviewData] = useState<any>(null);
+  const [activeTab, setActiveTab] = useState<'elements' | 'placeholders'>('elements');
   const [isLoading, setIsLoading] = useState(false);
   const [message, setMessage] = useState<string>('');
   const [viewMode, setViewMode] = useState<'desktop' | 'tablet' | 'mobile'>('desktop');
@@ -895,12 +930,7 @@ const EnhancedTemplateBuilder: React.FC<EnhancedTemplateBuilderProps> = ({ quota
     }
   }, [templateId]);
 
-  // Auto-generate preview when data is loaded
-  useEffect(() => {
-    if (previewData && template.elements.length > 0) {
-      generatePreview();
-    }
-  }, [previewData, template.elements]);
+  // Preview will only be generated when Preview button is clicked
 
   const loadSampleData = async () => {
     try {
@@ -1470,11 +1500,42 @@ const EnhancedTemplateBuilder: React.FC<EnhancedTemplateBuilderProps> = ({ quota
 
       {/* Main Content */}
       <div className="flex h-full">
-        {/* Element Library */}
-        <ElementLibrary
-          onAddElement={addElement}
-          onLogoUpload={handleLogoUpload}
-        />
+        {/* Left Sidebar with Tabs */}
+        <div className="w-64 bg-white border-r border-gray-200">
+          {/* Tab Bar */}
+          <div className="flex border-b border-gray-200">
+            <button
+              onClick={() => setActiveTab('elements')}
+              className={`flex-1 px-4 py-3 text-sm font-medium ${
+                activeTab === 'elements'
+                  ? 'bg-blue-50 text-blue-600 border-b-2 border-blue-600'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              🧩 Elements
+            </button>
+            <button
+              onClick={() => setActiveTab('placeholders')}
+              className={`flex-1 px-4 py-3 text-sm font-medium ${
+                activeTab === 'placeholders'
+                  ? 'bg-blue-50 text-blue-600 border-b-2 border-blue-600'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+            >
+              📋 Placeholders
+            </button>
+          </div>
+
+          {/* Tab Content */}
+          {activeTab === 'elements' ? (
+            <ElementLibrary
+              onAddElement={addElement}
+              onLogoUpload={handleLogoUpload}
+            />
+          ) : (
+            <PlaceholderLibrary previewData={previewData} />
+          )}
+        </div>
 
         {/* Canvas Area */}
         <div className="flex-1 p-6 overflow-y-auto">
