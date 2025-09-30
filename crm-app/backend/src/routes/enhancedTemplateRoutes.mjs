@@ -317,47 +317,12 @@ router.get('/sample-data', async (req, res) => {
           }
         };
 
-        // If no items from machines, add a default item based on quotation data
+        // Log equipment status for debugging
         if (quotationData.items.length === 0) {
-          console.log('🔍 [DEBUG] No equipment found in quotation_machines, creating fallback item');
-          console.log('🔍 [DEBUG] Quotation data for fallback:', {
-            machine_type: quotation.machine_type,
-            order_type: quotation.order_type,
-            number_of_days: quotation.number_of_days,
-            total_rent: quotation.total_rent,
-            total_cost: quotation.total_cost,
-            working_hours: quotation.working_hours,
-            working_cost: quotation.working_cost
-          });
-          
-          const totalDays = quotation.number_of_days || 1;
-          const workingHours = quotation.working_hours || 8;
-          const workingCost = quotation.working_cost || quotation.total_rent || 0;
-          const totalAmount = quotation.total_cost || workingCost || 100000;
-          
-          // Calculate daily rate from working cost or total cost
-          const dailyRate = workingCost > 0 ? (workingCost / totalDays) : (totalAmount / totalDays);
-          
-          // Get machine type display name
-          const machineTypeNames = {
-            'mobile_crane': 'Mobile Crane',
-            'tower_crane': 'Tower Crane', 
-            'crawler_crane': 'Crawler Crane',
-            'pick_and_carry_crane': 'Pick & Carry Crane'
-          };
-          
-          const machineTypeName = machineTypeNames[quotation.machine_type] || quotation.machine_type || 'Crane Rental';
-          const orderTypeName = quotation.order_type ? quotation.order_type.charAt(0).toUpperCase() + quotation.order_type.slice(1) : 'Daily';
-          
-          const fallbackItem = {
-            description: `${machineTypeName} - ${orderTypeName} Rental Service`,
-            quantity: `${totalDays} days × ${workingHours} hrs/day`,
-            rate: `₹${Math.round(dailyRate).toLocaleString('en-IN')}/day`,
-            amount: `₹${Math.round(totalAmount).toLocaleString('en-IN')}`
-          };
-          
-          console.log('🔍 [DEBUG] Created enhanced fallback item:', fallbackItem);
-          quotationData.items.push(fallbackItem);
+          console.log('⚠️ [WARNING] No equipment found for quotation:', quotationId);
+          console.log('⚠️ This should not happen if quotations are created properly with equipment selection');
+        } else {
+          console.log('✅ [SUCCESS] Found', quotationData.items.length, 'equipment items for quotation:', quotationId);
         }
         
         console.log('🔍 [DEBUG] Final items array:', quotationData.items);
