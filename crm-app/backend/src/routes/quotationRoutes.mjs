@@ -257,7 +257,7 @@ router.get('/:id', async (req, res) => {
         FROM quotations q
         LEFT JOIN customers c ON q.customer_id = c.id
         LEFT JOIN deals d ON q.deal_id = d.id
-        WHERE id = $35
+        WHERE q.id = $1
       `, [id]);
       
       if (quotationResult.rows.length === 0) {
