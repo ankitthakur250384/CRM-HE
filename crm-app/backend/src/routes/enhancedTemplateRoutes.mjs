@@ -310,10 +310,10 @@ router.get('/sample-data', async (req, res) => {
             return item;
           }),
           totals: {
-            subtotal: `₹${(quotation.working_cost || quotation.total_cost || 100000).toLocaleString('en-IN')}`,
+            subtotal: `₹${Math.round(quotation.working_cost || quotation.total_rent || 100000).toLocaleString('en-IN')}`,
             discount: '₹0',
-            tax: `₹${(quotation.gst_amount || (quotation.total_cost * 0.18) || 18000).toLocaleString('en-IN')}`,
-            total: `₹${(quotation.total_cost || 118000).toLocaleString('en-IN')}`
+            tax: `₹${Math.round(quotation.gst_amount || ((quotation.total_cost || 100000) * 0.18)).toLocaleString('en-IN')}`,
+            total: `₹${Math.round(quotation.total_cost || 118000).toLocaleString('en-IN')}`
           }
         };
 
@@ -326,20 +326,37 @@ router.get('/sample-data', async (req, res) => {
             number_of_days: quotation.number_of_days,
             total_rent: quotation.total_rent,
             total_cost: quotation.total_cost,
-            working_hours: quotation.working_hours
+            working_hours: quotation.working_hours,
+            working_cost: quotation.working_cost
           });
           
           const totalDays = quotation.number_of_days || 1;
-          const dailyRate = quotation.total_rent || (quotation.total_cost / totalDays) || 10000;
+          const workingHours = quotation.working_hours || 8;
+          const workingCost = quotation.working_cost || quotation.total_rent || 0;
+          const totalAmount = quotation.total_cost || workingCost || 100000;
           
-          const fallbackItem = {
-            description: `${quotation.machine_type || 'Crane Rental'} - ${quotation.order_type || 'Rental Service'}`,
-            quantity: `${totalDays} days @ ${quotation.working_hours || 8}hrs/day`,
-            rate: `₹${dailyRate.toLocaleString('en-IN')}/day`,
-            amount: `₹${quotation.total_cost.toLocaleString('en-IN')}`
+          // Calculate daily rate from working cost or total cost
+          const dailyRate = workingCost > 0 ? (workingCost / totalDays) : (totalAmount / totalDays);
+          
+          // Get machine type display name
+          const machineTypeNames = {
+            'mobile_crane': 'Mobile Crane',
+            'tower_crane': 'Tower Crane', 
+            'crawler_crane': 'Crawler Crane',
+            'pick_and_carry_crane': 'Pick & Carry Crane'
           };
           
-          console.log('🔍 [DEBUG] Created fallback item:', fallbackItem);
+          const machineTypeName = machineTypeNames[quotation.machine_type] || quotation.machine_type || 'Crane Rental';
+          const orderTypeName = quotation.order_type ? quotation.order_type.charAt(0).toUpperCase() + quotation.order_type.slice(1) : 'Daily';
+          
+          const fallbackItem = {
+            description: `${machineTypeName} - ${orderTypeName} Rental Service`,
+            quantity: `${totalDays} days × ${workingHours} hrs/day`,
+            rate: `₹${Math.round(dailyRate).toLocaleString('en-IN')}/day`,
+            amount: `₹${Math.round(totalAmount).toLocaleString('en-IN')}`
+          };
+          
+          console.log('🔍 [DEBUG] Created enhanced fallback item:', fallbackItem);
           quotationData.items.push(fallbackItem);
         }
         
