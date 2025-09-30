@@ -250,18 +250,19 @@ router.get('/:id', async (req, res) => {
     
     try {
       const quotationResult = await client.query(`
-        SELECT q.id, q.quotation_number, q.deal_id, q.lead_id, q.customer_id, q.machine_type, 
-               q.order_type, q.number_of_days, q.working_hours, q.food_resources, q.accom_resources,
-               q.site_distance, q.usage, q.risk_factor, q.shift, q.day_night, q.mob_demob,
-               q.mob_relaxation, q.extra_charge, q.other_factors_charge, q.billing, q.include_gst,
-               q.sunday_working, q.incidental_charges, q.other_factors, q.total_rent, q.total_cost,
-               q.working_cost, q.mob_demob_cost, q.food_accom_cost, q.usage_load_factor,
-               q.risk_adjustment, q.risk_usage_total, q.gst_amount, q.version, q.created_by, 
-               q.status, q.template_id, q.notes, q.created_at, q.updated_at, q.start_date, 
-               q.end_date, q.primary_equipment_id, q.equipment_snapshot, q.incident1, q.incident2, 
-               q.incident3, q.rigger_amount, q.helper_amount,
-               c.name as customer_name, c.contact_name, c.email as customer_email,
-               c.phone as customer_phone, c.company_name as customer_company, c.company_name,
+        SELECT q.id, q.quotation_number, q.deal_id, q.lead_id, q.customer_id, q.customer_name,
+               q.machine_type, q.order_type, q.number_of_days, q.working_hours, q.food_resources, 
+               q.accom_resources, q.site_distance, q.usage, q.risk_factor, q.shift, q.day_night, 
+               q.mob_demob, q.mob_relaxation, q.extra_charge, q.other_factors_charge, q.billing, 
+               q.include_gst, q.sunday_working, q.customer_contact, q.incidental_charges, 
+               q.other_factors, q.total_rent, q.total_cost, q.working_cost, q.mob_demob_cost, 
+               q.food_accom_cost, q.usage_load_factor, q.risk_adjustment, q.risk_usage_total, 
+               q.gst_amount, q.version, q.created_by, q.status, q.template_id, q.notes, 
+               q.created_at, q.updated_at, q.address, q.valid_until, q.incident1, q.incident2, 
+               q.incident3, q.rigger_amount, q.helper_amount, q.primary_equipment_id, 
+               q.equipment_snapshot,
+               c.name as c_name, c.contact_name, c.email as customer_email,
+               c.phone as customer_phone, c.company_name as customer_company,
                c.address as customer_address, c.designation as customer_designation,
                d.title as deal_title
         FROM quotations q
