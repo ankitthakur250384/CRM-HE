@@ -398,64 +398,155 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedElement, onUp
                 <span className="text-sm font-medium text-gray-700">Alternate Row Colors</span>
               </label>
             </div>
+            <div className="mt-4 p-3 bg-green-50 rounded-lg">
+              <h5 className="text-sm font-medium text-gray-700 mb-2">📊 Equipment Data Source:</h5>
+              <div className="text-xs space-y-1 text-gray-600">
+                <div><strong>Items:</strong> From quotation_machines table</div>
+                <div><strong>Description:</strong> equipment.name + category</div>
+                <div><strong>Quantity:</strong> quotations.number_of_days + " days"</div>
+                <div><strong>Rate:</strong> daily_rate or total_rent</div>
+                <div><strong>Amount:</strong> Calculated total cost</div>
+              </div>
+              <div className="mt-2 text-xs text-green-700">
+                ✓ Real data automatically populated from database
+              </div>
+            </div>
           </>
         )}
 
         {(selectedElement.type === 'section') && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Section Title</label>
-            <input
-              type="text"
-              value={selectedElement.content?.title || ''}
-              onChange={(e) => onUpdate(selectedElement.id, {
-                content: { ...selectedElement.content, title: e.target.value }
-              })}
-              className="w-full p-2 border border-gray-300 rounded-md"
-            />
-          </div>
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Section Title</label>
+              <input
+                type="text"
+                value={selectedElement.content?.title || ''}
+                onChange={(e) => onUpdate(selectedElement.id, {
+                  content: { ...selectedElement.content, title: e.target.value }
+                })}
+                className="w-full p-2 border border-gray-300 rounded-md"
+                placeholder="e.g., QUOTATION, INVOICE, etc."
+              />
+            </div>
+            <div className="mt-2">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Section Content</label>
+              <textarea
+                value={selectedElement.content?.text || ''}
+                onChange={(e) => onUpdate(selectedElement.id, {
+                  content: { ...selectedElement.content, text: e.target.value }
+                })}
+                rows={3}
+                className="w-full p-2 border border-gray-300 rounded-md"
+                placeholder="Additional section content (optional)"
+              />
+            </div>
+          </>
         )}
 
         {(selectedElement.type === 'field') && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Field Content</label>
-            <textarea
-              value={selectedElement.content?.fields ? selectedElement.content.fields.join('\n') : ''}
-              onChange={(e) => onUpdate(selectedElement.id, {
-                content: { ...selectedElement.content, fields: e.target.value.split('\n').filter(f => f.trim()) }
-              })}
-              rows={4}
-              className="w-full p-2 border border-gray-300 rounded-md"
-              placeholder="Enter field content (one per line)"
-            />
-          </div>
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Field Content</label>
+              <div className="space-y-2">
+                <button 
+                  onClick={() => onUpdate(selectedElement.id, {
+                    content: { ...selectedElement.content, fields: [
+                      'Quotation No: {{quotation.number}}',
+                      'Date: {{quotation.date}}',
+                      'Valid Until: {{quotation.validUntil}}'
+                    ]}
+                  })}
+                  className="w-full px-3 py-2 text-sm bg-blue-50 text-blue-700 rounded border hover:bg-blue-100"
+                >
+                  ↻ Use Standard Quotation Fields
+                </button>
+                <textarea
+                  value={selectedElement.content?.fields ? selectedElement.content.fields.join('\n') : ''}
+                  onChange={(e) => onUpdate(selectedElement.id, {
+                    content: { ...selectedElement.content, fields: e.target.value.split('\n').filter(f => f.trim()) }
+                  })}
+                  rows={6}
+                  className="w-full p-2 border border-gray-300 rounded-md font-mono text-sm"
+                  placeholder="Enter field content (one per line)&#10;Use placeholders like:&#10;{{quotation.number}}&#10;{{quotation.date}}&#10;{{client.name}}"
+                />
+              </div>
+            </div>
+            <div className="mt-4 p-3 bg-gray-50 rounded-lg">
+              <h5 className="text-sm font-medium text-gray-700 mb-2">Available Placeholders:</h5>
+              <div className="grid grid-cols-1 gap-1 text-xs">
+                <div className="flex justify-between">
+                  <code className="text-blue-600">{'{{quotation.number}}'}</code>
+                  <span className="text-gray-500">Quotation ID</span>
+                </div>
+                <div className="flex justify-between">
+                  <code className="text-blue-600">{'{{quotation.date}}'}</code>
+                  <span className="text-gray-500">Quote Date</span>
+                </div>
+                <div className="flex justify-between">
+                  <code className="text-blue-600">{'{{client.name}}'}</code>
+                  <span className="text-gray-500">Customer Name</span>
+                </div>
+                <div className="flex justify-between">
+                  <code className="text-blue-600">{'{{client.company}}'}</code>
+                  <span className="text-gray-500">Company Name</span>
+                </div>
+              </div>
+            </div>
+          </>
         )}
 
         {(selectedElement.type === 'customer') && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Customer Section Title</label>
-            <input
-              type="text"
-              value={selectedElement.content?.title || 'Bill To:'}
-              onChange={(e) => onUpdate(selectedElement.id, {
-                content: { ...selectedElement.content, title: e.target.value }
-              })}
-              className="w-full p-2 border border-gray-300 rounded-md"
-            />
-          </div>
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Customer Section Title</label>
+              <input
+                type="text"
+                value={selectedElement.content?.title || 'Bill To:'}
+                onChange={(e) => onUpdate(selectedElement.id, {
+                  content: { ...selectedElement.content, title: e.target.value }
+                })}
+                className="w-full p-2 border border-gray-300 rounded-md"
+              />
+            </div>
+            <div className="mt-3 p-3 bg-blue-50 rounded-lg">
+              <h5 className="text-sm font-medium text-gray-700 mb-2">Customer Data Preview:</h5>
+              <div className="text-xs space-y-1 text-gray-600">
+                <div><strong>Name:</strong> From quotations.customer_name</div>
+                <div><strong>Company:</strong> From customers.company_name</div>
+                <div><strong>Address:</strong> From customers.address</div>
+                <div><strong>Phone:</strong> From customers.phone</div>
+                <div><strong>Email:</strong> From customers.email</div>
+              </div>
+            </div>
+          </>
         )}
 
         {(selectedElement.type === 'total') && (
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Total Section Title</label>
-            <input
-              type="text"
-              value={selectedElement.content?.title || 'Total Amount'}
-              onChange={(e) => onUpdate(selectedElement.id, {
-                content: { ...selectedElement.content, title: e.target.value }
-              })}
-              className="w-full p-2 border border-gray-300 rounded-md"
-            />
-          </div>
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Total Section Title</label>
+              <input
+                type="text"
+                value={selectedElement.content?.title || 'Total Amount'}
+                onChange={(e) => onUpdate(selectedElement.id, {
+                  content: { ...selectedElement.content, title: e.target.value }
+                })}
+                className="w-full p-2 border border-gray-300 rounded-md"
+              />
+            </div>
+            <div className="mt-4 p-3 bg-purple-50 rounded-lg">
+              <h5 className="text-sm font-medium text-gray-700 mb-2">💰 Financial Data Source:</h5>
+              <div className="text-xs space-y-1 text-gray-600">
+                <div><strong>Subtotal:</strong> quotations.working_cost</div>
+                <div><strong>Tax (GST):</strong> quotations.gst_amount</div>
+                <div><strong>Total:</strong> quotations.total_cost</div>
+                <div><strong>Currency:</strong> Indian Rupees (₹)</div>
+              </div>
+              <div className="mt-2 text-xs text-purple-700">
+                ✓ Calculations include mob/demob, food/accom costs
+              </div>
+            </div>
+          </>
         )}
 
         {selectedElement.type === ELEMENT_TYPES.IMAGE && (
@@ -629,6 +720,144 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedElement, onUp
             ))}
           </div>
         </div>
+
+        {/* Comprehensive Placeholder Reference */}
+        <div className="mt-6">
+          <details className="group">
+            <summary className="text-sm font-semibold text-gray-700 mb-3 cursor-pointer hover:text-blue-600 transition-colors">
+              📋 Placeholder Reference & Data Sources
+            </summary>
+            <div className="mt-3 space-y-4 text-xs text-gray-600 bg-gray-50 p-3 rounded-lg">
+              
+              {/* Quotation Data Section */}
+              <div>
+                <h5 className="font-semibold text-gray-800 mb-2">📄 Quotation Data</h5>
+                <div className="grid grid-cols-1 gap-1">
+                  <div className="flex justify-between">
+                    <code className="bg-blue-100 px-2 py-1 rounded">{'{{quotation.number}}'}</code>
+                    <span className="text-gray-500">→ quotations.quotation_number</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <code className="bg-blue-100 px-2 py-1 rounded">{'{{quotation.date}}'}</code>
+                    <span className="text-gray-500">→ quotations.created_at</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <code className="bg-blue-100 px-2 py-1 rounded">{'{{quotation.valid_until}}'}</code>
+                    <span className="text-gray-500">→ quotations.valid_until</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <code className="bg-blue-100 px-2 py-1 rounded">{'{{quotation.terms}}'}</code>
+                    <span className="text-gray-500">→ quotations.terms_conditions</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Customer Data Section */}
+              <div>
+                <h5 className="font-semibold text-gray-800 mb-2">👤 Customer Data</h5>
+                <div className="grid grid-cols-1 gap-1">
+                  <div className="flex justify-between">
+                    <code className="bg-green-100 px-2 py-1 rounded">{'{{client.name}}'}</code>
+                    <span className="text-gray-500">→ customers.name</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <code className="bg-green-100 px-2 py-1 rounded">{'{{client.company}}'}</code>
+                    <span className="text-gray-500">→ customers.company</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <code className="bg-green-100 px-2 py-1 rounded">{'{{client.email}}'}</code>
+                    <span className="text-gray-500">→ customers.email</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <code className="bg-green-100 px-2 py-1 rounded">{'{{client.phone}}'}</code>
+                    <span className="text-gray-500">→ customers.phone</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <code className="bg-green-100 px-2 py-1 rounded">{'{{client.address}}'}</code>
+                    <span className="text-gray-500">→ customers.address</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Equipment Data Section */}
+              <div>
+                <h5 className="font-semibold text-gray-800 mb-2">🏗️ Equipment Data</h5>
+                <div className="grid grid-cols-1 gap-1">
+                  <div className="flex justify-between">
+                    <code className="bg-yellow-100 px-2 py-1 rounded">{'{{items.table}}'}</code>
+                    <span className="text-gray-500">→ equipment join quotation_machines</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <code className="bg-yellow-100 px-2 py-1 rounded">{'{{equipment.name}}'}</code>
+                    <span className="text-gray-500">→ equipment.name</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <code className="bg-yellow-100 px-2 py-1 rounded">{'{{equipment.rate}}'}</code>
+                    <span className="text-gray-500">→ quotation_machines.rate</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <code className="bg-yellow-100 px-2 py-1 rounded">{'{{equipment.quantity}}'}</code>
+                    <span className="text-gray-500">→ quotation_machines.quantity</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Financial Data Section */}
+              <div>
+                <h5 className="font-semibold text-gray-800 mb-2">💰 Financial Data</h5>
+                <div className="grid grid-cols-1 gap-1">
+                  <div className="flex justify-between">
+                    <code className="bg-purple-100 px-2 py-1 rounded">{'{{totals.subtotal}}'}</code>
+                    <span className="text-gray-500">→ Calculated: Σ(quantity × rate)</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <code className="bg-purple-100 px-2 py-1 rounded">{'{{totals.tax}}'}</code>
+                    <span className="text-gray-500">→ quotations.tax_amount</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <code className="bg-purple-100 px-2 py-1 rounded">{'{{totals.total}}'}</code>
+                    <span className="text-gray-500">→ quotations.total_amount</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <code className="bg-purple-100 px-2 py-1 rounded">{'{{totals.discount}}'}</code>
+                    <span className="text-gray-500">→ quotations.discount_amount</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Company Data Section */}
+              <div>
+                <h5 className="font-semibold text-gray-800 mb-2">🏢 Company Data</h5>
+                <div className="grid grid-cols-1 gap-1">
+                  <div className="flex justify-between">
+                    <code className="bg-indigo-100 px-2 py-1 rounded">{'{{company.name}}'}</code>
+                    <span className="text-gray-500">→ Static: ASP Cranes</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <code className="bg-indigo-100 px-2 py-1 rounded">{'{{company.address}}'}</code>
+                    <span className="text-gray-500">→ Static: Company Address</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <code className="bg-indigo-100 px-2 py-1 rounded">{'{{company.phone}}'}</code>
+                    <span className="text-gray-500">→ Static: Company Phone</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <code className="bg-indigo-100 px-2 py-1 rounded">{'{{company.email}}'}</code>
+                    <span className="text-gray-500">→ Static: Company Email</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-3 p-2 bg-blue-50 rounded border-l-4 border-blue-400">
+                <p className="text-xs text-blue-700">
+                  💡 <strong>Usage:</strong> Copy any placeholder code and paste into text fields above. 
+                  Data is automatically fetched from the database tables shown.
+                </p>
+              </div>
+            </div>
+          </details>
+        </div>
+
       </div>
     </div>
   );
