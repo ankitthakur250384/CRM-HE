@@ -347,22 +347,25 @@ export function QuotationCreation() {
       }
 
       if (quotationId) {
-        let quotationToLoad = existingQuotation;
-        
-        if (!quotationToLoad) {
-          try {
-            console.log('[QuotationCreation] Fetching existing quotation from API:', quotationId);
-            const resp = await getQuotationById(quotationId);
-            if (resp && resp.success === false) {
-              console.warn('[QuotationCreation] Quotation fetch failed:', resp.message);
-              showToast(resp.message || 'Error loading quotation data', 'error');
-            } else {
-              quotationToLoad = resp;
-            }
-          } catch (err) {
-            console.error('[QuotationCreation] Error fetching quotation:', err);
-            showToast('Error loading quotation data', 'error');
+        let quotationToLoad = null;
+        // Prefer fetching the latest quotation from API by id when editing
+        try {
+          console.log('[QuotationCreation] Fetching existing quotation from API (edit):', quotationId);
+          const resp = await getQuotationById(quotationId);
+          if (resp && resp.success === false) {
+            console.warn('[QuotationCreation] Quotation fetch failed:', resp.message);
+            showToast(resp.message || 'Error loading quotation data', 'error');
+          } else {
+            quotationToLoad = resp;
           }
+        } catch (err) {
+          console.error('[QuotationCreation] Error fetching quotation:', err);
+          showToast('Error loading quotation data', 'error');
+        }
+        // If API didn't return a quotation and navigation state had one, use it as fallback
+        if (!quotationToLoad && existingQuotation) {
+          console.log('[QuotationCreation] Using quotation from navigation state as fallback');
+          quotationToLoad = existingQuotation;
         }
         
         if (quotationToLoad) {
@@ -372,44 +375,52 @@ export function QuotationCreation() {
           console.log('[QuotationCreation] Working hours:', quotationToLoad.workingHours);
           console.log('[QuotationCreation] Food resources:', quotationToLoad.foodResources);
           
+          // If we have equipmentData, try to map the saved selectedEquipment id to the full equipment object
+          const matchedSelectedEquipment = (quotationToLoad.selectedEquipment?.id && Array.isArray(equipmentData))
+            ? equipmentData.find((eq: any) => eq.id === quotationToLoad.selectedEquipment.id)
+            : null;
+            
           const updatedFormData = {
             ...formData,
             machineType: quotationToLoad.machineType || '',
-            selectedEquipment: quotationToLoad.selectedEquipment || formData.selectedEquipment,
-            selectedMachines: quotationToLoad.selectedMachines || [],
-            orderType: quotationToLoad.orderType || 'micro',
-            numberOfDays: quotationToLoad.numberOfDays || 0,
-            workingHours: quotationToLoad.workingHours || 8,
-            foodResources: quotationToLoad.foodResources || 0,
-            accomResources: quotationToLoad.accomResources || 0,
-            siteDistance: quotationToLoad.siteDistance || 0,
-            usage: quotationToLoad.usage || 'normal',
-            riskFactor: quotationToLoad.riskFactor || 'low',
-            extraCharge: quotationToLoad.extraCharge || 0,
-            incidentalCharges: quotationToLoad.incidentalCharges || [],
-            otherFactorsCharge: quotationToLoad.otherFactorsCharge || 0,
-            billing: quotationToLoad.billing || 'gst',
-            includeGst: quotationToLoad.includeGst !== undefined ? quotationToLoad.includeGst : true,
-            shift: quotationToLoad.shift || 'single',
-            dayNight: quotationToLoad.dayNight || 'day',
-            mobDemob: quotationToLoad.mobDemob || 0,
-            mobRelaxation: quotationToLoad.mobRelaxation || 0,
-            runningCostPerKm: quotationToLoad.runningCostPerKm || 0,
-            otherFactors: quotationToLoad.otherFactors || [],
-            dealType: quotationToLoad.dealType || DEAL_TYPES[0].value,
-            sundayWorking: quotationToLoad.sundayWorking || 'no',
-            version: quotationToLoad.version || 1,
-            status: quotationToLoad.status || 'draft',
-            customerName: quotationToLoad.customerName || (dealData?.customer?.name || ''),
-            customerContact: quotationToLoad.customerContact || {
-              name: dealData?.customer?.name || '',
-              email: dealData?.customer?.email || '',
-              phone: dealData?.customer?.phone || '',
-              company: dealData?.customer?.company || '',
-              address: dealData?.customer?.address || '',
-              designation: dealData?.customer?.designation || ''
-            }
-          };
+            // include dealId from loaded quotation so submit can use it when URL param is absent
+            dealId: quotationToLoad.dealId || formData.dealId || dealId,
+             // prefer the full equipment object from equipmentData so the dropdown can show it
+             selectedEquipment: matchedSelectedEquipment || quotationToLoad.selectedEquipment || formData.selectedEquipment,
+             selectedMachines: quotationToLoad.selectedMachines || [],
+             orderType: quotationToLoad.orderType || 'micro',
+             numberOfDays: quotationToLoad.numberOfDays || 0,
+             workingHours: quotationToLoad.workingHours || 8,
+             foodResources: quotationToLoad.foodResources || 0,
+             accomResources: quotationToLoad.accomResources || 0,
+             siteDistance: quotationToLoad.siteDistance || 0,
+             usage: quotationToLoad.usage || 'normal',
+             riskFactor: quotationToLoad.riskFactor || 'low',
+             extraCharge: quotationToLoad.extraCharge || 0,
+             incidentalCharges: quotationToLoad.incidentalCharges || [],
+             otherFactorsCharge: quotationToLoad.otherFactorsCharge || 0,
+             billing: quotationToLoad.billing || 'gst',
+             includeGst: quotationToLoad.includeGst !== undefined ? quotationToLoad.includeGst : true,
+             shift: quotationToLoad.shift || 'single',
+             dayNight: quotationToLoad.dayNight || 'day',
+             mobDemob: quotationToLoad.mobDemob || 0,
+             mobRelaxation: quotationToLoad.mobRelaxation || 0,
+             runningCostPerKm: quotationToLoad.runningCostPerKm || 0,
+             otherFactors: quotationToLoad.otherFactors || [],
+             dealType: quotationToLoad.dealType || DEAL_TYPES[0].value,
+             sundayWorking: quotationToLoad.sundayWorking || 'no',
+             version: quotationToLoad.version || 1,
+             status: quotationToLoad.status || 'draft',
+             customerName: quotationToLoad.customerName || (dealData?.customer?.name || ''),
+             customerContact: quotationToLoad.customerContact || {
+               name: dealData?.customer?.name || '',
+               email: dealData?.customer?.email || '',
+               phone: dealData?.customer?.phone || '',
+               company: dealData?.customer?.company || '',
+               address: dealData?.customer?.address || '',
+               designation: dealData?.customer?.designation || ''
+             }
+           };
           
           console.log('[QuotationCreation] Form data populated with', Object.keys(updatedFormData).length, 'fields');
           console.log('[QuotationCreation] Updated form data preview:', {
@@ -688,23 +699,25 @@ export function QuotationCreation() {
     let riskPercentage = 0;
     let usagePercentage = 0;
 
-    // Get risk factor from configuration
-    if (additionalParams?.riskFactors) {
+    // Get risk factor from configuration (prefer quotationConfig, fall back to additionalParams)
+    const riskFactorsConfig = quotationConfig?.riskFactors || additionalParams?.riskFactors;
+    if (riskFactorsConfig) {
       if (formData.riskFactor === 'high') {
-        riskPercentage = additionalParams.riskFactors.high;
+        riskPercentage = riskFactorsConfig.high;
       } else if (formData.riskFactor === 'medium') {
-        riskPercentage = additionalParams.riskFactors.medium;
+        riskPercentage = riskFactorsConfig.medium;
       } else {
-        riskPercentage = additionalParams.riskFactors.low;
+        riskPercentage = riskFactorsConfig.low;
       }
     }
 
-    // Get usage factor from configuration  
-    if (additionalParams?.usageFactors) {
+    // Get usage factor from configuration (prefer quotationConfig, fall back to additionalParams)
+    const usageFactorsConfig = quotationConfig?.usageFactors || additionalParams?.usageFactors;
+    if (usageFactorsConfig) {
       if (formData.usage === 'heavy') {
-        usagePercentage = additionalParams.usageFactors.heavy;
+        usagePercentage = usageFactorsConfig.heavy;
       } else {
-        usagePercentage = additionalParams.usageFactors.normal;
+        usagePercentage = usageFactorsConfig.normal;
       }
     }
 
@@ -718,6 +731,7 @@ export function QuotationCreation() {
 
     const riskAdjustment = baseForRiskCalc * riskPercentage;
     const usageLoadFactor = baseForRiskCalc * usagePercentage;
+    const riskandusagecost = riskAdjustment + usageLoadFactor;
 
     // Additional charges
     const extraCharges = Number(formData.extraCharge) || 0;
@@ -748,7 +762,7 @@ export function QuotationCreation() {
     });
 
     // Calculate subtotal
-    const subtotal = workingCost + foodAccomCost + mobDemobCost + riskAdjustment + usageLoadFactor + extraCharges + incidentalTotal + otherFactorsTotal;
+    const subtotal = workingCost + foodAccomCost + mobDemobCost + riskandusagecost + extraCharges + incidentalTotal + otherFactorsTotal;
 
     // GST calculation
     const gstAmount = formData.includeGst ? subtotal * 0.18 : 0;
@@ -760,9 +774,8 @@ export function QuotationCreation() {
       workingCost,
       mobDemobCost,
       foodAccomCost,
-      usageLoadFactor,
+      riskandusagecost,
       extraCharges,
-      riskAdjustment,
       gstAmount,
       totalAmount,
     };
@@ -794,7 +807,8 @@ export function QuotationCreation() {
       setIsSaving(true);
       
       // Ensure we have either a deal or lead ID
-      if (!dealId) {
+      const effectiveDealId = dealId || (formData as any).dealId || '';
+      if (!effectiveDealId) {
         showToast('A deal must be selected to create a quotation', 'error');
         return;
       }
@@ -807,7 +821,7 @@ export function QuotationCreation() {
 
       const quotationData = {
         ...formData,
-        dealId: dealId,
+        dealId: effectiveDealId,
         customerName: formData.customerName || deal?.customer?.name || '',
         customerContact: {
           name: formData.customerContact?.name || deal?.customer?.name || '',
@@ -824,8 +838,7 @@ export function QuotationCreation() {
         workingCost: calculations.workingCost,
         mobDemobCost: calculations.mobDemobCost,
         foodAccomCost: calculations.foodAccomCost,
-        usageLoadFactor: calculations.usageLoadFactor,
-        riskAdjustment: calculations.riskAdjustment,
+        riskandusagecost: calculations.riskandusagecost,
         gstAmount: calculations.gstAmount,
         createdBy: user?.id || '',
         updatedAt: new Date().toISOString()
@@ -994,9 +1007,12 @@ export function QuotationCreation() {
                       
                       setFormData(prev => {
                         const orderTypeChanged = days > 0 && newOrderType !== prev.orderType;
-                        let updatedMachines = [...prev.selectedMachines];
-                        if (orderTypeChanged) {
-                          updatedMachines = prev.selectedMachines.map(machine => {
+                        
+                        return {
+                          ...prev,
+                          numberOfDays: days,
+                          orderType: days > 0 ? newOrderType : prev.orderType,
+                          selectedMachines: orderTypeChanged ? prev.selectedMachines.map(machine => {
                             // Find the equipment in availableEquipment to get updated rates
                             const equipment = availableEquipment.find(eq => eq.id === machine.id);
                             if (equipment) {
@@ -1006,18 +1022,8 @@ export function QuotationCreation() {
                                 baseRates: getEquipmentBaseRates(equipment)
                               };
                             }
-                            return {
-                              ...machine,
-                              baseRate: machine.baseRates?.[newOrderType] || machine.baseRate
-                            };
-                          });
-                        }
-                        
-                        return {
-                          ...prev,
-                          numberOfDays: days,
-                          orderType: days > 0 ? newOrderType : prev.orderType,
-                          selectedMachines: updatedMachines
+                            return machine;
+                          }) : prev.selectedMachines
                         };
                       });
                     }}
@@ -1111,52 +1117,56 @@ export function QuotationCreation() {
                     <>
                       <Select
                         label="Available Equipment"
-                        value=""
+                        value={formData.selectedEquipment?.id || ''}
                         onChange={(value: string) => {
                           const selected = availableEquipment.find(eq => eq.id === value);
                           if (selected) {
-                            // Check if this machine is already selected
-                            const existingIndex = formData.selectedMachines.findIndex(m => m.id === selected.id);
-                            
-                            if (existingIndex >= 0) {
-                              // If already selected, increase quantity
-                              setFormData(prev => ({
-                                ...prev,
-                                selectedMachines: prev.selectedMachines.map((m, i) => 
-                                  i === existingIndex ? { ...m, quantity: m.quantity + 1 } : m
-                                )
-                              }));
-                            } else {
-                              // Add new machine to the list
-                              const baseRates = getEquipmentBaseRates(selected);
-                              const newMachine = {
-                                id: selected.id,
-                                machineType: formData.machineType,
-                                equipmentId: selected.equipmentId,
-                                name: selected.name,
-                                baseRates: baseRates,
-                                baseRate: getEquipmentBaseRate(selected, formData.orderType),
-                                runningCostPerKm: selected.runningCostPerKm || 0,
-                                quantity: 1
-                              };
-                              
-                              setFormData(prev => ({
-                                ...prev,
-                                selectedMachines: [...prev.selectedMachines, newMachine]
-                              }));
-                            }
-                          }
-                        }}
-                        options={[
-                          { value: '', label: 'Select equipment to add...' },
-                          ...availableEquipment.map(eq => ({ 
-                            value: eq.id, 
-                            label: `${eq.name} - ${formatCurrency(getEquipmentBaseRate(eq, formData.orderType))}${getRateUnit(formData.orderType)}` 
-                          }))
-                        ]}
-                        className="text-gray-900 mb-3"
-                      />
-
+                             // Check if this machine is already selected
+                             const existingIndex = formData.selectedMachines.findIndex(m => m.id === selected.id);
+                             
+                             if (existingIndex >= 0) {
+                               // If already selected, increase quantity
+                               setFormData(prev => ({
+                                 ...prev,
+                                 // also set selectedEquipment for single-equipment flows
+                                 selectedEquipment: selected,
+                                 selectedMachines: prev.selectedMachines.map((m, i) => 
+                                   i === existingIndex ? { ...m, quantity: m.quantity + 1 } : m
+                                 )
+                               }));
+                             } else {
+                               // Add new machine to the list
+                               const baseRates = getEquipmentBaseRates(selected);
+                               const newMachine = {
+                                 id: selected.id,
+                                 machineType: formData.machineType,
+                                 equipmentId: selected.equipmentId,
+                                 name: selected.name,
+                                 baseRates: baseRates,
+                                 baseRate: getEquipmentBaseRate(selected, formData.orderType),
+                                 runningCostPerKm: selected.runningCostPerKm || 0,
+                                 quantity: 1
+                               };
+                               
+                               setFormData(prev => ({
+                                 ...prev,
+                                 // also set selectedEquipment so the dropdown reflects the selection
+                                 selectedEquipment: selected,
+                                 selectedMachines: [...prev.selectedMachines, newMachine]
+                               }));
+                             }
+                           }
+                         }}
+                         options={[
+                           { value: '', label: 'Select equipment to add...' },
+                           ...availableEquipment.map(eq => ({ 
+                             value: eq.id, 
+                             label: `${eq.name} - ${formatCurrency(getEquipmentBaseRate(eq, formData.orderType))}${getRateUnit(formData.orderType)}` 
+                           }))
+                         ]}
+                         className="text-gray-900 mb-3"
+                       />
+                      
                       {/* Selected machines list */}
                       {formData.selectedMachines.length > 0 && (
                         <div className="mt-4 space-y-3">
@@ -1263,7 +1273,7 @@ export function QuotationCreation() {
                                         }}
                                         className="w-full pl-6 pr-2 py-1 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                                         min="0"
-                                        step="100"
+                                        step="1"
                                         placeholder="0"
                                       />
                                     </div>
