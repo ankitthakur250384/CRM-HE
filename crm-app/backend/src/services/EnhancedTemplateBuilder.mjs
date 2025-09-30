@@ -795,6 +795,78 @@ export class EnhancedTemplateBuilder {
   }
 
   /**
+   * Render custom text section
+   */
+  renderCustomText(element, data) {
+    const content = element.content?.text || element.content?.title || 'Custom Text';
+    const title = element.content?.title;
+    
+    return `
+      <div class="element-custom-text" style="${this.generateElementStyle(element.style || {})}">
+        ${title ? `<h3 style="margin: 0 0 10px 0; font-weight: bold;">${title}</h3>` : ''}
+        <div style="line-height: 1.5;">${content}</div>
+      </div>`;
+  }
+
+  /**
+   * Render quotation info section
+   */
+  renderQuotationInfo(element, data) {
+    const quotation = data?.quotation || {};
+    const fields = element.content?.fields || [
+      'Quotation No: {{quotation.number}}',
+      'Date: {{quotation.date}}',
+      'Valid Until: {{quotation.validUntil}}'
+    ];
+    
+    return `
+      <div class="element-quotation-info" style="${this.generateElementStyle(element.style || {})}">
+        ${fields.map(field => `
+          <div style="margin: 5px 0;">${this.replacePlaceholders(field, data)}</div>
+        `).join('')}
+      </div>`;
+  }
+
+  /**
+   * Render client info section
+   */
+  renderClientInfo(element, data) {
+    const client = data?.client || {};
+    const title = element.content?.title || 'Bill To:';
+    
+    return `
+      <div class="element-client-info" style="${this.generateElementStyle(element.style || {})}">
+        <h4 style="margin: 0 0 10px 0; font-weight: bold;">${title}</h4>
+        <div style="line-height: 1.5;">
+          <div>${client.name || 'Client Name'}</div>
+          <div>${client.company || ''}</div>
+          <div>${client.address || 'Client Address'}</div>
+          <div>${client.phone || ''}</div>
+          <div>${client.email || ''}</div>
+        </div>
+      </div>`;
+  }
+
+  /**
+   * Replace placeholders in text with actual data
+   */
+  replacePlaceholders(text, data) {
+    return text
+      .replace(/\{\{quotation\.number\}\}/g, data?.quotation?.number || 'Q-001')
+      .replace(/\{\{quotation\.date\}\}/g, data?.quotation?.date || new Date().toLocaleDateString())
+      .replace(/\{\{quotation\.validUntil\}\}/g, data?.quotation?.validUntil || 'N/A')
+      .replace(/\{\{client\.name\}\}/g, data?.client?.name || 'Client Name')
+      .replace(/\{\{client\.company\}\}/g, data?.client?.company || 'Client Company')
+      .replace(/\{\{client\.address\}\}/g, data?.client?.address || 'Client Address')
+      .replace(/\{\{company\.name\}\}/g, data?.company?.name || 'Company Name')
+      .replace(/\{\{company\.address\}\}/g, data?.company?.address || 'Company Address')
+      .replace(/\{\{company\.phone\}\}/g, data?.company?.phone || 'Company Phone')
+      .replace(/\{\{totals\.subtotal\}\}/g, data?.totals?.subtotal || '₹0')
+      .replace(/\{\{totals\.tax\}\}/g, data?.totals?.tax || '₹0')
+      .replace(/\{\{totals\.total\}\}/g, data?.totals?.total || '₹0');
+  }
+
+  /**
    * Generate CSS for template
    */
   generateCSS(theme, options = {}) {
