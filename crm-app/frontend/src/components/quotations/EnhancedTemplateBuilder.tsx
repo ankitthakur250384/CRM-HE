@@ -509,6 +509,61 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedElement, onUp
           </>
         )}
 
+        {/* Position Controls */}
+        <div>
+          <h4 className="text-sm font-semibold text-gray-700 mb-3">Position</h4>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">X Position</label>
+              <input
+                type="text"
+                value={selectedElement.position?.x || '0'}
+                onChange={(e) => onUpdate(selectedElement.id, {
+                  position: { ...selectedElement.position, x: e.target.value }
+                })}
+                className="w-full p-1 text-sm border border-gray-300 rounded"
+                placeholder="0px"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Y Position</label>
+              <input
+                type="text"
+                value={selectedElement.position?.y || '0'}
+                onChange={(e) => onUpdate(selectedElement.id, {
+                  position: { ...selectedElement.position, y: e.target.value }
+                })}
+                className="w-full p-1 text-sm border border-gray-300 rounded"
+                placeholder="0px"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Width</label>
+              <input
+                type="text"
+                value={selectedElement.position?.width || '100%'}
+                onChange={(e) => onUpdate(selectedElement.id, {
+                  position: { ...selectedElement.position, width: e.target.value }
+                })}
+                className="w-full p-1 text-sm border border-gray-300 rounded"
+                placeholder="100%"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-600 mb-1">Height</label>
+              <input
+                type="text"
+                value={selectedElement.position?.height || 'auto'}
+                onChange={(e) => onUpdate(selectedElement.id, {
+                  position: { ...selectedElement.position, height: e.target.value }
+                })}
+                className="w-full p-1 text-sm border border-gray-300 rounded"
+                placeholder="auto"
+              />
+            </div>
+          </div>
+        </div>
+
         {/* Styling */}
         <div>
           <h4 className="text-sm font-semibold text-gray-700 mb-3">Styling</h4>
