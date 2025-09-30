@@ -347,6 +347,12 @@ export function QuotationCreation() {
 
       const equipmentData = await getEquipment();
       console.log('Fetched equipment data:', equipmentData);
+      console.log('🔧 Equipment baseRates check:', equipmentData?.map(eq => ({
+        id: eq.id,
+        name: eq.name,
+        baseRates: eq.baseRates,
+        baseRateMonthly: eq.baseRateMonthly
+      })));
       setAvailableEquipment(equipmentData);
 
       if (quotationId) {
@@ -532,6 +538,29 @@ export function QuotationCreation() {
           // Don't force recalculation - preserve loaded database values
           setTimeout(() => {
             console.log('[QuotationCreation] Data loading complete - preserving database calculations');
+            
+            // Refresh selectedMachines with correct baseRates from availableEquipment
+            if (equipmentData && equipmentData.length > 0) {
+              setFormData(prev => ({
+                ...prev,
+                selectedMachines: prev.selectedMachines.map(machine => {
+                  const equipmentDetails = equipmentData.find(eq => eq.id === machine.id || eq.id === machine.equipmentId);
+                  if (equipmentDetails) {
+                    console.log(`🔧 Refreshing baseRates for ${machine.name}:`, {
+                      old: machine.baseRates,
+                      new: getEquipmentBaseRates(equipmentDetails)
+                    });
+                    return {
+                      ...machine,
+                      baseRates: getEquipmentBaseRates(equipmentDetails),
+                      runningCostPerKm: equipmentDetails.runningCostPerKm || machine.runningCostPerKm || 0
+                    };
+                  }
+                  return machine;
+                })
+              }));
+            }
+            
             // calculateQuotation(); // Commented out to preserve loaded values
             // Clear the loading flag after a short delay to allow auto-calculations again
             setTimeout(() => {
@@ -865,8 +894,22 @@ export function QuotationCreation() {
 
     // Risk & Usage calculation based on Monthly Base Rate of Equipment(s)
     // Calculate total monthly base rate for all selected equipment
+    // Always use the monthly base rate from availableEquipment to ensure accuracy
     const totalMonthlyBaseRate = formData.selectedMachines.reduce((total, machine) => {
-      const monthlyRate = machine.baseRates?.monthly || 0;
+      // Find the equipment in availableEquipment to get the latest monthly rate
+      const equipmentDetails = availableEquipment.find(eq => eq.id === machine.id);
+      const monthlyRate = equipmentDetails?.baseRates?.monthly || equipmentDetails?.baseRateMonthly || machine.baseRates?.monthly || 0;
+      
+      console.log(`🔧 Risk & Usage - Equipment ${machine.name}:`, {
+        machineId: machine.id,
+        quantity: machine.quantity,
+        monthlyRateFromMachine: machine.baseRates?.monthly,
+        monthlyRateFromAvailable: equipmentDetails?.baseRates?.monthly,
+        monthlyRateFromAvailableAlt: equipmentDetails?.baseRateMonthly,
+        finalMonthlyRate: monthlyRate,
+        contribution: monthlyRate * machine.quantity
+      });
+      
       return total + (monthlyRate * machine.quantity);
     }, 0);
 
@@ -959,7 +1002,9 @@ export function QuotationCreation() {
       riskAdjustment,
       riskUsageTotal, // New combined Risk & Usage total
       totalMonthlyBaseRate, // For debugging/reference
+      incidentalCost: incidentalTotal, // Add incidental cost to calculations
       otherFactorsCost: otherFactorsTotal,
+      subtotal,
       gstAmount,
       totalAmount,
     };
@@ -1646,6 +1691,17 @@ export function QuotationCreation() {
                     min="0"
                     placeholder="Distance in km"
                   />
+                  <FormInput
+                    type="number"
+                    label="Mob Relaxation"
+                    value={formData.mobRelaxation || ''}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      setFormData(prev => ({ ...prev, mobRelaxation: Number(e.target.value) || 0 }));
+                    }}
+                    min="0"
+                    placeholder="₹0"
+                  />
+                  
                   <div className="grid grid-cols-2 gap-2">
                     <Select
                       label="Usage"
@@ -1660,6 +1716,16 @@ export function QuotationCreation() {
                       options={RISK_LEVELS}
                     />
                   </div>
+                  
+                  <Select
+                    label="Sunday Working"
+                    value={formData.sundayWorking}
+                    onChange={(value: string) => setFormData(prev => ({ ...prev, sundayWorking: value as 'yes' | 'no' }))}
+                    options={[
+                      { value: 'no', label: 'No' },
+                      { value: 'yes', label: 'Yes' }
+                    ]}
+                  />
                 </CardContent>
               </Card>
             </div>
