@@ -1,4 +1,3 @@
-// @ts-nocheck
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { 
@@ -11,8 +10,7 @@ import {
   IndianRupee,
   Settings,
   Calendar,
-  Package,
-  Info
+  Package
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent } from '../components/common/Card';
 import { Button } from '../components/common/Button';
@@ -30,7 +28,6 @@ import { getEquipment, getEquipmentByCategory } from '../services/equipment';
 import { createQuotation, updateQuotation, getQuotationById } from '../services/quotation';
 import { formatCurrency } from '../utils/formatters';
 import { useQuotationConfig, useConfigChangeListener } from '../hooks/useQuotationConfig';
-import { getLeadById } from '../services/api/leadService';
 
 const SHIFT_OPTIONS = [
   { value: 'single', label: 'Single Shift' },
@@ -43,9 +40,8 @@ const TIME_OPTIONS = [
 ];
 
 const USAGE_OPTIONS = [
-    { value: 'normal', label: 'Normal' },
-    { value: 'medium', label: 'Medium' }, // ✅ Add this line
-    { value: 'heavy', label: 'Heavy' },
+  { value: 'normal', label: 'Normal' },
+  { value: 'heavy', label: 'Heavy' },
 ];
 
 const DEAL_TYPES = [
@@ -81,8 +77,21 @@ interface SelectedMachine {
   quantity: number;
 }
 
-// Relax typing to avoid type resolution issues in editor environment
-type QuotationFormState = any;
+interface QuotationFormState extends QuotationInputs {
+  version: number;
+  createdBy: string;
+  status: 'draft' | 'sent' | 'accepted' | 'rejected';
+  selectedMachines: SelectedMachine[];
+  customerName?: string;
+  customerContact?: {
+    name?: string;
+    email?: string;
+    phone?: string;
+    company?: string;
+    address?: string;
+    designation?: string;
+  };
+}
 
 export function QuotationCreation() {
   const { user } = useAuthStore();
@@ -104,10 +113,6 @@ export function QuotationCreation() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedEquipmentBaseRate, setSelectedEquipmentBaseRate] = useState<number>(0);
-  // Info popover visibility state
-  const [showExtraInfo, setShowExtraInfo] = useState(false);
-  const [showIncidentalInfo, setShowIncidentalInfo] = useState(false);
-  const [showOtherInfo, setShowOtherInfo] = useState(false);
 
   const [toast, setToast] = useState<{
     show: boolean;
@@ -116,7 +121,7 @@ export function QuotationCreation() {
     variant?: 'success' | 'error' | 'warning';
   }>({ show: false, title: '' });
 
-  const [formData, setFormData] = useState<any>({
+  const [formData, setFormData] = useState<QuotationFormState>({
     machineType: '',
     selectedEquipment: {
       id: '',
@@ -153,13 +158,7 @@ export function QuotationCreation() {
     status: 'draft',
     otherFactors: [],
     dealType: DEAL_TYPES[0].value,
-    sundayWorking: 'no',
-    // per-quotation override fields - initialize as null so config defaults can be applied
-    incident1: null,
-    incident2: null,
-    incident3: null,
-    riggerAmount: null,
-    helperAmount: null
+    sundayWorking: 'no'
   });
 
   const [calculations, setCalculations] = useState({
@@ -173,7 +172,6 @@ export function QuotationCreation() {
     riskAdjustment: 0,
     gstAmount: 0,
     totalAmount: 0,
-    riskandusagecost: 0,
   });
 
   // Listen for configuration changes and recalculate quotations
@@ -219,8 +217,8 @@ export function QuotationCreation() {
         const baseRate = getEquipmentBaseRate(selected, formData.orderType);
         setSelectedEquipmentBaseRate(baseRate);
       }
-      }
-
+    }
+    
     if (formData.selectedMachines.length > 0 && Array.isArray(availableEquipment) && availableEquipment.length > 0) {
       setFormData(prev => ({
         ...prev,
@@ -262,10 +260,8 @@ export function QuotationCreation() {
       console.log('[QuotationCreation] Fetching data with dealId:', dealId, 'quotationId:', quotationId);
 
       const navState = location.state as any;
-      let existingQuotation: any = null;
-      let dealData: any = null;
-      let leadData: any = null;
-      let leadId = navState?.leadId || '';
+      let existingQuotation = null;
+      let dealData = null;
 
       if (navState) {
         if (navState.quotation) {
@@ -276,36 +272,9 @@ export function QuotationCreation() {
           dealData = navState.deal || navState.selectedDeal;
           console.log('[QuotationCreation] Found deal in navigation state:', dealData);
           setDeal(dealData);
-          if (!leadId && dealData.leadId) leadId = dealData.leadId;
-        }
-      }
-      if (!leadId && dealId && !dealData) {
-        // Fetch deal to get leadId
-        try {
-          dealData = await getDealById(dealId);
-          setDeal(dealData);
-          if (dealData?.leadId) leadId = dealData.leadId;
-        } catch (err) {
-          console.error('[QuotationCreation] Error fetching deal by ID:', err);
-        }
-      }
-      // Fetch lead if leadId is available
-      if (leadId) {
-        try {
-          leadData = await getLeadById(leadId);
-          console.log('[QuotationCreation] Loaded lead:', leadData);
-          if (leadData && leadData.rentalDays) {
-            setFormData(prev => ({
-              ...prev,
-              numberOfDays: leadData.rentalDays
-            }));
-          }
-        } catch (err) {
-          console.error('[QuotationCreation] Error fetching lead by ID:', err);
         }
       }
 
-      // If no lead data, fallback to deal data
       if (!dealData && dealId) {
         try {
           dealData = await getDealById(dealId);
@@ -363,7 +332,19 @@ export function QuotationCreation() {
       }
 
       const equipmentData = await getEquipment();
-      setAvailableEquipment(equipmentData);
+      console.log('Fetched equipment data:', equipmentData);
+      // Handle different possible response shapes (array or { success: false, message })
+      if (Array.isArray(equipmentData)) {
+        setAvailableEquipment(equipmentData);
+      } else if (equipmentData && equipmentData.success === false) {
+        console.warn('[QuotationCreation] Equipment fetch failed:', equipmentData.message);
+        showToast(equipmentData.message || 'Error fetching equipment', 'error');
+        setAvailableEquipment([]);
+      } else if (equipmentData && Array.isArray(equipmentData.data)) {
+        setAvailableEquipment(equipmentData.data);
+      } else {
+        setAvailableEquipment([]);
+      }
 
       if (quotationId) {
         let quotationToLoad = existingQuotation;
@@ -371,7 +352,13 @@ export function QuotationCreation() {
         if (!quotationToLoad) {
           try {
             console.log('[QuotationCreation] Fetching existing quotation from API:', quotationId);
-            quotationToLoad = await getQuotationById(quotationId);
+            const resp = await getQuotationById(quotationId);
+            if (resp && resp.success === false) {
+              console.warn('[QuotationCreation] Quotation fetch failed:', resp.message);
+              showToast(resp.message || 'Error loading quotation data', 'error');
+            } else {
+              quotationToLoad = resp;
+            }
           } catch (err) {
             console.error('[QuotationCreation] Error fetching quotation:', err);
             showToast('Error loading quotation data', 'error');
@@ -421,14 +408,7 @@ export function QuotationCreation() {
               company: dealData?.customer?.company || '',
               address: dealData?.customer?.address || '',
               designation: dealData?.customer?.designation || ''
-            },
-            // load incident amounts if present
-            incident1: quotationToLoad.incident1 ?? additionalParams?.incidentalOptions?.find(o=>o.value==='incident1')?.amount ?? 0,
-            incident2: quotationToLoad.incident2 ?? additionalParams?.incidentalOptions?.find(o=>o.value==='incident2')?.amount ?? 0,
-            incident3: quotationToLoad.incident3 ?? additionalParams?.incidentalOptions?.find(o=>o.value==='incident3')?.amount ?? 0,
-            // rigger/helper amounts
-            riggerAmount: quotationToLoad.riggerAmount ?? additionalParams?.riggerAmount ?? null,
-            helperAmount: quotationToLoad.helperAmount ?? additionalParams?.helperAmount ?? null
+            }
           };
           
           console.log('[QuotationCreation] Form data populated with', Object.keys(updatedFormData).length, 'fields');
@@ -477,7 +457,8 @@ export function QuotationCreation() {
           showToast('Quotation not found', 'warning');
         }
       } else {
-        setAvailableEquipment(equipmentData);
+        // equipmentData may have been handled above; ensure availableEquipment is an array
+        if (!Array.isArray(availableEquipment)) setAvailableEquipment([]);
       }
 
       console.log('Quotation config managed by centralized store');
@@ -550,7 +531,10 @@ export function QuotationCreation() {
     const hasMachines = formData.selectedMachines.length > 0;
     const effectiveBaseRate = selectedEquipmentBaseRate;
     
-    if (!formData.numberOfDays || (!hasMachines && !effectiveBaseRate)) {
+    const hasDistance = (formData.siteDistance && formData.siteDistance > 0) || (formData.mobDemob && formData.mobDemob > 0);
+//
+//    // If there are no inputs to compute any costs (no days, no machines, no base rate, and no distance/manual mobDemob), skip
+    if ((!formData.numberOfDays || Number(formData.numberOfDays) === 0) && !hasMachines && !effectiveBaseRate && !hasDistance) {
       console.log("❌ Calculation stopped - missing days or equipment", {
         numberOfDays: formData.numberOfDays,
         hasMachines,
@@ -567,7 +551,6 @@ export function QuotationCreation() {
         riskAdjustment: 0,
         gstAmount: 0,
         totalAmount: 0,
-        riskandusagecost: 0,
       });
       return;
     }
@@ -606,237 +589,154 @@ export function QuotationCreation() {
         workingCost = effectiveBaseRate * totalHours;
       }
     }
-      // ✅ Apply shift and day/night factors as direct multipliers
-      const shiftFactor = additionalParams?.shiftFactors?.[formData.shift] ?? 1;
-      const timeFactor = additionalParams?.dayNightFactors?.[formData.dayNight] ?? 1;
 
-      workingCost = workingCost * (shiftFactor + timeFactor);
+    // Apply shift type multiplier from configuration
+    let shiftMultiplier = 1;
+    if (additionalParams?.shiftFactors) {
+      if (formData.shift === 'single') {
+        shiftMultiplier = additionalParams.shiftFactors.single;
+      } else if (formData.shift === 'double') {
+        shiftMultiplier = additionalParams.shiftFactors.double;
+      }
+    }
+    workingCost = workingCost * shiftMultiplier;
 
-      // ✅ Log the breakdown for validation
-      console.log("💰 Working cost calculated:", {
-          baseWorkingCost: workingCost / (shiftFactor + timeFactor),
-          shiftFactor,
-          timeFactor,
-          finalWorkingCost: workingCost
-      });
+    // Apply day/night time multiplier from configuration  
+    let timeMultiplier = 1;
+    if (additionalParams?.dayNightFactors) {
+      if (formData.dayNight === 'day') {
+        timeMultiplier = additionalParams.dayNightFactors.day;
+      } else if (formData.dayNight === 'night') {
+        timeMultiplier = additionalParams.dayNightFactors.night;
+      }
+    }
+    workingCost = workingCost * timeMultiplier;
 
-    //// Food & Accommodation costs
-    //// Resolve daily rate with priority: additionalParams daily -> resourceRates daily -> additionalParams monthly -> resourceRates monthly -> defaults
-    //const resolvedFoodDaily = (() => {
-    //  // additionalParams may store either a daily rate (foodRate) or monthly (foodRatePerMonth)
-    //  if (additionalParams?.foodRate !== undefined && additionalParams.foodRate !== null) return Number(additionalParams.foodRate);
-    //  if (resourceRates?.foodRate !== undefined && resourceRates.foodRate !== null) return Number(resourceRates.foodRate);
-    //  if (additionalParams?.foodRatePerMonth !== undefined && additionalParams.foodRatePerMonth !== null) return Number(additionalParams.foodRatePerMonth) / 26;
-    //  if (resourceRates?.foodRatePerMonth !== undefined && resourceRates.foodRatePerMonth !== null) return Number(resourceRates.foodRatePerMonth) / 26;
-    //  // fallback default monthly 2500 -> per day
-    //  return 2500 / 26;
-    //})();
+    console.log("💰 Working cost calculated:", {
+      baseWorkingCost: workingCost / (shiftMultiplier * timeMultiplier),
+      shiftMultiplier,
+      timeMultiplier,
+      finalWorkingCost: workingCost
+    });
 
-    //const resolvedAccomDaily = (() => {
-    //  if (additionalParams?.accommodationRate !== undefined && additionalParams.accommodationRate !== null) return Number(additionalParams.accommodationRate);
-    //  if (resourceRates?.accommodationRate !== undefined && resourceRates.accommodationRate !== null) return Number(resourceRates.accommodationRate);
-    //  if (additionalParams?.accommodationRatePerMonth !== undefined && additionalParams.accommodationRatePerMonth !== null) return Number(additionalParams.accommodationRatePerMonth) / 26;
-    //  if (resourceRates?.accommodationRatePerMonth !== undefined && resourceRates.accommodationRatePerMonth !== null) return Number(resourceRates.accommodationRatePerMonth) / 26;
-    //  return 4000 / 26;
-    //})();
+    // Food & Accommodation costs
+    const foodRate = resourceRates?.foodRate;
+    const accomRate = resourceRates?.accommodationRate;
+    const foodCost = foodRate ? (formData.foodResources || 0) * foodRate * numberOfDays : 0;
+    const accomCost = accomRate ? (formData.accomResources || 0) * accomRate * numberOfDays : 0;
+    const foodAccomCost = foodCost + accomCost;
 
-    //const foodRate = resolvedFoodDaily;
-    //const accomRate = resolvedAccomDaily;
-    //const foodCost = (formData.foodResources || 0) * foodRate * numberOfDays;
-    //const accomCost = (formData.accomResources || 0) * accomRate * numberOfDays;
+    console.log("🍽️ Food & Accommodation:", {
+      foodResources: formData.foodResources,
+      accomResources: formData.accomResources,
+      foodRate,
+      accomRate,
+      numberOfDays,
+      foodCost,
+      accomCost,
+      foodAccomCost,
+      resourceRates
+    });
 
-    //const foodAccomCost = foodCost + accomCost;
+    // Mobilization/Demobilization costs
+    let mobDemobCost = 0;
+    const transportRate = resourceRates?.transportRate; // restored for logging and potential use
 
-    //console.log("🍽️ Food & Accommodation:", {
-    //  foodResources: formData.foodResources,
-    //  accomResources: formData.accomResources,
-    //  foodRate,
-    //  accomRate,
-    //  numberOfDays,
-    //  foodCost,
-    //  accomCost,
-    //  foodAccomCost,
-    //  resourceRates,
-    //  additionalParams
-    //});
-
-
-      //// Safely extract monthly rates from resourceRates config
-      //const foodRatePerMonth = Number(resourceRates?.foodRatePerMonth ?? 2500); // fallback default
-      //const accomRatePerMonth = Number(resourceRates?.accommodationRatePerMonth ?? 4000); // fallback default
-
-      //// Extract number of resources from formData
-      //const foodResources = Number(formData.foodResources ?? 0);
-      //const accomResources = Number(formData.accomResources ?? 0);
-
-      //// Multiply monthly rate × number of resources
-      //const foodCost = foodResources * foodRatePerMonth;
-      //const accomCost = accomResources * accomRatePerMonth;
-
-      //const foodAccomCost = foodCost + accomCost;
-
-      //// Log breakdown for validation
-      //console.log("🍽️ Monthly Food & Accommodation Cost:", {
-      //    foodResources,
-      //    accomResources,
-      //    foodRatePerMonth,
-      //    accomRatePerMonth,
-      //    foodCost,
-      //    accomCost,
-      //    foodAccomCost,
-      //    resourceRates
-      //});
-
-      // Food & Accommodation costs (monthly — DO NOT convert to daily)
-      // Priority: resourceRates.foodRatePerMonth -> additionalParams.foodRatePerMonth
-      // Fallbacks: resourceRates.foodRate (daily → monthly), additionalParams.foodRate (daily → monthly)
-      const resolvedFoodMonthly = (() => {
-          if (resourceRates?.foodRatePerMonth != null) return Number(resourceRates.foodRatePerMonth);
-          if (additionalParams?.foodRatePerMonth != null) return Number(additionalParams.foodRatePerMonth);
-          if (resourceRates?.foodRate != null) return Number(resourceRates.foodRate) * 26;
-          if (additionalParams?.foodRate != null) return Number(additionalParams.foodRate) * 26;
-          return 2500; // final fallback
-      })();
-
-      const resolvedAccomMonthly = (() => {
-          if (resourceRates?.accommodationRatePerMonth != null) return Number(resourceRates.accommodationRatePerMonth);
-          if (additionalParams?.accommodationRatePerMonth != null) return Number(additionalParams.accommodationRatePerMonth);
-          if (resourceRates?.accommodationRate != null) return Number(resourceRates.accommodationRate) * 26;
-          if (additionalParams?.accommodationRate != null) return Number(additionalParams.accommodationRate) * 26;
-          return 4000; // final fallback
-      })();
-
-      // Multiply monthly rate × number of resources (NOT by number of days)
-      const foodResources = Number(formData.foodResources ?? 0);
-      const accomResources = Number(formData.accomResources ?? 0);
-
-      const foodCost = foodResources * resolvedFoodMonthly;
-      const accomCost = accomResources * resolvedAccomMonthly;
-      const foodAccomCost = foodCost + accomCost;
-
-      console.log("🍽️ Food & Accommodation (monthly):", {
-          foodResources,
-          accomResources,
-          resolvedFoodMonthly,
-          resolvedAccomMonthly,
-          foodCost,
-          accomCost,
-          foodAccomCost,
-          resourceRates,
-          additionalParams
-      });
-
-      let mobDemobCost = 0;
-
-      // Extract distance and relaxation
-      const distance = Number(formData.siteDistance ?? 0);
-      const mobRelaxation = Number(formData.mobRelaxation ?? 0);
-
-      // Extract usage/risk factors from config
-      const usageFactor = additionalParams?.usageFactors?.[formData.usage] ?? 1.0;
-      const riskFactor = additionalParams?.riskFactors?.[formData.siteRisk] ?? 0;
-
-      // Manual override
-      if (formData.mobDemob > 0) {
-          mobDemobCost = formData.mobDemob;
-      } else if (distance > 0) {
-          if (hasMachines && Array.isArray(formData.selectedMachines)) {
-              mobDemobCost = formData.selectedMachines.reduce((total, machine) => {
-                  const runningCostPerKm = Number(machine.runningCostPerKm ?? 0);
-                  const machineCost = (distance * 2 * runningCostPerKm);
-                  return total + (machineCost * machine.quantity);
-              }, 0);
-          } else {
-              const runningCostPerKm = Number(formData.runningCostPerKm ?? 0);
-              mobDemobCost = (distance * 2 * runningCostPerKm);
+    if (formData.mobDemob > 0) {
+      mobDemobCost = formData.mobDemob;
+    } else if (formData.siteDistance > 0) {
+      const distance = formData.siteDistance || 0;
+      if (hasMachines) {
+        mobDemobCost = formData.selectedMachines.reduce((total, machine) => {
+          const runningCostPerKm = machine.runningCostPerKm || 0;
+          const machineCost = (distance * 2 * runningCostPerKm);
+          return total + (machineCost * machine.quantity);
+        }, 0);
+      } else {
+        // Prefer runningCostPerKm from the selected equipment (if any) fetched from availableEquipment
+        let runningCostPerKm = formData.runningCostPerKm || 0;
+        if (formData.selectedEquipment?.id) {
+          const equipmentDetails = availableEquipment.find(eq => eq.id === formData.selectedEquipment.id);
+          if (equipmentDetails && equipmentDetails.runningCostPerKm !== undefined) {
+            runningCostPerKm = equipmentDetails.runningCostPerKm;
           }
-
-          // Apply usage and risk factors
-         // mobDemobCost *= usageFactor;
-          //mobDemobCost += riskFactor;
-
-          // Apply relaxation discount
-          //if (mobRelaxation > 0) {
-             // mobDemobCost *= (1 - mobRelaxation / 100);
-         // }
+        }
+        mobDemobCost = (distance * 2 * runningCostPerKm);
       }
 
-      console.log("🚚 Mob-Demob calculation:", {
-          mobDemobManual: formData.mobDemob,
-          siteDistance: distance,
-          usage: formData.usage,
-          usageFactor,
-          siteRisk: formData.siteRisk,
-          riskFactor,
-          mobRelaxation,
-          mobDemobCost,
-          hasMachines,
-          selectedMachines: formData.selectedMachines?.map(m => ({
-              name: m.name,
-              quantity: m.quantity,
-              runningCostPerKm: m.runningCostPerKm
-          }))
-      });
+      if (formData.mobRelaxation > 0) {
+        mobDemobCost = mobDemobCost * (1 - (formData.mobRelaxation / 100));
+      }
+    }
 
+    console.log("🚚 Mob-Demob calculation:", {
+      mobDemobManual: formData.mobDemob,
+      siteDistance: formData.siteDistance,
+      transportRate,
+      mobRelaxation: formData.mobRelaxation,
+      mobDemobCost,
+      hasMachines,
+      selectedMachines: formData.selectedMachines?.map(m => ({ 
+        name: m.name, 
+        quantity: m.quantity, 
+        runningCostPerKm: m.runningCostPerKm 
+      }))
+    });
 
     // Risk & Usage adjustments from configuration
-      const baseForRiskCalc = (() => {
-          if (!formData.selectedMachines || formData.selectedMachines.length === 0) return 0;
+    const baseForRiskCalc = workingCost;
+    let riskPercentage = 0;
+    let usagePercentage = 0;
 
-          return formData.selectedMachines.reduce((total, machine) => {
-              const baseRateMonthly = Number(machine.base_rate_monthly ?? 0);
-              return total + (baseRateMonthly * machine.quantity);
-          }, 0);
-      })();
+    // Get risk factor from configuration
+    if (additionalParams?.riskFactors) {
+      if (formData.riskFactor === 'high') {
+        riskPercentage = additionalParams.riskFactors.high;
+      } else if (formData.riskFactor === 'medium') {
+        riskPercentage = additionalParams.riskFactors.medium;
+      } else {
+        riskPercentage = additionalParams.riskFactors.low;
+      }
+    }
 
+    // Get usage factor from configuration  
+    if (additionalParams?.usageFactors) {
+      if (formData.usage === 'heavy') {
+        usagePercentage = additionalParams.usageFactors.heavy;
+      } else {
+        usagePercentage = additionalParams.usageFactors.normal;
+      }
+    }
 
-      // Step 1: Calculate baseForRiskCalc
-      const baseForRiskCalc = (() => {
-          if (!formData.selectedMachines || formData.selectedMachines.length === 0) return 0;
+    console.log("🔧 Risk & Usage factors:", {
+      riskFactor: formData.riskFactor,
+      riskPercentage,
+      usage: formData.usage,
+      usagePercentage,
+      baseForRiskCalc
+    });
 
-          return formData.selectedMachines.reduce((total, machine) => {
-              const baseRateMonthly = Number(machine.base_rate_monthly ?? 0);
-              const quantity = Number(machine.quantity ?? 1);
-              return total + (baseRateMonthly * quantity);
-          }, 0);
-      })();
-
-      // Step 2: Pull selected config values
-      const selectedRiskLevel = formData.riskFactor ?? 'low';     // 'low', 'medium', 'high'
-      const selectedUsageLevel = formData.usage ?? 'normal';       // 'normal', 'medium', 'heavy'
-
-      const riskFactor = additionalParams.riskFactors?.[selectedRiskLevel] ?? 0;
-      const usageFactor = additionalParams.usageFactors?.[selectedUsageLevel] ?? 1.0;
-
-      // Step 3: Calculate values exactly as you said
-      const riskAdjustment = baseForRiskCalc * riskFactor;
-      const usageLoadFactor = baseForRiskCalc * usageFactor;
-      const riskandusagecost = riskAdjustment + usageLoadFactor;
-
+    const riskAdjustment = baseForRiskCalc * riskPercentage;
+    const usageLoadFactor = baseForRiskCalc * usagePercentage;
 
     // Additional charges
     const extraCharges = Number(formData.extraCharge) || 0;
     
     // Incidental charges from configuration
     const incidentalOptions = additionalParams?.incidentalOptions;
-    const incidentalTotal = (formData.incidentalCharges || []).reduce((sum, val) => {
-      if (val === 'incident1') return sum + (formData.incident1 ?? (incidentalOptions?.find(opt => opt.value === 'incident1')?.amount ?? 0));
-      if (val === 'incident2') return sum + (formData.incident2 ?? (incidentalOptions?.find(opt => opt.value==='incident2')?.amount ?? 0));
-      if (val === 'incident3') return sum + (formData.incident3 ?? (incidentalOptions?.find(opt => opt.value==='incident3')?.amount ?? 0));
-      // fallback to config value
+    const incidentalTotal = formData.incidentalCharges.reduce((sum, val) => {
       const found = incidentalOptions?.find(opt => opt.value === val);
       return sum + (found ? found.amount : 0);
     }, 0);
-
-    // Other factors (rigger/helper) use per-quotation override if provided, else config
-    const otherFactorsTotal = (formData.otherFactors.includes('rigger') ? (formData.riggerAmount ?? additionalParams?.riggerAmount ?? 0) : 0) +
-                              (formData.otherFactors.includes('helper') ? (formData.helperAmount ?? additionalParams?.helperAmount ?? 0) : 0);
 
     console.log("📋 Incidental charges:", {
       incidentalCharges: formData.incidentalCharges,
       incidentalOptions,
       incidentalTotal
     });
+
+    const otherFactorsTotal = (formData.otherFactors.includes('rigger') && additionalParams?.riggerAmount ? additionalParams.riggerAmount : 0) + 
+                            (formData.otherFactors.includes('helper') && additionalParams?.helperAmount ? additionalParams.helperAmount : 0);
 
     console.log("👷 Other factors (Rigger & Helper):", {
       otherFactors: formData.otherFactors,
@@ -848,8 +748,7 @@ export function QuotationCreation() {
     });
 
     // Calculate subtotal
-    const subtotal = workingCost + foodAccomCost + mobDemobCost + riskAdjustment + usageLoadFactor + extraCharges + 
-    incidentalTotal + otherFactorsTotal; // FIXED: use incidentalTotal
+    const subtotal = workingCost + foodAccomCost + mobDemobCost + riskAdjustment + usageLoadFactor + extraCharges + incidentalTotal + otherFactorsTotal;
 
     // GST calculation
     const gstAmount = formData.includeGst ? subtotal * 0.18 : 0;
@@ -866,7 +765,6 @@ export function QuotationCreation() {
       riskAdjustment,
       gstAmount,
       totalAmount,
-      riskandusagecost,
     };
 
     console.log("🎯 Final calculations:", newCalculations);
@@ -919,7 +817,7 @@ export function QuotationCreation() {
           address: formData.customerContact?.address || deal?.customer?.address || '',
           designation: formData.customerContact?.designation || deal?.customer?.designation || ''
         },
-          // Include all calculation fields directly in the quotation data
+        // Include all calculation fields directly in the quotation data
         calculations,
         totalAmount: calculations.totalAmount,
         totalCost: calculations.totalAmount,
@@ -929,15 +827,8 @@ export function QuotationCreation() {
         usageLoadFactor: calculations.usageLoadFactor,
         riskAdjustment: calculations.riskAdjustment,
         gstAmount: calculations.gstAmount,
-        riskandusagecost: calculations.riskandusagecost,
         createdBy: user?.id || '',
-        updatedAt: new Date().toISOString(),
-        // Map rigger/helper selections to explicit amounts for backend
-        riggerAmount: formData.riggerAmount ?? additionalParams?.riggerAmount ?? null,
-        helperAmount: formData.helperAmount ?? additionalParams?.helperAmount ?? null,
-        incident1: formData.incident1 ?? additionalParams?.incidentalOptions?.find(o=>o.value==='incident1')?.amount ?? 0,
-        incident2: formData.incident2 ?? additionalParams?.incidentalOptions?.find(o=>o.value==='incident2')?.amount ?? 0,
-        incident3: formData.incident3 ?? additionalParams?.incidentalOptions?.find(o=>o.value==='incident3')?.amount ?? 0
+        updatedAt: new Date().toISOString()
       };
 
       if (quotationId) {
@@ -956,30 +847,6 @@ export function QuotationCreation() {
       setIsSaving(false);
     }
   };
-
-  // Initialize incident/rigger/helper defaults from configuration for new quotations
-  useEffect(() => {
-    if (!additionalParams) return;
-    // Only set defaults for new quotation (don't overwrite when editing existing quotation)
-    if (!quotationId) {
-      setFormData(prev => {
-        const next = { ...prev };
-        (additionalParams.incidentalOptions || []).forEach((opt: any) => {
-          // Only set if value is null/undefined/empty
-          if (next[opt.value] === undefined || next[opt.value] === null || next[opt.value] === '') {
-            next[opt.value] = Number(opt.amount || 0);
-          }
-        });
-        if (next.riggerAmount === null || next.riggerAmount === undefined || next.riggerAmount === '') {
-          next.riggerAmount = Number(additionalParams.riggerAmount ?? 0);
-        }
-        if (next.helperAmount === null || next.helperAmount === undefined || next.helperAmount === '') {
-          next.helperAmount = Number(additionalParams.helperAmount ?? 0);
-        }
-        return next;
-      });
-    }
-  }, [additionalParams, quotationId]);
 
   if (isLoading) {
     return (
@@ -1127,7 +994,6 @@ export function QuotationCreation() {
                       
                       setFormData(prev => {
                         const orderTypeChanged = days > 0 && newOrderType !== prev.orderType;
-                        
                         let updatedMachines = [...prev.selectedMachines];
                         if (orderTypeChanged) {
                           updatedMachines = prev.selectedMachines.map(machine => {
@@ -1376,45 +1242,35 @@ export function QuotationCreation() {
                                     </div>
                                   </div>
 
-                                        {/* Rate */}
-                                        <div className="space-y-2">
-                                            <label className="block text-xs font-medium text-gray-700 uppercase tracking-wider">
-                                                Rate {getRateUnit(formData.orderType)} {/* ✅ Shows unit like per hour/month based on orderType */}
-                                            </label>
-                                            <div className="relative">
-                                                {/* ₹ symbol prefix */}
-                                                <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">₹</span>
-
-                                                <input
-                                                    type="number"
-                                                    min="1" // ✅ Changed from 0 to 1 to prevent zero or negative rates
-                                                    step="1" // ✅ Changed from 100 to 1 to allow flexible input like ₹4, ₹9, ₹150
-                                                    value={
-                                                        machine.baseRate !== undefined
-                                                            ? machine.baseRate
-                                                            : machine.baseRates?.[formData.orderType] ?? ''
-                                                    } // ✅ Uses correct rate from config if not manually set
-
-                                                    onChange={(e) => {
-                                                        const baseRate = parseFloat(e.target.value); // ✅ Removed Math.max(0, ...) to avoid silent clamping
-                                                        if (!isNaN(baseRate) && baseRate > 0) {
-                                                            setFormData(prev => ({
-                                                                ...prev,
-                                                                selectedMachines: prev.selectedMachines.map((m, i) =>
-                                                                    i === index ? { ...m, baseRate } : m
-                                                                )
-                                                            }));
-                                                        } else {
-                                                            showToast('Please enter a valid rate above ₹0', 'error'); // ✅ Optional feedback for invalid input
-                                                        }
-                                                    }}
-
-                                                    className="w-full pl-6 pr-2 py-1 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
-                                                    placeholder={`Rate ${getRateUnit(formData.orderType)}`} // ✅ Dynamic placeholder based on orderType
-                                                />
-                                            </div>
-                                        </div>
-
+                                  {/* Rate */}
+                                  <div className="space-y-2">
+                                    <label className="block text-xs font-medium text-gray-700 uppercase tracking-wider">
+                                      Rate{getRateUnit(formData.orderType)}
+                                    </label>
+                                    <div className="relative">
+                                      <span className="absolute left-2 top-1/2 transform -translate-y-1/2 text-gray-500 text-xs">₹</span>
+                                      <input
+                                        type="number"
+                                        value={machine.baseRate}
+                                        onChange={(e) => {
+                                          const baseRate = Math.max(0, parseFloat(e.target.value) || 0);
+                                          setFormData(prev => ({
+                                            ...prev,
+                                            selectedMachines: prev.selectedMachines.map((m, i) => 
+                                              i === index ? { ...m, baseRate } : m
+                                            )
+                                          }));
+                                        }}
+                                        className="w-full pl-6 pr-2 py-1 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
+                                        min="0"
+                                        step="100"
+                                        placeholder="0"
+                                      />
+                                    </div>
+                                    <div className="text-xs text-gray-500">
+                                      Default: {formatCurrency(machine.baseRates?.[formData.orderType] || 0)}
+                                    </div>
+                                  </div>
 
                                   {/* Subtotal */}
                                   <div className="space-y-2">
@@ -1539,7 +1395,7 @@ export function QuotationCreation() {
                     <Select
                       label="Usage"
                       value={formData.usage}
-                      onChange={(value: string) => setFormData(prev => ({ ...prev, usage: value as 'normal' | 'medium' |  'heavy' }))}
+                      onChange={(value: string) => setFormData(prev => ({ ...prev, usage: value as 'normal' | 'heavy' }))}
                       options={USAGE_OPTIONS}
                     />
                     <Select
@@ -1561,164 +1417,84 @@ export function QuotationCreation() {
                   Additional Charges
                 </CardTitle>
               </CardHeader>
-
               <CardContent className="pt-0">
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
-                  {/* Extra Commercial Charges */}
-                  <div className="space-y-2">
-                    <FormInput
-                      type="number"
-                      label="Extra Commercial Charges"
-                      value={formData.extraCharge || ''}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                        setFormData(prev => ({ ...prev, extraCharge: Number(e.target.value) || 0 }));
-                      }}
-                      min="0"
-                      placeholder="₹0"
-                      className="text-gray-900"
-                    />
-                    <div className="text-xs text-gray-500 flex items-center gap-2">
-                      <div className="relative">
-                        <button type="button" onClick={() => setShowExtraInfo(v => !v)} aria-label="Extra commercial charges info" className="p-1 rounded hover:bg-gray-100">
-                          <Info className="w-4 h-4 text-gray-500" />
-                        </button>
-                        {showExtraInfo && (
-                          <div className="absolute right-0 mt-2 w-64 p-3 bg-white border border-gray-200 rounded shadow-lg text-xs text-gray-700">
-                            Optional — any additional commercial charges
-                          </div>
-                        )}
-                      </div>
-                      <span className="text-gray-500">Optional</span>
-                    </div>
-                   </div>
-
-                  {/* Incidental Charges: only label + editable input prefilled from configuration */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <FormInput
+                    type="number"
+                    label="Extra Commercial Charges"
+                    value={formData.extraCharge || ''}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      setFormData(prev => ({ ...prev, extraCharge: Number(e.target.value) || 0 }));
+                    }}
+                    min="0"
+                    placeholder="₹0"
+                  />
+                  
                   <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="text-sm font-medium text-gray-700">Incidental Charges</div>
-                      <div className="text-xs text-gray-500 flex items-center gap-2">
-                        <div className="relative">
-                          <button type="button" onClick={() => setShowIncidentalInfo(v => !v)} aria-label="Incidental charges info" className="p-1 rounded hover:bg-gray-100">
-                            <Info className="w-4 h-4 text-gray-500" />
-                          </button>
-                          {showIncidentalInfo && (
-                            <div className="absolute right-0 mt-2 w-64 p-3 bg-white border border-gray-200 rounded shadow-lg text-xs text-gray-700">
-                              Select and modify amounts if required
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                     </div>
-
-                    <div className="space-y-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Incidental Charges</label>
+                    <div className="space-y-2">
                       {additionalParams?.incidentalOptions?.map(option => (
-                        <div key={option.value} className="flex items-center justify-between gap-4">
-                          <label className="flex items-center gap-3">
-                            <input
-                              type="checkbox"
-                              checked={formData.incidentalCharges.includes(option.value)}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setFormData(prev => ({
-                                    ...prev,
-                                    incidentalCharges: [...prev.incidentalCharges, option.value]
-                                  }));
-                                } else {
-                                  setFormData(prev => ({
-                                    ...prev,
-                                    incidentalCharges: prev.incidentalCharges.filter((val: string) => val !== option.value)
-                                  }));
-                                }
-                              }}
-                              className="h-4 w-4 text-blue-600 border-gray-300 rounded"
-                            />
-                            <div className="text-sm text-gray-800">{String(option.label).replace(/\s*-\s*₹.*$/,'')}</div>
-                          </label>
-
-                          <div className="flex items-center gap-3">
-                            <FormInput
-                              type="number"
-                              label=""
-                              // Prefer explicit per-quotation value; if unset use config default (displayed)
-                              value={formData[option.value] !== undefined && formData[option.value] !== null ? formData[option.value] : (additionalParams?.incidentalOptions?.find(o=>o.value===option.value)?.amount ?? '')}
-                              onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                const val = e.target.value === '' ? null : Number(e.target.value);
-                                setFormData(prev => ({ ...prev, [option.value]: val }));
-                              }}
-                              placeholder=""
-                              className="w-32"
-                            />
-                          </div>
-                        </div>
+                        <label key={option.value} className="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={formData.incidentalCharges.includes(option.value)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  incidentalCharges: [...prev.incidentalCharges, option.value]
+                                }));
+                              } else {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  incidentalCharges: prev.incidentalCharges.filter(val => val !== option.value)
+                                }));
+                              }
+                            }}
+                            className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-sm text-gray-700">{option.label}</span>
+                        </label>
                       ))}
                     </div>
                   </div>
 
-                  {/* Other Factors: rigger/helper editable inputs prefilled from configuration */}
                   <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="text-sm font-medium text-gray-700">Other Factors</div>
-                      <div className="text-xs text-gray-500 flex items-center gap-2">
-                        <div className="relative">
-                          <button type="button" onClick={() => setShowOtherInfo(v => !v)} aria-label="Other factors info" className="p-1 rounded hover:bg-gray-100">
-                            <Info className="w-4 h-4 text-gray-500" />
-                          </button>
-                          {showOtherInfo && (
-                            <div className="absolute right-0 mt-2 w-64 p-3 bg-white border border-gray-200 rounded shadow-lg text-xs text-gray-700">
-                              Apply and override labour charges
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                     </div>
-
-                    <div className="space-y-3">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Other Factors</label>
+                    <div className="space-y-2">
                       {OTHER_FACTORS.map(factor => (
-                        <div key={factor.value} className="flex items-center justify-between gap-3">
-                          <label className="flex items-center gap-3">
-                            <input
-                              type="checkbox"
-                              checked={formData.otherFactors.includes(factor.value)}
-                              onChange={(e) => {
-                                if (e.target.checked) {
-                                  setFormData(prev => ({ ...prev, otherFactors: [...prev.otherFactors, factor.value] }));
-                                } else {
-                                  setFormData(prev => ({ ...prev, otherFactors: prev.otherFactors.filter((val: string) => val !== factor.value) }));
-                                }
-                              }}
-                              className="h-4 w-4 text-blue-600 border-gray-300 rounded"
-                            />
-                            <div className="text-sm text-gray-800">{factor.label}</div>
-                          </label>
-
-                          <div className="flex items-center gap-3">
-                            {(factor.value === 'rigger' || factor.value === 'helper') ? (
-                              <FormInput
-                                type="number"
-                                label=""
-                                value={factor.value === 'rigger' ? (formData.riggerAmount ?? additionalParams?.riggerAmount ?? '') : (formData.helperAmount ?? additionalParams?.helperAmount ?? '')}
-                                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
-                                  const val = e.target.value === '' ? null : Number(e.target.value);
-                                  if (factor.value === 'rigger') setFormData(prev => ({ ...prev, riggerAmount: val }));
-                                  else setFormData(prev => ({ ...prev, helperAmount: val }));
-                                }}
-                                placeholder="Enter amount"
-                                className="w-32"
-                              />
-                            ) : (
-                              <div className="text-sm text-gray-500">—</div>
-                            )}
-                          </div>
-                        </div>
+                        <label key={factor.value} className="flex items-center">
+                          <input
+                            type="checkbox"
+                            checked={formData.otherFactors.includes(factor.value)}
+                            onChange={(e) => {
+                              if (e.target.checked) {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  otherFactors: [...prev.otherFactors, factor.value]
+                                }));
+                              } else {
+                                setFormData(prev => ({
+                                  ...prev,
+                                  otherFactors: prev.otherFactors.filter(val => val !== factor.value)
+                                }));
+                              }
+                            }}
+                            className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                          />
+                          <span className="text-sm text-gray-700">
+                            {factor.label}
+                            {factor.value === 'rigger' && ` (₹${additionalParams?.riggerAmount?.toLocaleString('en-IN')})`}
+                            {factor.value === 'helper' && ` (₹${additionalParams?.helperAmount?.toLocaleString('en-IN')})`}
+                          </span>
+                        </label>
                       ))}
                     </div>
-
-                    <div className="mt-3 text-xs text-gray-500">Note: Prefilled values come from Configuration; modify per quotation as needed.</div>
                   </div>
-
                 </div>
               </CardContent>
             </Card>
+
           </div>
 
           {/* Right Column - Summary */}

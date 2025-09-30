@@ -248,7 +248,7 @@ CREATE TABLE quotations (
     food_resources INTEGER NOT NULL DEFAULT 0 CHECK (food_resources >= 0),
     accom_resources INTEGER NOT NULL DEFAULT 0 CHECK (accom_resources >= 0),
     site_distance NUMERIC(10, 2) NOT NULL CHECK (site_distance >= 0),
-    usage VARCHAR(20) NOT NULL CHECK (usage IN ('normal', 'heavy')),
+    usage VARCHAR(20) NOT NULL CHECK (usage IN ('normal', 'medium', 'heavy')),
     risk_factor VARCHAR(20) NOT NULL CHECK (risk_factor IN ('low', 'medium', 'high')),
     -- `shift` defaults to 'single' and must be either 'single' or 'double'
     shift VARCHAR(20) NOT NULL DEFAULT 'single' CHECK (shift IN ('single', 'double')),
@@ -270,6 +270,9 @@ CREATE TABLE quotations (
     food_accom_cost NUMERIC(12, 2) CHECK (food_accom_cost >= 0),
     usage_load_factor NUMERIC(10, 2) CHECK (usage_load_factor >= 0),
     risk_adjustment NUMERIC(10, 2) CHECK (risk_adjustment >= 0),
+    -- Persist the numeric factors used for risk and usage calculations so quotations are auditable
+    applied_risk_factor NUMERIC(10, 2) NOT NULL DEFAULT 0 CHECK (applied_risk_factor >= 0),
+    applied_usage_factor NUMERIC(10, 2) NOT NULL DEFAULT 1.00 CHECK (applied_usage_factor >= 0),
     riskandusagecost NUMERIC(12, 2) CHECK (riskandusagecost >= 0),
     gst_amount NUMERIC(10, 2) CHECK (gst_amount >= 0),
     -- Fields required by backend queries
@@ -278,6 +281,11 @@ CREATE TABLE quotations (
     incident3 TEXT,
     rigger_amount NUMERIC(12, 2),
     helper_amount NUMERIC(12, 2),
+    -- New factor fields used by backend logic
+    shift_factor NUMERIC(10, 2) NOT NULL DEFAULT 1.00 CHECK (shift_factor >= 0),
+    day_night_factor NUMERIC(10, 2) NOT NULL DEFAULT 1.00 CHECK (day_night_factor >= 0),
+    -- Total incidental amount cached for quicker lookups/updates
+    incidental_total NUMERIC(12, 2) NOT NULL DEFAULT 0 CHECK (incidental_total >= 0),
     version INTEGER NOT NULL DEFAULT 1 CHECK (version > 0),
     created_by VARCHAR(50) NOT NULL REFERENCES users(uid) ON DELETE SET NULL,
     status VARCHAR(20) NOT NULL DEFAULT 'draft' CHECK (status IN ('draft', 'sent', 'accepted', 'rejected')),
@@ -302,6 +310,12 @@ CREATE INDEX IF NOT EXISTS idx_quotations_order_type ON quotations(order_type);
 CREATE INDEX IF NOT EXISTS idx_quotations_created_by ON quotations(created_by);
 -- Index for quick lookups by primary equipment selection
 CREATE INDEX IF NOT EXISTS idx_quotations_primary_equipment ON quotations(primary_equipment_id);
+-- Indexes to speed up searches/filters on applied factors
+CREATE INDEX IF NOT EXISTS idx_quotations_applied_risk_factor ON quotations(applied_risk_factor);
+CREATE INDEX IF NOT EXISTS idx_quotations_applied_usage_factor ON quotations(applied_usage_factor);
+CREATE INDEX IF NOT EXISTS idx_quotations_shift_factor ON quotations(shift_factor);
+CREATE INDEX IF NOT EXISTS idx_quotations_day_night_factor ON quotations(day_night_factor);
+CREATE INDEX IF NOT EXISTS idx_quotations_incidental_total ON quotations(incidental_total);
 
 -- Create quotation machines junction table
 DROP TABLE IF EXISTS quotation_machines CASCADE;
@@ -639,3 +653,48 @@ CREATE INDEX IF NOT EXISTS idx_jobs_dates ON jobs(scheduled_start_date, schedule
 CREATE INDEX IF NOT EXISTS idx_quotation_machines_quotation_equipment ON quotation_machines(quotation_id, equipment_id);
 CREATE INDEX IF NOT EXISTS idx_job_equipment_job_equipment ON job_equipment(job_id, equipment_id);
 CREATE INDEX IF NOT EXISTS idx_job_operators_job_operator ON job_operators(job_id, operator_id);
+
+-- Ensure existing databases get the new factor columns if they are missing
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'quotations' AND column_name = 'shift_factor'
+    ) THEN
+        ALTER TABLE quotations ADD COLUMN shift_factor NUMERIC(10,2) NOT NULL DEFAULT 1.00 CHECK (shift_factor >= 0);
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'quotations' AND column_name = 'day_night_factor'
+    ) THEN
+        ALTER TABLE quotations ADD COLUMN day_night_factor NUMERIC(10,2) NOT NULL DEFAULT 1.00 CHECK (day_night_factor >= 0);
+    END IF;
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.columns
+        WHERE table_name = 'quotations' AND column_name = 'incidental_total'
+    ) THEN
+        ALTER TABLE quotations ADD COLUMN incidental_total NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (incidental_total >= 0);
+    END IF;
+END$$;
+
+-- Ensure indexes exist for the new columns
+CREATE INDEX IF NOT EXISTS idx_quotations_shift_factor ON quotations(shift_factor);
+CREATE INDEX IF NOT EXISTS idx_quotations_day_night_factor ON quotations(day_night_factor);
+CREATE INDEX IF NOT EXISTS idx_quotations_incidental_total ON quotations(incidental_total);
+
+-- Migration: Add shift_factor, day_night_factor, and incidental_total to quotations
+-- Ensures the application can INSERT/UPDATE quotations that reference these columns
+BEGIN;
+
+ALTER TABLE IF EXISTS quotations
+    ADD COLUMN IF NOT EXISTS shift_factor NUMERIC(10,2) NOT NULL DEFAULT 1.00 CHECK (shift_factor >= 0);
+
+ALTER TABLE IF EXISTS quotations
+    ADD COLUMN IF NOT EXISTS day_night_factor NUMERIC(10,2) NOT NULL DEFAULT 1.00 CHECK (day_night_factor >= 0);
+
+ALTER TABLE IF EXISTS quotations
+    ADD COLUMN IF NOT EXISTS incidental_total NUMERIC(12,2) NOT NULL DEFAULT 0 CHECK (incidental_total >= 0);
+
+CREATE INDEX IF NOT EXISTS idx_quotations_shift_factor ON quotations(shift_factor);
+CREATE INDEX IF NOT EXISTS idx_quotations_day_night_factor ON quotations(day_night_factor);
+CREATE INDEX IF NOT EXISTS idx_quotations_incidental_total ON quotations(incidental_total);
