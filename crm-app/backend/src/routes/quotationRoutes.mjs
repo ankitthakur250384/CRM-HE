@@ -260,8 +260,8 @@ router.get('/:id', async (req, res) => {
                q.status, q.template_id, q.notes, q.created_at, q.updated_at, q.start_date, 
                q.end_date, q.primary_equipment_id, q.equipment_snapshot, q.incident1, q.incident2, 
                q.incident3, q.rigger_amount, q.helper_amount,
-               c.name as customer_name, c.email as customer_email,
-               c.phone as customer_phone, c.company_name as customer_company,
+               c.name as customer_name, c.contact_name, c.email as customer_email,
+               c.phone as customer_phone, c.company_name as customer_company, c.company_name,
                c.address as customer_address, c.designation as customer_designation,
                d.title as deal_title
         FROM quotations q
