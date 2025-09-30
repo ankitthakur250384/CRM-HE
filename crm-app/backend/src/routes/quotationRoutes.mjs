@@ -369,21 +369,6 @@ router.get('/:id', async (req, res) => {
           gstAmount: quotation.gst_amount || 0,
           totalAmount: quotation.total_cost || 0
         },
-        selectedMachines: machinesResult.rows.map(machine => ({
-          id: machine.equipment_id,
-          machineType: quotation.machine_type,
-          equipmentId: machine.equipment_id,
-          name: machine.equipment_name || 'Equipment',
-          quantity: machine.quantity || 1,
-          baseRate: machine.base_rate || 0,
-          baseRates: {
-            micro: machine.base_rate || 0,
-            small: machine.base_rate || 0,
-            monthly: machine.base_rate || 0,
-            yearly: machine.base_rate || 0
-          },
-          runningCostPerKm: machine.running_cost_per_km || 0
-        })),
         selectedEquipment: machinesResult.rows.length > 0 ? {
           id: machinesResult.rows[0].equipment_id,
           equipmentId: machinesResult.rows[0].equipment_id,
