@@ -500,11 +500,26 @@ export function QuotationCreation() {
           
           console.log('[QuotationCreation] After setFormData call completed');
 
-          // If we have calculations from the loaded quotation, use them to set initial state
-          if (quotationToLoad.calculations) {
-            console.log('[QuotationCreation] Setting calculations from loaded quotation:', quotationToLoad.calculations);
-            setCalculations(quotationToLoad.calculations);
-          }
+          // Set calculations from the loaded quotation data
+          const loadedCalculations = {
+            baseRate: Number(quotationToLoad.calculations?.baseRate) || 0,
+            totalHours: Number(quotationToLoad.calculations?.totalHours) || (Number(quotationToLoad.numberOfDays) * Number(quotationToLoad.workingHours)),
+            workingCost: Number(quotationToLoad.workingCost) || Number(quotationToLoad.calculations?.workingCost) || 0,
+            mobDemobCost: Number(quotationToLoad.mobDemobCost) || Number(quotationToLoad.calculations?.mobDemobCost) || 0,
+            foodAccomCost: Number(quotationToLoad.foodAccomCost) || Number(quotationToLoad.calculations?.foodAccomCost) || 0,
+            usageLoadFactor: Number(quotationToLoad.usageLoadFactor) || Number(quotationToLoad.calculations?.usageLoadFactor) || 0,
+            extraCharges: Number(quotationToLoad.extraCharge) || Number(quotationToLoad.calculations?.extraCharges) || 0,
+            riskAdjustment: Number(quotationToLoad.riskAdjustment) || Number(quotationToLoad.calculations?.riskAdjustment) || 0,
+            riskUsageTotal: Number(quotationToLoad.riskUsageTotal) || Number(quotationToLoad.calculations?.riskUsageTotal) || 0,
+            incidentalCost: Number(quotationToLoad.calculations?.incidentalCost) || 0,
+            otherFactorsCost: Number(quotationToLoad.otherFactorsCharge) || Number(quotationToLoad.calculations?.otherFactorsCost) || 0,
+            subtotal: Number(quotationToLoad.totalRent) || Number(quotationToLoad.calculations?.subtotal) || 0,
+            gstAmount: Number(quotationToLoad.gstAmount) || Number(quotationToLoad.calculations?.gstAmount) || 0,
+            totalAmount: Number(quotationToLoad.totalCost) || Number(quotationToLoad.calculations?.totalAmount) || 0,
+          };
+          
+          console.log('[QuotationCreation] Setting calculations from loaded quotation:', loadedCalculations);
+          setCalculations(loadedCalculations);
 
           if (quotationToLoad.selectedEquipment?.id && equipmentData) {
             const selected = equipmentData.find((eq: any) => eq.id === quotationToLoad.selectedEquipment.id);
@@ -514,10 +529,10 @@ export function QuotationCreation() {
             }
           }
 
-          // Force recalculation after loading data
+          // Don't force recalculation - preserve loaded database values
           setTimeout(() => {
-            console.log('[QuotationCreation] Forcing recalculation after data load');
-            calculateQuotation();
+            console.log('[QuotationCreation] Data loading complete - preserving database calculations');
+            // calculateQuotation(); // Commented out to preserve loaded values
             // Clear the loading flag after a short delay to allow auto-calculations again
             setTimeout(() => {
               setIsLoadingExistingData(false);
@@ -646,6 +661,13 @@ export function QuotationCreation() {
     console.log("FormData.numberOfDays:", formData.numberOfDays);
     console.log("SelectedEquipmentBaseRate:", selectedEquipmentBaseRate);
     console.log("FormData.selectedMachines:", formData.selectedMachines);
+    console.log("IsLoadingExistingData:", isLoadingExistingData);
+    
+    // Skip recalculation if we're loading existing data to preserve database values
+    if (isLoadingExistingData) {
+      console.log("⏸️ Skipping calculation - loading existing data");
+      return;
+    }
     
     const hasMachines = formData.selectedMachines.length > 0;
     const effectiveBaseRate = selectedEquipmentBaseRate;
@@ -919,8 +941,8 @@ export function QuotationCreation() {
       otherFactorsTotal
     });
 
-    // Calculate subtotal
-    const subtotal = workingCost + foodAccomCost + mobDemobCost + riskAdjustment + usageLoadFactor + extraCharges + incidentalTotal + otherFactorsTotal;
+    // Calculate subtotal using the combined Risk & Usage total
+    const subtotal = workingCost + foodAccomCost + mobDemobCost + riskUsageTotal + extraCharges + incidentalTotal + otherFactorsTotal;
 
     // GST calculation
     const gstAmount = formData.includeGst ? subtotal * 0.18 : 0;
