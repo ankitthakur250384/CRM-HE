@@ -271,7 +271,8 @@ router.get('/:id', async (req, res) => {
       
       // Get associated machines
       const machinesResult = await client.query(`
-        SELECT qm.*, e.name as equipment_name, e.category
+        SELECT qm.id, qm.quotation_id, qm.equipment_id, qm.quantity, qm.base_rate, qm.running_cost_per_km,
+               e.name as equipment_name, e.category
         FROM quotation_machines qm
         LEFT JOIN equipment e ON qm.equipment_id = e.id
         WHERE qm.quotation_id = $1;
