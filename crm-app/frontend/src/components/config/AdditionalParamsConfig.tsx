@@ -27,12 +27,12 @@ export function AdditionalParamsConfig() {
       high: 20
     },
     shiftFactors: {
-      single: 0,
-      double: 80
+      single: 1.0,
+      double: 1.8
     },
     dayNightFactors: {
-      day: 0,
-      night: 30
+      day: 1.0,
+      night: 1.3
     }
   });
 
@@ -148,6 +148,38 @@ export function AdditionalParamsConfig() {
     </div>
   );
 
+  const MultiplierInput = ({ 
+    value, 
+    onChange, 
+    label 
+  }: { 
+    value: number; 
+    onChange: (value: number) => void; 
+    label: string;
+  }) => (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        {label}
+      </label>
+      <div className="relative mt-1">
+        <Input
+          type="number"
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className="pr-8"
+          min="0.1"
+          step="0.1"
+        />
+        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+          <span className="text-gray-500 sm:text-sm">x</span>
+        </div>
+      </div>
+      <p className="text-xs text-gray-500 mt-1">
+        {value === 1.0 ? 'No change' : `${((value - 1) * 100).toFixed(0)}% ${value > 1 ? 'increase' : 'decrease'}`}
+      </p>
+    </div>
+  );
+
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -235,23 +267,21 @@ export function AdditionalParamsConfig() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <RateInput
-              label="Single Shift"
+            <MultiplierInput
+              label="Single Shift Factor"
               value={params.shiftFactors.single}
               onChange={(value) => setParams(prev => ({
                 ...prev,
                 shiftFactors: { ...prev.shiftFactors, single: value }
               }))}
-              isPercentage
             />
-            <RateInput
-              label="Double Shift"
+            <MultiplierInput
+              label="Double Shift Factor"
               value={params.shiftFactors.double}
               onChange={(value) => setParams(prev => ({
                 ...prev,
                 shiftFactors: { ...prev.shiftFactors, double: value }
               }))}
-              isPercentage
             />
           </CardContent>
         </Card>
@@ -264,23 +294,21 @@ export function AdditionalParamsConfig() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <RateInput
+            <MultiplierInput
               label="Day Factor"
               value={params.dayNightFactors.day}
               onChange={(value) => setParams(prev => ({
                 ...prev,
                 dayNightFactors: { ...prev.dayNightFactors, day: value }
               }))}
-              isPercentage
             />
-            <RateInput
+            <MultiplierInput
               label="Night Factor"
               value={params.dayNightFactors.night}
               onChange={(value) => setParams(prev => ({
                 ...prev,
                 dayNightFactors: { ...prev.dayNightFactors, night: value }
               }))}
-              isPercentage
             />
           </CardContent>
         </Card>

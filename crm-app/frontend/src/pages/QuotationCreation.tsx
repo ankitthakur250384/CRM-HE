@@ -710,9 +710,9 @@ export function QuotationCreation() {
     let shiftMultiplier = 1;
     if (additionalParams?.shiftFactors) {
       if (formData.shift === 'single') {
-        shiftMultiplier = 1 + (additionalParams.shiftFactors.single / 100);
+        shiftMultiplier = additionalParams.shiftFactors.single;
       } else if (formData.shift === 'double') {
-        shiftMultiplier = 1 + (additionalParams.shiftFactors.double / 100);
+        shiftMultiplier = additionalParams.shiftFactors.double;
       }
     }
     workingCost = workingCost * shiftMultiplier;
@@ -721,9 +721,9 @@ export function QuotationCreation() {
     let timeMultiplier = 1;
     if (additionalParams?.dayNightFactors) {
       if (formData.dayNight === 'day') {
-        timeMultiplier = 1 + (additionalParams.dayNightFactors.day / 100);
+        timeMultiplier = additionalParams.dayNightFactors.day;
       } else if (formData.dayNight === 'night') {
-        timeMultiplier = 1 + (additionalParams.dayNightFactors.night / 100);
+        timeMultiplier = additionalParams.dayNightFactors.night;
       }
     }
     workingCost = workingCost * timeMultiplier;

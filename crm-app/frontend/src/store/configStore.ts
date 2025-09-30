@@ -102,8 +102,8 @@ const DEFAULT_ADDITIONAL_PARAMS: AdditionalParamsConfig = {
   ], 
   usageFactors: { normal: 0, medium: 20, heavy: 50 }, 
   riskFactors: { low: 0, medium: 10, high: 20 }, 
-  shiftFactors: { single: 0, double: 80 }, 
-  dayNightFactors: { day: 0, night: 30 } 
+  shiftFactors: { single: 1.0, double: 1.8 }, 
+  dayNightFactors: { day: 1.0, night: 1.3 } 
 };
 
 const CONFIG_CACHE_TIME = 5 * 60 * 1000; // 5 minutes
