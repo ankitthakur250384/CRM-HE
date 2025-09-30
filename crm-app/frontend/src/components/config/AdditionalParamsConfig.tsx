@@ -33,7 +33,8 @@ export function AdditionalParamsConfig() {
     dayNightFactors: {
       day: 1.0,
       night: 1.3
-    }
+    },
+    riskUsagePercentage: 5.0
   });
 
   const [toast, setToast] = useState<{
@@ -74,7 +75,8 @@ export function AdditionalParamsConfig() {
         },
         incidentalOptions: config?.incidentalOptions || params.incidentalOptions,
         riggerAmount: config?.riggerAmount !== undefined ? config.riggerAmount : params.riggerAmount,
-        helperAmount: config?.helperAmount !== undefined ? config.helperAmount : params.helperAmount
+        helperAmount: config?.helperAmount !== undefined ? config.helperAmount : params.helperAmount,
+        riskUsagePercentage: config?.riskUsagePercentage !== undefined ? config.riskUsagePercentage : params.riskUsagePercentage
       };
       
       setParams(safeConfig);
@@ -310,6 +312,32 @@ export function AdditionalParamsConfig() {
                 dayNightFactors: { ...prev.dayNightFactors, night: value }
               }))}
             />
+          </CardContent>
+        </Card>
+
+        {/* Risk & Usage Percentage */}
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-primary-500" />
+              <CardTitle>Risk & Usage Configuration</CardTitle>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <RateInput
+              label="Risk & Usage Percentage"
+              value={params.riskUsagePercentage}
+              onChange={(value) => setParams(prev => ({
+                ...prev,
+                riskUsagePercentage: value
+              }))}
+              isPercentage
+            />
+            <div className="text-sm text-gray-600 bg-blue-50 p-3 rounded-lg border border-blue-200">
+              <p className="font-medium text-blue-900 mb-1">How it works:</p>
+              <p className="text-blue-700">Risk & Usage = {params.riskUsagePercentage}% × Total Monthly Base Rate of All Equipment</p>
+              <p className="text-xs text-blue-600 mt-2">This replaces individual Risk and Usage factor calculations with a single percentage applied to equipment monthly rates.</p>
+            </div>
           </CardContent>
         </Card>
       </div>

@@ -51,6 +51,7 @@ export interface AdditionalParamsConfig {
     day: number;
     night: number;
   };
+  riskUsagePercentage: number;
   updatedAt?: string;
 }
 

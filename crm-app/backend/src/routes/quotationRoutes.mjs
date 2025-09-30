@@ -257,7 +257,7 @@ router.get('/:id', async (req, res) => {
         FROM quotations q
         LEFT JOIN customers c ON q.customer_id = c.id
         LEFT JOIN deals d ON q.deal_id = d.id
-        WHERE q.id = $1;
+        WHERE id = $35
       `, [id]);
       
       if (quotationResult.rows.length === 0) {
@@ -321,6 +321,7 @@ router.get('/:id', async (req, res) => {
         foodAccomCost: Number(quotation.food_accom_cost) || 0,
         usageLoadFactor: Number(quotation.usage_load_factor) || 0,
         riskAdjustment: Number(quotation.risk_adjustment) || 0,
+        riskUsageTotal: Number(quotation.risk_usage_total) || 0,
         gstAmount: Number(quotation.gst_amount) || 0,
         version: quotation.version || 1,
         createdBy: quotation.created_by,
@@ -361,6 +362,7 @@ router.get('/:id', async (req, res) => {
           usageLoadFactor: quotation.usage_load_factor || 0,
           extraCharges: quotation.extra_charge || 0,
           riskAdjustment: quotation.risk_adjustment || 0,
+          riskUsageTotal: quotation.risk_usage_total || 0,
           incidentalCost: 0, // Will be calculated from incidentalCharges
           otherFactorsCost: quotation.other_factors_charge || 0,
           subtotal: quotation.total_rent || 0,
@@ -556,13 +558,13 @@ router.post('/', authenticateToken, async (req, res) => {
           mob_demob, mob_relaxation, extra_charge, other_factors_charge,
           billing, include_gst, sunday_working, customer_contact,
           total_rent, total_cost, working_cost, mob_demob_cost,
-          food_accom_cost, risk_adjustment, usage_load_factor, gst_amount, created_by, status, notes,
+          food_accom_cost, risk_adjustment, usage_load_factor, risk_usage_total, gst_amount, created_by, status, notes,
           deal_id, lead_id, primary_equipment_id, equipment_snapshot,
           incident1, incident2, incident3, rigger_amount, helper_amount
         ) VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
           $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26,
-          $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42
+          $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43
         )
       `;
       // Debug the mapping process - use EXACT values from frontend
@@ -642,6 +644,7 @@ router.post('/', authenticateToken, async (req, res) => {
         quotationData.foodAccomCost || quotationData.calculations?.foodAccomCost || 0, // food_accom_cost - requires proper calculation
         quotationData.riskAdjustment || quotationData.calculations?.riskAdjustment || 0, // risk_adjustment
         quotationData.usageLoadFactor || quotationData.calculations?.usageLoadFactor || 0, // usage_load_factor
+        quotationData.riskUsageTotal || quotationData.calculations?.riskUsageTotal || 0, // risk_usage_total
         gstAmount,
         req.user.id, // created_by (will be replaced with actual user)
         'draft',
@@ -848,17 +851,18 @@ router.put('/:id', async (req, res) => {
           food_accom_cost = $20,
           risk_adjustment = $21,
           usage_load_factor = $22,
-          gst_amount = $23,
-          total_rent = $24,
-          total_cost = $25,
-          notes = $26,
-          status = $27,
-          incidental_charges = $28,
-          other_factors = $29,
-          billing = $30,
-          include_gst = $31,
-          sunday_working = $32,
-          primary_equipment_id = $33,
+          risk_usage_total = $23,
+          gst_amount = $24,
+          total_rent = $25,
+          total_cost = $26,
+          notes = $27,
+          status = $28,
+          incidental_charges = $29,
+          other_factors = $30,
+          billing = $31,
+          include_gst = $32,
+          sunday_working = $33,
+          primary_equipment_id = $34,
           equipment_snapshot = $34,
           incident1 = $35,
           incident2 = $36,
@@ -891,6 +895,7 @@ router.put('/:id', async (req, res) => {
         food_accom_cost,
         risk_adjustment,
         usage_load_factor,
+        riskUsageTotal || calculations?.riskUsageTotal || 0,
         gst_amount,
         total_rent,
         total_cost,

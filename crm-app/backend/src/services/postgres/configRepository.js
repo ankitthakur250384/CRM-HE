@@ -50,7 +50,8 @@ export const DEFAULT_CONFIGS = {
     usageFactors: { normal: 0, medium: 20, heavy: 50 },
     riskFactors: { low: 0, medium: 10, high: 20 },
     shiftFactors: { single: 1.0, double: 1.8 },
-    dayNightFactors: { day: 1.0, night: 1.3 }
+    dayNightFactors: { day: 1.0, night: 1.3 },
+    riskUsagePercentage: 5.0
   },
   defaultTemplate: {
     defaultTemplateId: 'qtpl_a650c77a',

@@ -841,42 +841,34 @@ export function QuotationCreation() {
       }
     });
 
-    // Risk & Usage adjustments from configuration
-    const baseForRiskCalc = workingCost;
-    let riskPercentage = 0;
-    let usagePercentage = 0;
+    // Risk & Usage calculation based on Monthly Base Rate of Equipment(s)
+    // Calculate total monthly base rate for all selected equipment
+    const totalMonthlyBaseRate = formData.selectedMachines.reduce((total, machine) => {
+      const monthlyRate = machine.baseRates?.monthly || 0;
+      return total + (monthlyRate * machine.quantity);
+    }, 0);
 
-    // Get risk factor from configuration
-    if (additionalParams?.riskFactors) {
-      if (formData.riskFactor === 'high') {
-        riskPercentage = additionalParams.riskFactors.high;
-      } else if (formData.riskFactor === 'medium') {
-        riskPercentage = additionalParams.riskFactors.medium;
-      } else {
-        riskPercentage = additionalParams.riskFactors.low;
-      }
-    }
+    // Get Risk & Usage percentage from configuration (single combined percentage)
+    const riskUsagePercentage = additionalParams?.riskUsagePercentage || 5.0; // Default 5% if not configured
 
-    // Get usage factor from configuration  
-    if (additionalParams?.usageFactors) {
-      if (formData.usage === 'heavy') {
-        usagePercentage = additionalParams.usageFactors.heavy;
-      } else {
-        usagePercentage = additionalParams.usageFactors.normal;
-      }
-    }
-
-    console.log("🔧 Risk & Usage factors:", {
-      riskFactor: formData.riskFactor,
-      riskPercentage,
-      usage: formData.usage,
-      usagePercentage,
-      baseForRiskCalc
+    console.log("🔧 Risk & Usage calculation:", {
+      selectedMachines: formData.selectedMachines.length,
+      totalMonthlyBaseRate,
+      riskUsagePercentage,
+      equipmentBreakdown: formData.selectedMachines.map(m => ({
+        name: m.name,
+        quantity: m.quantity,
+        monthlyRate: m.baseRates?.monthly || 0,
+        subtotal: (m.baseRates?.monthly || 0) * m.quantity
+      }))
     });
 
-    // Convert percentages to decimal multipliers (e.g., 15% = 0.15)
-    const riskAdjustment = baseForRiskCalc * (riskPercentage / 100);
-    const usageLoadFactor = baseForRiskCalc * (usagePercentage / 100);
+    // Calculate Risk & Usage as X% of Monthly Base Rate
+    const riskUsageTotal = totalMonthlyBaseRate * (riskUsagePercentage / 100);
+
+    // Keep individual calculations for backward compatibility (will be phased out)
+    const riskAdjustment = riskUsageTotal * 0.5; // Half for risk
+    const usageLoadFactor = riskUsageTotal * 0.5; // Half for usage
 
     // Additional charges
     const extraCharges = Number(formData.extraCharge) || 0;
@@ -943,6 +935,8 @@ export function QuotationCreation() {
       usageLoadFactor,
       extraCharges,
       riskAdjustment,
+      riskUsageTotal, // New combined Risk & Usage total
+      totalMonthlyBaseRate, // For debugging/reference
       otherFactorsCost: otherFactorsTotal,
       gstAmount,
       totalAmount,

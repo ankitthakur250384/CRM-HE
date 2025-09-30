@@ -47,6 +47,7 @@ interface QuotationConfigHookReturn {
       day: number;
       night: number;
     };
+    riskUsagePercentage: number;
   } | null;
   
   // State
@@ -139,7 +140,10 @@ export const useQuotationConfig = (): QuotationConfigHookReturn => {
   return {
     quotationConfig,
     resourceRates: resourceRatesConfig,
-    additionalParams: additionalParamsConfig,
+    additionalParams: additionalParamsConfig ? {
+      ...additionalParamsConfig,
+      riskUsagePercentage: additionalParamsConfig.riskUsagePercentage ?? 5.0
+    } : null,
     isLoading,
     errors,
     refreshConfigurations,
