@@ -216,19 +216,101 @@ router.get('/sample-data', async (req, res) => {
   try {
     console.log('🔍 [DEBUG] Sample data endpoint called');
     
-    // Try to get the latest quotation first, fallback to sample data
+    // Try to fetch real quotation data from the quotations API (exactly like your network tab)
     try {
-      // Import database pool from quotationRoutes
-      const pg = await import('pg');
-      const pool = new pg.default.Pool({
-        host: process.env.DB_HOST || 'localhost',
-        port: parseInt(process.env.DB_PORT || '5432'),
-        database: process.env.DB_NAME || 'asp_crm',
-        user: process.env.DB_USER || 'postgres',
-        password: process.env.DB_PASSWORD || 'crmdb@21'
-      });
+      console.log('🔍 Fetching quotations from internal API...');
+      
+      const response = await fetch('http://localhost:3001/api/quotations');
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Quotations API response received, success:', result.success);
+        
+        if (result.success && result.data && result.data.length > 0) {
+          // Use the first quotation from the list (matching your network data structure)
+          const quotation = result.data[0];
+          console.log('📋 Using quotation:', quotation.quotation_number);
+          console.log('🔧 Quotation data:', {
+            machine_type: quotation.machine_type,
+            order_type: quotation.order_type,
+            working_cost: quotation.working_cost,
+            mob_demob_cost: quotation.mob_demob_cost,
+            number_of_days: quotation.number_of_days
+          });
+          
+          // Transform the quotation data to template format using the exact same data structure as your network tab
+          const quotationData = {
+            company: {
+              name: 'ASP Cranes Pvt. Ltd.',
+              address: 'Industrial Area, Pune, Maharashtra 411019',
+              phone: '+91 99999 88888',
+              email: 'sales@aspcranes.com',
+              website: 'www.aspcranes.com'
+            },
+            client: {
+              name: quotation.customer_name || 'Client Name',
+              company: 'Client Company',
+              address: quotation.customer_address || 'Client Address',
+              phone: quotation.customer_phone || 'Client Phone',
+              email: quotation.customer_email || 'client@email.com'
+            },
+            quotation: {
+              number: quotation.quotation_number || quotation.id,
+              date: new Date(quotation.created_at).toLocaleDateString('en-IN'),
+              validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN'),
+              paymentTerms: '50% advance, balance on completion',
+              terms: 'This quotation is valid for 30 days. All rates are inclusive of GST.'
+            },
+            // Create items array using the quotation data directly
+            items: [{
+              no: 1,
+              description: `${quotation.machine_type?.replace('_', ' ').toUpperCase()} - Rental Service`,
+              jobType: quotation.order_type || 'Standard',
+              quantity: 1,
+              duration: `${quotation.number_of_days} days`,
+              rate: quotation.working_cost 
+                ? `₹${Math.round(quotation.working_cost / quotation.number_of_days).toLocaleString('en-IN')}/day`
+                : '₹0/day',
+              rental: `₹${Math.round(quotation.working_cost || 0).toLocaleString('en-IN')}`,
+              mobDemob: `₹${Math.round(quotation.mob_demob_cost || 0).toLocaleString('en-IN')}`
+            }],
+            totals: {
+              subtotal: `₹${Math.round((quotation.total_cost || 0) - (quotation.gst_amount || 0)).toLocaleString('en-IN')}`,
+              discount: '₹0',
+              tax: `₹${Math.round(quotation.gst_amount || 0).toLocaleString('en-IN')}`,
+              total: `₹${Math.round(quotation.total_cost || 0).toLocaleString('en-IN')}`
+            }
+          };
+          
+          console.log('📊 Template data created:', {
+            itemsCount: quotationData.items.length,
+            customerName: quotationData.client.name,
+            quotationNumber: quotationData.quotation.number,
+            firstItem: quotationData.items[0]
+          });
+          
+          return res.json({
+            success: true,
+            data: quotationData,
+            message: 'Real quotation data retrieved successfully'
+          });
+        }
+      }
+    } catch (fetchError) {
+      console.log('⚠️ API fetch failed, trying database fallback:', fetchError.message);
+    }
+    
+    // Fallback to database query if API fails
+    const pg = await import('pg');
+    const pool = new pg.default.Pool({
+      host: process.env.DB_HOST || 'localhost',
+      port: parseInt(process.env.DB_PORT || '5432'),
+      database: process.env.DB_NAME || 'asp_crm',
+      user: process.env.DB_USER || 'postgres',
+      password: process.env.DB_PASSWORD || 'crmdb@21'
+    });
 
-      const client = await pool.connect();
+    const client = await pool.connect();
     
     try {
       // Get the most recent quotation with complete data
@@ -354,8 +436,12 @@ router.get('/sample-data', async (req, res) => {
       });
       
     } catch (dbError) {
-      client.release();
-      await pool.end();
+      if (client) {
+        client.release();
+      }
+      if (pool) {
+        await pool.end();
+      }
       console.error('Database error, falling back to sample data:', dbError);
       
       // Fallback to sample data on database error
@@ -367,16 +453,6 @@ router.get('/sample-data', async (req, res) => {
         data: sampleData,
         message: 'Sample data retrieved (database fallback)'
       });
-    }
-    
-    } catch (dbError) {
-      if (client) {
-        client.release();
-      }
-      if (pool) {
-        await pool.end();
-      }
-      throw dbError; // Re-throw to outer catch
     }
     
   } catch (error) {
@@ -1575,108 +1651,105 @@ async function getQuotationData(quotationId) {
   console.log('🔍 Fetching quotation data for ID:', quotationId);
   
   try {
-    // First try to fetch quotation data from the quotation API
-    let result;
+    // Connect directly to database to fetch quotation data
+    const pg = await import('pg');
+    const pool = new pg.default.Pool({
+      host: process.env.DB_HOST || 'localhost',
+      port: parseInt(process.env.DB_PORT || '5432'),
+      database: process.env.DB_NAME || 'asp_crm',
+      user: process.env.DB_USER || 'postgres',
+      password: process.env.DB_PASSWORD || 'crmdb@21'
+    });
+    
+    const client = await pool.connect();
     
     try {
-      const response = await fetch(`http://localhost:3001/api/quotations/${quotationId}`);
+      // Fetch quotation data from database
+      const quotationResult = await client.query(
+        'SELECT * FROM quotations WHERE id = $1', 
+        [quotationId]
+      );
       
-      if (response.ok) {
-        result = await response.json();
+      if (quotationResult.rows.length === 0) {
+        console.log('❌ Quotation not found:', quotationId);
+        return null;
       }
-    } catch (fetchError) {
-      console.log('⚠️ API fetch failed, trying database direct access:', fetchError.message);
-    }
-    
-    // If API fetch failed, try direct database access
-    if (!result || !result.success) {
-      console.log('🔄 Trying direct database access for quotation:', quotationId);
       
-      const pg = await import('pg');
-      const pool = new pg.default.Pool({
-        host: process.env.DB_HOST || 'localhost',
-        port: parseInt(process.env.DB_PORT || '5432'),
-        database: process.env.DB_NAME || 'asp_crm',
-        user: process.env.DB_USER || 'postgres',
-        password: process.env.DB_PASSWORD || 'crmdb@21'
+      const quotationRow = quotationResult.rows[0];
+      console.log('✅ Quotation found:', quotationRow.quotation_number);
+      console.log('🔍 Machine type:', quotationRow.machine_type);
+      console.log('🔍 Customer:', quotationRow.customer_name);
+      
+      // Parse customer_contact JSON if it exists
+      let customerContact = {};
+      try {
+        if (quotationRow.customer_contact) {
+          customerContact = typeof quotationRow.customer_contact === 'string' 
+            ? JSON.parse(quotationRow.customer_contact) 
+            : quotationRow.customer_contact;
+        }
+      } catch (parseError) {
+        console.log('⚠️ Error parsing customer_contact:', parseError.message);
+      }
+      
+      // Transform database data to template format
+      const templateData = {
+        company: {
+          name: 'ASP Cranes Pvt. Ltd.',
+          address: 'Industrial Area, Pune, Maharashtra 411019',
+          phone: '+91 99999 88888',
+          email: 'sales@aspcranes.com',
+          website: 'www.aspcranes.com'
+        },
+        client: {
+          name: customerContact.name || quotationRow.customer_name || 'Client Name',
+          company: customerContact.company || 'Client Company',
+          address: customerContact.address || quotationRow.address || 'Client Address',
+          phone: customerContact.phone || 'Client Phone',
+          email: customerContact.email || 'client@email.com'
+        },
+        quotation: {
+          number: quotationRow.quotation_number || `QUO-${quotationId}`,
+          date: new Date(quotationRow.created_at).toLocaleDateString('en-IN'),
+          validUntil: quotationRow.valid_until 
+            ? new Date(quotationRow.valid_until).toLocaleDateString('en-IN')
+            : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN'),
+          paymentTerms: '50% advance, balance on completion',
+          terms: 'This quotation is valid for 30 days. All rates are inclusive of GST.'
+        },
+        // Create items array from quotation data since selectedMachines might not exist
+        items: [{
+          no: 1,
+          description: `${quotationRow.machine_type.replace('_', ' ').toUpperCase()} - Rental Service`,
+          jobType: quotationRow.order_type || 'Standard',
+          quantity: 1,
+          duration: `${quotationRow.number_of_days} days`,
+          rate: quotationRow.working_cost 
+            ? `₹${Math.round(quotationRow.working_cost / quotationRow.number_of_days).toLocaleString('en-IN')}/day`
+            : '₹0/day',
+          rental: `₹${Math.round(quotationRow.working_cost || 0).toLocaleString('en-IN')}`,
+          mobDemob: `₹${Math.round(quotationRow.mob_demob_cost || 0).toLocaleString('en-IN')}`
+        }],
+        totals: {
+          subtotal: `₹${Math.round((quotationRow.total_cost || 0) - (quotationRow.gst_amount || 0)).toLocaleString('en-IN')}`,
+          discount: '₹0',
+          tax: `₹${Math.round(quotationRow.gst_amount || 0).toLocaleString('en-IN')}`,
+          total: `₹${Math.round(quotationRow.total_cost || 0).toLocaleString('en-IN')}`
+        }
+      };
+      
+      console.log('📋 Template data prepared:', {
+        itemsCount: templateData.items.length,
+        customerName: templateData.client.name,
+        quotationNumber: templateData.quotation.number
       });
       
-      const client = await pool.connect();
+      return templateData;
       
-      try {
-        const quotationResult = await client.query(
-          'SELECT * FROM quotations WHERE id = $1', 
-          [quotationId]
-        );
-        
-        if (quotationResult.rows.length > 0) {
-          const quotation = quotationResult.rows[0];
-          result = {
-            success: true,
-            data: {
-              ...quotation,
-              selectedMachines: [] // Will be populated from database if available
-            }
-          };
-        }
-      } finally {
-        client.release();
-        await pool.end();
-      }
+    } finally {
+      client.release();
+      await pool.end();
     }
-    
-    if (!result.success || !result.data) {
-      console.error('❌ Invalid quotation response:', result);
-      // Return sample data as fallback
-      const templateBuilder = new EnhancedTemplateBuilder();
-      return templateBuilder.getSampleQuotationData();
-    }
-    
-    const quotation = result.data;
-    console.log('✅ Quotation data fetched successfully');
-    console.log('📋 Selected machines count:', quotation.selectedMachines?.length || 0);
-    
-    // Transform quotation data to template format using selectedMachines array
-    return {
-      company: {
-        name: 'ASP Cranes Pvt. Ltd.',
-        address: 'Industrial Area, Pune, Maharashtra 411019',
-        phone: '+91 99999 88888',
-        email: 'sales@aspcranes.com',
-        website: 'www.aspcranes.com'
-      },
-      client: {
-        name: quotation.customerName || quotation.customerContact?.name || 'Client Name',
-        company: quotation.customerContact?.company || 'Client Company',
-        address: quotation.customerContact?.address || 'Client Address',
-        phone: quotation.customerContact?.phone || 'Client Phone',
-        email: quotation.customerContact?.email || 'client@email.com'
-      },
-      quotation: {
-        number: quotation.quotationNumber || `QUO-${quotationId}`,
-        date: new Date(quotation.createdAt).toLocaleDateString('en-IN'),
-        validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN'),
-        paymentTerms: '50% advance, balance on completion',
-        terms: quotation.terms?.join('; ') || 'This quotation is valid for 30 days. All rates are inclusive of GST.'
-      },
-      // Use selectedMachines array directly with proper 8-column mapping
-      items: quotation.selectedMachines?.map((machine, index) => ({
-        no: machine.no || (index + 1),
-        description: machine.description || machine.name || 'Equipment',
-        jobType: machine.jobType || quotation.orderType || 'Standard',
-        quantity: machine.quantity || 1,
-        duration: machine.duration || `${quotation.numberOfDays || 1} days`,
-        rate: machine.rate || `₹${machine.baseRate || 0}/day`,
-        rental: machine.rental || `₹${quotation.workingCost || 0}`,
-        mobDemob: machine.mobDemob || `₹${quotation.mobDemobCost || 0}`
-      })) || [],
-      totals: {
-        subtotal: `₹${Math.round(quotation.totalCost - (quotation.gstAmount || 0)).toLocaleString('en-IN')}`,
-        discount: '₹0',
-        tax: `₹${Math.round(quotation.gstAmount || 0).toLocaleString('en-IN')}`,
-        total: `₹${Math.round(quotation.totalCost || 0).toLocaleString('en-IN')}`
-      }
-    };
     
   } catch (error) {
     console.error('❌ Error fetching quotation data:', error);
