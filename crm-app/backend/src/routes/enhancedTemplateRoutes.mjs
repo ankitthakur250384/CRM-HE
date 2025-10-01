@@ -230,12 +230,14 @@ router.get('/sample-data', async (req, res) => {
           // Use the first quotation from the list (matching your network data structure)
           const quotation = result.data[0];
           console.log('📋 Using quotation:', quotation.quotation_number);
-          console.log('🔧 Quotation data:', {
-            machine_type: quotation.machine_type,
-            order_type: quotation.order_type,
-            working_cost: quotation.working_cost,
-            mob_demob_cost: quotation.mob_demob_cost,
-            number_of_days: quotation.number_of_days
+          console.log('🔧 Raw quotation data:', {
+            machineType: quotation.machineType,
+            orderType: quotation.orderType,
+            workingCost: quotation.workingCost,
+            mobDemobCost: quotation.mobDemobCost,
+            numberOfDays: quotation.numberOfDays,
+            totalCost: quotation.totalCost,
+            gstAmount: quotation.gstAmount
           });
           
           // Transform the quotation data to template format using the exact same data structure as your network tab
@@ -248,37 +250,43 @@ router.get('/sample-data', async (req, res) => {
               website: 'www.aspcranes.com'
             },
             client: {
-              name: quotation.customer_name || 'Client Name',
-              company: 'Client Company',
-              address: quotation.customer_address || 'Client Address',
-              phone: quotation.customer_phone || 'Client Phone',
-              email: quotation.customer_email || 'client@email.com'
+              name: quotation.customerName || 'Client Name',
+              company: quotation.customerContact?.company || 'Client Company',
+              address: quotation.customerContact?.address || 'Client Address',
+              phone: quotation.customerContact?.phone || 'Client Phone',
+              email: quotation.customerContact?.email || 'client@email.com'
             },
             quotation: {
-              number: quotation.quotation_number || quotation.id,
-              date: new Date(quotation.created_at).toLocaleDateString('en-IN'),
+              number: quotation.quotationNumber || quotation.id,
+              date: new Date(quotation.createdAt).toLocaleDateString('en-IN'),
               validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN'),
               paymentTerms: '50% advance, balance on completion',
               terms: 'This quotation is valid for 30 days. All rates are inclusive of GST.'
             },
-            // Create items array using the quotation data directly
+            // Create items array using the quotation data directly with correct camelCase field names
             items: [{
               no: 1,
-              description: `${quotation.machine_type?.replace('_', ' ').toUpperCase()} - Rental Service`,
-              jobType: quotation.order_type || 'Standard',
+              description: quotation.machineType 
+                ? `${quotation.machineType.replace(/[_-]/g, ' ').toUpperCase()} - Rental Service`
+                : 'MOBILE CRANE - Rental Service',
+              jobType: quotation.orderType || 'small',
               quantity: 1,
-              duration: `${quotation.number_of_days} days`,
-              rate: quotation.working_cost 
-                ? `₹${Math.round(quotation.working_cost / quotation.number_of_days).toLocaleString('en-IN')}/day`
-                : '₹0/day',
-              rental: `₹${Math.round(quotation.working_cost || 0).toLocaleString('en-IN')}`,
-              mobDemob: `₹${Math.round(quotation.mob_demob_cost || 0).toLocaleString('en-IN')}`
+              duration: quotation.numberOfDays ? `${quotation.numberOfDays} days` : '24 days',
+              rate: (quotation.workingCost && quotation.numberOfDays) 
+                ? `₹${Math.round(quotation.workingCost / quotation.numberOfDays).toLocaleString('en-IN')}/day`
+                : '₹9,600/day',
+              rental: quotation.workingCost 
+                ? `₹${Math.round(quotation.workingCost).toLocaleString('en-IN')}`
+                : '₹2,30,400',
+              mobDemob: quotation.mobDemobCost 
+                ? `₹${Math.round(quotation.mobDemobCost).toLocaleString('en-IN')}`
+                : '₹15,000'
             }],
             totals: {
-              subtotal: `₹${Math.round((quotation.total_cost || 0) - (quotation.gst_amount || 0)).toLocaleString('en-IN')}`,
+              subtotal: `₹${Math.round((quotation.totalCost || 0) - (quotation.gstAmount || 0)).toLocaleString('en-IN')}`,
               discount: '₹0',
-              tax: `₹${Math.round(quotation.gst_amount || 0).toLocaleString('en-IN')}`,
-              total: `₹${Math.round(quotation.total_cost || 0).toLocaleString('en-IN')}`
+              tax: `₹${Math.round(quotation.gstAmount || 0).toLocaleString('en-IN')}`,
+              total: `₹${Math.round(quotation.totalCost || 0).toLocaleString('en-IN')}`
             }
           };
           
