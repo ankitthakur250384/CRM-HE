@@ -280,10 +280,10 @@ router.get('/:id', async (req, res) => {
       
       const quotation = quotationResult.rows[0];
       
-      // Get associated machines
+      // Get associated machines with enhanced fields for Items Table
       const machinesResult = await client.query(`
         SELECT qm.id, qm.quotation_id, qm.equipment_id, qm.quantity, qm.base_rate, qm.running_cost_per_km,
-               e.name as equipment_name, e.category
+               e.name as equipment_name, e.category, e.max_lifting_capacity
         FROM quotation_machines qm
         LEFT JOIN equipment e ON qm.equipment_id = e.id
         WHERE qm.quotation_id = $1;
@@ -355,16 +355,38 @@ router.get('/:id', async (req, res) => {
         // Add parsed incidental charges and other factors arrays
         incidentalCharges: quotation.incidental_charges || [],
         otherFactors: quotation.other_factors || [],
-        // Add selected machines data
-        selectedMachines: machinesResult.rows.map(machine => ({
-          id: machine.equipment_id,
-          equipmentId: machine.equipment_id,
-          name: machine.equipment_name,
-          category: machine.category,
-          quantity: Number(machine.quantity) || 1,
-          baseRate: Number(machine.base_rate) || 0,
-          runningCostPerKm: Number(machine.running_cost_per_km) || 0
-        })),
+        // Add selected machines data with enhanced mapping for Items Table
+        selectedMachines: machinesResult.rows.map((machine, index) => {
+          const quantity = Number(machine.quantity) || 1;
+          const baseRate = Number(machine.base_rate) || 0;
+          const duration = quotation.number_of_days || 1;
+          const rental = baseRate * quantity * duration;
+          const mobDemobTotal = Number(quotation.mob_demob_cost) || 0;
+          const mobilization = mobDemobTotal / 2; // Split mob_demob_cost equally
+          const demobilization = mobDemobTotal / 2;
+          const totalAmount = rental + mobilization + demobilization;
+
+          return {
+            id: machine.equipment_id,
+            equipmentId: machine.equipment_id,
+            name: machine.equipment_name,
+            category: machine.category,
+            quantity: quantity,
+            baseRate: baseRate,
+            runningCostPerKm: Number(machine.running_cost_per_km) || 0,
+            // Enhanced fields for Items Table compatibility
+            no: index + 1, // Serial number
+            description: machine.equipment_name,
+            capacity: `${machine.max_lifting_capacity || 0}MT`,
+            jobType: quotation.order_type || 'daily',
+            duration: `${duration} ${duration === 1 ? 'day' : 'days'}`,
+            rate: `₹${baseRate.toLocaleString('en-IN')}`,
+            rental: `₹${rental.toLocaleString('en-IN')}`,
+            mobilization: `₹${mobilization.toLocaleString('en-IN')}`,
+            demobilization: `₹${demobilization.toLocaleString('en-IN')}`,
+            amount: `₹${totalAmount.toLocaleString('en-IN')}`
+          };
+        }),
         calculations: {
           baseRate: 0, // Will be calculated on frontend
           totalHours: quotation.working_hours * quotation.number_of_days,
@@ -794,6 +816,8 @@ router.put('/:id', async (req, res) => {
       food_accom_cost,
       risk_adjustment,
       usage_load_factor,
+      riskUsageTotal,
+      calculations,
       gst_amount,
       total_rent,
       total_cost,
@@ -914,7 +938,7 @@ router.put('/:id', async (req, res) => {
         food_accom_cost,
         risk_adjustment,
         usage_load_factor,
-        riskUsageTotal || calculations?.riskUsageTotal || 0,
+        riskUsageTotal || calculations?.riskUsageTotal || (risk_adjustment || 0) + (usage_load_factor || 0),
         gst_amount,
         total_rent,
         total_cost,

@@ -732,13 +732,28 @@ export class EnhancedTemplateBuilder {
    * Render items table
    */
   renderItemsTable(element, data) {
-    const items = data?.items || [];
-    const columns = element.content?.columns || [
-      { key: 'description', label: 'Description', width: '40%', alignment: 'left' },
-      { key: 'quantity', label: 'Qty', width: '15%', alignment: 'center' },
-      { key: 'rate', label: 'Rate', width: '20%', alignment: 'right' },
-      { key: 'amount', label: 'Amount', width: '25%', alignment: 'right' }
+    const items = data?.items || data?.selectedMachines || [];
+    
+    // Enhanced column configuration based on frontend Items Table
+    const defaultColumns = [
+      { key: 'no', label: 'S.No.', width: '5%', alignment: 'center' },
+      { key: 'description', label: 'Description/Equipment Name', width: '25%', alignment: 'left' },
+      { key: 'capacity', label: 'Capacity/Specifications', width: '12%', alignment: 'center' },
+      { key: 'jobType', label: 'Job Type', width: '8%', alignment: 'center' },
+      { key: 'quantity', label: 'Quantity', width: '8%', alignment: 'center' },
+      { key: 'duration', label: 'Duration/Days', width: '10%', alignment: 'center' },
+      { key: 'rate', label: 'Rate/Day', width: '10%', alignment: 'right' },
+      { key: 'rental', label: 'Total Rental', width: '12%', alignment: 'right' },
+      { key: 'mobilization', label: 'Mobilization', width: '10%', alignment: 'right' },
+      { key: 'demobilization', label: 'Demobilization', width: '10%', alignment: 'right' },
+      { key: 'amount', label: 'Total Amount', width: '12%', alignment: 'right' }
     ];
+    
+    // Filter columns based on element configuration
+    const columnConfig = element.content?.columns || {};
+    const columns = defaultColumns.filter(col => 
+      columnConfig[col.key] !== false // Show column if not explicitly disabled
+    );
 
     return `
       <div class="element-items-table" style="${this.generateElementStyle(element.style || {})}">
@@ -1136,16 +1151,30 @@ export class EnhancedTemplateBuilder {
       },
       items: [
         {
+          no: 1,
           description: 'Tower Crane Rental - Potain MC 175',
-          quantity: '30 days',
+          capacity: '175MT',
+          jobType: 'monthly',
+          quantity: 1,
+          duration: '30 days',
           rate: '₹25,000',
-          amount: '₹7,50,000'
+          rental: '₹7,50,000',
+          mobilization: '₹50,000',
+          demobilization: '₹50,000',
+          amount: '₹8,50,000'
         },
         {
+          no: 2,
           description: 'Mobile Crane - Liebherr LTM 1090',
-          quantity: '5 days',
+          capacity: '90MT',
+          jobType: 'daily',
+          quantity: 1,
+          duration: '5 days',
           rate: '₹15,000',
-          amount: '₹75,000'
+          rental: '₹75,000',
+          mobilization: '₹10,000',
+          demobilization: '₹10,000',
+          amount: '₹95,000'
         }
       ],
       totals: {

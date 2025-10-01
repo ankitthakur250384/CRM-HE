@@ -106,7 +106,6 @@ const ELEMENT_TYPES = {
   QUOTATION_INFO: 'quotation_info',
   JOB_DETAILS: 'job_details',
   ITEMS_TABLE: 'items_table',
-  EQUIPMENT_TABLE: 'equipment_table',
   CHARGES_TABLE: 'charges_table',
   TOTALS: 'totals',
   TERMS: 'terms',
@@ -374,9 +373,8 @@ const ElementLibrary: React.FC<ElementLibraryProps> = ({ onAddElement, onLogoUpl
     { type: ELEMENT_TYPES.CLIENT_INFO, icon: Layout, label: 'Client Info', color: 'bg-purple-100 text-purple-600' },
     { type: ELEMENT_TYPES.QUOTATION_INFO, icon: FileText, label: 'Quote Details', color: 'bg-orange-100 text-orange-600' },
     { type: ELEMENT_TYPES.JOB_DETAILS, icon: Grid, label: 'Job Details', color: 'bg-cyan-100 text-cyan-600' },
-    { type: ELEMENT_TYPES.ITEMS_TABLE, icon: Table, label: 'Items Table', color: 'bg-indigo-100 text-indigo-600' },
-    { type: ELEMENT_TYPES.EQUIPMENT_TABLE, icon: Table, label: 'Equipment Table', color: 'bg-yellow-100 text-yellow-600' },
-    { type: ELEMENT_TYPES.CHARGES_TABLE, icon: Calculator, label: 'Charges Table', color: 'bg-orange-100 text-orange-600' },
+    { type: ELEMENT_TYPES.ITEMS_TABLE, icon: Table, label: 'Equipment & Services', color: 'bg-indigo-100 text-indigo-600' },
+    { type: ELEMENT_TYPES.CHARGES_TABLE, icon: Calculator, label: 'Additional Charges', color: 'bg-orange-100 text-orange-600' },
     { type: ELEMENT_TYPES.TOTALS, icon: Calculator, label: 'Totals', color: 'bg-red-100 text-red-600' },
     { type: ELEMENT_TYPES.TERMS, icon: FileText, label: 'Terms', color: 'bg-gray-100 text-gray-600' },
     { type: ELEMENT_TYPES.CUSTOM_TEXT, icon: Type, label: 'Custom Text', color: 'bg-yellow-100 text-yellow-600' },
@@ -433,7 +431,6 @@ const TemplateElement: React.FC<TemplateElementProps> = ({ element, index, onUpd
       [ELEMENT_TYPES.QUOTATION_INFO]: FileText,
       [ELEMENT_TYPES.JOB_DETAILS]: Layout,
       [ELEMENT_TYPES.ITEMS_TABLE]: Table,
-      [ELEMENT_TYPES.EQUIPMENT_TABLE]: Table,
       [ELEMENT_TYPES.CHARGES_TABLE]: Table,
       [ELEMENT_TYPES.TOTALS]: Calculator,
       [ELEMENT_TYPES.TERMS]: FileText,
@@ -619,8 +616,44 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedElement, onUp
                   content: { ...selectedElement.content, title: e.target.value }
                 })}
                 className="w-full p-2 border border-gray-300 rounded-md"
+                placeholder="e.g., Equipment & Services, Machinery Details"
               />
             </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Show Columns</label>
+              <div className="space-y-2 max-h-40 overflow-y-auto">
+                {[
+                  { key: 'no', label: 'S.No.' },
+                  { key: 'description', label: 'Description/Equipment Name' },
+                  { key: 'capacity', label: 'Capacity/Specifications' },
+                  { key: 'jobType', label: 'Job Type' },
+                  { key: 'quantity', label: 'Quantity' },
+                  { key: 'duration', label: 'Duration/Days' },
+                  { key: 'rate', label: 'Rate/Day' },
+                  { key: 'rental', label: 'Total Rental' },
+                  { key: 'mobilization', label: 'Mobilization' },
+                  { key: 'demobilization', label: 'Demobilization' },
+                  { key: 'amount', label: 'Total Amount' }
+                ].map(col => (
+                  <label key={col.key} className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={selectedElement.content?.columns?.[col.key] !== false}
+                      onChange={(e) => onUpdate(selectedElement.id, {
+                        content: { 
+                          ...selectedElement.content, 
+                          columns: { ...selectedElement.content?.columns, [col.key]: e.target.checked }
+                        }
+                      })}
+                      className="mr-2"
+                    />
+                    <span className="text-sm">{col.label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
             <div>
               <label className="flex items-center space-x-2">
                 <input
@@ -634,6 +667,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedElement, onUp
                 <span className="text-sm font-medium text-gray-700">Show Table Header</span>
               </label>
             </div>
+            
             <div>
               <label className="flex items-center space-x-2">
                 <input
@@ -647,17 +681,17 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedElement, onUp
                 <span className="text-sm font-medium text-gray-700">Alternate Row Colors</span>
               </label>
             </div>
-            <div className="mt-4 p-3 bg-green-50 rounded-lg">
-              <h5 className="text-sm font-medium text-gray-700 mb-2">📊 Equipment Data Source:</h5>
-              <div className="text-xs space-y-1 text-gray-600">
-                <div><strong>Items:</strong> From quotation_machines table</div>
-                <div><strong>Description:</strong> equipment.name + category</div>
-                <div><strong>Quantity:</strong> quotations.number_of_days + " days"</div>
-                <div><strong>Rate:</strong> daily_rate or total_rent</div>
-                <div><strong>Amount:</strong> Calculated total cost</div>
+
+            <div className="mt-4 p-3 bg-blue-50 rounded-lg">
+              <h5 className="text-sm font-medium text-blue-800 mb-2">📊 Complete Equipment Data:</h5>
+              <div className="text-xs space-y-1 text-blue-700">
+                <div><strong>Equipment Details:</strong> Name, capacity, specifications</div>
+                <div><strong>Pricing:</strong> Daily rates, total rental, mob/demob costs</div>
+                <div><strong>Job Info:</strong> Duration, quantity, job type</div>
+                <div><strong>Calculations:</strong> Automatic totals and amounts</div>
               </div>
-              <div className="mt-2 text-xs text-green-700">
-                ✓ Real data automatically populated from database
+              <div className="mt-2 text-xs text-blue-600">
+                ✓ All-in-one comprehensive equipment table
               </div>
             </div>
           </>
@@ -888,44 +922,7 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedElement, onUp
           </>
         )}
 
-        {/* Equipment Table Component */}
-        {selectedElement.type === ELEMENT_TYPES.EQUIPMENT_TABLE && (
-          <>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Table Title</label>
-              <input
-                type="text"
-                value={selectedElement.content?.title || 'Equipment Details'}
-                onChange={(e) => onUpdate(selectedElement.id, {
-                  content: { ...selectedElement.content, title: e.target.value }
-                })}
-                className="w-full p-2 border border-gray-300 rounded-md"
-                placeholder="e.g., Equipment & Services, Machinery Details"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Show Columns</label>
-              <div className="space-y-2">
-                {['no', 'capacity', 'jobType', 'duration', 'rental', 'mob', 'demob'].map(col => (
-                  <label key={col} className="flex items-center">
-                    <input
-                      type="checkbox"
-                      checked={selectedElement.content?.columns?.[col] !== false}
-                      onChange={(e) => onUpdate(selectedElement.id, {
-                        content: { 
-                          ...selectedElement.content, 
-                          columns: { ...selectedElement.content?.columns, [col]: e.target.checked }
-                        }
-                      })}
-                      className="mr-2"
-                    />
-                    <span className="capitalize">{col === 'no' ? 'Number' : col.replace(/([A-Z])/g, ' $1').trim()}</span>
-                  </label>
-                ))}
-              </div>
-            </div>
-          </>
-        )}
+
 
         {/* Charges Table Component */}
         {selectedElement.type === ELEMENT_TYPES.CHARGES_TABLE && (
@@ -1727,16 +1724,22 @@ const EnhancedTemplateBuilder: React.FC<EnhancedTemplateBuilderProps> = ({ quota
           machineType: true 
         } 
       },
-      [ELEMENT_TYPES.EQUIPMENT_TABLE]: { 
-        title: 'Equipment Details', 
+      [ELEMENT_TYPES.ITEMS_TABLE]: { 
+        title: 'Equipment & Services', 
+        showHeader: true,
+        alternateRows: true,
         columns: { 
           no: true, 
+          description: true, 
           capacity: true, 
-          jobType: true, 
+          jobType: false, 
+          quantity: true, 
           duration: true, 
+          rate: true, 
           rental: true, 
-          mob: true, 
-          demob: true 
+          mobilization: true, 
+          demobilization: true, 
+          amount: true 
         } 
       },
       [ELEMENT_TYPES.CHARGES_TABLE]: { 
