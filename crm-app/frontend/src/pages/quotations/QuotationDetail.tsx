@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
-import { ArrowLeft, Edit, FileText, Settings, Eye, Printer, Download, Mail, X } from 'lucide-react';
+import { ArrowLeft, Edit, FileText, Settings, Eye, Printer, Download } from 'lucide-react';
 interface Quotation {
   id: string;
   quotation_number?: string; // Add human-readable quotation number

@@ -130,9 +130,11 @@ const THEMES: Record<string, Theme> = {
 // Placeholder Library Component
 interface PlaceholderLibraryProps {
   previewData: any;
+  onCopyPlaceholder?: (text: string) => void;
+  clipboardMessage?: string;
 }
 
-const PlaceholderLibrary: React.FC<PlaceholderLibraryProps> = ({ previewData }) => {
+const PlaceholderLibrary: React.FC<PlaceholderLibraryProps> = ({ previewData, onCopyPlaceholder, clipboardMessage }) => {
   const [selectedCategory, setSelectedCategory] = useState<string>('quotation');
   
   const placeholderCategories = {
@@ -222,21 +224,63 @@ const PlaceholderLibrary: React.FC<PlaceholderLibraryProps> = ({ previewData }) 
   };
 
   const copyToClipboard = async (text: string) => {
+    if (onCopyPlaceholder) {
+      onCopyPlaceholder(text);
+      return;
+    }
     try {
-      await navigator.clipboard.writeText(text);
-      // You could add a toast notification here
+      // Try modern clipboard API first
+      if (typeof navigator !== 'undefined' && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        try {
+          await navigator.clipboard.writeText(text);
+          console.log('✅ Copied to clipboard:', text);
+          return;
+        } catch (clipboardError) {
+          console.warn('Clipboard API failed, trying fallback:', clipboardError);
+        }
+      }
+      
+      // Fallback method for all browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '-999999px';
+      textArea.style.opacity = '0';
+      textArea.setAttribute('readonly', '');
+      document.body.appendChild(textArea);
+      
+      // Select the text
+      textArea.focus();
+      textArea.select();
+      textArea.setSelectionRange(0, 99999); // For mobile devices
+      
+      // Execute copy command
+      const successful = document.execCommand('copy');
+      document.body.removeChild(textArea);
+      
+      if (successful) {
+        console.log('✅ Copied to clipboard (fallback):', text);
+      } else {
+        throw new Error('Copy command failed');
+      }
     } catch (err) {
-      console.error('Failed to copy to clipboard:', err);
+      console.error('❌ Failed to copy to clipboard:', err);
     }
   };
 
   const currentCategory = placeholderCategories[selectedCategory as keyof typeof placeholderCategories];
 
   return (
-    <div className="p-4 h-full overflow-y-auto">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">Placeholders</h3>
-      
-      {/* Category Selection */}
+      <div className="p-4 h-full overflow-y-auto">
+        <h3 className="text-lg font-semibold text-gray-900 mb-4">Placeholders</h3>
+        
+        {/* Clipboard feedback message */}
+        {clipboardMessage && (
+          <div className="mb-4 p-2 bg-green-50 border border-green-200 rounded-lg text-sm text-green-700">
+            {clipboardMessage}
+          </div>
+        )}      {/* Category Selection */}
       <div className="space-y-2 mb-6">
         {Object.entries(placeholderCategories).map(([key, category]) => (
           <button
@@ -387,7 +431,10 @@ const TemplateElement: React.FC<TemplateElementProps> = ({ element, index, onUpd
       [ELEMENT_TYPES.COMPANY_INFO]: Layout,
       [ELEMENT_TYPES.CLIENT_INFO]: Layout,
       [ELEMENT_TYPES.QUOTATION_INFO]: FileText,
+      [ELEMENT_TYPES.JOB_DETAILS]: Layout,
       [ELEMENT_TYPES.ITEMS_TABLE]: Table,
+      [ELEMENT_TYPES.EQUIPMENT_TABLE]: Table,
+      [ELEMENT_TYPES.CHARGES_TABLE]: Table,
       [ELEMENT_TYPES.TOTALS]: Calculator,
       [ELEMENT_TYPES.TERMS]: FileText,
       [ELEMENT_TYPES.CUSTOM_TEXT]: Type,
@@ -802,6 +849,123 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedElement, onUp
           </>
         )}
 
+        {/* Job Details Component */}
+        {selectedElement.type === ELEMENT_TYPES.JOB_DETAILS && (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Section Title</label>
+              <input
+                type="text"
+                value={selectedElement.content?.title || 'Job Details'}
+                onChange={(e) => onUpdate(selectedElement.id, {
+                  content: { ...selectedElement.content, title: e.target.value }
+                })}
+                className="w-full p-2 border border-gray-300 rounded-md"
+                placeholder="e.g., Job Information, Project Details"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Show Fields</label>
+              <div className="space-y-2">
+                {['orderType', 'duration', 'workingHours', 'machineType'].map(field => (
+                  <label key={field} className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={selectedElement.content?.fields?.[field] !== false}
+                      onChange={(e) => onUpdate(selectedElement.id, {
+                        content: { 
+                          ...selectedElement.content, 
+                          fields: { ...selectedElement.content?.fields, [field]: e.target.checked }
+                        }
+                      })}
+                      className="mr-2"
+                    />
+                    <span className="capitalize">{field.replace(/([A-Z])/g, ' $1').trim()}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Equipment Table Component */}
+        {selectedElement.type === ELEMENT_TYPES.EQUIPMENT_TABLE && (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Table Title</label>
+              <input
+                type="text"
+                value={selectedElement.content?.title || 'Equipment Details'}
+                onChange={(e) => onUpdate(selectedElement.id, {
+                  content: { ...selectedElement.content, title: e.target.value }
+                })}
+                className="w-full p-2 border border-gray-300 rounded-md"
+                placeholder="e.g., Equipment & Services, Machinery Details"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Show Columns</label>
+              <div className="space-y-2">
+                {['no', 'capacity', 'jobType', 'duration', 'rental', 'mob', 'demob'].map(col => (
+                  <label key={col} className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={selectedElement.content?.columns?.[col] !== false}
+                      onChange={(e) => onUpdate(selectedElement.id, {
+                        content: { 
+                          ...selectedElement.content, 
+                          columns: { ...selectedElement.content?.columns, [col]: e.target.checked }
+                        }
+                      })}
+                      className="mr-2"
+                    />
+                    <span className="capitalize">{col === 'no' ? 'Number' : col.replace(/([A-Z])/g, ' $1').trim()}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Charges Table Component */}
+        {selectedElement.type === ELEMENT_TYPES.CHARGES_TABLE && (
+          <>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Table Title</label>
+              <input
+                type="text"
+                value={selectedElement.content?.title || 'Additional Charges'}
+                onChange={(e) => onUpdate(selectedElement.id, {
+                  content: { ...selectedElement.content, title: e.target.value }
+                })}
+                className="w-full p-2 border border-gray-300 rounded-md"
+                placeholder="e.g., Additional Charges, Extra Costs"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Show Charge Types</label>
+              <div className="space-y-2">
+                {['mobilization', 'demobilization', 'rigger', 'helper', 'incidental'].map(charge => (
+                  <label key={charge} className="flex items-center">
+                    <input
+                      type="checkbox"
+                      checked={selectedElement.content?.chargeTypes?.[charge] !== false}
+                      onChange={(e) => onUpdate(selectedElement.id, {
+                        content: { 
+                          ...selectedElement.content, 
+                          chargeTypes: { ...selectedElement.content?.chargeTypes, [charge]: e.target.checked }
+                        }
+                      })}
+                      className="mr-2"
+                    />
+                    <span className="capitalize">{charge} Charges</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
         {/* Position Controls */}
         <div>
           <h4 className="text-sm font-semibold text-gray-700 mb-3">Position</h4>
@@ -952,8 +1116,54 @@ const EnhancedTemplateBuilder: React.FC<EnhancedTemplateBuilderProps> = ({ quota
   const [zoom, setZoom] = useState(100);
   const [history, setHistory] = useState<Template[]>([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
+  const [clipboardMessage, setClipboardMessage] = useState<string>('');
   
   const previewRef = useRef<HTMLIFrameElement>(null);
+
+  // Clipboard function for placeholders
+  const copyToClipboard = async (text: string) => {
+    try {
+      // Try modern clipboard API first
+      if (typeof navigator !== 'undefined' && navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
+        try {
+          await navigator.clipboard.writeText(text);
+          setClipboardMessage(`Copied: ${text}`);
+          setTimeout(() => setClipboardMessage(''), 2000);
+          return;
+        } catch (clipboardError) {
+          console.warn('Clipboard API failed, trying fallback:', clipboardError);
+        }
+      }
+      
+      // Fallback method for all browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = text;
+      textArea.style.position = 'fixed';
+      textArea.style.left = '-999999px';
+      textArea.style.top = '-999999px';
+      textArea.style.opacity = '0';
+      textArea.setAttribute('readonly', '');
+      document.body.appendChild(textArea);
+      
+      textArea.focus();
+      textArea.select();
+      textArea.setSelectionRange(0, 99999);
+      
+      const successful = document.execCommand('copy');
+      document.body.removeChild(textArea);
+      
+      if (successful) {
+        setClipboardMessage(`Copied: ${text}`);
+        setTimeout(() => setClipboardMessage(''), 2000);
+      } else {
+        throw new Error('Copy command failed');
+      }
+    } catch (err) {
+      console.error('❌ Failed to copy to clipboard:', err);
+      setClipboardMessage(`Copy failed. Manual copy: ${text}`);
+      setTimeout(() => setClipboardMessage(''), 4000);
+    }
+  };
 
   // Load sample data and template data on mount
   useEffect(() => {
@@ -1195,28 +1405,120 @@ const EnhancedTemplateBuilder: React.FC<EnhancedTemplateBuilderProps> = ({ quota
       });
 
       if (response.ok) {
-        const blob = await response.blob();
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = 'enhanced_template_preview.pdf';
-        document.body.appendChild(a);
-        a.click();
-        window.URL.revokeObjectURL(url);
-        document.body.removeChild(a);
+        const contentType = response.headers.get('content-type');
+        
+        if (contentType && contentType.includes('application/pdf')) {
+          // Handle PDF response
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `template_${template.name || 'preview'}_${Date.now()}.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+          
+          setClipboardMessage('✅ PDF downloaded successfully!');
+          setTimeout(() => setClipboardMessage(''), 3000);
+        } else {
+          // Handle non-PDF response (might be error JSON)
+          const responseText = await response.text();
+          console.error('Unexpected response type:', contentType, responseText);
+          setClipboardMessage('❌ PDF generation failed: Invalid response format');
+          setTimeout(() => setClipboardMessage(''), 4000);
+        }
       } else {
-        // Handle errors gracefully
+        // Handle HTTP errors
+        const errorText = await response.text();
+        let errorMessage = `HTTP ${response.status}`;
+        
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.message || errorData.error || errorMessage;
+        } catch {
+          errorMessage = errorText || errorMessage;
+        }
+        
         if (response.status === 401 || response.status === 403) {
           console.warn('Authentication issue with PDF download, but continuing...');
           setMessage('PDF generation not available in demo mode');
+          setClipboardMessage('⚠️ Demo mode: PDF generation not available');
+        } else if (response.status === 404) {
+          console.error('PDF endpoint not found');
+          setMessage('PDF generation service not available');
+          setClipboardMessage('❌ PDF service not found - using fallback method');
+          // Fallback to simple PDF generation
+          await fallbackPDFGeneration();
         } else {
-          throw new Error(`Failed to download PDF: ${response.status}`);
+          console.error('PDF download error:', errorMessage);
+          setMessage(`PDF generation failed: ${errorMessage}`);
+          setClipboardMessage(`❌ PDF failed: ${errorMessage}`);
         }
+        setTimeout(() => setClipboardMessage(''), 4000);
       }
     } catch (error) {
       console.error('Error downloading PDF:', error);
+      setClipboardMessage(`❌ PDF error: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      setTimeout(() => setClipboardMessage(''), 4000);
+      
+      // Try fallback PDF generation
+      if (quotationId) {
+        console.log('Attempting fallback PDF generation...');
+        await fallbackPDFGeneration();
+      }
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  // Fallback PDF generation using existing quotation PDF system
+  const fallbackPDFGeneration = async () => {
+    try {
+      if (!quotationId) {
+        setClipboardMessage('❌ No quotation ID available for PDF generation');
+        return;
+      }
+
+      const response = await fetch('/api/quotations/print/pdf', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Bypass-Auth': 'development-only-123'
+        },
+        body: JSON.stringify({ 
+          quotationId: quotationId
+          // Let backend use default template system
+        })
+      });
+
+      if (response.ok) {
+        const contentType = response.headers.get('content-type');
+        
+        if (contentType && contentType.includes('application/pdf')) {
+          const blob = await response.blob();
+          const url = window.URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `quotation_${quotationId}_${Date.now()}.pdf`;
+          document.body.appendChild(a);
+          a.click();
+          window.URL.revokeObjectURL(url);
+          document.body.removeChild(a);
+          
+          setClipboardMessage('✅ PDF generated using fallback method!');
+          setTimeout(() => setClipboardMessage(''), 3000);
+        } else {
+          throw new Error('Invalid PDF response from fallback');
+        }
+      } else {
+        const errorText = await response.text();
+        throw new Error(`Fallback PDF failed: ${response.status} - ${errorText}`);
+      }
+    } catch (fallbackError) {
+      console.error('Fallback PDF generation failed:', fallbackError);
+      setClipboardMessage('❌ Both PDF methods failed');
+      setTimeout(() => setClipboardMessage(''), 4000);
     }
   };
 
@@ -1234,24 +1536,71 @@ const EnhancedTemplateBuilder: React.FC<EnhancedTemplateBuilderProps> = ({ quota
         headers['Authorization'] = `Bearer ${token}`;
       }
       
-      const response = await fetch('/api/templates/enhanced/create', {
-        method: 'POST',
+      // Determine if this is an update or create operation
+      const isUpdate = template.id && templateId;
+      const endpoint = isUpdate 
+        ? `/api/templates/enhanced/${template.id}` 
+        : '/api/templates/enhanced/create';
+      const method = isUpdate ? 'PUT' : 'POST';
+      
+      console.log(`🔄 ${isUpdate ? 'Updating' : 'Creating'} template:`, {
+        templateId: template.id,
+        endpoint,
+        method
+      });
+      
+      const response = await fetch(endpoint, {
+        method,
         headers,
-        body: JSON.stringify(template)
+        body: JSON.stringify({
+          ...template,
+          // Ensure we have the required fields
+          name: template.name || 'Untitled Template',
+          description: template.description || 'Template created with Enhanced Template Builder',
+          elements: template.elements || []
+        })
       });
 
-      const result = await response.json();
-      if (result.success) {
-        setTemplate(result.data);
-        if (onSave) onSave(result.data);
-        setMessage('Template saved successfully!');
+      if (response.ok) {
+        const result = await response.json();
+        if (result.success || result.data || result.id) {
+          const savedTemplate = result.data || result;
+          
+          // Update template with saved data including ID for future updates
+          if (savedTemplate.id && !template.id) {
+            setTemplate(prev => ({ ...prev, id: savedTemplate.id }));
+            console.log('✅ Template ID set for future updates:', savedTemplate.id);
+          }
+          
+          if (onSave) onSave(savedTemplate);
+          setMessage(`Template ${isUpdate ? 'updated' : 'created'} successfully!`);
+          setClipboardMessage(`✅ Template ${isUpdate ? 'updated' : 'saved'} successfully!`);
+          setTimeout(() => setClipboardMessage(''), 3000);
+        } else {
+          setMessage(result.message || 'Failed to save template');
+          setClipboardMessage(`❌ Save failed: ${result.message || 'Unknown error'}`);
+          setTimeout(() => setClipboardMessage(''), 4000);
+        }
       } else {
-        // Handle errors gracefully
+        // Handle HTTP errors and auth issues
+        const errorText = await response.text();
+        let errorMessage = 'Unknown error';
+        
+        try {
+          const errorData = JSON.parse(errorText);
+          errorMessage = errorData.message || errorData.error || errorText;
+        } catch {
+          errorMessage = errorText || `HTTP ${response.status} error`;
+        }
+        
         if (response.status === 401 || response.status === 403) {
           console.warn('Authentication issue with save, but continuing...');
           setMessage('Template save not available in demo mode');
+          setClipboardMessage('⚠️ Demo mode: Save not available');
         } else {
-          throw new Error(result.message || 'Failed to save template');
+          setMessage(errorMessage);
+          setClipboardMessage(`❌ Save failed: ${errorMessage}`);
+          setTimeout(() => setClipboardMessage(''), 4000);
         }
       }
     } catch (error) {
@@ -1369,6 +1718,37 @@ const EnhancedTemplateBuilder: React.FC<EnhancedTemplateBuilderProps> = ({ quota
       [ELEMENT_TYPES.HEADER]: { title: 'ASP CRANES', subtitle: 'QUOTATION' },
       [ELEMENT_TYPES.COMPANY_INFO]: { fields: ['{{company.name}}', '{{company.address}}', '{{company.phone}}'] },
       [ELEMENT_TYPES.CLIENT_INFO]: { title: 'Bill To:', fields: ['{{client.name}}', '{{client.address}}'] },
+      [ELEMENT_TYPES.JOB_DETAILS]: { 
+        title: 'Job Details', 
+        fields: { 
+          orderType: true, 
+          duration: true, 
+          workingHours: true, 
+          machineType: true 
+        } 
+      },
+      [ELEMENT_TYPES.EQUIPMENT_TABLE]: { 
+        title: 'Equipment Details', 
+        columns: { 
+          no: true, 
+          capacity: true, 
+          jobType: true, 
+          duration: true, 
+          rental: true, 
+          mob: true, 
+          demob: true 
+        } 
+      },
+      [ELEMENT_TYPES.CHARGES_TABLE]: { 
+        title: 'Additional Charges', 
+        chargeTypes: { 
+          mobilization: true, 
+          demobilization: true, 
+          rigger: true, 
+          helper: true, 
+          incidental: true 
+        } 
+      },
       [ELEMENT_TYPES.CUSTOM_TEXT]: { text: 'Custom text content...' },
       [ELEMENT_TYPES.TERMS]: { title: 'Terms & Conditions', text: 'Standard terms and conditions...' }
     };
@@ -1566,7 +1946,11 @@ const EnhancedTemplateBuilder: React.FC<EnhancedTemplateBuilderProps> = ({ quota
               onLogoUpload={handleLogoUpload}
             />
           ) : (
-            <PlaceholderLibrary previewData={previewData} />
+            <PlaceholderLibrary 
+              previewData={previewData} 
+              onCopyPlaceholder={copyToClipboard}
+              clipboardMessage={clipboardMessage}
+            />
           )}
         </div>
 
@@ -1620,6 +2004,13 @@ const EnhancedTemplateBuilder: React.FC<EnhancedTemplateBuilderProps> = ({ quota
           onThemeChange={applyTheme}
         />
       </div>
+
+      {/* Global Clipboard Message */}
+      {clipboardMessage && (
+        <div className="fixed bottom-4 right-4 bg-blue-600 text-white px-4 py-2 rounded-lg shadow-lg z-50">
+          {clipboardMessage}
+        </div>
+      )}
     </div>
   );
 };
