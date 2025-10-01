@@ -9,6 +9,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs/promises';
 import jwt from 'jsonwebtoken';
+import fetch from 'node-fetch';
 import { authenticateToken } from '../middleware/authMiddleware.mjs';
 import { EnhancedTemplateBuilder, TEMPLATE_ELEMENT_TYPES, TEMPLATE_THEMES } from '../services/EnhancedTemplateBuilder.mjs';
 import { AdvancedPDFGenerator, PDF_OPTIONS } from '../services/AdvancedPDFGenerator.mjs';
@@ -213,17 +214,21 @@ router.post('/create', async (req, res) => {
  */
 router.get('/sample-data', async (req, res) => {
   try {
-    // Import database pool from quotationRoutes
-    const pg = await import('pg');
-    const pool = new pg.default.Pool({
-      host: process.env.DB_HOST || 'localhost',
-      port: parseInt(process.env.DB_PORT || '5432'),
-      database: process.env.DB_NAME || 'asp_crm',
-      user: process.env.DB_USER || 'postgres',
-      password: process.env.DB_PASSWORD || 'crmdb@21'
-    });
+    console.log('🔍 [DEBUG] Sample data endpoint called');
+    
+    // Try to get the latest quotation first, fallback to sample data
+    try {
+      // Import database pool from quotationRoutes
+      const pg = await import('pg');
+      const pool = new pg.default.Pool({
+        host: process.env.DB_HOST || 'localhost',
+        port: parseInt(process.env.DB_PORT || '5432'),
+        database: process.env.DB_NAME || 'asp_crm',
+        user: process.env.DB_USER || 'postgres',
+        password: process.env.DB_PASSWORD || 'crmdb@21'
+      });
 
-    const client = await pool.connect();
+      const client = await pool.connect();
     
     try {
       // Get the most recent quotation with complete data
@@ -364,6 +369,16 @@ router.get('/sample-data', async (req, res) => {
       });
     }
     
+    } catch (dbError) {
+      if (client) {
+        client.release();
+      }
+      if (pool) {
+        await pool.end();
+      }
+      throw dbError; // Re-throw to outer catch
+    }
+    
   } catch (error) {
     console.error('Error retrieving quotation data:', error);
     
@@ -378,10 +393,11 @@ router.get('/sample-data', async (req, res) => {
         message: 'Sample data retrieved (error fallback)'
       });
     } catch (fallbackError) {
+      console.error('Fallback error:', fallbackError);
       res.status(500).json({
         success: false,
         error: 'Failed to retrieve data',
-        message: error.message
+        message: fallbackError.message
       });
     }
   }
@@ -1556,21 +1572,118 @@ router.post('/upload-asset', authenticateToken, upload.single('asset'), async (r
  * This should integrate with your existing quotation system
  */
 async function getQuotationData(quotationId) {
-  // This is a placeholder - integrate with your existing quotation fetching logic
-  // You should replace this with actual database query from your quotation system
-  
   console.log('🔍 Fetching quotation data for ID:', quotationId);
   
-  // Return sample data for now - replace with actual implementation
-  const templateBuilder = new EnhancedTemplateBuilder();
-  return {
-    ...templateBuilder.getSampleQuotationData(),
-    quotation: {
-      ...templateBuilder.getSampleQuotationData().quotation,
-      number: `QUO-${quotationId}`,
-      id: quotationId
+  try {
+    // First try to fetch quotation data from the quotation API
+    let result;
+    
+    try {
+      const response = await fetch(`http://localhost:3001/api/quotations/${quotationId}`);
+      
+      if (response.ok) {
+        result = await response.json();
+      }
+    } catch (fetchError) {
+      console.log('⚠️ API fetch failed, trying database direct access:', fetchError.message);
     }
-  };
+    
+    // If API fetch failed, try direct database access
+    if (!result || !result.success) {
+      console.log('🔄 Trying direct database access for quotation:', quotationId);
+      
+      const pg = await import('pg');
+      const pool = new pg.default.Pool({
+        host: process.env.DB_HOST || 'localhost',
+        port: parseInt(process.env.DB_PORT || '5432'),
+        database: process.env.DB_NAME || 'asp_crm',
+        user: process.env.DB_USER || 'postgres',
+        password: process.env.DB_PASSWORD || 'crmdb@21'
+      });
+      
+      const client = await pool.connect();
+      
+      try {
+        const quotationResult = await client.query(
+          'SELECT * FROM quotations WHERE id = $1', 
+          [quotationId]
+        );
+        
+        if (quotationResult.rows.length > 0) {
+          const quotation = quotationResult.rows[0];
+          result = {
+            success: true,
+            data: {
+              ...quotation,
+              selectedMachines: [] // Will be populated from database if available
+            }
+          };
+        }
+      } finally {
+        client.release();
+        await pool.end();
+      }
+    }
+    
+    if (!result.success || !result.data) {
+      console.error('❌ Invalid quotation response:', result);
+      // Return sample data as fallback
+      const templateBuilder = new EnhancedTemplateBuilder();
+      return templateBuilder.getSampleQuotationData();
+    }
+    
+    const quotation = result.data;
+    console.log('✅ Quotation data fetched successfully');
+    console.log('📋 Selected machines count:', quotation.selectedMachines?.length || 0);
+    
+    // Transform quotation data to template format using selectedMachines array
+    return {
+      company: {
+        name: 'ASP Cranes Pvt. Ltd.',
+        address: 'Industrial Area, Pune, Maharashtra 411019',
+        phone: '+91 99999 88888',
+        email: 'sales@aspcranes.com',
+        website: 'www.aspcranes.com'
+      },
+      client: {
+        name: quotation.customerName || quotation.customerContact?.name || 'Client Name',
+        company: quotation.customerContact?.company || 'Client Company',
+        address: quotation.customerContact?.address || 'Client Address',
+        phone: quotation.customerContact?.phone || 'Client Phone',
+        email: quotation.customerContact?.email || 'client@email.com'
+      },
+      quotation: {
+        number: quotation.quotationNumber || `QUO-${quotationId}`,
+        date: new Date(quotation.createdAt).toLocaleDateString('en-IN'),
+        validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN'),
+        paymentTerms: '50% advance, balance on completion',
+        terms: quotation.terms?.join('; ') || 'This quotation is valid for 30 days. All rates are inclusive of GST.'
+      },
+      // Use selectedMachines array directly with proper 8-column mapping
+      items: quotation.selectedMachines?.map((machine, index) => ({
+        no: machine.no || (index + 1),
+        description: machine.description || machine.name || 'Equipment',
+        jobType: machine.jobType || quotation.orderType || 'Standard',
+        quantity: machine.quantity || 1,
+        duration: machine.duration || `${quotation.numberOfDays || 1} days`,
+        rate: machine.rate || `₹${machine.baseRate || 0}/day`,
+        rental: machine.rental || `₹${quotation.workingCost || 0}`,
+        mobDemob: machine.mobDemob || `₹${quotation.mobDemobCost || 0}`
+      })) || [],
+      totals: {
+        subtotal: `₹${Math.round(quotation.totalCost - (quotation.gstAmount || 0)).toLocaleString('en-IN')}`,
+        discount: '₹0',
+        tax: `₹${Math.round(quotation.gstAmount || 0).toLocaleString('en-IN')}`,
+        total: `₹${Math.round(quotation.totalCost || 0).toLocaleString('en-IN')}`
+      }
+    };
+    
+  } catch (error) {
+    console.error('❌ Error fetching quotation data:', error);
+    // Return sample data as fallback
+    const templateBuilder = new EnhancedTemplateBuilder();
+    return templateBuilder.getSampleQuotationData();
+  }
 }
 
 /**
