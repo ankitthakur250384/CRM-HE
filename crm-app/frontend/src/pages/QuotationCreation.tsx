@@ -41,6 +41,7 @@ const TIME_OPTIONS = [
 
 const USAGE_OPTIONS = [
   { value: 'normal', label: 'Normal' },
+  { value: 'medium', label: 'Medium' },
   { value: 'heavy', label: 'Heavy' },
 ];
 
@@ -569,9 +570,11 @@ export function QuotationCreation() {
               const riskFactors = additionalParams?.riskFactors || { low: 0, medium: 10, high: 20 };
               const usageFactors = additionalParams?.usageFactors || { normal: 0, medium: 20, heavy: 50 };
               
-              // Use medium risk and usage as defaults
-              const riskPercentage = riskFactors.medium || 10;
-              const usagePercentage = usageFactors.medium || 20;
+              // Use the ACTUAL selected values from form, not hardcoded defaults
+              const selectedRiskFactor = formData.riskFactor || 'low';
+              const selectedUsage = formData.usage || 'normal';
+              const riskPercentage = riskFactors[selectedRiskFactor as keyof typeof riskFactors] || 0;
+              const usagePercentage = usageFactors[selectedUsage as keyof typeof usageFactors] || 0;
               
               // Calculate total monthly base rate
               const totalMonthlyBaseRate = (formData.selectedMachines || []).reduce((total, machine) => {
@@ -954,21 +957,20 @@ export function QuotationCreation() {
     const riskFactors = additionalParams?.riskFactors || { low: 0, medium: 10, high: 20 };
     const usageFactors = additionalParams?.usageFactors || { normal: 0, medium: 20, heavy: 50 };
     
-    // For now, use medium risk (10%) and medium usage (20%) as defaults
-    // TODO: Add UI to allow selection of individual risk/usage types per equipment
-    const defaultRiskType = 'medium'; // Can be 'low', 'medium', or 'high'
-    const defaultUsageType = 'medium'; // Can be 'normal', 'medium', or 'heavy'
+    // Use the ACTUAL selected risk and usage values from the form
+    const selectedRiskType = formData.riskFactor || 'low'; // Use actual form value
+    const selectedUsageType = formData.usage || 'normal'; // Use actual form value
     
-    const riskPercentage = riskFactors[defaultRiskType as keyof typeof riskFactors] || 10;
-    const usagePercentage = usageFactors[defaultUsageType as keyof typeof usageFactors] || 20;
+    const riskPercentage = riskFactors[selectedRiskType as keyof typeof riskFactors] || 0;
+    const usagePercentage = usageFactors[selectedUsageType as keyof typeof usageFactors] || 0;
 
     console.log("🔧 Risk & Usage calculation (individual factors):", {
       selectedMachines: formData.selectedMachines.length,
       totalMonthlyBaseRate,
       riskFactors,
       usageFactors,
-      selectedRiskType: defaultRiskType,
-      selectedUsageType: defaultUsageType,
+      selectedRiskType: selectedRiskType,
+      selectedUsageType: selectedUsageType,
       riskPercentage,
       usagePercentage,
       equipmentBreakdown: formData.selectedMachines.map(m => ({
@@ -1755,13 +1757,21 @@ export function QuotationCreation() {
                     <Select
                       label="Usage"
                       value={formData.usage}
-                      onChange={(value: string) => setFormData(prev => ({ ...prev, usage: value as 'normal' | 'heavy' }))}
+                      onChange={(value: string) => {
+                        setFormData(prev => ({ ...prev, usage: value as 'normal' | 'medium' | 'heavy' }));
+                        // Trigger recalculation when usage changes
+                        setTimeout(() => calculateQuotation(), 100);
+                      }}
                       options={USAGE_OPTIONS}
                     />
                     <Select
                       label="Risk Level"
                       value={formData.riskFactor}
-                      onChange={(value: string) => setFormData(prev => ({ ...prev, riskFactor: value as 'low' | 'medium' | 'high' }))}
+                      onChange={(value: string) => {
+                        setFormData(prev => ({ ...prev, riskFactor: value as 'low' | 'medium' | 'high' }));
+                        // Trigger recalculation when risk factor changes
+                        setTimeout(() => calculateQuotation(), 100);
+                      }}
                       options={RISK_LEVELS}
                     />
                   </div>

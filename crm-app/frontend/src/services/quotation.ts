@@ -100,7 +100,7 @@ export interface QuotationInputs {
   foodResources: number;
   accomResources: number;
   siteDistance: number;
-  usage: 'normal' | 'heavy';
+  usage: 'normal' | 'medium' | 'heavy';
   riskFactor: 'low' | 'medium' | 'high';
   extraCharge: number;
   incidentalCharges: string[];  otherFactorsCharge: number;

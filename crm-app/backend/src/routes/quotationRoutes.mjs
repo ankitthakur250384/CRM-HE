@@ -382,9 +382,7 @@ router.get('/:id', async (req, res) => {
             duration: `${duration} ${duration === 1 ? 'day' : 'days'}`,
             rate: `₹${baseRate.toLocaleString('en-IN')}`,
             rental: `₹${rental.toLocaleString('en-IN')}`,
-            mobilization: `₹${mobilization.toLocaleString('en-IN')}`,
-            demobilization: `₹${demobilization.toLocaleString('en-IN')}`,
-            amount: `₹${totalAmount.toLocaleString('en-IN')}`
+            mobDemob: `₹${mobDemobTotal.toLocaleString('en-IN')}`
           };
         }),
         calculations: {

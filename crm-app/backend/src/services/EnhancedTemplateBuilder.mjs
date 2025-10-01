@@ -736,17 +736,15 @@ export class EnhancedTemplateBuilder {
     
     // Enhanced column configuration based on frontend Items Table
     const defaultColumns = [
-      { key: 'no', label: 'S.No.', width: '5%', alignment: 'center' },
-      { key: 'description', label: 'Description/Equipment Name', width: '25%', alignment: 'left' },
-      { key: 'capacity', label: 'Capacity/Specifications', width: '12%', alignment: 'center' },
-      { key: 'jobType', label: 'Job Type', width: '8%', alignment: 'center' },
-      { key: 'quantity', label: 'Quantity', width: '8%', alignment: 'center' },
-      { key: 'duration', label: 'Duration/Days', width: '10%', alignment: 'center' },
-      { key: 'rate', label: 'Rate/Day', width: '10%', alignment: 'right' },
-      { key: 'rental', label: 'Total Rental', width: '12%', alignment: 'right' },
-      { key: 'mobilization', label: 'Mobilization', width: '10%', alignment: 'right' },
-      { key: 'demobilization', label: 'Demobilization', width: '10%', alignment: 'right' },
-      { key: 'amount', label: 'Total Amount', width: '12%', alignment: 'right' }
+      { key: 'no', label: 'S.No.', width: '8%', alignment: 'center' },
+      { key: 'description', label: 'Description/Equipment Name', width: '30%', alignment: 'left' },
+      { key: 'capacity', label: 'Capacity/Specifications', width: '15%', alignment: 'center' },
+      { key: 'jobType', label: 'Job Type', width: '10%', alignment: 'center' },
+      { key: 'quantity', label: 'Quantity', width: '10%', alignment: 'center' },
+      { key: 'duration', label: 'Duration/Days', width: '12%', alignment: 'center' },
+      { key: 'rate', label: 'Rate/Day', width: '12%', alignment: 'right' },
+      { key: 'rental', label: 'Total Rental', width: '15%', alignment: 'right' },
+      { key: 'mobDemob', label: 'Mob/Demob', width: '12%', alignment: 'right' }
     ];
     
     // Filter columns based on element configuration
@@ -1159,9 +1157,7 @@ export class EnhancedTemplateBuilder {
           duration: '30 days',
           rate: '₹25,000',
           rental: '₹7,50,000',
-          mobilization: '₹50,000',
-          demobilization: '₹50,000',
-          amount: '₹8,50,000'
+          mobDemob: '₹1,00,000'
         },
         {
           no: 2,
@@ -1172,9 +1168,7 @@ export class EnhancedTemplateBuilder {
           duration: '5 days',
           rate: '₹15,000',
           rental: '₹75,000',
-          mobilization: '₹10,000',
-          demobilization: '₹10,000',
-          amount: '₹95,000'
+          mobDemob: '₹20,000'
         }
       ],
       totals: {

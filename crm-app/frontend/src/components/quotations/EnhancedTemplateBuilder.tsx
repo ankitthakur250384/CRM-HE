@@ -169,10 +169,11 @@ const PlaceholderLibrary: React.FC<PlaceholderLibraryProps> = ({ previewData, on
         { code: '{{equipment.name}}', source: 'equipment.name', description: 'Equipment name' },
         { code: '{{equipment.capacity}}', source: 'equipment.max_lifting_capacity', description: 'Equipment capacity (e.g., 130MT)' },
         { code: '{{equipment.rate}}', source: 'quotation_machines.base_rate', description: 'Base rate from equipment table' },
-        { code: '{{equipment.workingCost}}', source: 'calculated working cost', description: 'Calculated working cost' },
+        { code: '{{equipment.workingCost}}', source: 'calculated working cost', description: 'Total Rental (Working Cost)' },
         { code: '{{equipment.quantity}}', source: 'quotation_machines.quantity', description: 'Quantity/duration' },
         { code: '{{equipment.jobType}}', source: 'quotations.order_type', description: 'Job type (monthly, daily, etc.)' },
-        { code: '{{equipment.jobDuration}}', source: 'quotations.number_of_days', description: 'Job duration with units' }
+        { code: '{{equipment.jobDuration}}', source: 'quotations.number_of_days', description: 'Job duration with units' },
+        { code: '{{equipment.mobDemob}}', source: 'quotations.mob_demob_cost', description: 'Mobilization/Demobilization cost' }
       ]
     },
     jobDetails: {
@@ -630,11 +631,9 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedElement, onUp
                   { key: 'jobType', label: 'Job Type' },
                   { key: 'quantity', label: 'Quantity' },
                   { key: 'duration', label: 'Duration/Days' },
-                  { key: 'rate', label: 'Rate/Day' },
-                  { key: 'rental', label: 'Total Rental' },
-                  { key: 'mobilization', label: 'Mobilization' },
-                  { key: 'demobilization', label: 'Demobilization' },
-                  { key: 'amount', label: 'Total Amount' }
+                  { key: 'rate', label: 'Rate/Day (Base Rate)' },
+                  { key: 'rental', label: 'Total Rental (Working Cost)' },
+                  { key: 'mobDemob', label: 'Mob/Demob' }
                 ].map(col => (
                   <label key={col.key} className="flex items-center">
                     <input
@@ -1737,9 +1736,7 @@ const EnhancedTemplateBuilder: React.FC<EnhancedTemplateBuilderProps> = ({ quota
           duration: true, 
           rate: true, 
           rental: true, 
-          mobilization: true, 
-          demobilization: true, 
-          amount: true 
+          mobDemob: true 
         } 
       },
       [ELEMENT_TYPES.CHARGES_TABLE]: { 
