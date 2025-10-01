@@ -17,8 +17,8 @@ interface QuotationConfigHookReturn {
     };
   } | null;
   resourceRates: {
-    foodRate: number;
-    accommodationRate: number;
+    foodRatePerMonth: number;
+    accommodationRatePerMonth: number;
     transportRate: number;
   } | null;
   additionalParams: {
@@ -47,6 +47,7 @@ interface QuotationConfigHookReturn {
       day: number;
       night: number;
     };
+
   } | null;
   
   // State
@@ -139,7 +140,10 @@ export const useQuotationConfig = (): QuotationConfigHookReturn => {
   return {
     quotationConfig,
     resourceRates: resourceRatesConfig,
-    additionalParams: additionalParamsConfig,
+    additionalParams: additionalParamsConfig ? {
+      ...additionalParamsConfig,
+
+    } : null,
     isLoading,
     errors,
     refreshConfigurations,

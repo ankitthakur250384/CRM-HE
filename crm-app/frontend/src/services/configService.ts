@@ -21,13 +21,18 @@ export interface QuotationConfig {
 export interface ResourceRatesConfig {
   foodRatePerMonth: number;
   accommodationRatePerMonth: number;
-  foodRate: number;
-  accommodationRate: number;
   transportRate: number;
   updatedAt?: string;
 }
 
 export interface AdditionalParamsConfig {
+  riggerAmount: number;
+  helperAmount: number;
+  incidentalOptions: Array<{
+    value: string;
+    label: string;
+    amount: number;
+  }>;
   usageFactors: {
     normal: number;
     medium: number;
@@ -46,10 +51,7 @@ export interface AdditionalParamsConfig {
     day: number;
     night: number;
   };
-  // New fields for incidental and labour defaults
-  incidentalOptions?: Array<{ value: string; label: string; amount: number }>,
-  riggerAmount?: number;
-  helperAmount?: number;
+
   updatedAt?: string;
 }
 

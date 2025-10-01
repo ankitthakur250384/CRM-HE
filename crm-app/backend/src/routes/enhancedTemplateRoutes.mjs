@@ -9,6 +9,7 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs/promises';
 import jwt from 'jsonwebtoken';
+import fetch from 'node-fetch';
 import { authenticateToken } from '../middleware/authMiddleware.mjs';
 import { EnhancedTemplateBuilder, TEMPLATE_ELEMENT_TYPES, TEMPLATE_THEMES } from '../services/EnhancedTemplateBuilder.mjs';
 import { AdvancedPDFGenerator, PDF_OPTIONS } from '../services/AdvancedPDFGenerator.mjs';
@@ -209,102 +210,295 @@ router.post('/create', async (req, res) => {
 
 /**
  * GET /api/templates/enhanced/sample-data
- * Get sample data for template building
+ * Get real quotation data for template building and preview
  */
 router.get('/sample-data', async (req, res) => {
   try {
-    const sampleData = {
-      companies: [
-        {
-          id: 1,
-          name: "ASP Cranes Ltd",
-          address: "123 Industrial Park, Mumbai, Maharashtra 400001",
-          phone: "+91 22 1234 5678",
-          email: "info@aspcranes.com",
-          website: "www.aspcranes.com",
-          gstin: "27ABCDE1234F1Z5",
-          logo: "/assets/asp-logo.jpg"
+    console.log('🔍 [DEBUG] =================== SAMPLE DATA ENDPOINT CALLED ===================');
+    
+    // Try to fetch real quotation data from the quotations API (exactly like your network tab)
+    try {
+      console.log('🔍 Fetching quotations from internal API...');
+      
+      const response = await fetch('http://localhost:3001/api/quotations');
+      
+      if (response.ok) {
+        const result = await response.json();
+        console.log('✅ Quotations API response received, success:', result.success);
+        
+        if (result.success && result.data && result.data.length > 0) {
+          // Find a quotation with complete financial data instead of just using the first one
+          let quotation = result.data.find(q => 
+            (q.totalCost || q.total_cost) > 0 && (q.workingCost || q.working_cost) > 0 && (q.numberOfDays || q.number_of_days) > 0
+          ) || result.data[0]; // Fallback to first if none found with complete data
+          
+          console.log('📋 Using quotation:', quotation.quotationNumber || quotation.id);
+          console.log('📊 Available quotations:', result.data.length);
+          console.log('� Selected quotation has complete data:', {
+            hasTotalCost: !!quotation.totalCost,
+            hasWorkingCost: !!quotation.workingCost,
+            hasNumberOfDays: !!quotation.numberOfDays,
+            totalCost: quotation.totalCost,
+            workingCost: quotation.workingCost
+          });
+          console.log('🔧 Raw quotation data (checking both snake_case and camelCase):', {
+            id: quotation.id,
+            quotationNumber: quotation.quotationNumber || quotation.quotation_number,
+            machineType: quotation.machineType || quotation.machine_type,
+            orderType: quotation.orderType || quotation.order_type,
+            workingCost: quotation.workingCost || quotation.working_cost,
+            mobDemobCost: quotation.mobDemobCost || quotation.mob_demob_cost,
+            numberOfDays: quotation.numberOfDays || quotation.number_of_days,
+            totalCost: quotation.totalCost || quotation.total_cost,
+            gstAmount: quotation.gstAmount || quotation.gst_amount,
+            // Check which format we're getting
+            fieldFormat: quotation.totalCost ? 'camelCase' : 'snake_case'
+          });
+          
+          // Transform the quotation data to template format using the exact same data structure as your network tab
+          const quotationData = {
+            company: {
+              name: 'ASP Cranes Pvt. Ltd.',
+              address: 'Industrial Area, Pune, Maharashtra 411019',
+              phone: '+91 99999 88888',
+              email: 'sales@aspcranes.com',
+              website: 'www.aspcranes.com'
+            },
+            client: {
+              name: quotation.customerName || quotation.customer_name || 'Client Name',
+              company: quotation.customerContact?.company || 'Client Company',
+              address: quotation.customerContact?.address || 'Client Address',
+              phone: quotation.customerContact?.phone || quotation.customer_phone || 'Client Phone',
+              email: quotation.customerContact?.email || quotation.customer_email || 'client@email.com'
+            },
+            quotation: {
+              number: quotation.quotationNumber || quotation.quotation_number || quotation.id,
+              date: new Date(quotation.createdAt || quotation.created_at).toLocaleDateString('en-IN'),
+              validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN'),
+              paymentTerms: '50% advance, balance on completion',
+              terms: 'This quotation is valid for 30 days. All rates are inclusive of GST.'
+            },
+            // Create items array using the quotation data directly with correct camelCase field names
+            items: [{
+              no: 1,
+              description: (quotation.machineType || quotation.machine_type) 
+                ? `${(quotation.machineType || quotation.machine_type).replace(/[_-]/g, ' ').toUpperCase()} - Rental Service`
+                : 'MOBILE CRANE - Rental Service',
+              jobType: quotation.orderType || quotation.order_type || 'small',
+              quantity: 1,
+              duration: (quotation.numberOfDays || quotation.number_of_days) ? `${quotation.numberOfDays || quotation.number_of_days} days` : '24 days',
+              rate: ((quotation.workingCost || quotation.working_cost) && (quotation.numberOfDays || quotation.number_of_days)) 
+                ? `₹${Math.round((quotation.workingCost || quotation.working_cost) / (quotation.numberOfDays || quotation.number_of_days)).toLocaleString('en-IN')}/day`
+                : '₹9,600/day',
+              rental: (quotation.workingCost || quotation.working_cost) 
+                ? `₹${Math.round(quotation.workingCost || quotation.working_cost).toLocaleString('en-IN')}`
+                : '₹2,30,400',
+              mobDemob: (quotation.mobDemobCost || quotation.mob_demob_cost) 
+                ? `₹${Math.round(quotation.mobDemobCost || quotation.mob_demob_cost).toLocaleString('en-IN')}`
+                : '₹15,000'
+            }],
+            totals: {
+              subtotal: `₹${Math.round(((quotation.totalCost || quotation.total_cost) || 0) - ((quotation.gstAmount || quotation.gst_amount) || 0)).toLocaleString('en-IN')}`,
+              discount: '₹0',
+              tax: `₹${Math.round((quotation.gstAmount || quotation.gst_amount) || 0).toLocaleString('en-IN')}`,
+              total: `₹${Math.round((quotation.totalCost || quotation.total_cost) || 0).toLocaleString('en-IN')}`
+            }
+          };
+          
+          console.log('📊 Template data created:', {
+            itemsCount: quotationData.items.length,
+            customerName: quotationData.client.name,
+            quotationNumber: quotationData.quotation.number,
+            firstItem: quotationData.items[0]
+          });
+          
+          return res.json({
+            success: true,
+            data: quotationData,
+            message: 'Real quotation data retrieved successfully'
+          });
         }
-      ],
-      equipment: [
-        {
-          id: 1,
-          name: "Mobile Crane 50T",
-          description: "50 Ton Mobile Crane with Telescopic Boom",
-          rate: 5000,
-          unit: "per day",
-          category: "Mobile Cranes"
-        },
-        {
-          id: 2,
-          name: "Tower Crane TCR-60",
-          description: "60m Jib Tower Crane",
-          rate: 15000,
-          unit: "per month",
-          category: "Tower Cranes"
-        },
-        {
-          id: 3,
-          name: "Crawler Crane 80T",
-          description: "80 Ton Crawler Crane",
-          rate: 8000,
-          unit: "per day",
-          category: "Crawler Cranes"
-        }
-      ],
-      customers: [
-        {
-          id: 1,
-          name: "Construction Corp Ltd",
-          address: "456 Builder Street, Mumbai 400002",
-          contact: "Rajesh Kumar",
-          phone: "+91 98765 43210",
-          email: "rajesh@constructioncorp.com",
-          gstin: "27FGHIJ5678K2L9"
-        },
-        {
-          id: 2,
-          name: "Infrastructure Builders",
-          address: "789 Project Road, Mumbai 400003",
-          contact: "Priya Sharma",
-          phone: "+91 87654 32109",
-          email: "priya@infrabuilders.com",
-          gstin: "27MNOPQ9012R3S4"
-        }
-      ],
-      projects: [
-        {
-          id: 1,
-          name: "High-Rise Construction Project",
-          location: "Bandra, Mumbai",
-          startDate: "2024-01-15",
-          endDate: "2024-12-31",
-          description: "40-story residential tower construction"
-        },
-        {
-          id: 2,
-          name: "Bridge Construction",
-          location: "JVLR, Mumbai",
-          startDate: "2024-02-01",
-          endDate: "2024-08-31",
-          description: "Flyover bridge construction project"
-        }
-      ]
-    };
-
-    res.json({
-      success: true,
-      data: sampleData,
-      message: 'Sample data retrieved successfully'
+      }
+    } catch (fetchError) {
+      console.log('⚠️ API fetch failed, trying database fallback:', fetchError.message);
+    }
+    
+    // Fallback to database query if API fails
+    const pg = await import('pg');
+    const pool = new pg.default.Pool({
+      host: process.env.DB_HOST || 'localhost',
+      port: parseInt(process.env.DB_PORT || '5432'),
+      database: process.env.DB_NAME || 'asp_crm',
+      user: process.env.DB_USER || 'postgres',
+      password: process.env.DB_PASSWORD || 'crmdb@21'
     });
+
+    const client = await pool.connect();
+    
+    try {
+      // Get the most recent quotation with complete data
+      const quotationResult = await client.query(`
+        SELECT q.*, c.name as customer_name, c.email as customer_email,
+               c.phone as customer_phone, c.company_name as customer_company,
+               c.address as customer_address, c.designation as customer_designation,
+               d.title as deal_title
+        FROM quotations q
+        LEFT JOIN customers c ON q.customer_id = c.id
+        LEFT JOIN deals d ON q.deal_id = d.id
+        ORDER BY q.created_at DESC
+        LIMIT 1;
+      `);
+
+      let quotationData;
+      
+      if (quotationResult.rows.length > 0) {
+        const quotation = quotationResult.rows[0];
+        
+        // Get associated machines/equipment
+        console.log('🔍 [DEBUG] Looking for equipment for quotation ID:', quotation.id);
+        const machinesResult = await client.query(`
+          SELECT qm.id, qm.quotation_id, qm.equipment_id, qm.quantity, 
+                 qm.base_rate, qm.running_cost_per_km, qm.created_at,
+                 e.name as equipment_name, e.category, e.type as equipment_type
+          FROM quotation_machines qm
+          LEFT JOIN equipment e ON qm.equipment_id = e.id
+          WHERE qm.quotation_id = $1;
+        `, [quotation.id]);
+        
+        console.log('🔍 [DEBUG] Found equipment records:', machinesResult.rows.length);
+        if (machinesResult.rows.length > 0) {
+          console.log('🔍 [DEBUG] Equipment data:', machinesResult.rows);
+        }
+
+        // Generate quotation number
+        function generateQuotationNumber(quotationId) {
+          const idParts = quotationId.split('_');
+          if (idParts.length >= 2) {
+            const hashCode = idParts[1].split('').reduce((a, b) => {
+              a = ((a << 5) - a) + b.charCodeAt(0);
+              return a & a;
+            }, 0);
+            const num = Math.abs(hashCode) % 9999 + 1;
+            return `ASP-Q-${num.toString().padStart(3, '0')}`;
+          }
+          return `ASP-Q-${quotationId.substring(5, 8).toUpperCase()}`;
+        }
+
+        // Transform database data to template format
+        quotationData = {
+          company: {
+            name: 'ASP Cranes Pvt. Ltd.',
+            address: 'Industrial Area, Pune, Maharashtra 411019',
+            phone: '+91 99999 88888',
+            email: 'sales@aspcranes.com',
+            website: 'www.aspcranes.com'
+          },
+          client: {
+            name: quotation.customer_name || quotation.contact_name || 'Client Name',
+            company: quotation.customer_company || quotation.company_name || 'Client Company',
+            address: quotation.customer_address || 'Client Address',
+            phone: quotation.customer_phone || 'Client Phone',
+            email: quotation.customer_email || 'client@email.com'
+          },
+          quotation: {
+            number: quotation.quotation_number || generateQuotationNumber(quotation.id),
+            date: new Date(quotation.created_at).toLocaleDateString('en-IN'),
+            validUntil: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN'),
+            paymentTerms: '50% advance, balance on completion',
+            terms: 'This quotation is valid for 30 days. All rates are inclusive of GST.'
+          },
+          items: machinesResult.rows.map((machine, index) => {
+            const dailyRate = machine.base_rate || quotation.total_rent || 10000;
+            const totalDays = quotation.number_of_days || 1;
+            const workingCost = quotation.working_cost || (dailyRate * totalDays);
+            const mobDemobCost = quotation.mob_demob_cost || 0;
+            
+            const item = {
+              no: index + 1,
+              description: `${machine.equipment_name || machine.equipment_type || quotation.machine_type || 'Equipment'} - ${machine.category || 'Rental Service'}`,
+              jobType: quotation.order_type || quotation.job_type || 'Standard',
+              quantity: machine.quantity || 1,
+              duration: totalDays,
+              rate: `₹${dailyRate.toLocaleString('en-IN')}/day`,
+              rental: `₹${workingCost.toLocaleString('en-IN')}`,
+              mobDemob: mobDemobCost > 0 ? `₹${mobDemobCost.toLocaleString('en-IN')}` : '₹0'
+            };
+            console.log('🔍 [DEBUG] Created equipment item (8-column format):', item);
+            return item;
+          }),
+          totals: {
+            subtotal: `₹${Math.round(quotation.working_cost || quotation.total_rent || 100000).toLocaleString('en-IN')}`,
+            discount: '₹0',
+            tax: `₹${Math.round(quotation.gst_amount || ((quotation.total_cost || 100000) * 0.18)).toLocaleString('en-IN')}`,
+            total: `₹${Math.round(quotation.total_cost || 118000).toLocaleString('en-IN')}`
+          }
+        };
+
+        // Log equipment status for debugging
+        if (quotationData.items.length === 0) {
+          console.log('⚠️ [WARNING] No equipment found for quotation:', quotationId);
+          console.log('⚠️ This should not happen if quotations are created properly with equipment selection');
+        } else {
+          console.log('✅ [SUCCESS] Found', quotationData.items.length, 'equipment items for quotation:', quotationId);
+        }
+        
+        console.log('🔍 [DEBUG] Final items array:', quotationData.items);
+      } else {
+        // Fallback to sample data if no quotations in database
+        const templateBuilder = new EnhancedTemplateBuilder();
+        quotationData = templateBuilder.getSampleQuotationData();
+      }
+
+      client.release();
+      await pool.end();
+
+      res.json({
+        success: true,
+        data: quotationData,
+        message: 'Quotation data retrieved successfully'
+      });
+      
+    } catch (dbError) {
+      if (client) {
+        client.release();
+      }
+      if (pool) {
+        await pool.end();
+      }
+      console.error('Database error, falling back to sample data:', dbError);
+      
+      // Fallback to sample data on database error
+      const templateBuilder = new EnhancedTemplateBuilder();
+      const sampleData = templateBuilder.getSampleQuotationData();
+      
+      res.json({
+        success: true,
+        data: sampleData,
+        message: 'Sample data retrieved (database fallback)'
+      });
+    }
     
   } catch (error) {
-    console.error('Error retrieving sample data:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to retrieve sample data',
-      message: error.message
-    });
+    console.error('Error retrieving quotation data:', error);
+    
+    // Ultimate fallback to sample data
+    try {
+      const templateBuilder = new EnhancedTemplateBuilder();
+      const sampleData = templateBuilder.getSampleQuotationData();
+      
+      res.json({
+        success: true,
+        data: sampleData,
+        message: 'Sample data retrieved (error fallback)'
+      });
+    } catch (fallbackError) {
+      console.error('Fallback error:', fallbackError);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to retrieve data',
+        message: fallbackError.message
+      });
+    }
   }
 });
 
@@ -477,46 +671,83 @@ router.get('/quotation', async (req, res) => {
   try {
     console.log('📋 [Enhanced Templates] Loading templates for quotation printing');
     
-    const client = new Client(dbConfig);
-    await client.connect();
-    
+    // Try database first
     try {
-      const query = `
-        SELECT 
-          id, name, description, theme, category, 
-          is_default, is_active, created_by, created_at, updated_at
-        FROM enhanced_templates 
-        WHERE is_active = true
-        ORDER BY is_default DESC, updated_at DESC
-      `;
+      const client = new Client(dbConfig);
+      await client.connect();
       
-      const result = await client.query(query);
+      try {
+        const query = `
+          SELECT 
+            id, name, description, theme, category, 
+            is_default, is_active, created_by, created_at, updated_at
+          FROM enhanced_templates 
+          WHERE is_active = true
+          ORDER BY is_default DESC, updated_at DESC
+        `;
+        
+        const result = await client.query(query);
+        
+        // Convert to format expected by QuotationPrintSystem
+        const templates = result.rows.map(row => ({
+          id: row.id, // Keep as string for Enhanced Templates
+          name: row.name,
+          description: row.description,
+          is_active: row.is_active,
+          is_default: row.is_default,
+          theme: row.theme,
+          category: row.category
+        }));
+        
+        console.log(`✅ [Enhanced Templates] Found ${templates.length} active templates for quotation printing`);
+        
+        res.json({
+          success: true,
+          templates: templates,
+          count: templates.length
+        });
+        
+      } finally {
+        await client.end();
+      }
       
-      // Convert to format expected by QuotationPrintSystem
-      const templates = result.rows.map(row => ({
-        id: row.id, // Keep as string for Enhanced Templates
-        name: row.name,
-        description: row.description,
-        is_active: row.is_active,
-        is_default: row.is_default,
-        theme: row.theme,
-        category: row.category
-      }));
+    } catch (dbError) {
+      console.warn('⚠️ [Enhanced Templates] Database error, using fallback templates:', dbError.message);
       
-      console.log(`✅ [Enhanced Templates] Found ${templates.length} active templates for quotation printing`);
+      // Fallback templates when database is unavailable
+      const fallbackTemplates = [
+        {
+          id: 'tpl_default_001',
+          name: 'ASP Cranes Professional',
+          description: 'Professional quotation template with company branding',
+          is_active: true,
+          is_default: true,
+          theme: 'PROFESSIONAL',
+          category: 'quotation'
+        },
+        {
+          id: 'tpl_simple_001',
+          name: 'Simple Clean',
+          description: 'Clean and simple quotation layout',
+          is_active: true,
+          is_default: false,
+          theme: 'MINIMAL',
+          category: 'quotation'
+        }
+      ];
+      
+      console.log(`✅ [Enhanced Templates] Using ${fallbackTemplates.length} fallback templates`);
       
       res.json({
         success: true,
-        templates: templates,
-        count: templates.length
+        templates: fallbackTemplates,
+        count: fallbackTemplates.length,
+        fallback: true
       });
-      
-    } finally {
-      await client.end();
     }
     
   } catch (error) {
-    console.error('❌ [Enhanced Templates] Error loading quotation templates:', error);
+    console.error('❌ [Enhanced Templates] Critical error loading quotation templates:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to load quotation templates',
@@ -1081,14 +1312,22 @@ router.post('/preview', async (req, res) => {
     if (templateData.elements && Array.isArray(templateData.elements)) {
       console.log('🔍 [DEBUG] Preview element types:', templateData.elements.map(el => el.type));
     }
+    console.log('🔍 [DEBUG] Preview quotation data:', quotationData);
     
     const templateBuilder = new EnhancedTemplateBuilder();
     
     // Always create template from data for preview (don't try to load from DB)
     templateBuilder.createTemplate(templateData);
     
+    // If no quotation data provided, get sample data
+    let finalQuotationData = quotationData;
+    if (!finalQuotationData) {
+      console.log('📝 No quotation data provided, using sample data');
+      finalQuotationData = templateBuilder.getSampleQuotationData();
+    }
+    
     if (format === 'html') {
-      const html = templateBuilder.generatePreviewHTML(quotationData);
+      const html = templateBuilder.generatePreviewHTML(finalQuotationData);
       res.json({
         success: true,
         data: { html },
@@ -1096,7 +1335,7 @@ router.post('/preview', async (req, res) => {
         timestamp: new Date()
       });
     } else if (format === 'pdf') {
-      const html = templateBuilder.generateQuotationHTML(quotationData);
+      const html = templateBuilder.generateQuotationHTML(finalQuotationData);
       const pdfGenerator = new AdvancedPDFGenerator();
       
       const pdfOptions = {
@@ -1333,20 +1572,7 @@ router.post('/batch-pdf', authenticateToken, async (req, res) => {
   }
 });
 
-/**
- * GET /api/templates/enhanced/sample-data
- * Get sample quotation data for preview
- */
-router.get('/sample-data', (req, res) => {
-  const templateBuilder = new EnhancedTemplateBuilder();
-  const sampleData = templateBuilder.getSampleQuotationData();
-  
-  res.json({
-    success: true,
-    data: sampleData,
-    message: 'Sample data retrieved successfully'
-  });
-});
+// Duplicate route removed - using the unified sample-data endpoint above
 
 /**
  * POST /api/templates/enhanced/upload-logo
@@ -1445,21 +1671,115 @@ router.post('/upload-asset', authenticateToken, upload.single('asset'), async (r
  * This should integrate with your existing quotation system
  */
 async function getQuotationData(quotationId) {
-  // This is a placeholder - integrate with your existing quotation fetching logic
-  // You should replace this with actual database query from your quotation system
-  
   console.log('🔍 Fetching quotation data for ID:', quotationId);
   
-  // Return sample data for now - replace with actual implementation
-  const templateBuilder = new EnhancedTemplateBuilder();
-  return {
-    ...templateBuilder.getSampleQuotationData(),
-    quotation: {
-      ...templateBuilder.getSampleQuotationData().quotation,
-      number: `QUO-${quotationId}`,
-      id: quotationId
+  try {
+    // Connect directly to database to fetch quotation data
+    const pg = await import('pg');
+    const pool = new pg.default.Pool({
+      host: process.env.DB_HOST || 'localhost',
+      port: parseInt(process.env.DB_PORT || '5432'),
+      database: process.env.DB_NAME || 'asp_crm',
+      user: process.env.DB_USER || 'postgres',
+      password: process.env.DB_PASSWORD || 'crmdb@21'
+    });
+    
+    const client = await pool.connect();
+    
+    try {
+      // Fetch quotation data from database
+      const quotationResult = await client.query(
+        'SELECT * FROM quotations WHERE id = $1', 
+        [quotationId]
+      );
+      
+      if (quotationResult.rows.length === 0) {
+        console.log('❌ Quotation not found:', quotationId);
+        return null;
+      }
+      
+      const quotationRow = quotationResult.rows[0];
+      console.log('✅ Quotation found:', quotationRow.quotation_number);
+      console.log('🔍 Machine type:', quotationRow.machine_type);
+      console.log('🔍 Customer:', quotationRow.customer_name);
+      
+      // Parse customer_contact JSON if it exists
+      let customerContact = {};
+      try {
+        if (quotationRow.customer_contact) {
+          customerContact = typeof quotationRow.customer_contact === 'string' 
+            ? JSON.parse(quotationRow.customer_contact) 
+            : quotationRow.customer_contact;
+        }
+      } catch (parseError) {
+        console.log('⚠️ Error parsing customer_contact:', parseError.message);
+      }
+      
+      // Transform database data to template format
+      const templateData = {
+        company: {
+          name: 'ASP Cranes Pvt. Ltd.',
+          address: 'Industrial Area, Pune, Maharashtra 411019',
+          phone: '+91 99999 88888',
+          email: 'sales@aspcranes.com',
+          website: 'www.aspcranes.com'
+        },
+        client: {
+          name: customerContact.name || quotationRow.customer_name || 'Client Name',
+          company: customerContact.company || 'Client Company',
+          address: customerContact.address || quotationRow.address || 'Client Address',
+          phone: customerContact.phone || 'Client Phone',
+          email: customerContact.email || 'client@email.com'
+        },
+        quotation: {
+          number: quotationRow.quotation_number || `QUO-${quotationId}`,
+          date: new Date(quotationRow.created_at).toLocaleDateString('en-IN'),
+          validUntil: quotationRow.valid_until 
+            ? new Date(quotationRow.valid_until).toLocaleDateString('en-IN')
+            : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN'),
+          paymentTerms: '50% advance, balance on completion',
+          terms: 'This quotation is valid for 30 days. All rates are inclusive of GST.'
+        },
+        // Create items array from quotation data since selectedMachines might not exist
+        items: [{
+          no: 1,
+          description: `${quotationRow.machine_type.replace('_', ' ').toUpperCase()} - Rental Service`,
+          jobType: quotationRow.order_type || 'Standard',
+          quantity: 1,
+          duration: `${quotationRow.number_of_days} days`,
+          rate: quotationRow.working_cost 
+            ? `₹${Math.round(quotationRow.working_cost / quotationRow.number_of_days).toLocaleString('en-IN')}/day`
+            : '₹0/day',
+          rental: `₹${Math.round(quotationRow.working_cost || 0).toLocaleString('en-IN')}`,
+          mobDemob: `₹${Math.round(quotationRow.mob_demob_cost || 0).toLocaleString('en-IN')}`
+        }],
+        totals: {
+          subtotal: `₹${Math.round((quotationRow.total_cost || 0) - (quotationRow.gst_amount || 0)).toLocaleString('en-IN')}`,
+          discount: '₹0',
+          tax: `₹${Math.round(quotationRow.gst_amount || 0).toLocaleString('en-IN')}`,
+          total: `₹${Math.round(quotationRow.total_cost || 0).toLocaleString('en-IN')}`
+        }
+      };
+      
+      console.log('📋 Template data prepared:', {
+        itemsCount: templateData.items.length,
+        customerName: templateData.client.name,
+        quotationNumber: templateData.quotation.number
+      });
+      
+      return templateData;
+      
+    } finally {
+      client.release();
+      await pool.end();
     }
-  };
+    
+  } catch (error) {
+    console.error('❌ Error fetching quotation data:', error);
+    // Return sample data as fallback
+    const templateBuilder = new EnhancedTemplateBuilder();
+    return templateBuilder.getSampleQuotationData();
+  }
 }
 
 /**

@@ -35,9 +35,9 @@ export const DEFAULT_CONFIGS = {
     }
   },
   resourceRates: {
-    foodRate: 2500,
-    accommodationRate: 4000,
-    transportRate: 0
+    foodRatePerMonth: null,
+    accommodationRatePerMonth: null,
+    transportRate: 5000  // Default transport base cost for mob/demob
   },
   additionalParams: {
     riggerAmount: 40000,
@@ -47,10 +47,11 @@ export const DEFAULT_CONFIGS = {
       { value: "incident2", label: "Incident 2 - ₹10,000", amount: 10000 },
       { value: "incident3", label: "Incident 3 - ₹15,000", amount: 15000 }
     ],
-    usageFactors: { normal: 1.0, medium: 1.2, heavy: 1.5 },
-    riskFactors: { low: 0, medium: 8000, high: 15000 },
+    usageFactors: { normal: 0, medium: 20, heavy: 50 },
+    riskFactors: { low: 0, medium: 10, high: 20 },
     shiftFactors: { single: 1.0, double: 1.8 },
-    dayNightFactors: { day: 1.0, night: 1.3 }
+    dayNightFactors: { day: 1.0, night: 1.3 },
+    riskUsagePercentage: 5.0
   },
   defaultTemplate: {
     defaultTemplateId: 'qtpl_a650c77a',
@@ -72,6 +73,9 @@ export const getConfig = async (configName) => {
   const isDbAvailable = await testDbConnection();
   
   if (!isDbAvailable) {
+    if (configName === 'resourceRates') {
+      throw new Error('Database connection required for resource rates configuration');
+    }
     console.log(`� Using default config for ${configName} (DB unavailable)`);
     return DEFAULT_CONFIGS[configName] || {};
   }
@@ -85,21 +89,43 @@ export const getConfig = async (configName) => {
         try {
           configValue = JSON.parse(configValue);
         } catch (e) {
+          if (configName === 'resourceRates') {
+            throw new Error('Invalid resource rates configuration in database');
+          }
           configValue = DEFAULT_CONFIGS[configName] || {};
         }
       }
+      
+      // Validate required resource rates
+      if (configName === 'resourceRates') {
+        if (!configValue.foodRatePerMonth || !configValue.accommodationRatePerMonth) {
+          throw new Error('Resource rates must be properly configured in database (foodRatePerMonth and accommodationRatePerMonth are required)');
+        }
+      }
+      
       return { ...configValue, updatedAt: result.updated_at };
+    }
+    
+    // For resourceRates, require database configuration
+    if (configName === 'resourceRates') {
+      throw new Error('Resource rates not found in database - please configure them first');
     }
     
     return DEFAULT_CONFIGS[configName] || {};
   } catch (error) {
     console.error(`Error fetching ${configName}:`, error);
     dbConnectionAvailable = false; // Mark DB as unavailable
+    
+    // For resourceRates, don't fall back to defaults
+    if (configName === 'resourceRates') {
+      throw error;
+    }
+    
     return DEFAULT_CONFIGS[configName] || {};
   }
 };
 
-export const updateConfig = async (configName, configData) => {
+export const updateConfig = async (configName, configData, auditInfo = {}) => {
   console.log(`📝 Updating ${configName} config`);
   
   // Check database connection first
@@ -110,11 +136,40 @@ export const updateConfig = async (configName, configData) => {
   }
   
   try {
+    // Get the current value for audit trail
+    const currentConfig = await db.oneOrNone('SELECT id, value FROM config WHERE name = $1', [configName]);
+    
     const result = await db.one(`
       INSERT INTO config (name, value) VALUES ($1, $2)
       ON CONFLICT (name) DO UPDATE SET value = $2, updated_at = CURRENT_TIMESTAMP
-      RETURNING value, updated_at
+      RETURNING id, value, updated_at
     `, [configName, JSON.stringify(configData)]);
+    
+    // Log the change to audit table with enhanced user information
+    try {
+      await db.none(`
+        INSERT INTO config_audit (
+          config_id, config_name, action, old_value, new_value,
+          changed_by, changed_by_email, change_reason, ip_address, user_agent
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      `, [
+        result.id,
+        configName,
+        currentConfig ? 'UPDATE' : 'CREATE',
+        currentConfig ? currentConfig.value : null,
+        result.value,
+        auditInfo.userId || 'UNKNOWN',
+        auditInfo.userEmail || null,
+        auditInfo.reason || `${currentConfig ? 'Updated' : 'Created'} ${configName} configuration`,
+        auditInfo.ipAddress || null,
+        auditInfo.userAgent || null
+      ]);
+      
+      console.log(`📋 Logged config change to audit trail: ${configName} ${currentConfig ? 'updated' : 'created'} by ${auditInfo.userId || 'UNKNOWN'}`);
+    } catch (auditError) {
+      console.error('Failed to log to audit trail:', auditError);
+      // Don't fail the config update if audit logging fails
+    }
     
     let updatedValue = result.value;
     if (typeof updatedValue === 'string') {
@@ -181,6 +236,102 @@ export const initializeDefaultConfigs = async () => {
     console.log('✅ Default configurations initialized');
   } catch (error) {
     console.error('Error initializing configs:', error);
+    throw error;
+  }
+};
+
+// Audit trail functions
+export const getConfigAuditHistory = async (configName = null, limit = 50) => {
+  console.log(`🔍 Getting audit history${configName ? ` for ${configName}` : ''}`);
+  
+  const isDbAvailable = await testDbConnection();
+  if (!isDbAvailable) {
+    throw new Error('Database connection not available for audit history');
+  }
+  
+  try {
+    let query = `
+      SELECT 
+        ca.id,
+        ca.config_id,
+        ca.config_name,
+        ca.action,
+        ca.old_value,
+        ca.new_value,
+        ca.changed_by,
+        ca.changed_by_email,
+        ca.change_reason,
+        ca.ip_address,
+        ca.user_agent,
+        ca.created_at,
+        c.name as current_config_name
+      FROM config_audit ca
+      LEFT JOIN config c ON ca.config_id = c.id
+    `;
+    
+    const params = [];
+    if (configName) {
+      query += ` WHERE ca.config_name = $1`;
+      params.push(configName);
+    }
+    
+    query += ` ORDER BY ca.created_at DESC LIMIT $${params.length + 1}`;
+    params.push(limit);
+    
+    const results = await db.any(query, params);
+    
+    return results.map(row => ({
+      id: row.id,
+      configId: row.config_id,
+      configName: row.config_name,
+      action: row.action,
+      oldValue: row.old_value,
+      newValue: row.new_value,
+      changedBy: row.changed_by,
+      changedByEmail: row.changed_by_email,
+      changeReason: row.change_reason,
+      ipAddress: row.ip_address,
+      userAgent: row.user_agent,
+      createdAt: row.created_at,
+      currentConfigName: row.current_config_name
+    }));
+  } catch (error) {
+    console.error('Error fetching audit history:', error);
+    throw error;
+  }
+};
+
+export const getConfigChangesSummary = async (days = 30) => {
+  console.log(`📊 Getting config changes summary for last ${days} days`);
+  
+  const isDbAvailable = await testDbConnection();
+  if (!isDbAvailable) {
+    throw new Error('Database connection not available for changes summary');
+  }
+  
+  try {
+    const results = await db.any(`
+      SELECT 
+        config_name,
+        action,
+        changed_by,
+        COUNT(*) as change_count,
+        MAX(created_at) as latest_change
+      FROM config_audit 
+      WHERE created_at >= CURRENT_TIMESTAMP - INTERVAL '${days} days'
+      GROUP BY config_name, action, changed_by
+      ORDER BY latest_change DESC
+    `);
+    
+    return results.map(row => ({
+      configName: row.config_name,
+      action: row.action,
+      changedBy: row.changed_by,
+      changeCount: parseInt(row.change_count),
+      latestChange: row.latest_change
+    }));
+  } catch (error) {
+    console.error('Error fetching changes summary:', error);
     throw error;
   }
 };

@@ -140,16 +140,32 @@ const QuotationPrintSystem: React.FC<QuotationPrintSystemProps> = ({
   const loadTemplates = async () => {
     try {
       setIsLoading(true);
-      const response = await fetch(`${apiUrl}/templates/quotation`);
+      const response = await fetch(`${apiUrl}/templates/enhanced/quotation`);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
       const data = await response.json();
 
       if (data.success) {
         setTemplates(data.templates);
         
+        // Show fallback notice if using fallback templates
+        if (data.fallback) {
+          console.warn('Using fallback templates - database unavailable');
+          showNotification("Templates Loaded", "Using fallback templates (database unavailable)", "error");
+        }
+        
         // First, try to get the default template from config system
         let defaultTemplateId = null;
         try {
-          const configResponse = await fetch(`${apiUrl}/config/templates`);
+          const configResponse = await fetch(`${apiUrl}/config/templates`, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('token') || localStorage.getItem('jwt-token')}`,
+              'X-Bypass-Auth': 'development-only-123'
+            }
+          });
           const configData = await configResponse.json();
           if (configData.success && configData.data.defaultQuotationTemplate) {
             defaultTemplateId = configData.data.defaultQuotationTemplate;
@@ -216,16 +232,22 @@ const QuotationPrintSystem: React.FC<QuotationPrintSystemProps> = ({
       setIsPreviewOpen(true);
       setOperationStatus({ type: 'success', message: 'Preview generated successfully!' });
       
-      // Load preview in iframe
+      // Load preview in iframe - check if ref exists
       setTimeout(() => {
         if (previewFrameRef.current) {
+          console.log('🖼️ Loading preview into iframe');
           const iframe = previewFrameRef.current;
           const doc = iframe.contentDocument || iframe.contentWindow?.document;
           if (doc) {
             doc.open();
             doc.write(html);
             doc.close();
+            console.log('✅ Preview loaded into iframe successfully');
+          } else {
+            console.error('❌ Cannot access iframe document');
           }
+        } else {
+          console.error('❌ Preview iframe ref is null');
         }
       }, 100);
 

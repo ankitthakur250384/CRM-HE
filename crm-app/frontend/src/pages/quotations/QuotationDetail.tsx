@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
-import QuotationPrintSystem from '../../components/quotations/QuotationPrintSystem';
-import { ArrowLeft, Edit, FileText, Settings, Eye, Printer, Download, Mail, X } from 'lucide-react';
+import { ArrowLeft, Edit, FileText, Settings, Eye, Printer, Download } from 'lucide-react';
 interface Quotation {
   id: string;
   quotation_number?: string; // Add human-readable quotation number
@@ -40,7 +39,7 @@ const QuotationDetail: React.FC = () => {
 
   const loadAvailableTemplates = async () => {
     try {
-      const response = await fetch('/api/templates/enhanced', {
+      const response = await fetch('/api/templates/enhanced/list', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`,
           'X-Bypass-Auth': 'development-only-123'
@@ -51,7 +50,11 @@ const QuotationDetail: React.FC = () => {
         const data = await response.json();
         setAvailableTemplates([
           { id: 'default', name: 'Default Template', description: 'Standard ASP Cranes template' },
-          ...(data.templates || [])
+          ...(data.data || []).map((template: any) => ({
+            id: template.id,
+            name: template.name,
+            description: template.description || 'Enhanced template'
+          }))
         ]);
       } else {
         // If templates endpoint fails, just use default
@@ -121,19 +124,25 @@ const QuotationDetail: React.FC = () => {
     console.log('🎨 Preview state changing from', isPreviewOpen, 'to', newPreviewState);
     setIsPreviewOpen(newPreviewState);
     
-    // If opening preview, load it from backend
-    if (newPreviewState && quotation && previewFrameRef.current) {
+    // If opening preview, load it from backend after iframe is rendered
+    if (newPreviewState && quotation) {
       console.log('🎨 Loading preview from backend for quotation:', quotation.id);
       console.log('🎨 Using template:', selectedTemplate);
-      // Use the backend iframe preview route with selected template
-      const templateParam = selectedTemplate !== 'default' ? `?templateId=${selectedTemplate}` : '';
-      const iframeSrc = `/api/quotations-preview/${quotation.id}/preview/iframe${templateParam}`;
-      console.log('🎨 Setting iframe src:', iframeSrc);
-      previewFrameRef.current.src = iframeSrc;
+      
+      // Wait for iframe to be rendered before setting src
+      setTimeout(() => {
+        if (previewFrameRef.current) {
+          const templateParam = selectedTemplate !== 'default' ? `?templateId=${selectedTemplate}` : '';
+          const iframeSrc = `/api/quotations-preview/${quotation.id}/preview/iframe${templateParam}`;
+          console.log('🎨 Setting iframe src:', iframeSrc);
+          previewFrameRef.current.src = iframeSrc;
+        } else {
+          console.warn('⚠️ Iframe ref still not available after timeout');
+        }
+      }, 100);
     } else if (newPreviewState) {
-      console.warn('⚠️ Cannot load preview - quotation or iframe ref missing');
+      console.warn('⚠️ Cannot load preview - quotation missing');
       console.warn('⚠️ Quotation exists:', !!quotation);
-      console.warn('⚠️ Iframe ref exists:', !!previewFrameRef.current);
     }
   };
 
@@ -167,8 +176,8 @@ const QuotationDetail: React.FC = () => {
           'X-Bypass-Auth': 'development-only-123'
         },
         body: JSON.stringify({ 
-          quotationId: id,
-          templateId: 'default' // Use default template
+          quotationId: id
+          // templateId not specified - backend will use default template
         })
       });
 
@@ -551,17 +560,6 @@ const QuotationDetail: React.FC = () => {
                   <p className="text-gray-500">Click "Show Preview" to view the quotation preview.</p>
                 </div>
               )}
-            </div>
-
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <Settings className="h-5 w-5 mr-2" />
-                Advanced Print & Export Options
-              </h2>
-              <QuotationPrintSystem 
-                quotationId={quotation.id}
-                onClose={() => navigate('/quotations')}
-              />
             </div>
           </div>
         </div>

@@ -157,10 +157,10 @@ export function EquipmentManagement() {
       return false;
     }
 
-    // Validate date formats (YYYY-MM-DD)
+    // Validate date formats (YYYY-MM)
       const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
     if (!dateRegex.test(formData.manufacturingDate) || !dateRegex.test(formData.registrationDate)) {
-      showToast('Please enter valid dates in YYYY-MM-DD format', 'error');
+      showToast('Please enter valid dates in YYYY-MM format', 'error');
       return false;
     }
 
@@ -197,10 +197,7 @@ export function EquipmentManagement() {
           yearly: Number(formData.baseRates.yearly),
         } as BaseRates,
         runningCost: Number(formData.runningCostPerKm),
-          runningCostPerKm: Number(formData.runningCostPerKm),
-          manufacturingDate: formData.manufacturingDate,     
-          registrationDate: formData.registrationDate   
-
+        runningCostPerKm: Number(formData.runningCostPerKm),
       };
       
       console.log('Form submission data:', equipmentData);
@@ -499,9 +496,8 @@ export function EquipmentManagement() {
                               setSelectedEquipment(item);                              setFormData({
                                 name: item.name || '',
                                 category: item.category || 'mobile_crane',
-                                  manufacturingDate: item.manufacturingDate ? item.manufacturingDate.slice(0, 10) : '',
-                                  registrationDate: item.registrationDate ? item.registrationDate.slice(0, 10) : '',
-
+                                manufacturingDate: item.manufacturingDate || '',
+                                registrationDate: item.registrationDate || '',
                                 maxLiftingCapacity: item.maxLiftingCapacity !== undefined ? String(item.maxLiftingCapacity) : '',
                                 unladenWeight: item.unladenWeight !== undefined ? String(item.unladenWeight) : '',
                                 baseRates: {
@@ -582,14 +578,13 @@ export function EquipmentManagement() {
               onChange={(e) => setFormData({ ...formData, unladenWeight: e.target.value })}
               required
             />
-
+           
             <FormInput
-              label="Manufacturing Date (YYYY-MM-DD)"
+              label="Manufacturing Date"
               type="date"
               max={today}
               value={formData.manufacturingDate}
               onChange={(e) => setFormData({ ...formData, manufacturingDate: e.target.value })}
-              placeholder="YYYY-MM-DD"
               required
             />
 
@@ -601,15 +596,14 @@ export function EquipmentManagement() {
               required
             />
 
-            <FormInput
-              label="Registration Date (YYYY-MM-DD)"
+             <FormInput
+              label="Registration Date"
               type="date"
-              max={today}
+              max={today}   
               value={formData.registrationDate}
               onChange={(e) => setFormData({ ...formData, registrationDate: e.target.value })}
-              placeholder="YYYY-MM-DD"
               required
-            />
+             />
 
             <Select
               label="Status"

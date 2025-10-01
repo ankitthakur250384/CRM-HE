@@ -233,6 +233,7 @@ CREATE INDEX IF NOT EXISTS idx_quotation_templates_is_default ON quotation_templ
 DROP TABLE IF EXISTS quotations CASCADE;
 CREATE TABLE quotations (
     id VARCHAR(50) PRIMARY KEY DEFAULT 'quot_' || SUBSTRING(uuid_generate_v4()::text FROM 1 FOR 8),
+    quotation_number VARCHAR,
     deal_id VARCHAR(50) REFERENCES deals(id) ON DELETE SET NULL,
     lead_id VARCHAR(50) REFERENCES leads(id) ON DELETE SET NULL,
     customer_id VARCHAR(50) NOT NULL REFERENCES customers(id) ON DELETE CASCADE,

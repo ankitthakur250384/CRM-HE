@@ -46,46 +46,23 @@ export function calculateQuotationTotals(quotation: Quotation): QuotationCalcula
   // Prioritize database values over calculations
   const workingCost = quotation.workingCost || (quotation.totalRent || 0);
   
-  // Food & accommodation cost - use configured rates from quotation/resource configs if available
-  const foodRatePerMonth = (
-    // priority: quotation.resourceRates -> direct fields on quotation -> additionalParams
-    (quotation as any).resourceRates?.foodRatePerMonth ??
-    (quotation as any).foodRatePerMonth ??
-    (quotation as any).additionalParams?.foodRatePerMonth ??
-    2500
-  );
-  const accomRatePerMonth = (
-    (quotation as any).resourceRates?.accommodationRatePerMonth ??
-    (quotation as any).accommodationRatePerMonth ??
-    (quotation as any).additionalParams?.accommodationRatePerMonth ??
-    4000
-  );
-
-  // Convert monthly rates to per-day using 26 working days as in ResourceRatesConfig
-  const foodRatePerDay = Number(foodRatePerMonth) / 26;
-  const accomRatePerDay = Number(accomRatePerMonth) / 26;
-
-  const foodAccomCost = quotation.foodAccomCost ?? (() => {
-    return ((quotation.foodResources || 0) * foodRatePerDay + 
-            (quotation.accomResources || 0) * accomRatePerDay) * 
-            (quotation.numberOfDays || 1);
-  })();
-
+  // Food & accommodation cost - use database value only
+  const foodAccomCost = quotation.foodAccomCost || 0;
+  
   console.log('🍽️ Food & Accom calculation:', {
     fromDatabase: quotation.foodAccomCost,
     finalValue: foodAccomCost,
     foodResources: quotation.foodResources || 0,
     accomResources: quotation.accomResources || 0,
     numberOfDays: quotation.numberOfDays || 1,
-    usingDatabaseValue: quotation.foodAccomCost !== undefined && quotation.foodAccomCost !== null,
-    rates: { foodRatePerMonth, accomRatePerMonth, foodRatePerDay, accomRatePerDay }
+    usingDatabaseValue: quotation.foodAccomCost !== undefined && quotation.foodAccomCost !== null
   });
-
+  
   const transportCost = (quotation.siteDistance || 0) * (quotation.runningCostPerKm || 100);
-
+  
   // Use database mob/demob cost first
   const mobDemobCost = quotation.mobDemobCost ?? (quotation.mobDemob || 0);
-
+  
   console.log('🚚 Transport & Mob/Demob:', {
     siteDistance: quotation.siteDistance || 0,
     runningCostPerKm: quotation.runningCostPerKm || 100,
@@ -97,14 +74,15 @@ export function calculateQuotationTotals(quotation: Quotation): QuotationCalcula
   
   // Use database risk adjustment first
   const riskAdjustment = quotation.riskAdjustment ?? (() => {
-    if (quotation.riskFactor === 'high') return 15000;
-    if (quotation.riskFactor === 'medium') return 8000;
+    // Calculate risk as percentage of working cost
+    if (quotation.riskFactor === 'high') return Math.round(workingCost * 0.20); // 20%
+    if (quotation.riskFactor === 'medium') return Math.round(workingCost * 0.10); // 10%
     return 0;
   })();
   
   // Use database usage load factor first
   const usageLoadFactor = quotation.usageLoadFactor ?? (() => {
-    if (quotation.usage === 'heavy') return Math.round(workingCost * 0.5);
+    if (quotation.usage === 'heavy') return Math.round(workingCost * 0.50); // 50%
     return 0;
   })();
   
@@ -333,6 +311,23 @@ function processTemplateElement(
         <img src="${imageSrc}" alt="${imageAlt}" style="max-width: 100%; height: auto;" />
       </div>`;
       
+    case 'job_details':
+      return `<div class="job-details-section" ${wrapperStyle}>
+        <h3>🏗️ Job Details</h3>
+        <div class="job-info">
+          <div><strong>Job Type:</strong> ${quotation.orderType || 'Monthly'}</div>
+          <div><strong>Duration:</strong> ${quotation.numberOfDays || 1} ${quotation.orderType === 'monthly' ? 'Month(s)' : 'Day(s)'}</div>
+          <div><strong>Working Hours:</strong> ${quotation.workingHours || 8} hours/day</div>
+          <div><strong>Machine Type:</strong> ${quotation.machineType || 'Mobile Crane'}</div>
+        </div>
+      </div>`;
+
+    case 'equipment_table':
+      return renderEquipmentTable(quotation, calculations, wrapperStyle);
+
+    case 'charges_table':
+      return renderChargesTable(quotation, calculations, wrapperStyle);
+
     case 'total':
     case 'cost_summary':
       return `<div class="cost-summary" ${wrapperStyle}>
@@ -893,6 +888,90 @@ function replaceTemplatePlaceholders(content: string, quotation: Quotation, quot
     // Legacy placeholders
     .replace(/\{\{quote_date\}\}/g, quoteDate)
     .replace(/\{\{quote_number\}\}/g, quoteNumber);
+}
+
+function renderEquipmentTable(
+  quotation: Quotation,
+  calculations: QuotationCalculations,
+  wrapperStyle: string
+): string {
+  return `<div class="comprehensive-equipment-section" ${wrapperStyle}>
+    <h3>🏗️ Equipment & Services Details</h3>
+    <table class="equipment-table">
+      <thead>
+        <tr>
+          <th>No.</th>
+          <th>Capacity</th>
+          <th>Job Type</th>
+          <th>Job Duration</th>
+          <th>Rental</th>
+          <th>Mob.</th>
+          <th>De-Mob</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td>130MT</td>
+          <td>${quotation.orderType || 'Unloading work'}</td>
+          <td>${quotation.numberOfDays || 1} ${quotation.orderType === 'monthly' ? 'Month' : 'Days'}</td>
+          <td>₹${calculations.workingCost?.toLocaleString('en-IN') || '0'} + GST 18%</td>
+          <td>₹${calculations.mobDemobCost ? (calculations.mobDemobCost/2).toLocaleString('en-IN') : '10,000'}/- + GST 18%</td>
+          <td>₹${calculations.mobDemobCost ? (calculations.mobDemobCost/2).toLocaleString('en-IN') : '10,000'}/- + GST 18%</td>
+        </tr>
+        <tr class="total-row">
+          <td colspan="4"><strong>Total</strong></td>
+          <td><strong>₹${calculations.workingCost?.toLocaleString('en-IN') || '0'} + GST 18%</strong></td>
+          <td><strong>₹${calculations.mobDemobCost ? (calculations.mobDemobCost/2).toLocaleString('en-IN') : '10,000'}/- + GST 18%</strong></td>
+          <td><strong>₹${calculations.mobDemobCost ? (calculations.mobDemobCost/2).toLocaleString('en-IN') : '10,000'}/- + GST 18%</strong></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>`;
+}
+
+function renderChargesTable(
+  _quotation: Quotation,
+  calculations: QuotationCalculations,
+  wrapperStyle: string
+): string {
+  const hasCharges = calculations.incidentalCost > 0 || calculations.extraCharges > 0;
+  
+  if (!hasCharges) {
+    return '';
+  }
+
+  return `<div class="charges-section" ${wrapperStyle}>
+    <h3>💳 Additional Charges</h3>
+    <table class="charges-table">
+      <thead>
+        <tr>
+          <th>Description</th>
+          <th>Amount</th>
+          <th>GST (18%)</th>
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${calculations.incidentalCost > 0 ? `
+          <tr>
+            <td>Incidental Charges</td>
+            <td>₹${calculations.incidentalCost.toLocaleString('en-IN')}</td>
+            <td>₹${(calculations.incidentalCost * 0.18).toLocaleString('en-IN')}</td>
+            <td>₹${(calculations.incidentalCost * 1.18).toLocaleString('en-IN')}</td>
+          </tr>
+        ` : ''}
+        ${calculations.extraCharges > 0 ? `
+          <tr>
+            <td>Extra Charges</td>
+            <td>₹${calculations.extraCharges.toLocaleString('en-IN')}</td>
+            <td>₹${(calculations.extraCharges * 0.18).toLocaleString('en-IN')}</td>
+            <td>₹${(calculations.extraCharges * 1.18).toLocaleString('en-IN')}</td>
+          </tr>
+        ` : ''}
+      </tbody>
+    </table>
+  </div>`;
 }
 
 function getDefaultTerms(): string {

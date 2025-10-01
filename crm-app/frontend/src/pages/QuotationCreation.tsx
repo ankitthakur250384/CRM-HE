@@ -41,6 +41,7 @@ const TIME_OPTIONS = [
 
 const USAGE_OPTIONS = [
   { value: 'normal', label: 'Normal' },
+  { value: 'medium', label: 'Medium' },
   { value: 'heavy', label: 'Heavy' },
 ];
 
@@ -93,6 +94,7 @@ interface QuotationFormState extends QuotationInputs {
   };
 }
 
+// Enhanced UI v2.0 - Clean design with inline custom amounts - Updated 2025
 export function QuotationCreation() {
   const { user } = useAuthStore();
   const navigate = useNavigate();
@@ -100,6 +102,7 @@ export function QuotationCreation() {
   const location = useLocation();
   const navState = location.state as any;
   const dealId = searchParams.get('dealId') || navState?.dealId || '';
+  const leadId = searchParams.get('leadId') || navState?.leadId || '';
   const quotationId = searchParams.get('quotationId') || searchParams.get('edit');
 
   // Configuration management with auto-refresh
@@ -113,6 +116,7 @@ export function QuotationCreation() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [selectedEquipmentBaseRate, setSelectedEquipmentBaseRate] = useState<number>(0);
+  const [isLoadingExistingData, setIsLoadingExistingData] = useState(false);
 
   const [toast, setToast] = useState<{
     show: boolean;
@@ -138,8 +142,8 @@ export function QuotationCreation() {
     orderType: 'micro',
     numberOfDays: 0,
     workingHours: 8,
-    foodResources: 0,
-    accomResources: 0,
+    foodResources: 0,  // Always number (number of people)
+    accomResources: 0, // Always number (number of people)
     siteDistance: 0,
     usage: 'normal',
     riskFactor: 'low',
@@ -158,7 +162,15 @@ export function QuotationCreation() {
     status: 'draft',
     otherFactors: [],
     dealType: DEAL_TYPES[0].value,
-    sundayWorking: 'no'
+    sundayWorking: 'no',
+    // Custom amounts for this quotation (override config defaults)
+    customIncidentAmounts: {
+      incident1: null,
+      incident2: null,
+      incident3: null,
+    },
+    customRiggerAmount: null,
+    customHelperAmount: null,
   });
 
   const [calculations, setCalculations] = useState({
@@ -187,9 +199,11 @@ export function QuotationCreation() {
 
   useConfigChangeListener('quotationConfigUpdated', (detail) => {
     console.log('Quotation configuration updated, checking order type...', detail);
-    if (formData.numberOfDays > 0) {
+    // Only auto-update order type if we're not loading existing quotation data AND config is available
+    if (formData.numberOfDays > 0 && !isLoadingExistingData && quotationConfig?.orderTypeLimits) {
       const newOrderType = determineOrderType(formData.numberOfDays);
       if (newOrderType !== formData.orderType) {
+        console.log('[QuotationCreation] Auto-updating order type from config change:', newOrderType);
         setFormData(prev => ({ ...prev, orderType: newOrderType }));
       }
     }
@@ -228,7 +242,8 @@ export function QuotationCreation() {
             return {
               ...machine,
               baseRate: getEquipmentBaseRate(equipmentDetails, formData.orderType),
-              baseRates: getEquipmentBaseRates(equipmentDetails)
+              baseRates: getEquipmentBaseRates(equipmentDetails),
+              runningCostPerKm: equipmentDetails.runningCostPerKm || machine.runningCostPerKm || 0
             };
           }
           return machine;
@@ -333,39 +348,25 @@ export function QuotationCreation() {
 
       const equipmentData = await getEquipment();
       console.log('Fetched equipment data:', equipmentData);
-      // Handle different possible response shapes (array or { success: false, message })
-      if (Array.isArray(equipmentData)) {
-        setAvailableEquipment(equipmentData);
-      } else if (equipmentData && equipmentData.success === false) {
-        console.warn('[QuotationCreation] Equipment fetch failed:', equipmentData.message);
-        showToast(equipmentData.message || 'Error fetching equipment', 'error');
-        setAvailableEquipment([]);
-      } else if (equipmentData && Array.isArray(equipmentData.data)) {
-        setAvailableEquipment(equipmentData.data);
-      } else {
-        setAvailableEquipment([]);
-      }
+      console.log('🔧 Equipment baseRates check:', equipmentData?.map(eq => ({
+        id: eq.id,
+        name: eq.name,
+        baseRates: eq.baseRates,
+        baseRateMonthly: eq.baseRateMonthly
+      })));
+      setAvailableEquipment(equipmentData);
 
       if (quotationId) {
-        let quotationToLoad = null;
-        // Prefer fetching the latest quotation from API by id when editing
-        try {
-          console.log('[QuotationCreation] Fetching existing quotation from API (edit):', quotationId);
-          const resp = await getQuotationById(quotationId);
-          if (resp && resp.success === false) {
-            console.warn('[QuotationCreation] Quotation fetch failed:', resp.message);
-            showToast(resp.message || 'Error loading quotation data', 'error');
-          } else {
-            quotationToLoad = resp;
+        let quotationToLoad = existingQuotation;
+        
+        if (!quotationToLoad) {
+          try {
+            console.log('[QuotationCreation] Fetching existing quotation from API:', quotationId);
+            quotationToLoad = await getQuotationById(quotationId);
+          } catch (err) {
+            console.error('[QuotationCreation] Error fetching quotation:', err);
+            showToast('Error loading quotation data', 'error');
           }
-        } catch (err) {
-          console.error('[QuotationCreation] Error fetching quotation:', err);
-          showToast('Error loading quotation data', 'error');
-        }
-        // If API didn't return a quotation and navigation state had one, use it as fallback
-        if (!quotationToLoad && existingQuotation) {
-          console.log('[QuotationCreation] Using quotation from navigation state as fallback');
-          quotationToLoad = existingQuotation;
         }
         
         if (quotationToLoad) {
@@ -373,70 +374,159 @@ export function QuotationCreation() {
           console.log('[QuotationCreation] Full quotation data received:', quotationToLoad);
           console.log('[QuotationCreation] Customer data:', quotationToLoad.customerContact);
           console.log('[QuotationCreation] Working hours:', quotationToLoad.workingHours);
+          console.log('[QuotationCreation] Number of days:', quotationToLoad.numberOfDays);
+          console.log('[QuotationCreation] Order type:', quotationToLoad.orderType);
           console.log('[QuotationCreation] Food resources:', quotationToLoad.foodResources);
           
-          // If we have equipmentData, try to map the saved selectedEquipment id to the full equipment object
-          const matchedSelectedEquipment = (quotationToLoad.selectedEquipment?.id && Array.isArray(equipmentData))
-            ? equipmentData.find((eq: any) => eq.id === quotationToLoad.selectedEquipment.id)
-            : null;
-            
+          // Set loading flag to prevent auto-calculations from overriding loaded data
+          setIsLoadingExistingData(true);
+          
+          // Use proper null/undefined checks and data type conversion for all fields
           const updatedFormData = {
             ...formData,
             machineType: quotationToLoad.machineType || '',
-            // include dealId from loaded quotation so submit can use it when URL param is absent
-            dealId: quotationToLoad.dealId || formData.dealId || dealId,
-             // prefer the full equipment object from equipmentData so the dropdown can show it
-             selectedEquipment: matchedSelectedEquipment || quotationToLoad.selectedEquipment || formData.selectedEquipment,
-             selectedMachines: quotationToLoad.selectedMachines || [],
-             orderType: quotationToLoad.orderType || 'micro',
-             numberOfDays: quotationToLoad.numberOfDays || 0,
-             workingHours: quotationToLoad.workingHours || 8,
-             foodResources: quotationToLoad.foodResources || 0,
-             accomResources: quotationToLoad.accomResources || 0,
-             siteDistance: quotationToLoad.siteDistance || 0,
-             usage: quotationToLoad.usage || 'normal',
-             riskFactor: quotationToLoad.riskFactor || 'low',
-             extraCharge: quotationToLoad.extraCharge || 0,
-             incidentalCharges: quotationToLoad.incidentalCharges || [],
-             otherFactorsCharge: quotationToLoad.otherFactorsCharge || 0,
-             billing: quotationToLoad.billing || 'gst',
-             includeGst: quotationToLoad.includeGst !== undefined ? quotationToLoad.includeGst : true,
-             shift: quotationToLoad.shift || 'single',
-             dayNight: quotationToLoad.dayNight || 'day',
-             mobDemob: quotationToLoad.mobDemob || 0,
-             mobRelaxation: quotationToLoad.mobRelaxation || 0,
-             runningCostPerKm: quotationToLoad.runningCostPerKm || 0,
-             otherFactors: quotationToLoad.otherFactors || [],
-             dealType: quotationToLoad.dealType || DEAL_TYPES[0].value,
-             sundayWorking: quotationToLoad.sundayWorking || 'no',
-             version: quotationToLoad.version || 1,
-             status: quotationToLoad.status || 'draft',
-             customerName: quotationToLoad.customerName || (dealData?.customer?.name || ''),
-             customerContact: quotationToLoad.customerContact || {
-               name: dealData?.customer?.name || '',
-               email: dealData?.customer?.email || '',
-               phone: dealData?.customer?.phone || '',
-               company: dealData?.customer?.company || '',
-               address: dealData?.customer?.address || '',
-               designation: dealData?.customer?.designation || ''
-             }
-           };
+            selectedEquipment: quotationToLoad.selectedEquipment || formData.selectedEquipment,
+            selectedMachines: quotationToLoad.selectedMachines || [],
+            orderType: quotationToLoad.orderType || 'micro',
+            numberOfDays: Number(quotationToLoad.numberOfDays) || 1,
+            workingHours: Number(quotationToLoad.workingHours) || 8,
+            foodResources: typeof quotationToLoad.foodResources === 'number' ? quotationToLoad.foodResources : (quotationToLoad.foodResources === 'ASP Provided' ? 2 : 0),
+            accomResources: typeof quotationToLoad.accomResources === 'number' ? quotationToLoad.accomResources : (quotationToLoad.accomResources === 'ASP Provided' ? 2 : 0),
+            siteDistance: Number(quotationToLoad.siteDistance) || 0,
+            usage: quotationToLoad.usage || 'normal',
+            riskFactor: quotationToLoad.riskFactor || 'low',
+            extraCharge: Number(quotationToLoad.extraCharge) || 0,
+            incidentalCharges: quotationToLoad.incidentalCharges || [],
+            otherFactorsCharge: Number(quotationToLoad.otherFactorsCharge) || 0,
+            billing: quotationToLoad.billing || 'gst',
+            includeGst: quotationToLoad.includeGst !== undefined ? quotationToLoad.includeGst : true,
+            shift: quotationToLoad.shift === 'single' ? 'Day Shift' : quotationToLoad.shift === 'double' ? 'Night Shift' : (quotationToLoad.shift || 'Day Shift'),
+            dayNight: quotationToLoad.dayNight || 'day',
+            mobDemob: Number(quotationToLoad.mobDemob) || 0,
+            mobRelaxation: Number(quotationToLoad.mobRelaxation) || 0,
+            runningCostPerKm: quotationToLoad.runningCostPerKm || 0,
+            otherFactors: quotationToLoad.otherFactors || [],
+            dealType: quotationToLoad.dealType || DEAL_TYPES[0].value,
+            sundayWorking: quotationToLoad.sundayWorking || 'no',
+            version: quotationToLoad.version || 1,
+            status: quotationToLoad.status || 'draft',
+            notes: quotationToLoad.notes || '',
+            customerName: quotationToLoad.customerName || (dealData?.customer?.name || ''),
+            customerContact: quotationToLoad.customerContact || {
+              name: dealData?.customer?.name || '',
+              email: dealData?.customer?.email || '',
+              phone: dealData?.customer?.phone || '',
+              company: dealData?.customer?.company || '',
+              address: dealData?.customer?.address || '',
+              designation: dealData?.customer?.designation || ''
+            },
+            // Load custom amounts from database fields with proper conversion
+            customIncidentAmounts: {
+              incident1: quotationToLoad.incident1 ? Number(quotationToLoad.incident1) : null,
+              incident2: quotationToLoad.incident2 ? Number(quotationToLoad.incident2) : null,
+              incident3: quotationToLoad.incident3 ? Number(quotationToLoad.incident3) : null,
+            },
+            customRiggerAmount: quotationToLoad.riggerAmount ? Number(quotationToLoad.riggerAmount) : null,
+            customHelperAmount: quotationToLoad.helperAmount ? Number(quotationToLoad.helperAmount) : null,
+            // Load date fields
+            startDate: quotationToLoad.startDate || null,
+            endDate: quotationToLoad.endDate || null,
+            createdAt: quotationToLoad.createdAt || new Date().toISOString(),
+            updatedAt: quotationToLoad.updatedAt || new Date().toISOString(),
+            expectedCloseDate: quotationToLoad.expectedCloseDate || null,
+            // Ensure all calculation-related fields are loaded
+            totalRent: Number(quotationToLoad.totalRent) || 0,
+            totalCost: Number(quotationToLoad.totalCost) || 0,
+            workingCost: Number(quotationToLoad.workingCost) || 0,
+            mobDemobCost: Number(quotationToLoad.mobDemobCost) || 0,
+            foodAccomCost: Number(quotationToLoad.foodAccomCost) || 0,
+            gstAmount: Number(quotationToLoad.gstAmount) || 0
+          };
           
           console.log('[QuotationCreation] Form data populated with', Object.keys(updatedFormData).length, 'fields');
           console.log('[QuotationCreation] Updated form data preview:', {
             numberOfDays: updatedFormData.numberOfDays,
             workingHours: updatedFormData.workingHours,
             foodResources: updatedFormData.foodResources,
+            orderType: updatedFormData.orderType,
             customerName: updatedFormData.customerName,
             customerContact: updatedFormData.customerContact
           });
-          setFormData(updatedFormData);
-
-          // If we have calculations from the loaded quotation, use them to set initial state
-          if (quotationToLoad.calculations) {
-            console.log('[QuotationCreation] Setting calculations from loaded quotation:', quotationToLoad.calculations);
-            setCalculations(quotationToLoad.calculations);
+          
+          // Reconstruct incidentalCharges array based on loaded values
+          const reconstructedIncidentalCharges = [];
+          if (quotationToLoad.incident1 && Number(quotationToLoad.incident1) > 0) {
+            reconstructedIncidentalCharges.push('incident1');
           }
+          if (quotationToLoad.incident2 && Number(quotationToLoad.incident2) > 0) {
+            reconstructedIncidentalCharges.push('incident2');
+          }
+          if (quotationToLoad.incident3 && Number(quotationToLoad.incident3) > 0) {
+            reconstructedIncidentalCharges.push('incident3');
+          }
+          
+          // Reconstruct otherFactors array based on loaded values
+          const reconstructedOtherFactors = [];
+          if (quotationToLoad.riggerAmount && Number(quotationToLoad.riggerAmount) > 0) {
+            reconstructedOtherFactors.push('rigger');
+          }
+          if (quotationToLoad.helperAmount && Number(quotationToLoad.helperAmount) > 0) {
+            reconstructedOtherFactors.push('helper');
+          }
+          
+          // Update the form data with reconstructed arrays
+          updatedFormData.incidentalCharges = quotationToLoad.incidentalCharges?.length > 0 
+            ? quotationToLoad.incidentalCharges 
+            : reconstructedIncidentalCharges;
+          updatedFormData.otherFactors = quotationToLoad.otherFactors?.length > 0 
+            ? quotationToLoad.otherFactors 
+            : reconstructedOtherFactors;
+          
+          console.log('[QuotationCreation] Incident values loading:', {
+            incident1: quotationToLoad.incident1,
+            incident2: quotationToLoad.incident2,
+            incident3: quotationToLoad.incident3,
+            reconstructedIncidentalCharges,
+            finalIncidentalCharges: updatedFormData.incidentalCharges
+          });
+          
+          console.log('[QuotationCreation] Helper/Rigger values loading:', {
+            riggerAmount: quotationToLoad.riggerAmount,
+            helperAmount: quotationToLoad.helperAmount,
+            reconstructedOtherFactors,
+            finalOtherFactors: updatedFormData.otherFactors
+          });
+          
+          console.log('[QuotationCreation] Before setFormData - Current formData:', {
+            numberOfDays: formData.numberOfDays,
+            workingHours: formData.workingHours,
+            orderType: formData.orderType
+          });
+          
+          setFormData(updatedFormData);
+          
+          console.log('[QuotationCreation] After setFormData call completed');
+
+          // Set calculations from the loaded quotation data
+          const loadedCalculations = {
+            baseRate: Number(quotationToLoad.calculations?.baseRate) || 0,
+            totalHours: Number(quotationToLoad.calculations?.totalHours) || (Number(quotationToLoad.numberOfDays) * Number(quotationToLoad.workingHours)),
+            workingCost: Number(quotationToLoad.workingCost) || Number(quotationToLoad.calculations?.workingCost) || 0,
+            mobDemobCost: Number(quotationToLoad.mobDemobCost) || Number(quotationToLoad.calculations?.mobDemobCost) || 0,
+            foodAccomCost: Number(quotationToLoad.foodAccomCost) || Number(quotationToLoad.calculations?.foodAccomCost) || 0,
+            usageLoadFactor: Number(quotationToLoad.usageLoadFactor) || Number(quotationToLoad.calculations?.usageLoadFactor) || 0,
+            extraCharges: Number(quotationToLoad.extraCharge) || Number(quotationToLoad.calculations?.extraCharges) || 0,
+            riskAdjustment: Number(quotationToLoad.riskAdjustment) || Number(quotationToLoad.calculations?.riskAdjustment) || 0,
+            riskUsageTotal: Number(quotationToLoad.riskUsageTotal) || Number(quotationToLoad.calculations?.riskUsageTotal) || 0,
+            incidentalCost: Number(quotationToLoad.calculations?.incidentalCost) || 0,
+            otherFactorsCost: Number(quotationToLoad.otherFactorsCharge) || Number(quotationToLoad.calculations?.otherFactorsCost) || 0,
+            subtotal: Number(quotationToLoad.totalRent) || Number(quotationToLoad.calculations?.subtotal) || 0,
+            gstAmount: Number(quotationToLoad.gstAmount) || Number(quotationToLoad.calculations?.gstAmount) || 0,
+            totalAmount: Number(quotationToLoad.totalCost) || Number(quotationToLoad.calculations?.totalAmount) || 0,
+          };
+          
+          console.log('[QuotationCreation] Setting calculations from loaded quotation:', loadedCalculations);
+          setCalculations(loadedCalculations);
 
           if (quotationToLoad.selectedEquipment?.id && equipmentData) {
             const selected = equipmentData.find((eq: any) => eq.id === quotationToLoad.selectedEquipment.id);
@@ -446,30 +536,62 @@ export function QuotationCreation() {
             }
           }
 
-          // Force recalculation after loading data
+          // Don't force recalculation - preserve loaded database values
           setTimeout(() => {
-            console.log('[QuotationCreation] Forcing recalculation after data load');
-            calculateQuotation();
+            console.log('[QuotationCreation] Data loading complete - preserving database calculations');
+            
+            // Refresh selectedMachines with correct baseRates from availableEquipment
+            if (equipmentData && equipmentData.length > 0) {
+              setFormData(prev => ({
+                ...prev,
+                selectedMachines: prev.selectedMachines.map(machine => {
+                  const equipmentDetails = equipmentData.find(eq => eq.id === machine.id || eq.id === machine.equipmentId);
+                  if (equipmentDetails) {
+                    console.log(`🔧 Refreshing baseRates for ${machine.name}:`, {
+                      old: machine.baseRates,
+                      new: getEquipmentBaseRates(equipmentDetails)
+                    });
+                    return {
+                      ...machine,
+                      baseRates: getEquipmentBaseRates(equipmentDetails),
+                      runningCostPerKm: equipmentDetails.runningCostPerKm || machine.runningCostPerKm || 0
+                    };
+                  }
+                  return machine;
+                })
+              }));
+            }
+            
+            // Trigger full recalculation when equipment data changes (fixes exponential Risk & Usage growth)
+            setTimeout(() => {
+              console.log('[QuotationCreation] Equipment data updated, triggering full recalculation to fix exponential growth');
+              calculateQuotation();
+              setIsLoadingExistingData(false);
+            }, 500);
           }, 100);
 
           if (!dealData && quotationToLoad.dealId) {
             try {
+              console.log('[QuotationCreation] Loading deal from quotation dealId:', quotationToLoad.dealId);
               const quotationDeal = await getDealById(quotationToLoad.dealId);
               if (quotationDeal) {
                 console.log('[QuotationCreation] Loaded deal from quotation:', quotationDeal);
                 setDeal(quotationDeal);
+              } else {
+                console.warn('[QuotationCreation] Deal not found for ID:', quotationToLoad.dealId);
               }
             } catch (dealError) {
               console.warn('[QuotationCreation] Could not load deal for quotation:', dealError);
             }
+          } else {
+            console.log('[QuotationCreation] Skipping deal load - dealData exists:', !!dealData, 'quotation dealId:', quotationToLoad.dealId);
           }
         } else {
           console.warn('[QuotationCreation] No quotation found with ID:', quotationId);
           showToast('Quotation not found', 'warning');
         }
       } else {
-        // equipmentData may have been handled above; ensure availableEquipment is an array
-        if (!Array.isArray(availableEquipment)) setAvailableEquipment([]);
+        setAvailableEquipment(equipmentData);
       }
 
       console.log('Quotation config managed by centralized store');
@@ -523,14 +645,46 @@ export function QuotationCreation() {
   };
 
   const determineOrderType = (days: number): OrderType => {
-    if (!quotationConfig?.orderTypeLimits) return 'micro';
+    console.log('[determineOrderType] Called with days:', days, 'configLoaded:', !!quotationConfig?.orderTypeLimits);
+    console.log('[determineOrderType] Full config:', quotationConfig?.orderTypeLimits);
+    
+    if (!quotationConfig?.orderTypeLimits) {
+      console.warn('⚠️ [determineOrderType] Configuration not loaded! Returning micro as temporary fallback.');
+      return 'micro'; // Return a safe fallback, but this should not be the final saved value
+    }
     
     const limits = quotationConfig.orderTypeLimits;
-    if (days <= 0) return 'micro';
-    if (days >= limits.yearly.minDays) return 'yearly';
-    if (days >= limits.monthly.minDays) return 'monthly';
-    if (days >= limits.small.minDays) return 'small';
-    return 'micro';
+    if (days <= 0) {
+      console.log('[determineOrderType] Invalid days (<=0), returning micro');
+      return 'micro';
+    }
+    
+    // Check in correct order: micro -> small -> monthly -> yearly
+    let result: OrderType;
+    if (days <= limits.micro.maxDays) result = 'micro';
+    else if (days <= limits.small.maxDays) result = 'small';
+    else if (days <= limits.monthly.maxDays) result = 'monthly';
+    else result = 'yearly';
+    
+    console.log('[determineOrderType] Result for', days, 'days:', result, 'limits:', limits);
+    
+    // Test case verification
+    if (days === 21) {
+      console.log('🧪 TEST: 21 days should be "small" (11-25 range). Got:', result);
+      if (result !== 'small') {
+        console.error('❌ TEST FAILED: 21 days returned', result, 'instead of "small"');
+        console.log('Limits check:', {
+          microMax: limits.micro.maxDays,
+          smallMax: limits.small.maxDays,
+          monthlyMax: limits.monthly.maxDays,
+          evaluation: `21 <= ${limits.micro.maxDays} = ${days <= limits.micro.maxDays}, 21 <= ${limits.small.maxDays} = ${days <= limits.small.maxDays}`
+        });
+      } else {
+        console.log('✅ TEST PASSED: 21 days correctly mapped to "small"');
+      }
+    }
+    
+    return result;
   };
 
   const calculateQuotation = () => {
@@ -538,14 +692,18 @@ export function QuotationCreation() {
     console.log("FormData.numberOfDays:", formData.numberOfDays);
     console.log("SelectedEquipmentBaseRate:", selectedEquipmentBaseRate);
     console.log("FormData.selectedMachines:", formData.selectedMachines);
+    console.log("IsLoadingExistingData:", isLoadingExistingData);
+    
+    // Skip recalculation if we're loading existing data to preserve database values
+    if (isLoadingExistingData) {
+      console.log("⏸️ Skipping calculation - loading existing data");
+      return;
+    }
     
     const hasMachines = formData.selectedMachines.length > 0;
     const effectiveBaseRate = selectedEquipmentBaseRate;
     
-    const hasDistance = (formData.siteDistance && formData.siteDistance > 0) || (formData.mobDemob && formData.mobDemob > 0);
-//
-//    // If there are no inputs to compute any costs (no days, no machines, no base rate, and no distance/manual mobDemob), skip
-    if ((!formData.numberOfDays || Number(formData.numberOfDays) === 0) && !hasMachines && !effectiveBaseRate && !hasDistance) {
+    if (!formData.numberOfDays || (!hasMachines && !effectiveBaseRate)) {
       console.log("❌ Calculation stopped - missing days or equipment", {
         numberOfDays: formData.numberOfDays,
         hasMachines,
@@ -630,18 +788,25 @@ export function QuotationCreation() {
       finalWorkingCost: workingCost
     });
 
-    // Food & Accommodation costs
-    const foodRate = resourceRates?.foodRate;
-    const accomRate = resourceRates?.accommodationRate;
-    const foodCost = foodRate ? (formData.foodResources || 0) * foodRate * numberOfDays : 0;
-    const accomCost = accomRate ? (formData.accomResources || 0) * accomRate * numberOfDays : 0;
+    // Food & Accommodation costs - convert monthly rates to daily rates
+    const foodRatePerMonth = resourceRates?.foodRatePerMonth;
+    const accomRatePerMonth = resourceRates?.accommodationRatePerMonth;
+    
+    // Convert monthly rates to daily rates (assuming 26 working days per month)
+    const foodRatePerDay = foodRatePerMonth ? foodRatePerMonth / 26 : 0;
+    const accomRatePerDay = accomRatePerMonth ? accomRatePerMonth / 26 : 0;
+    
+    const foodCost = foodRatePerDay ? (formData.foodResources || 0) * foodRatePerDay * numberOfDays : 0;
+    const accomCost = accomRatePerDay ? (formData.accomResources || 0) * accomRatePerDay * numberOfDays : 0;
     const foodAccomCost = foodCost + accomCost;
 
     console.log("🍽️ Food & Accommodation:", {
       foodResources: formData.foodResources,
       accomResources: formData.accomResources,
-      foodRate,
-      accomRate,
+      foodRatePerMonth,
+      accomRatePerMonth,
+      foodRatePerDay,
+      accomRatePerDay,
       numberOfDays,
       foodCost,
       accomCost,
@@ -649,120 +814,191 @@ export function QuotationCreation() {
       resourceRates
     });
 
-    // Mobilization/Demobilization costs
-    let mobDemobCost = 0;
-    const transportRate = resourceRates?.transportRate; // restored for logging and potential use
-
-    if (formData.mobDemob > 0) {
-      mobDemobCost = formData.mobDemob;
-    } else if (formData.siteDistance > 0) {
-      const distance = formData.siteDistance || 0;
-      if (hasMachines) {
-        mobDemobCost = formData.selectedMachines.reduce((total, machine) => {
-          const runningCostPerKm = machine.runningCostPerKm || 0;
-          const machineCost = (distance * 2 * runningCostPerKm);
-          return total + (machineCost * machine.quantity);
-        }, 0);
-      } else {
-        // Prefer runningCostPerKm from the selected equipment (if any) fetched from availableEquipment
-        let runningCostPerKm = formData.runningCostPerKm || 0;
-        if (formData.selectedEquipment?.id) {
-          const equipmentDetails = availableEquipment.find(eq => eq.id === formData.selectedEquipment.id);
-          if (equipmentDetails && equipmentDetails.runningCostPerKm !== undefined) {
-            runningCostPerKm = equipmentDetails.runningCostPerKm;
-          }
-        }
-        mobDemobCost = (distance * 2 * runningCostPerKm);
-      }
-
-      if (formData.mobRelaxation > 0) {
-        mobDemobCost = mobDemobCost * (1 - (formData.mobRelaxation / 100));
-      }
+    // Warn if resource rates are not configured
+    if ((formData.foodResources > 0 || formData.accomResources > 0) && (!foodRatePerMonth || !accomRatePerMonth)) {
+      console.warn("⚠️ Resource rates not configured! Food & Accommodation costs will be ₹0. Please configure rates in Settings.");
     }
 
-    console.log("🚚 Mob-Demob calculation:", {
+    // Mobilization/Demobilization costs
+    let mobDemobCost = 0;
+    
+    console.log("🚚 MOB/DEMOB CALCULATION DEBUG:", {
       mobDemobManual: formData.mobDemob,
       siteDistance: formData.siteDistance,
-      transportRate,
+      hasMachines,
+      selectedMachinesCount: formData.selectedMachines?.length,
+      selectedMachinesData: formData.selectedMachines?.map(m => ({
+        name: m.name,
+        quantity: m.quantity,
+        runningCostPerKm: m.runningCostPerKm,
+        hasRunningCost: !!m.runningCostPerKm
+      }))
+    });
+    
+    if (formData.mobDemob > 0) {
+      mobDemobCost = formData.mobDemob;
+      console.log("🚚 Using manual mob/demob cost:", mobDemobCost);
+    } else if (formData.siteDistance > 0) {
+      if (hasMachines) {
+        console.log("🚚 Calculating mob/demob for machines...");
+        mobDemobCost = formData.selectedMachines.reduce((total, machine) => {
+          const distance = formData.siteDistance || 0;
+          const runningCostPerKm = machine.runningCostPerKm || 0;
+          const machineCost = distance * 2 * runningCostPerKm; // Round trip cost only
+          const totalForMachine = machineCost * machine.quantity;
+          
+          // Warn if equipment has no running cost data
+          if (!runningCostPerKm) {
+            console.warn(`⚠️ Equipment "${machine.name}" has no running cost per km configured! Mob/demob will be ₹0 for this equipment.`);
+          }
+          
+          console.log(`  - Machine: ${machine.name}, Distance: ${distance}km, Running Cost: ₹${runningCostPerKm}/km, Qty: ${machine.quantity}`);
+          console.log(`    Calculation: ${distance} * 2 * ${runningCostPerKm} = ₹${machineCost} per machine`);
+          console.log(`    Total for ${machine.quantity} machine(s): ₹${totalForMachine}`);
+          
+          return total + totalForMachine;
+        }, 0);
+        console.log("🚚 Total mob/demob cost from machines:", mobDemobCost);
+      } else {
+        console.log("🚚 No machines selected, using fallback calculation...");
+        const distance = formData.siteDistance || 0;
+        const runningCostPerKm = formData.runningCostPerKm || 0;
+        mobDemobCost = distance * 2 * runningCostPerKm; // Round trip cost only
+        console.log(`  Fallback calculation: ${distance} * 2 * ${runningCostPerKm} = ₹${mobDemobCost}`);
+      }
+      
+      if (formData.mobRelaxation > 0) {
+        const beforeRelaxation = mobDemobCost;
+        mobDemobCost = Math.max(0, mobDemobCost - formData.mobRelaxation);
+        console.log(`🚚 Applied ₹${formData.mobRelaxation} relaxation discount: ₹${beforeRelaxation} -> ₹${mobDemobCost}`);
+      }
+    } else {
+      console.log("🚚 No mob/demob calculation: siteDistance =", formData.siteDistance);
+    }
+
+    console.log("🚚 FINAL Mob-Demob calculation result:", {
+      mobDemobManual: formData.mobDemob,
+      siteDistance: formData.siteDistance,
       mobRelaxation: formData.mobRelaxation,
-      mobDemobCost,
+      finalMobDemobCost: mobDemobCost,
       hasMachines,
       selectedMachines: formData.selectedMachines?.map(m => ({ 
         name: m.name, 
         quantity: m.quantity, 
         runningCostPerKm: m.runningCostPerKm 
+      })),
+      conditionChecks: {
+        hasManualMobDemob: formData.mobDemob > 0,
+        hasDistance: formData.siteDistance > 0,
+        shouldCalculate: (formData.mobDemob === 0 && formData.siteDistance > 0)
+      }
+    });
+
+    // Risk & Usage calculation based on Monthly Base Rate of Equipment(s)
+    // Calculate total monthly base rate for all selected equipment
+    // Always use the monthly base rate from availableEquipment to ensure accuracy
+    const totalMonthlyBaseRate = formData.selectedMachines.reduce((total, machine) => {
+      // Find the equipment in availableEquipment to get the latest monthly rate
+      const equipmentDetails = availableEquipment.find(eq => eq.id === machine.id);
+      const monthlyRate = equipmentDetails?.baseRates?.monthly || equipmentDetails?.baseRateMonthly || machine.baseRates?.monthly || 0;
+      
+      console.log(`🔧 Risk & Usage - Equipment ${machine.name}:`, {
+        machineId: machine.id,
+        quantity: machine.quantity,
+        monthlyRateFromMachine: machine.baseRates?.monthly,
+        monthlyRateFromAvailable: equipmentDetails?.baseRates?.monthly,
+        monthlyRateFromAvailableAlt: equipmentDetails?.baseRateMonthly,
+        finalMonthlyRate: monthlyRate,
+        contribution: monthlyRate * machine.quantity
+      });
+      
+      return total + (monthlyRate * machine.quantity);
+    }, 0);
+
+    // Get individual Risk and Usage factors from configuration
+    const riskFactors = additionalParams?.riskFactors || { low: 0, medium: 10, high: 20 };
+    const usageFactors = additionalParams?.usageFactors || { normal: 0, medium: 20, heavy: 50 };
+    
+    // Use the ACTUAL selected risk and usage values from the form
+    const selectedRiskType = formData.riskFactor || 'low'; // Use actual form value
+    const selectedUsageType = formData.usage || 'normal'; // Use actual form value
+    
+    const riskPercentage = riskFactors[selectedRiskType as keyof typeof riskFactors] || 0;
+    const usagePercentage = usageFactors[selectedUsageType as keyof typeof usageFactors] || 0;
+
+    console.log("🔧 Risk & Usage calculation (individual factors):", {
+      selectedMachines: formData.selectedMachines.length,
+      totalMonthlyBaseRate,
+      riskFactors,
+      usageFactors,
+      selectedRiskType: selectedRiskType,
+      selectedUsageType: selectedUsageType,
+      riskPercentage,
+      usagePercentage,
+      equipmentBreakdown: formData.selectedMachines.map(m => ({
+        name: m.name,
+        quantity: m.quantity,
+        monthlyRate: m.baseRates?.monthly || 0,
+        subtotal: (m.baseRates?.monthly || 0) * m.quantity
       }))
     });
 
-    // Risk & Usage adjustments from configuration
-    const baseForRiskCalc = workingCost;
-    let riskPercentage = 0;
-    let usagePercentage = 0;
-
-    // Get risk factor from configuration (prefer quotationConfig, fall back to additionalParams)
-    const riskFactorsConfig = quotationConfig?.riskFactors || additionalParams?.riskFactors;
-    if (riskFactorsConfig) {
-      if (formData.riskFactor === 'high') {
-        riskPercentage = riskFactorsConfig.high;
-      } else if (formData.riskFactor === 'medium') {
-        riskPercentage = riskFactorsConfig.medium;
-      } else {
-        riskPercentage = riskFactorsConfig.low;
-      }
-    }
-
-    // Get usage factor from configuration (prefer quotationConfig, fall back to additionalParams)
-    const usageFactorsConfig = quotationConfig?.usageFactors || additionalParams?.usageFactors;
-    if (usageFactorsConfig) {
-      if (formData.usage === 'heavy') {
-        usagePercentage = usageFactorsConfig.heavy;
-      } else {
-        usagePercentage = usageFactorsConfig.normal;
-      }
-    }
-
-    console.log("🔧 Risk & Usage factors:", {
-      riskFactor: formData.riskFactor,
-      riskPercentage,
-      usage: formData.usage,
-      usagePercentage,
-      baseForRiskCalc
-    });
-
-    const riskAdjustment = baseForRiskCalc * riskPercentage;
-    const usageLoadFactor = baseForRiskCalc * usagePercentage;
-    const riskandusagecost = riskAdjustment + usageLoadFactor;
+    // Calculate Risk and Usage separately using individual factors
+    const riskAdjustment = totalMonthlyBaseRate * (riskPercentage / 100);
+    const usageLoadFactor = totalMonthlyBaseRate * (usagePercentage / 100);
+    const riskUsageTotal = riskAdjustment + usageLoadFactor;
 
     // Additional charges
     const extraCharges = Number(formData.extraCharge) || 0;
     
-    // Incidental charges from configuration
-    const incidentalOptions = additionalParams?.incidentalOptions;
+    // Incidental charges - use custom amounts if provided, otherwise use config
     const incidentalTotal = formData.incidentalCharges.reduce((sum, val) => {
-      const found = incidentalOptions?.find(opt => opt.value === val);
-      return sum + (found ? found.amount : 0);
+      let amount = 0;
+      
+      // Use custom amount if provided, otherwise use config default
+      if (val === 'incident1') {
+        amount = formData.customIncidentAmounts?.incident1 ?? 
+                additionalParams?.incidentalOptions?.find(opt => opt.value === 'incident1')?.amount ?? 5000;
+      } else if (val === 'incident2') {
+        amount = formData.customIncidentAmounts?.incident2 ?? 
+                additionalParams?.incidentalOptions?.find(opt => opt.value === 'incident2')?.amount ?? 10000;
+      } else if (val === 'incident3') {
+        amount = formData.customIncidentAmounts?.incident3 ?? 
+                additionalParams?.incidentalOptions?.find(opt => opt.value === 'incident3')?.amount ?? 15000;
+      } else {
+        // Fallback for any other incident types
+        const found = additionalParams?.incidentalOptions?.find(opt => opt.value === val);
+        amount = found ? found.amount : 0;
+      }
+      
+      return sum + amount;
     }, 0);
 
     console.log("📋 Incidental charges:", {
       incidentalCharges: formData.incidentalCharges,
-      incidentalOptions,
+      customIncidentAmounts: formData.customIncidentAmounts,
       incidentalTotal
     });
 
-    const otherFactorsTotal = (formData.otherFactors.includes('rigger') && additionalParams?.riggerAmount ? additionalParams.riggerAmount : 0) + 
-                            (formData.otherFactors.includes('helper') && additionalParams?.helperAmount ? additionalParams.helperAmount : 0);
+    const riggerAmount = formData.customRiggerAmount ?? additionalParams?.riggerAmount ?? 40000;
+    const helperAmount = formData.customHelperAmount ?? additionalParams?.helperAmount ?? 12000;
+    
+    const otherFactorsTotal = (formData.otherFactors.includes('rigger') ? riggerAmount : 0) + 
+                            (formData.otherFactors.includes('helper') ? helperAmount : 0);
 
     console.log("👷 Other factors (Rigger & Helper):", {
       otherFactors: formData.otherFactors,
-      riggerAmount: additionalParams?.riggerAmount,
-      helperAmount: additionalParams?.helperAmount,
+      riggerAmountUsed: riggerAmount,
+      helperAmountUsed: helperAmount,
+      customRiggerAmount: formData.customRiggerAmount,
+      customHelperAmount: formData.customHelperAmount,
       riggerSelected: formData.otherFactors.includes('rigger'),
       helperSelected: formData.otherFactors.includes('helper'),
       otherFactorsTotal
     });
 
-    // Calculate subtotal
-    const subtotal = workingCost + foodAccomCost + mobDemobCost + riskandusagecost + extraCharges + incidentalTotal + otherFactorsTotal;
+    // Calculate subtotal using the combined Risk & Usage total
+    const subtotal = workingCost + foodAccomCost + mobDemobCost + riskUsageTotal + extraCharges + incidentalTotal + otherFactorsTotal;
 
     // GST calculation
     const gstAmount = formData.includeGst ? subtotal * 0.18 : 0;
@@ -774,8 +1010,14 @@ export function QuotationCreation() {
       workingCost,
       mobDemobCost,
       foodAccomCost,
-      riskandusagecost,
+      usageLoadFactor,
       extraCharges,
+      riskAdjustment,
+      riskUsageTotal, // New combined Risk & Usage total
+      totalMonthlyBaseRate, // For debugging/reference
+      incidentalCost: incidentalTotal, // Add incidental cost to calculations
+      otherFactorsCost: otherFactorsTotal,
+      subtotal,
       gstAmount,
       totalAmount,
     };
@@ -798,6 +1040,12 @@ export function QuotationCreation() {
       return;
     }
 
+    // Ensure configuration is loaded before submitting
+    if (!quotationConfig?.orderTypeLimits) {
+      showToast('Configuration is still loading. Please wait a moment and try again.', 'error');
+      return;
+    }
+
     if (formData.selectedMachines.length === 0) {
       showToast('Please select at least one equipment', 'error');
       return;
@@ -806,22 +1054,45 @@ export function QuotationCreation() {
     try {
       setIsSaving(true);
       
-      // Ensure we have either a deal or lead ID
-      const effectiveDealId = dealId || (formData as any).dealId || '';
-      if (!effectiveDealId) {
+      // Ensure we have either a deal or lead ID (for updates, deal should be loaded from quotation)
+      const currentDealId = dealId || deal?.id;
+      console.log('🔍 DEBUG: Submit validation - dealId:', dealId, 'deal?.id:', deal?.id, 'currentDealId:', currentDealId, 'quotationId:', quotationId);
+      
+      if (!currentDealId && !quotationId) {
         showToast('A deal must be selected to create a quotation', 'error');
         return;
       }
 
-      // Validate deal stage
-      if (!deal?.stage || !['qualification', 'proposal', 'negotiation'].includes(deal.stage)) {
+      // Validate deal stage (skip validation for updates if deal couldn't be loaded)
+      if (deal && (!deal?.stage || !['qualification', 'proposal', 'negotiation'].includes(deal.stage))) {
         showToast('Quotations can only be created for deals in Qualification, Proposal, or Negotiation stages', 'error');
         return;
       }
 
+      console.log('🔍 DEBUG: About to submit quotation with EXACT form values:', {
+        orderType: formData.orderType,
+        numberOfDays: formData.numberOfDays,
+        usage: formData.usage,
+        riskFactor: formData.riskFactor,
+        foodResources: formData.foodResources,
+        accomResources: formData.accomResources,
+        configurationLoaded: !!quotationConfig?.orderTypeLimits,
+        quotationConfigLimits: quotationConfig?.orderTypeLimits,
+        determineOrderTypeResult: determineOrderType(formData.numberOfDays)
+      });
+
+      // Double-check that the order type is correctly determined
+      const finalOrderType = determineOrderType(formData.numberOfDays);
+      if (finalOrderType !== formData.orderType) {
+        console.warn('⚠️ Order type mismatch! Form has:', formData.orderType, 'but determination gives:', finalOrderType);
+        // Update form data to use the correctly determined order type
+        setFormData(prev => ({ ...prev, orderType: finalOrderType }));
+      }
+
       const quotationData = {
-        ...formData,
-        dealId: effectiveDealId,
+        ...formData,  // Use EXACT form data without overrides
+        dealId: currentDealId,
+        leadId: leadId,
         customerName: formData.customerName || deal?.customer?.name || '',
         customerContact: {
           name: formData.customerContact?.name || deal?.customer?.name || '',
@@ -838,10 +1109,20 @@ export function QuotationCreation() {
         workingCost: calculations.workingCost,
         mobDemobCost: calculations.mobDemobCost,
         foodAccomCost: calculations.foodAccomCost,
-        riskandusagecost: calculations.riskandusagecost,
+        usageLoadFactor: calculations.usageLoadFactor,
+        riskAdjustment: calculations.riskAdjustment,
         gstAmount: calculations.gstAmount,
         createdBy: user?.id || '',
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
+        // Equipment information for database storage
+        primaryEquipmentId: formData.selectedEquipment?.equipmentId || formData.selectedEquipment?.id || null,
+        equipmentSnapshot: formData.selectedEquipment || null,
+        // Custom per-quotation amounts (will be stored in database fields)
+        incident1: formData.customIncidentAmounts?.incident1?.toString() || null,
+        incident2: formData.customIncidentAmounts?.incident2?.toString() || null,
+        incident3: formData.customIncidentAmounts?.incident3?.toString() || null,
+        riggerAmount: formData.customRiggerAmount || null,
+        helperAmount: formData.customHelperAmount || null
       };
 
       if (quotationId) {
@@ -1003,16 +1284,25 @@ export function QuotationCreation() {
                     style={{ color: '#1a202c', WebkitTextFillColor: '#1a202c' }}
                     onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
                       const days = e.target.value === '' ? 0 : Number(e.target.value);
-                      const newOrderType = determineOrderType(days);
                       
                       setFormData(prev => {
-                        const orderTypeChanged = days > 0 && newOrderType !== prev.orderType;
+                        // Only auto-update order type if not loading existing data AND config is loaded
+                        const shouldAutoUpdateOrderType = !isLoadingExistingData && days > 0 && quotationConfig?.orderTypeLimits;
+                        const newOrderType = shouldAutoUpdateOrderType ? determineOrderType(days) : prev.orderType;
+                        const orderTypeChanged = shouldAutoUpdateOrderType && newOrderType !== prev.orderType;
                         
-                        return {
-                          ...prev,
-                          numberOfDays: days,
-                          orderType: days > 0 ? newOrderType : prev.orderType,
-                          selectedMachines: orderTypeChanged ? prev.selectedMachines.map(machine => {
+                        console.log('[QuotationCreation] numberOfDays onChange:', {
+                          days,
+                          isLoadingExistingData,
+                          shouldAutoUpdateOrderType,
+                          currentOrderType: prev.orderType,
+                          newOrderType,
+                          orderTypeChanged
+                        });
+                        
+                        let updatedMachines = [...prev.selectedMachines];
+                        if (orderTypeChanged) {
+                          updatedMachines = prev.selectedMachines.map(machine => {
                             // Find the equipment in availableEquipment to get updated rates
                             const equipment = availableEquipment.find(eq => eq.id === machine.id);
                             if (equipment) {
@@ -1022,8 +1312,18 @@ export function QuotationCreation() {
                                 baseRates: getEquipmentBaseRates(equipment)
                               };
                             }
-                            return machine;
-                          }) : prev.selectedMachines
+                            return {
+                              ...machine,
+                              baseRate: machine.baseRates?.[newOrderType] || machine.baseRate
+                            };
+                          });
+                        }
+                        
+                        return {
+                          ...prev,
+                          numberOfDays: days,
+                          orderType: newOrderType,
+                          selectedMachines: updatedMachines
                         };
                       });
                     }}
@@ -1039,10 +1339,10 @@ export function QuotationCreation() {
                       <div className="text-sm font-medium text-blue-900">Order Type</div>
                       <div className="text-lg font-bold text-blue-700 capitalize">
                         {formData.orderType}
-                        {formData.orderType === 'micro' && ' (≤ 7 days)'}
-                        {formData.orderType === 'small' && ' (8-25 days)'}
-                        {formData.orderType === 'monthly' && ' (26-300 days)'}
-                        {formData.orderType === 'yearly' && ' (≥ 300 days)'}
+                        {formData.orderType === 'micro' && ' (1-10 days)'}
+                        {formData.orderType === 'small' && ' (11-25 days)'}
+                        {formData.orderType === 'monthly' && ' (26-365 days)'}
+                        {formData.orderType === 'yearly' && ' (366+ days)'}
                       </div>
                     </div>
                   )}
@@ -1117,56 +1417,59 @@ export function QuotationCreation() {
                     <>
                       <Select
                         label="Available Equipment"
-                        value={formData.selectedEquipment?.id || ''}
+                        value=""
                         onChange={(value: string) => {
                           const selected = availableEquipment.find(eq => eq.id === value);
                           if (selected) {
-                             // Check if this machine is already selected
-                             const existingIndex = formData.selectedMachines.findIndex(m => m.id === selected.id);
-                             
-                             if (existingIndex >= 0) {
-                               // If already selected, increase quantity
-                               setFormData(prev => ({
-                                 ...prev,
-                                 // also set selectedEquipment for single-equipment flows
-                                 selectedEquipment: selected,
-                                 selectedMachines: prev.selectedMachines.map((m, i) => 
-                                   i === existingIndex ? { ...m, quantity: m.quantity + 1 } : m
-                                 )
-                               }));
-                             } else {
-                               // Add new machine to the list
-                               const baseRates = getEquipmentBaseRates(selected);
-                               const newMachine = {
-                                 id: selected.id,
-                                 machineType: formData.machineType,
-                                 equipmentId: selected.equipmentId,
-                                 name: selected.name,
-                                 baseRates: baseRates,
-                                 baseRate: getEquipmentBaseRate(selected, formData.orderType),
-                                 runningCostPerKm: selected.runningCostPerKm || 0,
-                                 quantity: 1
-                               };
-                               
-                               setFormData(prev => ({
-                                 ...prev,
-                                 // also set selectedEquipment so the dropdown reflects the selection
-                                 selectedEquipment: selected,
-                                 selectedMachines: [...prev.selectedMachines, newMachine]
-                               }));
-                             }
-                           }
-                         }}
-                         options={[
-                           { value: '', label: 'Select equipment to add...' },
-                           ...availableEquipment.map(eq => ({ 
-                             value: eq.id, 
-                             label: `${eq.name} - ${formatCurrency(getEquipmentBaseRate(eq, formData.orderType))}${getRateUnit(formData.orderType)}` 
-                           }))
-                         ]}
-                         className="text-gray-900 mb-3"
-                       />
-                      
+                            // Check if this machine is already selected
+                            const existingIndex = formData.selectedMachines.findIndex(m => m.id === selected.id);
+                            
+                            if (existingIndex >= 0) {
+                              // If already selected, increase quantity
+                              setFormData(prev => ({
+                                ...prev,
+                                selectedMachines: prev.selectedMachines.map((m, i) => 
+                                  i === existingIndex ? { ...m, quantity: m.quantity + 1 } : m
+                                )
+                              }));
+                            } else {
+                              // Add new machine to the list
+                              const baseRates = getEquipmentBaseRates(selected);
+                              const newMachine = {
+                                id: selected.id,
+                                machineType: formData.machineType,
+                                equipmentId: selected.equipmentId,
+                                name: selected.name,
+                                baseRates: baseRates,
+                                baseRate: getEquipmentBaseRate(selected, formData.orderType),
+                                runningCostPerKm: selected.runningCostPerKm || 0,
+                                quantity: 1
+                              };
+                              
+                              console.log(`🏗️ Added equipment to selection:`, {
+                                name: selected.name,
+                                runningCostPerKm: selected.runningCostPerKm,
+                                hasRunningCost: !!selected.runningCostPerKm,
+                                equipmentData: selected
+                              });
+                              
+                              setFormData(prev => ({
+                                ...prev,
+                                selectedMachines: [...prev.selectedMachines, newMachine]
+                              }));
+                            }
+                          }
+                        }}
+                        options={[
+                          { value: '', label: 'Select equipment to add...' },
+                          ...availableEquipment.map(eq => ({ 
+                            value: eq.id, 
+                            label: `${eq.name} - ${formatCurrency(getEquipmentBaseRate(eq, formData.orderType))}${getRateUnit(formData.orderType)}` 
+                          }))
+                        ]}
+                        className="text-gray-900 mb-3"
+                      />
+
                       {/* Selected machines list */}
                       {formData.selectedMachines.length > 0 && (
                         <div className="mt-4 space-y-3">
@@ -1273,7 +1576,7 @@ export function QuotationCreation() {
                                         }}
                                         className="w-full pl-6 pr-2 py-1 border border-gray-300 rounded text-sm focus:ring-1 focus:ring-blue-500 focus:border-blue-500"
                                         min="0"
-                                        step="1"
+                                        step="100"
                                         placeholder="0"
                                       />
                                     </div>
@@ -1401,20 +1704,49 @@ export function QuotationCreation() {
                     min="0"
                     placeholder="Distance in km"
                   />
+                  <FormInput
+                    type="number"
+                    label="Mob Relaxation"
+                    value={formData.mobRelaxation || ''}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      setFormData(prev => ({ ...prev, mobRelaxation: Number(e.target.value) || 0 }));
+                    }}
+                    min="0"
+                    placeholder="₹0"
+                  />
+                  
                   <div className="grid grid-cols-2 gap-2">
                     <Select
                       label="Usage"
                       value={formData.usage}
-                      onChange={(value: string) => setFormData(prev => ({ ...prev, usage: value as 'normal' | 'heavy' }))}
+                      onChange={(value: string) => {
+                        setFormData(prev => ({ ...prev, usage: value as 'normal' | 'medium' | 'heavy' }));
+                        // Trigger recalculation when usage changes
+                        setTimeout(() => calculateQuotation(), 100);
+                      }}
                       options={USAGE_OPTIONS}
                     />
                     <Select
                       label="Risk Level"
                       value={formData.riskFactor}
-                      onChange={(value: string) => setFormData(prev => ({ ...prev, riskFactor: value as 'low' | 'medium' | 'high' }))}
+                      onChange={(value: string) => {
+                        setFormData(prev => ({ ...prev, riskFactor: value as 'low' | 'medium' | 'high' }));
+                        // Trigger recalculation when risk factor changes
+                        setTimeout(() => calculateQuotation(), 100);
+                      }}
                       options={RISK_LEVELS}
                     />
                   </div>
+                  
+                  <Select
+                    label="Sunday Working"
+                    value={formData.sundayWorking}
+                    onChange={(value: string) => setFormData(prev => ({ ...prev, sundayWorking: value as 'yes' | 'no' }))}
+                    options={[
+                      { value: 'no', label: 'No' },
+                      { value: 'yes', label: 'Yes' }
+                    ]}
+                  />
                 </CardContent>
               </Card>
             </div>
@@ -1442,65 +1774,181 @@ export function QuotationCreation() {
                   
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Incidental Charges</label>
-                    <div className="space-y-2">
-                      {additionalParams?.incidentalOptions?.map(option => (
-                        <label key={option.value} className="flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={formData.incidentalCharges.includes(option.value)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setFormData(prev => ({
-                                  ...prev,
-                                  incidentalCharges: [...prev.incidentalCharges, option.value]
-                                }));
-                              } else {
-                                setFormData(prev => ({
-                                  ...prev,
-                                  incidentalCharges: prev.incidentalCharges.filter(val => val !== option.value)
-                                }));
-                              }
-                            }}
-                            className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                          />
-                          <span className="text-sm text-gray-700">{option.label}</span>
-                        </label>
-                      ))}
+                    <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                      {additionalParams?.incidentalOptions?.map(option => {
+                        const isSelected = formData.incidentalCharges.includes(option.value);
+                        const customAmountKey = option.value as 'incident1' | 'incident2' | 'incident3';
+                        const customAmount = formData.customIncidentAmounts?.[customAmountKey];
+                        const displayAmount = customAmount ?? option.amount;
+                        
+                        return (
+                          <div key={option.value} className={`rounded-md border-2 p-3 transition-all duration-200 ${
+                            isSelected ? 'border-blue-200 bg-blue-50' : 'border-gray-200 bg-white hover:border-gray-300'
+                          }`}>
+                            <div className="flex items-center justify-between">
+                              <label className="flex items-center cursor-pointer flex-1">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        incidentalCharges: [...prev.incidentalCharges, option.value]
+                                      }));
+                                    } else {
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        incidentalCharges: prev.incidentalCharges.filter(val => val !== option.value)
+                                      }));
+                                    }
+                                  }}
+                                  className="mr-3 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                />
+                                <div className="flex-1">
+                                  <div className="text-sm font-medium text-gray-900">
+                                    {option.label.split(' - ')[0]}
+                                  </div>
+                                  <div className="text-xs text-gray-500">
+                                    Default: ₹{option.amount?.toLocaleString('en-IN')}
+                                  </div>
+                                </div>
+                              </label>
+                              
+                              {isSelected && (
+                                <div className="ml-4 flex items-center gap-2">
+                                  <span className="text-xs text-gray-600 whitespace-nowrap">Custom:</span>
+                                  <input
+                                    type="number"
+                                    value={customAmount ?? ''}
+                                    onChange={(e) => {
+                                      const value = e.target.value === '' ? null : Number(e.target.value);
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        customIncidentAmounts: {
+                                          ...prev.customIncidentAmounts,
+                                          [customAmountKey]: value
+                                        }
+                                      }));
+                                    }}
+                                    placeholder={`${option.amount}`}
+                                    className="w-24 px-2 py-1 text-xs border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                                    min="0"
+                                  />
+                                </div>
+                              )}
+                            </div>
+                            
+                            {isSelected && (
+                              <div className="mt-2 pt-2 border-t border-gray-200">
+                                <div className="text-xs font-medium text-blue-700">
+                                  Amount Applied: ₹{displayAmount?.toLocaleString('en-IN')}
+                                  {customAmount && customAmount !== option.amount && (
+                                    <span className="ml-1 text-green-600">(Custom)</span>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
 
                   <div>
                     <label className="block text-sm font-medium text-gray-700 mb-2">Other Factors</label>
-                    <div className="space-y-2">
-                      {OTHER_FACTORS.map(factor => (
-                        <label key={factor.value} className="flex items-center">
-                          <input
-                            type="checkbox"
-                            checked={formData.otherFactors.includes(factor.value)}
-                            onChange={(e) => {
-                              if (e.target.checked) {
-                                setFormData(prev => ({
-                                  ...prev,
-                                  otherFactors: [...prev.otherFactors, factor.value]
-                                }));
-                              } else {
-                                setFormData(prev => ({
-                                  ...prev,
-                                  otherFactors: prev.otherFactors.filter(val => val !== factor.value)
-                                }));
-                              }
-                            }}
-                            className="mr-2 h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                          />
-                          <span className="text-sm text-gray-700">
-                            {factor.label}
-                            {factor.value === 'rigger' && ` (₹${additionalParams?.riggerAmount?.toLocaleString('en-IN')})`}
-                            {factor.value === 'helper' && ` (₹${additionalParams?.helperAmount?.toLocaleString('en-IN')})`}
-                          </span>
-                        </label>
-                      ))}
+                    <div className="bg-gray-50 rounded-lg p-4 space-y-3">
+                      {OTHER_FACTORS.map(factor => {
+                        const isSelected = formData.otherFactors.includes(factor.value);
+                        const isRigger = factor.value === 'rigger';
+                        const isHelper = factor.value === 'helper';
+                        const defaultAmount = isRigger ? additionalParams?.riggerAmount : 
+                                            isHelper ? additionalParams?.helperAmount : null;
+                        const customAmount = isRigger ? formData.customRiggerAmount : 
+                                           isHelper ? formData.customHelperAmount : null;
+                        const displayAmount = customAmount ?? defaultAmount;
+                        
+                        return (
+                          <div key={factor.value} className={`rounded-md border-2 p-3 transition-all duration-200 ${
+                            isSelected ? 'border-green-200 bg-green-50' : 'border-gray-200 bg-white hover:border-gray-300'
+                          }`}>
+                            <div className="flex items-center justify-between">
+                              <label className="flex items-center cursor-pointer flex-1">
+                                <input
+                                  type="checkbox"
+                                  checked={isSelected}
+                                  onChange={(e) => {
+                                    if (e.target.checked) {
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        otherFactors: [...prev.otherFactors, factor.value]
+                                      }));
+                                    } else {
+                                      setFormData(prev => ({
+                                        ...prev,
+                                        otherFactors: prev.otherFactors.filter(val => val !== factor.value)
+                                      }));
+                                    }
+                                  }}
+                                  className="mr-3 h-4 w-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                                />
+                                <div className="flex-1">
+                                  <div className="text-sm font-medium text-gray-900">
+                                    {factor.label}
+                                  </div>
+                                  {(isRigger || isHelper) && defaultAmount && (
+                                    <div className="text-xs text-gray-500">
+                                      Default: ₹{defaultAmount?.toLocaleString('en-IN')}
+                                    </div>
+                                  )}
+                                </div>
+                              </label>
+                              
+                              {isSelected && (isRigger || isHelper) && (
+                                <div className="ml-4 flex items-center gap-2">
+                                  <span className="text-xs text-gray-600 whitespace-nowrap">Custom:</span>
+                                  <input
+                                    type="number"
+                                    value={customAmount ?? ''}
+                                    onChange={(e) => {
+                                      const value = e.target.value === '' ? null : Number(e.target.value);
+                                      if (isRigger) {
+                                        setFormData(prev => ({
+                                          ...prev,
+                                          customRiggerAmount: value
+                                        }));
+                                      } else {
+                                        setFormData(prev => ({
+                                          ...prev,
+                                          customHelperAmount: value
+                                        }));
+                                      }
+                                    }}
+                                    placeholder={`${defaultAmount}`}
+                                    className="w-24 px-2 py-1 text-xs border border-gray-300 rounded-md focus:ring-green-500 focus:border-green-500"
+                                    min="0"
+                                  />
+                                </div>
+                              )}
+                            </div>
+                            
+                            {isSelected && (isRigger || isHelper) && displayAmount && (
+                              <div className="mt-2 pt-2 border-t border-gray-200">
+                                <div className="text-xs font-medium text-green-700">
+                                  Amount Applied: ₹{displayAmount?.toLocaleString('en-IN')}
+                                  {customAmount && customAmount !== defaultAmount && (
+                                    <span className="ml-1 text-blue-600">(Custom)</span>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
+
+
                 </div>
               </CardContent>
             </Card>
@@ -1545,16 +1993,16 @@ export function QuotationCreation() {
                       type="button"
                       variant="outline"
                       onClick={() => navigate('/quotations')}
-                      className="w-full"
+                      className="w-full border-gray-300 text-gray-700 hover:bg-gray-50 hover:text-gray-900 hover:border-gray-400"
                     >
                       Cancel
                     </Button>
                     <Button 
                       type="submit"
                       disabled={isSaving || (formData.selectedMachines.length === 0 && !formData.selectedEquipment.id)}
-                      className="w-full bg-primary-600 hover:bg-primary-700"
+                      className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold shadow-lg hover:shadow-xl"
                       leftIcon={isSaving ? <Clock className="animate-spin" /> : <Save />}
-                      variant="accent"
+                      variant="default"
                     >
                       {isSaving ? 'Saving...' : quotationId ? 'Update Quotation' : 'Create Quotation'}
                     </Button>

@@ -10,7 +10,9 @@ import {
   getConfig,
   updateConfig,
   getAllConfigs,
-  initializeDefaultConfigs
+  initializeDefaultConfigs,
+  getConfigAuditHistory,
+  getConfigChangesSummary
 } from '../services/postgres/configRepository.js';
 
 const router = express.Router();
@@ -94,12 +96,27 @@ router.put('/:configType', devBypass, requireAdmin, asyncHandler(async (req, res
     };
   }
   
-  const updatedConfig = await updateConfig(configType, dataToUpdate);
+  // Prepare audit information
+  const auditInfo = {
+    userId: req.user?.id || 'UNKNOWN',
+    userEmail: req.user?.email || 'unknown@example.com',
+    reason: req.body.changeReason || `Updated ${configType} configuration via API`,
+    ipAddress: req.ip || req.connection?.remoteAddress || null,
+    userAgent: req.headers['user-agent'] || null
+  };
   
-  console.log(`✅ Config API: Successfully updated ${configType} config`);
+  console.log(`📋 Config API: Audit info for ${configType}:`, auditInfo);
+  
+  const updatedConfig = await updateConfig(configType, dataToUpdate, auditInfo);
+  
+  console.log(`✅ Config API: Successfully updated ${configType} config with audit trail`);
   res.json({ 
     success: true,
-    data: updatedConfig 
+    data: updatedConfig,
+    auditInfo: {
+      changedBy: auditInfo.userId,
+      changedAt: new Date().toISOString()
+    }
   });
 }));
 
@@ -130,6 +147,63 @@ router.post('/initialize', devBypass, requireAdmin, asyncHandler(async (req, res
   res.json({ 
     success: true,
     message: 'Default configurations initialized successfully' 
+  });
+}));
+
+/**
+ * GET /api/config/:configType/audit - Get audit history for specific configuration
+ */
+router.get('/:configType/audit', devBypass, requireAdmin, asyncHandler(async (req, res) => {
+  const { configType } = req.params;
+  const { limit = 50 } = req.query;
+  
+  console.log(`🔍 Config API: GET /api/config/${configType}/audit (limit: ${limit})`);
+  
+  const auditHistory = await getConfigAuditHistory(configType, parseInt(limit));
+  
+  console.log(`✅ Config API: Successfully fetched audit history for ${configType} (${auditHistory.length} records)`);
+  res.json({ 
+    success: true,
+    data: auditHistory,
+    configType,
+    totalRecords: auditHistory.length
+  });
+}));
+
+/**
+ * GET /api/config/audit/all - Get audit history for all configurations
+ */
+router.get('/audit/all', devBypass, requireAdmin, asyncHandler(async (req, res) => {
+  const { limit = 100 } = req.query;
+  
+  console.log(`🔍 Config API: GET /api/config/audit/all (limit: ${limit})`);
+  
+  const auditHistory = await getConfigAuditHistory(null, parseInt(limit));
+  
+  console.log(`✅ Config API: Successfully fetched complete audit history (${auditHistory.length} records)`);
+  res.json({ 
+    success: true,
+    data: auditHistory,
+    totalRecords: auditHistory.length
+  });
+}));
+
+/**
+ * GET /api/config/audit/summary - Get summary of configuration changes
+ */
+router.get('/audit/summary', devBypass, requireAdmin, asyncHandler(async (req, res) => {
+  const { days = 30 } = req.query;
+  
+  console.log(`🔍 Config API: GET /api/config/audit/summary (last ${days} days)`);
+  
+  const changesSummary = await getConfigChangesSummary(parseInt(days));
+  
+  console.log(`✅ Config API: Successfully fetched changes summary (${changesSummary.length} records)`);
+  res.json({ 
+    success: true,
+    data: changesSummary,
+    periodDays: parseInt(days),
+    totalRecords: changesSummary.length
   });
 }));
 

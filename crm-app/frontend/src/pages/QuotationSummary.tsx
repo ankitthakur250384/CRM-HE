@@ -46,7 +46,7 @@ export const QuotationSummary: React.FC<QuotationSummaryProps> = ({ calculations
         <AlertTriangle className="w-4 h-4 text-red-600" />
         <span className="text-sm font-semibold text-gray-900">Risk & Usage</span>
       </div>
-      <span className="font-bold text-gray-900">{formatCurrency(calculations?.riskandusagecost || 0 )}</span>
+      <span className="font-bold text-gray-900">{formatCurrency(calculations?.riskUsageTotal || 0)}</span>
     </div>
     
     <div className="flex justify-between items-center">
@@ -57,22 +57,19 @@ export const QuotationSummary: React.FC<QuotationSummaryProps> = ({ calculations
       <span className="font-bold text-gray-900">{formatCurrency(calculations?.extraCharges || formData?.extraCharge || 0)}</span>
     </div>
     
-        <div className="flex justify-between items-center">
-            <div className="flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-indigo-600" />
-                <span className="text-sm font-semibold text-gray-900">Incidental Charges</span>
-            </div>
-            <span className="font-bold text-gray-900">
-                {formatCurrency(
-                    calculations?.incidentalCost ||
-                    (formData?.incidentalCharges || []).reduce((sum: number, val: string) => {
-                        const found = additionalParams?.incidentalOptions?.find((opt: any) => opt.value === val);
-                        return sum + (found ? found.amount : 0);
-                    }, 0)
-                )}
-            </span>
-        </div>
-
+    <div className="flex justify-between items-center">
+      <div className="flex items-center gap-2">
+        <AlertCircle className="w-4 h-4 text-indigo-600" />
+        <span className="text-sm font-semibold text-gray-900">Incidental Charges</span>
+      </div>
+      <span className="font-bold text-gray-900">
+        {formatCurrency(calculations?.incidentalCost || 
+          (formData?.incidentalCharges || []).reduce((sum: number, val: string) => {
+            const found = INCIDENTAL_OPTIONS.find((opt: any) => opt.value === val);
+            return sum + (found ? found.amount : 0);
+          }, 0))}
+      </span>
+    </div>
     
     <div className="flex justify-between items-center">
       <div className="flex items-center gap-2">
@@ -80,9 +77,12 @@ export const QuotationSummary: React.FC<QuotationSummaryProps> = ({ calculations
         <span className="text-sm font-semibold text-gray-900">Other Factors</span>
       </div>
       <span className="font-bold text-gray-900">
-        {formatCurrency(calculations?.otherFactorsCost || 
-          ((formData?.otherFactors || []).includes('rigger') ? (additionalParams?.riggerAmount || 40000) : 0) +
-          ((formData?.otherFactors || []).includes('helper') ? (additionalParams?.helperAmount || 12000) : 0))}
+        {formatCurrency(calculations?.otherFactorsCost || (() => {
+          const riggerAmount = formData?.customRiggerAmount ?? additionalParams?.riggerAmount ?? 40000;
+          const helperAmount = formData?.customHelperAmount ?? additionalParams?.helperAmount ?? 12000;
+          return ((formData?.otherFactors || []).includes('rigger') ? riggerAmount : 0) +
+                 ((formData?.otherFactors || []).includes('helper') ? helperAmount : 0);
+        })())}
       </span>
     </div>
     

@@ -167,6 +167,7 @@ router.get('/', async (req, res) => {
           q.updated_at,
           q.site_distance,
           q.usage,
+          q.shift,
           q.day_night,
           q.food_resources,
           q.accom_resources,
@@ -175,32 +176,10 @@ router.get('/', async (req, res) => {
           q.working_cost,
           q.food_accom_cost,
           q.gst_amount,
-          q.total_rent,
-          q.incident1,
-          q.incident2,
-          q.incident3,
-          q.rigger_amount,
-          q.helper_amount,
-          q.usage_load_factor,
-          q.risk_adjustment,
-          q.riskandusagecost
+          q.total_rent
         FROM quotations q
         ORDER BY q.created_at DESC;
       `);
-
-      // Attempt to load additionalParams from config table to provide shift/day-night factors
-      let additionalParamsCfg = {};
-      try {
-        const cfgRes = await client.query(`SELECT value FROM config WHERE name = 'additionalParams' LIMIT 1`);
-        let raw = cfgRes.rows[0]?.value;
-        if (typeof raw === 'string') {
-          try { raw = JSON.parse(raw); } catch (e) { raw = {}; }
-        }
-        additionalParamsCfg = raw || {};
-      } catch (cfgErr) {
-        console.warn('[QuotationRoutes] Could not load additionalParams config for list endpoint, using defaults');
-        additionalParamsCfg = {};
-      }
       
       const quotations = result.rows.map(q => ({
         id: q.id,
@@ -220,10 +199,7 @@ router.get('/', async (req, res) => {
         updated_at: q.updated_at,
         site_distance: parseFloat(q.site_distance || 0),
         usage: q.usage,
-        shift: q.day_night === 'day' ? 'Day Shift' : 'Night Shift', // FIX: use day_night for shift
-        // derive factors from config when available, fall back to stored values or 1
-        shift_factor: parseFloat((additionalParamsCfg?.shiftFactors?.[q.day_night] ?? q.shift_factor ?? 1) || 1),
-        day_night_factor: parseFloat((additionalParamsCfg?.dayNightFactors?.[q.day_night] ?? q.day_night_factor ?? 1) || 1),
+        shift: q.shift === 'single' ? 'Day Shift' : 'Double Shift',
         food_resources: q.food_resources > 0 ? 'ASP Provided' : 'Client Provided',
         accom_resources: q.accom_resources > 0 ? 'ASP Provided' : 'Client Provided',
         risk_factor: q.risk_factor?.charAt(0).toUpperCase() + q.risk_factor?.slice(1) || 'Medium',
@@ -231,15 +207,7 @@ router.get('/', async (req, res) => {
         working_cost: parseFloat(q.working_cost || 0),
         food_accom_cost: parseFloat(q.food_accom_cost || 0),
         gst_amount: parseFloat(q.gst_amount || 0),
-        total_rent: parseFloat(q.total_rent || 0),
-        incident1: parseFloat(q.incident1 || 0),
-        incident2: parseFloat(q.incident2 || 0),
-        incident3: parseFloat(q.incident3 || 0),
-        rigger_amount: parseFloat(q.rigger_amount || 0),
-        helper_amount: parseFloat(q.helper_amount || 0),
-        usage_load_factor: parseFloat(q.usage_load_factor || 0),
-        risk_adjustment: parseFloat(q.risk_adjustment || 0),
-        riskandusagecost: parseFloat(q.riskandusagecost || 0)
+        total_rent: parseFloat(q.total_rent || 0)
       }));
       
       return res.status(200).json({
@@ -282,14 +250,25 @@ router.get('/:id', async (req, res) => {
     
     try {
       const quotationResult = await client.query(`
-        SELECT q.*, c.name as customer_name, c.email as customer_email,
+        SELECT q.id, q.quotation_number, q.deal_id, q.lead_id, q.customer_id, q.customer_name,
+               q.machine_type, q.order_type, q.number_of_days, q.working_hours, q.food_resources, 
+               q.accom_resources, q.site_distance, q.usage, q.risk_factor, q.shift, q.day_night, 
+               q.mob_demob, q.mob_relaxation, q.extra_charge, q.other_factors_charge, q.billing, 
+               q.include_gst, q.sunday_working, q.customer_contact, q.incidental_charges, 
+               q.other_factors, q.total_rent, q.total_cost, q.working_cost, q.mob_demob_cost, 
+               q.food_accom_cost, q.usage_load_factor, q.risk_adjustment, q.risk_usage_total, 
+               q.gst_amount, q.version, q.created_by, q.status, q.template_id, q.notes, 
+               q.created_at, q.updated_at, q.address, q.valid_until, q.incident1, q.incident2, 
+               q.incident3, q.rigger_amount, q.helper_amount, q.primary_equipment_id, 
+               q.equipment_snapshot,
+               c.name as c_name, c.contact_name, c.email as customer_email,
                c.phone as customer_phone, c.company_name as customer_company,
                c.address as customer_address, c.designation as customer_designation,
                d.title as deal_title
         FROM quotations q
         LEFT JOIN customers c ON q.customer_id = c.id
         LEFT JOIN deals d ON q.deal_id = d.id
-        WHERE q.id = $1;
+        WHERE q.id = $1
       `, [id]);
       
       if (quotationResult.rows.length === 0) {
@@ -300,24 +279,11 @@ router.get('/:id', async (req, res) => {
       }
       
       const quotation = quotationResult.rows[0];
-
-      // Load additionalParams config so we can derive shift/day-night factors if DB doesn't have them
-      let additionalParamsCfg = {};
-      try {
-        const cfgRes = await client.query(`SELECT value FROM config WHERE name = 'additionalParams' LIMIT 1`);
-        let raw = cfgRes.rows[0]?.value;
-        if (typeof raw === 'string') {
-          try { raw = JSON.parse(raw); } catch (e) { raw = {}; }
-        }
-        additionalParamsCfg = raw || {};
-      } catch (cfgErr) {
-        console.warn('[QuotationRoutes] Could not load additionalParams config for get/:id endpoint, using defaults');
-        additionalParamsCfg = {};
-      }
       
-      // Get associated machines
+      // Get associated machines with enhanced fields for Items Table
       const machinesResult = await client.query(`
-        SELECT qm.*, e.name as equipment_name, e.category
+        SELECT qm.id, qm.quotation_id, qm.equipment_id, qm.quantity, qm.base_rate, qm.running_cost_per_km,
+               e.name as equipment_name, e.category, e.max_lifting_capacity
         FROM quotation_machines qm
         LEFT JOIN equipment e ON qm.equipment_id = e.id
         WHERE qm.quotation_id = $1;
@@ -326,60 +292,99 @@ router.get('/:id', async (req, res) => {
       const transformedQuotation = {
         id: quotation.id,
         quotationId: quotation.id,
-        quotationNumber: generateQuotationNumber(quotation.id), // Generate quotation number from ID
+        quotationNumber: quotation.quotation_number || generateQuotationNumber(quotation.id),
         dealId: quotation.deal_id,
         leadId: quotation.lead_id,
         customerId: quotation.customer_id,
         customerName: quotation.customer_name,
-        customerContact: quotation.customer_contact || {
-          name: quotation.customer_name,
+        customerContact: {
+          name: quotation.customer_name || quotation.contact_name,
           email: quotation.customer_email,
           phone: quotation.customer_phone,
-          company: quotation.customer_company,
+          company: quotation.customer_company || quotation.company_name,
           address: quotation.customer_address,
           designation: quotation.customer_designation
         },
         dealTitle: quotation.deal_title,
         machineType: quotation.machine_type,
         orderType: quotation.order_type,
-        numberOfDays: quotation.number_of_days,
-        workingHours: quotation.working_hours,
-        foodResources: quotation.food_resources,
-        accomResources: quotation.accom_resources,
-        siteDistance: quotation.site_distance,
-        usage: quotation.usage,
-        riskFactor: quotation.risk_factor,
-        shift: quotation.day_night,
-        dayNight: quotation.day_night,
-        // Prefer stored DB value for factors; otherwise derive from config or default to 1
-        shiftFactor: quotation.shift_factor ?? (additionalParamsCfg?.shiftFactors?.[quotation.day_night] ?? 1),
-        dayNightFactor: quotation.day_night_factor ?? (additionalParamsCfg?.dayNightFactors?.[quotation.day_night] ?? 1),
-        mobDemob: quotation.mob_demob,
-        mobRelaxation: quotation.mob_relaxation,
-        extraCharge: quotation.extra_charge,
-        otherFactorsCharge: quotation.other_factors_charge,
-        billing: quotation.billing,
-        includeGst: quotation.include_gst,
-        sundayWorking: quotation.sunday_working,
+        numberOfDays: Number(quotation.number_of_days) || 0,
+        workingHours: Number(quotation.working_hours) || 8,
+        foodResources: quotation.food_resources === 'ASP Provided' ? 'ASP Provided' : (Number(quotation.food_resources) || 'Client Provided'),
+        accomResources: quotation.accom_resources === 'ASP Provided' ? 'ASP Provided' : (Number(quotation.accom_resources) || 'Client Provided'),
+        siteDistance: Number(quotation.site_distance) || 0,
+        usage: quotation.usage || 'normal',
+        riskFactor: quotation.risk_factor || 'medium',
+        shift: quotation.shift || 'single',
+        dayNight: quotation.day_night || 'day',
+        mobDemob: Number(quotation.mob_demob) || 0,
+        mobRelaxation: Number(quotation.mob_relaxation) || 0,
+        extraCharge: Number(quotation.extra_charge) || 0,
+        otherFactorsCharge: Number(quotation.other_factors_charge) || 0,
+        billing: quotation.billing || 'gst',
+        includeGst: quotation.include_gst !== false,
+        sundayWorking: quotation.sunday_working || 'no',
         incidentalCharges: quotation.incidental_charges || [],
         otherFactors: quotation.other_factors || [],
-        totalRent: quotation.total_rent,
-        totalCost: quotation.total_cost,
-        workingCost: quotation.working_cost,
-        mobDemobCost: quotation.mob_demob_cost,
-        foodAccomCost: quotation.food_accom_cost,
-        riggerAmount: quotation.rigger_amount || null,
-        helperAmount: quotation.helper_amount || null,
-        usageLoadFactor: quotation.usage_load_factor,
-        riskAdjustment: quotation.risk_adjustment,
-        gstAmount: quotation.gst_amount,
-        version: quotation.version,
+        totalRent: Number(quotation.total_rent) || 0,
+        totalCost: Number(quotation.total_cost) || 0,
+        workingCost: Number(quotation.working_cost) || 0,
+        mobDemobCost: Number(quotation.mob_demob_cost) || 0,
+        foodAccomCost: Number(quotation.food_accom_cost) || 0,
+        usageLoadFactor: Number(quotation.usage_load_factor) || 0,
+        riskAdjustment: Number(quotation.risk_adjustment) || 0,
+        riskUsageTotal: Number(quotation.risk_usage_total) || 0,
+        gstAmount: Number(quotation.gst_amount) || 0,
+        version: quotation.version || 1,
         createdBy: quotation.created_by,
-        status: quotation.status,
+        status: quotation.status || 'draft',
         templateId: quotation.template_id,
-        notes: quotation.notes,
+        notes: quotation.notes || '',
         createdAt: quotation.created_at,
         updatedAt: quotation.updated_at,
+        startDate: quotation.start_date || null,
+        endDate: quotation.end_date || null,
+        // New fields from schema migration with proper type conversion
+        primaryEquipmentId: quotation.primary_equipment_id,
+        equipmentSnapshot: quotation.equipment_snapshot,
+        incident1: quotation.incident1,
+        incident2: quotation.incident2,
+        incident3: quotation.incident3,
+        riggerAmount: Number(quotation.rigger_amount) || null,
+        helperAmount: Number(quotation.helper_amount) || null,
+        // Add parsed incidental charges and other factors arrays
+        incidentalCharges: quotation.incidental_charges || [],
+        otherFactors: quotation.other_factors || [],
+        // Add selected machines data with enhanced mapping for Items Table
+        selectedMachines: machinesResult.rows.map((machine, index) => {
+          const quantity = Number(machine.quantity) || 1;
+          const baseRate = Number(machine.base_rate) || 0;
+          const duration = quotation.number_of_days || 1;
+          const rental = baseRate * quantity * duration;
+          const mobDemobTotal = Number(quotation.mob_demob_cost) || 0;
+          const mobilization = mobDemobTotal / 2; // Split mob_demob_cost equally
+          const demobilization = mobDemobTotal / 2;
+          const totalAmount = rental + mobilization + demobilization;
+
+          return {
+            id: machine.equipment_id,
+            equipmentId: machine.equipment_id,
+            name: machine.equipment_name,
+            category: machine.category,
+            quantity: quantity,
+            baseRate: baseRate,
+            runningCostPerKm: Number(machine.running_cost_per_km) || 0,
+            // Enhanced fields for Items Table compatibility
+            no: index + 1, // Serial number
+            description: machine.equipment_name,
+            jobType: quotation.order_type || 'daily', // Order type from quotations table
+            quantity: quantity,
+            duration: `${duration} ${duration === 1 ? 'day' : 'days'}`, // From quotations.number_of_days
+            rate: `₹${baseRate.toLocaleString('en-IN')}`, // Base rate
+            rental: `₹${(quotation.working_cost || rental).toLocaleString('en-IN')}`, // Working cost from quotations or calculated
+            mobDemob: `₹${mobDemobTotal.toLocaleString('en-IN')}` // Mob/demob cost
+          };
+        }),
         calculations: {
           baseRate: 0, // Will be calculated on frontend
           totalHours: quotation.working_hours * quotation.number_of_days,
@@ -389,28 +394,13 @@ router.get('/:id', async (req, res) => {
           usageLoadFactor: quotation.usage_load_factor || 0,
           extraCharges: quotation.extra_charge || 0,
           riskAdjustment: quotation.risk_adjustment || 0,
+          riskUsageTotal: quotation.risk_usage_total || 0,
           incidentalCost: 0, // Will be calculated from incidentalCharges
           otherFactorsCost: quotation.other_factors_charge || 0,
           subtotal: quotation.total_rent || 0,
           gstAmount: quotation.gst_amount || 0,
-          totalAmount: quotation.total_cost || 0,
-          riskandusagecost: quotation.riskandusagecost || 0
+          totalAmount: quotation.total_cost || 0
         },
-        selectedMachines: machinesResult.rows.map(machine => ({
-          id: machine.equipment_id,
-          machineType: quotation.machine_type,
-          equipmentId: machine.equipment_id,
-          name: machine.equipment_name || 'Equipment',
-          quantity: machine.quantity || 1,
-          baseRate: machine.base_rate || 0,
-          baseRates: {
-            micro: machine.base_rate || 0,
-            small: machine.base_rate || 0,
-            monthly: machine.base_rate || 0,
-            yearly: machine.base_rate || 0
-          },
-          runningCostPerKm: machine.running_cost_per_km || 0
-        })),
         selectedEquipment: machinesResult.rows.length > 0 ? {
           id: machinesResult.rows[0].equipment_id,
           equipmentId: machinesResult.rows[0].equipment_id,
@@ -470,6 +460,17 @@ router.get('/:id', async (req, res) => {
 router.post('/', authenticateToken, async (req, res) => {
   try {
     const quotationData = req.body;
+    console.log('🔍 DEBUG: Received quotation data:', {
+      orderType: quotationData.orderType,
+      usage: quotationData.usage,
+      riskFactor: quotationData.riskFactor,
+      foodResources: quotationData.foodResources,
+      accomResources: quotationData.accomResources,
+      numberOfDays: quotationData.numberOfDays,
+      leadId: quotationData.leadId,
+      selectedEquipment: quotationData.selectedEquipment,
+      primaryEquipmentId: quotationData.primaryEquipmentId
+    });
     // Validate required fields
     const requiredFields = ['customerName', 'machineType', 'orderType', 'numberOfDays'];
     const missingFields = requiredFields.filter(field => !quotationData[field]);
@@ -488,34 +489,6 @@ router.post('/', authenticateToken, async (req, res) => {
     }
     const client = await pool.connect();
     try {
-      // Load additionalParams config to get rigger/helper default amounts and factors
-      let additionalParams = {};
-      try {
-        const cfgRes = await client.query(`SELECT value FROM config WHERE name = 'additionalParams' LIMIT 1`);
-        let raw = cfgRes.rows[0]?.value;
-        if (typeof raw === 'string') {
-          try {
-            raw = JSON.parse(raw);
-          } catch (e) {
-            raw = {};
-          }
-        }
-        additionalParams = raw || {};
-      } catch (cfgErr) {
-        console.warn('[QuotationRoutes] Could not load additionalParams config, proceeding with defaults');
-        additionalParams = {};
-      }
-      
-      // Compute numeric defaults
-      const defaultRiggerAmount = additionalParams && additionalParams.riggerAmount ? Number(additionalParams.riggerAmount) : null;
-      const defaultHelperAmount = additionalParams && additionalParams.helperAmount ? Number(additionalParams.helperAmount) : null;
-
-      // Resolve shift/day-night factors from config or provided values
-      const selectedShift = quotationData.shift || 'single';
-      const selectedDayNight = quotationData.dayNight || quotationData.day_night || 'day';
-      const computedShiftFactor = quotationData.shiftFactor ?? (additionalParams?.shiftFactors?.[selectedShift] ?? 1);
-      const computedDayNightFactor = quotationData.dayNightFactor ?? (additionalParams?.dayNightFactors?.[selectedDayNight] ?? 1);
-      
       // Check if customer exists, if not create one
       let customerId;
       const customerResult = await client.query(
@@ -545,38 +518,45 @@ router.post('/', authenticateToken, async (req, res) => {
       }
       
       const id = uuidv4();
-
-      // Determine primary equipment and snapshot from payload (if provided)
-      const primaryEquipmentId = (quotationData.selectedMachines && quotationData.selectedMachines.length > 0)
-        ? (quotationData.selectedMachines[0].id || quotationData.selectedMachines[0].equipmentId || null)
-        : (quotationData.selectedEquipment ? (quotationData.selectedEquipment.id || quotationData.selectedEquipment.equipmentId || null) : null);
-
-      const equipmentSnapshot = (quotationData.selectedMachines && quotationData.selectedMachines.length > 0)
-        ? JSON.stringify(quotationData.selectedMachines)
-        : (quotationData.selectedEquipment ? JSON.stringify([quotationData.selectedEquipment]) : JSON.stringify([]));
-
-      // Map frontend data to database schema
+      
+      // Map frontend data to database schema - comprehensive mapping
+      const orderTypeMapping = {
+        'micro': 'micro',
+        'hourly': 'hourly',
+        'daily': 'daily',
+        'weekly': 'weekly',
+        'monthly': 'monthly',
+        'yearly': 'yearly',
+        'rental': 'monthly',
+        'long_term_rental': 'yearly',
+        'project_rental': 'monthly',
+        'specialized_rental': 'monthly'
+      };
+      
+      const shiftMapping = {
+        'Day Shift': 'single',
+        'Night Shift': 'single',
+        'Double Shift': 'double',
+        'Round the Clock': 'double'
+      };
+      
       const riskMapping = {
         'Low': 'low',
+        'Low Risk': 'low',
         'Medium': 'medium',
+        'Medium Risk': 'medium',
         'High': 'high',
-        'Very High': 'high'
+        'High Risk': 'high',
+        'Very High': 'high',
+        'low': 'low',
+        'medium': 'medium',
+        'high': 'high'
       };
       
-      // Incident mapping (defaults)
-      const incidentAmounts = {
-        incident1: 5000,
-        incident2: 10000,
-        incident3: 15000
-      };
-      const incident1 = quotationData.incidentalCharges?.includes('incident1') ? incidentAmounts.incident1 : 0;
-      const incident2 = quotationData.incidentalCharges?.includes('incident2') ? incidentAmounts.incident2 : 0;
-      const incident3 = quotationData.incidentalCharges?.includes('incident3') ? incidentAmounts.incident3 : 0;
-      
-      // Calculate costs (simplified for now)
-      const totalCost = quotationData.totalCost || 100000;
-      const gstAmount = totalCost * 0.18;
-      const finalTotal = totalCost + gstAmount;
+      // Use calculated costs from frontend or defaults
+      const totalCost = quotationData.totalCost || quotationData.calculations?.totalAmount || 100000;
+      const gstAmount = quotationData.gstAmount || quotationData.calculations?.gstAmount || (totalCost * 0.18);
+      const finalTotal = quotationData.totalAmount || (totalCost + gstAmount);
       
       const customerContact = {
         name: quotationData.customerName,
@@ -586,43 +566,86 @@ router.post('/', authenticateToken, async (req, res) => {
         company: quotationData.customerName
       };
       
-      // Prepare numeric risk/usage values coming from frontend (or fallbacks)
-      const usage_load_factor = quotationData.usageLoadFactor ?? 0;
-      const risk_adjustment = quotationData.riskAdjustment ?? 0;
-      const riskandusagecost_val = quotationData.riskandusagecost ?? (usage_load_factor + risk_adjustment);
+      // Insert quotation
+      const insertQuery = `
+        INSERT INTO quotations (
+          id, customer_id, customer_name, machine_type, order_type, 
+          number_of_days, working_hours, food_resources, accom_resources,
+          site_distance, usage, risk_factor, shift, day_night,
+          mob_demob, mob_relaxation, extra_charge, other_factors_charge,
+          billing, include_gst, sunday_working, customer_contact,
+          total_rent, total_cost, working_cost, mob_demob_cost,
+          food_accom_cost, risk_adjustment, usage_load_factor, risk_usage_total, gst_amount, created_by, status, notes,
+          deal_id, lead_id, primary_equipment_id, equipment_snapshot,
+          incident1, incident2, incident3, rigger_amount, helper_amount
+        ) VALUES (
+          $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14,
+          $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26,
+          $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38, $39, $40, $41, $42, $43
+        )
+      `;
+      // Debug the mapping process - use EXACT values from frontend
+      const mappedOrderType = quotationData.orderType; // Direct use, no fallback that overrides user selection
+      const mappedRiskFactor = quotationData.riskFactor; // Direct use, no mapping override
+      // Handle food and accommodation resources as numeric values (number of people)
+      // Convert string values to numbers if needed for backward compatibility
+      let mappedFoodResources = 0;
+      let mappedAccomResources = 0;
       
-      // Insert quotation (include primary_equipment_id and equipment_snapshot)
-      const columns = [
-        'id', 'customer_id', 'customer_name', 'machine_type', 'primary_equipment_id', 'equipment_snapshot', 'order_type',
-        'number_of_days', 'working_hours', 'food_resources', 'accom_resources',
-        'site_distance', 'usage', 'risk_factor', 'shift', 'day_night',
-        'mob_demob', 'mob_relaxation', 'extra_charge', 'other_factors_charge',
-        'billing', 'include_gst', 'sunday_working', 'customer_contact',
-        'total_rent', 'total_cost', 'working_cost', 'mob_demob_cost',
-        'food_accom_cost', 'usage_load_factor', 'risk_adjustment', 'riskandusagecost', 'gst_amount', 'created_by', 'status', 'notes',
-        'deal_id', 'lead_id',
-        'incident1', 'incident2', 'incident3',
-        'rigger_amount', 'helper_amount'
-      ];
+      if (typeof quotationData.foodResources === 'number') {
+        mappedFoodResources = quotationData.foodResources;
+      } else if (quotationData.foodResources === 'ASP Provided') {
+        mappedFoodResources = 2; // Default 2 people
+      } else {
+        mappedFoodResources = Number(quotationData.foodResources) || 0;
+      }
+      
+      if (typeof quotationData.accomResources === 'number') {
+        mappedAccomResources = quotationData.accomResources;
+      } else if (quotationData.accomResources === 'ASP Provided') {
+        mappedAccomResources = 2; // Default 2 people
+      } else {
+        mappedAccomResources = Number(quotationData.accomResources) || 0;
+      }
+      
+      console.log('🔄 DEBUG: Mapping process:', {
+        originalOrderType: quotationData.orderType,
+        mappedOrderType,
+        originalRiskFactor: quotationData.riskFactor,
+        mappedRiskFactor,
+        originalUsage: quotationData.usage,
+        originalFoodResources: quotationData.foodResources,
+        mappedFoodResources,
+        originalAccomResources: quotationData.accomResources,
+        mappedAccomResources,
+        numberOfDays: quotationData.numberOfDays,
+        orderTypeMapping: orderTypeMapping
+      });
+      
+      // Test specific case
+      if (quotationData.numberOfDays === 21) {
+        console.log('🧪 BACKEND TEST: 21 days with orderType:', quotationData.orderType);
+        console.log('Expected: "small", Mapped to:', mappedOrderType);
+        if (mappedOrderType !== 'small' && quotationData.orderType === 'small') {
+          console.error('❌ BACKEND ISSUE: Order type mapping failed for 21 days');
+        }
+      }
 
       const values = [
         id,
         customerId,
         quotationData.customerName,
         quotationData.machineType,
-        primaryEquipmentId,
-        equipmentSnapshot,
-        quotationData.orderType,
+        mappedOrderType,
         quotationData.numberOfDays || 1,
         quotationData.workingHours || 8,
-        // Store numeric counts for food and accommodation provided
-        quotationData.foodResources ?? 0,
-        quotationData.accomResources ?? 0,
-        quotationData.siteDistance || 0,
-        quotationData.usage || 'normal',
-        riskMapping[quotationData.riskFactor] || 'medium',
-        selectedShift, // shift
-        selectedDayNight, // day_night
+        mappedFoodResources,
+        mappedAccomResources,
+        Number(quotationData.siteDistance) || 0,
+        quotationData.usage || 'normal', // EXACT usage from frontend with safe fallback
+        mappedRiskFactor || 'low',
+        shiftMapping[quotationData.shift] || 'single',
+        'day', // day_night (will be enhanced later)
         15000, // mob_demob (default)
         0, // mob_relaxation
         quotationData.extraCharge || 0,
@@ -633,86 +656,72 @@ router.post('/', authenticateToken, async (req, res) => {
         JSON.stringify(customerContact),
         totalCost,
         finalTotal,
-        quotationData.workingCost ?? totalCost * 0.8, // working_cost
-        15000, // mob_demob_cost
-        // Use frontend-provided computed foodAccomCost if available, fallback to 0
-        quotationData.foodAccomCost || 0,
-        // usage_load_factor, risk_adjustment, riskandusagecost
-        usage_load_factor,
-        risk_adjustment,
-        riskandusagecost_val,
+        quotationData.workingCost || quotationData.calculations?.workingCost || (totalCost * 0.8), // working_cost
+        quotationData.mobDemobCost || quotationData.calculations?.mobDemobCost || 15000, // mob_demob_cost
+        quotationData.foodAccomCost || quotationData.calculations?.foodAccomCost || 0, // food_accom_cost - requires proper calculation
+        quotationData.riskAdjustment || quotationData.calculations?.riskAdjustment || 0, // risk_adjustment
+        quotationData.usageLoadFactor || quotationData.calculations?.usageLoadFactor || 0, // usage_load_factor
+        quotationData.riskUsageTotal || quotationData.calculations?.riskUsageTotal || 0, // risk_usage_total
         gstAmount,
-        req.user.id || req.user?.uid || null, // created_by (support both id and uid keys)
+        req.user.id, // created_by (will be replaced with actual user)
         'draft',
         quotationData.notes || '',
         quotationData.dealId || null,
         quotationData.leadId || null,
-        incident1,
-        incident2,
-        incident3,
-        // rigger_amount/helper_amount: store configured amounts when selected
-        (quotationData.otherFactors || []).includes('rigger') ? (quotationData.riggerAmount ?? defaultRiggerAmount ?? null) : null,
-        (quotationData.otherFactors || []).includes('helper') ? (quotationData.helperAmount ?? defaultHelperAmount ?? null) : null
+        quotationData.primaryEquipmentId || quotationData.selectedEquipment?.equipmentId || quotationData.selectedEquipment?.id || null, // primary_equipment_id
+        quotationData.equipmentSnapshot ? JSON.stringify(quotationData.equipmentSnapshot) : (quotationData.selectedEquipment ? JSON.stringify(quotationData.selectedEquipment) : null), // equipment_snapshot
+        quotationData.incident1 || null, // incident1
+        quotationData.incident2 || null, // incident2
+        quotationData.incident3 || null, // incident3
+        quotationData.riggerAmount || 0, // rigger_amount
+        quotationData.helperAmount || 0  // helper_amount
       ];
-
-      // Build placeholders dynamically to avoid mismatches between columns and values
-      const placeholders = values.map((_, i) => `$${i + 1}`).join(', ');
-      const insertQuery = `INSERT INTO quotations (${columns.join(', ')}) VALUES (${placeholders})`;
-
       await client.query(insertQuery, values);
+      
+      console.log('✅ DEBUG: Quotation inserted with ID:', id, 'Values used:', {
+        orderType: mappedOrderType,
+        riskFactor: mappedRiskFactor,
+        foodResources: mappedFoodResources,
+        accomResources: mappedAccomResources,
+        numberOfDays: quotationData.numberOfDays,
+        usage: quotationData.usage
+      });
 
-      // Persist selected machines / equipment into quotation_machines so the equipment selection is stored
-      try {
-        // If frontend provided an array of selected machines, insert them
-        if (quotationData.selectedMachines && Array.isArray(quotationData.selectedMachines) && quotationData.selectedMachines.length > 0) {
-          for (const m of quotationData.selectedMachines) {
-            const equipmentId = m.id || m.equipmentId || null;
-            if (!equipmentId) continue;
-            const quantity = m.quantity || 1;
-            const baseRate = (m.baseRate ?? m.base_rate ?? m.price ?? 0);
-            const runningCost = (m.runningCostPerKm ?? m.running_cost_per_km ?? 0);
-
-            await client.query(`
-              INSERT INTO quotation_machines (
-                quotation_id, equipment_id, quantity, base_rate, running_cost_per_km
-              ) VALUES ($1, $2, $3, $4, $5)
-            `, [id, equipmentId, quantity, baseRate, runningCost]);
-          }
-        } else if (quotationData.selectedEquipment) {
-          // Single selectedEquipment object fallback
-          const eq = quotationData.selectedEquipment;
-          const equipmentId = eq.id || eq.equipmentId || null;
-          if (equipmentId) {
-            const quantity = eq.quantity || 1;
-            const baseRate = (eq.baseRate ?? eq.base_rate ?? quotationData.workingCost ?? 0);
-            const runningCost = (eq.runningCostPerKm ?? eq.running_cost_per_km ?? 0);
-
-            await client.query(`
-              INSERT INTO quotation_machines (
-                quotation_id, equipment_id, quantity, base_rate, running_cost_per_km
-              ) VALUES ($1, $2, $3, $4, $5)
-            `, [id, equipmentId, quantity, baseRate, runningCost]);
-          }
+      // Insert selected machines if provided (support for multiple equipment)
+      if (quotationData.selectedMachines && Array.isArray(quotationData.selectedMachines) && quotationData.selectedMachines.length > 0) {
+        console.log('🔧 Inserting', quotationData.selectedMachines.length, 'selected machines');
+        for (const machine of quotationData.selectedMachines) {
+          await client.query(`
+            INSERT INTO quotation_machines (
+              quotation_id, equipment_id, quantity, base_rate, running_cost_per_km
+            ) VALUES ($1, $2, $3, $4, $5)
+          `, [
+            id,
+            machine.id, // Use the primary key id, not equipmentId (business identifier)
+            machine.quantity || 1,
+            machine.baseRate || 0,
+            machine.runningCostPerKm || 0
+          ]);
         }
-      } catch (mErr) {
-        // Log but don't fail the entire quotation creation if machine persistence fails
-        console.warn('[QuotationRoutes] Failed to persist selected machines:', mErr.message);
       }
       
       return res.status(201).json({ 
         success: true,
         message: 'Quotation created successfully',
-        data: { id, quotationId: id, totalCost: finalTotal, shiftFactor: computedShiftFactor, dayNightFactor: computedDayNightFactor }
+        data: { id, quotationId: id, totalCost: finalTotal }
       });
     } finally {
       client.release();
     }
   } catch (error) {
-    console.error('Error creating quotation:', error);
+    console.error('❌ ERROR creating quotation:', error);
+    console.error('❌ ERROR stack:', error.stack);
+    console.error('❌ Request body that caused error:', JSON.stringify(req.body, null, 2));
     return res.status(500).json({ 
       success: false,
       message: 'Internal server error',
-      error: error.message
+      error: error.message,
+      details: error.stack
     });
   }
 });
@@ -776,7 +785,186 @@ router.put('/:id/status', async (req, res) => {
 });
 
 /**
- *
+ * PUT /api/quotations/:id
+ * Update a quotation
+ */
+router.put('/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      customer_name,
+      customer_contact,
+      machine_type,
+      order_type,
+      number_of_days,
+      working_hours,
+      site_distance,
+      usage,
+      risk_factor,
+      shift,
+      day_night,
+      food_resources,
+      accom_resources,
+      mob_demob,
+      mob_relaxation,
+      extra_charge,
+      other_factors_charge,
+      working_cost,
+      mob_demob_cost,
+      food_accom_cost,
+      risk_adjustment,
+      usage_load_factor,
+      riskUsageTotal,
+      calculations,
+      gst_amount,
+      total_rent,
+      total_cost,
+      notes,
+      status,
+      selectedMachines,
+      incidentalCharges,
+      otherFactors,
+      // Fields that will be added to database schema
+      primary_equipment_id,
+      equipment_snapshot,
+      incident1,
+      incident2,
+      incident3,
+      riggerAmount,
+      helperAmount,
+      billing,
+      include_gst,
+      sunday_working
+    } = req.body;
+
+    // Parse incidentalCharges if it comes as a string
+    let parsedIncidentalCharges = incidentalCharges;
+    if (typeof incidentalCharges === 'string') {
+      try {
+        parsedIncidentalCharges = JSON.parse(incidentalCharges);
+      } catch (e) {
+        console.log('Could not parse incidentalCharges, using as array:', incidentalCharges);
+        parsedIncidentalCharges = Array.isArray(incidentalCharges) ? incidentalCharges : [];
+      }
+    }
+
+    // Parse otherFactors if it comes as a string  
+    let parsedOtherFactors = otherFactors;
+    if (typeof otherFactors === 'string') {
+      try {
+        parsedOtherFactors = JSON.parse(otherFactors);
+      } catch (e) {
+        console.log('Could not parse otherFactors, using as array:', otherFactors);
+        parsedOtherFactors = Array.isArray(otherFactors) ? otherFactors : [];
+      }
+    }
+
+    // Map frontend field names to backend expectations
+    const rigger_amount_mapped = riggerAmount;
+    const helper_amount_mapped = helperAmount;
+
+    const client = await pool.connect();
+    
+    try {
+      // Update the main quotation record
+      const result = await client.query(`
+        UPDATE quotations 
+        SET 
+          customer_name = $1,
+          customer_contact = $2,
+          machine_type = $3,
+          order_type = $4,
+          number_of_days = $5,
+          working_hours = $6,
+          site_distance = $7,
+          usage = $8,
+          risk_factor = $9,
+          shift = $10,
+          day_night = $11,
+          food_resources = $12,
+          accom_resources = $13,
+          mob_demob = $14,
+          mob_relaxation = $15,
+          extra_charge = $16,
+          other_factors_charge = $17,
+          working_cost = $18,
+          mob_demob_cost = $19,
+          food_accom_cost = $20,
+          risk_adjustment = $21,
+          usage_load_factor = $22,
+          risk_usage_total = $23,
+          gst_amount = $24,
+          total_rent = $25,
+          total_cost = $26,
+          notes = $27,
+          status = $28,
+          incidental_charges = $29,
+          other_factors = $30,
+          billing = $31,
+          include_gst = $32,
+          sunday_working = $33,
+          primary_equipment_id = $34,
+          equipment_snapshot = $35,
+          incident1 = $36,
+          incident2 = $37,
+          incident3 = $38,
+          rigger_amount = $39,
+          helper_amount = $40,
+          updated_at = CURRENT_TIMESTAMP
+        WHERE id = $41
+        RETURNING *
+      `, [
+        customer_name,
+        JSON.stringify(customer_contact),
+        machine_type,
+        order_type,
+        number_of_days,
+        working_hours,
+        site_distance,
+        usage,
+        risk_factor,
+        shift,
+        day_night,
+        food_resources,
+        accom_resources,
+        mob_demob,
+        mob_relaxation,
+        extra_charge,
+        other_factors_charge,
+        working_cost,
+        mob_demob_cost,
+        food_accom_cost,
+        risk_adjustment,
+        usage_load_factor,
+        riskUsageTotal || calculations?.riskUsageTotal || (risk_adjustment || 0) + (usage_load_factor || 0),
+        gst_amount,
+        total_rent,
+        total_cost,
+        notes,
+        status || 'draft',
+        JSON.stringify(parsedIncidentalCharges || []),
+        JSON.stringify(parsedOtherFactors || []),
+        billing,
+        include_gst,
+        sunday_working,
+        primary_equipment_id,
+        JSON.stringify(equipment_snapshot),
+        incident1,
+        incident2,
+        incident3,
+        rigger_amount_mapped,
+        helper_amount_mapped,
+        id
+      ]);
+      
+      if (result.rows.length === 0) {
+        return res.status(404).json({
+          success: false,
+          message: 'Quotation not found'
+        });
+      }
+      
+      // Update quotation machines
       if (selectedMachines && Array.isArray(selectedMachines)) {
         // Delete existing machines
         await client.query('DELETE FROM quotation_machines WHERE quotation_id = $1', [id]);
@@ -803,280 +991,18 @@ router.put('/:id/status', async (req, res) => {
         data: result.rows[0]
       });
       
-            } finally { PUT /api/quotations/:id
-         * Update a quotation
-         */
-        router.put('/:id', async (req, res) => {
-          try {
-            const { id } = req.params;
-            const body = req.body || {};
-            const client = await pool.connect();
-
-            try {
-              // Fetch existing quotation (use as fallback/defaults)
-              const existingRes = await client.query('SELECT * FROM quotations WHERE id = $1', [id]);
-              if (existingRes.rows.length === 0) {
-                client.release();
-                return res.status(404).json({ success: false, message: 'Quotation not found' });
-              }
-              const existing = existingRes.rows[0];
-
-              // Load additionalParams config (same as create)
-              let additionalParams = {};
-              try {
-                const cfgRes = await client.query(`SELECT value FROM config WHERE name = 'additionalParams' LIMIT 1`);
-                let raw = cfgRes.rows[0]?.value;
-                if (typeof raw === 'string') {
-                  try { raw = JSON.parse(raw); } catch (e) { raw = {}; }
-                }
-                additionalParams = raw || {};
-              } catch (e) {
-                additionalParams = {};
-              }
-              const defaultRiggerAmount = additionalParams?.riggerAmount ? Number(additionalParams.riggerAmount) : null;
-              const defaultHelperAmount = additionalParams?.helperAmount ? Number(additionalParams.helperAmount) : null;
-
-              // Helper: accept camelCase or snake_case and fall back to existing DB value
-              const get = (snake, camel, fallback) => {
-                if (body[snake] !== undefined) return body[snake];
-                if (body[camel] !== undefined) return body[camel];
-                return fallback;
-              };
-
-              // Merge fields (body -> existing -> sensible default)
-              const customer_name = get('customer_name', 'customerName', existing.customer_name);
-              let customer_contact = get('customer_contact', 'customerContact', existing.customer_contact);
-              if (customer_contact && typeof customer_contact !== 'string') {
-                try { customer_contact = JSON.stringify(customer_contact); } catch (e) { customer_contact = existing.customer_contact; }
-              }
-
-              const machine_type = get('machine_type', 'machineType', existing.machine_type);
-              const order_type = get('order_type', 'orderType', existing.order_type);
-              const number_of_days = get('number_of_days', 'numberOfDays', existing.number_of_days);
-              const working_hours = get('working_hours', 'workingHours', existing.working_hours);
-              const site_distance = get('site_distance', 'siteDistance', existing.site_distance ?? 0);
-              const usage = get('usage', 'usage', existing.usage ?? 'normal');
-              const risk_factor = get('risk_factor', 'riskFactor', existing.risk_factor ?? 'medium');
-              const shift = get('shift', 'shift', existing.shift ?? 'single');
-              const day_night = get('day_night', 'dayNight', existing.day_night ?? 'day');
-              const food_resources = get('food_resources', 'foodResources', existing.food_resources ?? 0);
-              const accom_resources = get('accom_resources', 'accomResources', existing.accom_resources ?? 0);
-              const mob_demob = get('mob_demob', 'mobDemob', existing.mob_demob ?? 15000);
-              const mob_relaxation = get('mob_relaxation', 'mobRelaxation', existing.mob_relaxation ?? 0);
-              const extra_charge = get('extra_charge', 'extraCharge', existing.extra_charge ?? 0);
-              const other_factors_charge = get('other_factors_charge', 'otherFactorsCharge', existing.other_factors_charge ?? 0);
-              const working_cost = get('working_cost', 'workingCost', existing.working_cost ?? 0);
-              const mob_demob_cost = get('mob_demob_cost', 'mobDemobCost', existing.mob_demob_cost ?? 15000);
-              const food_accom_cost = get('food_accom_cost', 'foodAccomCost', existing.food_accom_cost ?? 0);
-              const risk_adjustment = get('risk_adjustment', 'riskAdjustment', existing.risk_adjustment ?? 0);
-              const usage_load_factor = get('usage_load_factor', 'usageLoadFactor', existing.usage_load_factor ?? 0);
-              const gst_amount = get('gst_amount', 'gstAmount', existing.gst_amount ?? 0);
-              const total_rent = get('total_rent', 'totalRent', existing.total_rent ?? null);
-              const total_cost = get('total_cost', 'totalCost', existing.total_cost ?? null);
-              const notes = get('notes', 'notes', existing.notes ?? '');
-              const status = get('status', 'status', existing.status ?? 'draft');
-              const deal_id = get('deal_id', 'dealId', existing.deal_id ?? null);
-              const lead_id = get('lead_id', 'leadId', existing.lead_id ?? null);
-
-              // incidentalCharges / otherFactors arrays: prefer body, fallback to stored JSON arrays or empty arrays
-              const parseStoredArr = (v) => {
-                if (!v) return [];
-                if (Array.isArray(v)) return v;
-                try { return JSON.parse(v); } catch (e) { return []; }
-              };
-              const incidentalCharges = body.incidentalCharges ?? body.incidental_charges ?? parseStoredArr(existing.incidental_charges);
-              const otherFactors = body.otherFactors ?? body.other_factors ?? parseStoredArr(existing.other_factors);
-
-              // Incident amounts (same as create)
-              const incidentAmounts = { incident1: 5000, incident2: 10000, incident3: 15000 };
-              const incident1 = incidentalCharges?.includes('incident1') ? incidentAmounts.incident1 : (existing.incident1 ?? 0);
-              const incident2 = incidentalCharges?.includes('incident2') ? incidentAmounts.incident2 : (existing.incident2 ?? 0);
-              const incident3 = incidentalCharges?.includes('incident3') ? incidentAmounts.incident3 : (existing.incident3 ?? 0);
-              const incidental_total = body.incidental_total ?? body.incidentalTotal ?? (incident1 + incident2 + incident3);
-
-              // Rigger/helper priority: body -> existing DB -> config defaults (if otherFactors includes) -> null
-              const bodyRigger = body.riggerAmount ?? body.rigger_amount;
-              const bodyHelper = body.helperAmount ?? body.helper_amount;
-              const existingRigger = existing.rigger_amount ?? null;
-              const existingHelper = existing.helper_amount ?? null;
-
-              const rigger_amount = (bodyRigger !== undefined && bodyRigger !== null)
-                ? bodyRigger
-                : (existingRigger !== undefined && existingRigger !== null)
-                  ? existingRigger
-                  : ((otherFactors || []).includes('rigger') ? defaultRiggerAmount : null);
-
-              const helper_amount = (bodyHelper !== undefined && bodyHelper !== null)
-                ? bodyHelper
-                : (existingHelper !== undefined && existingHelper !== null)
-                  ? existingHelper
-                  : ((otherFactors || []).includes('helper') ? defaultHelperAmount : null);
-
-              // Determine primary equipment and equipment snapshot (use provided selection if any, else keep existing)
-              const selectedMachines = body.selectedMachines ?? body.selected_machines;
-              const selectedEquipment = body.selectedEquipment ?? body.selected_equipment;
-              const selMachinesArr = Array.isArray(selectedMachines) ? selectedMachines : (selectedEquipment ? [selectedEquipment] : null);
-              const primary_equipment_id = selMachinesArr && selMachinesArr.length > 0
-                ? (selMachinesArr[0].id ?? selMachinesArr[0].equipmentId ?? null)
-                : (existing.primary_equipment_id ?? null);
-              const equipment_snapshot = selMachinesArr ? JSON.stringify(selMachinesArr) : (existing.equipment_snapshot ?? JSON.stringify([]));
-
-              // Resolve and persist factors (prefer body-provided values)
-              const shift_factor = (body.shiftFactor ?? body.shift_factor) ?? (additionalParams?.shiftFactors?.[shift] ?? existing.shift_factor ?? 1);
-              const day_night_factor = (body.dayNightFactor ?? body.day_night_factor) ?? (additionalParams?.dayNightFactors?.[day_night] ?? existing.day_night_factor ?? 1);
-              const riskandusagecost = body.riskandusagecost ?? body.risk_and_usage_cost ?? ((usage_load_factor ?? 0) + (risk_adjustment ?? 0));
-
-              // Begin transaction
-              await client.query('BEGIN');
-
-              // Update using same column names as create
-              const updateQuery = `
-                UPDATE quotations SET
-                  customer_name = $1,
-                  customer_contact = $2,
-                  machine_type = $3,
-                  primary_equipment_id = $4,
-                  equipment_snapshot = $5,
-                  order_type = $6,
-                  number_of_days = $7,
-                  working_hours = $8,
-                  food_resources = $9,
-                  accom_resources = $10,
-                  site_distance = $11,
-                  usage = $12,
-                  risk_factor = $13,
-                  shift = $14,
-                  day_night = $15,
-                  shift_factor = $16,
-                  day_night_factor = $17,
-                  mob_demob = $18,
-                  mob_relaxation = $19,
-                  extra_charge = $20,
-                  other_factors_charge = $21,
-                  billing = COALESCE(billing, 'gst'),
-                  include_gst = COALESCE(include_gst, true),
-                  sunday_working = COALESCE(sunday_working, 'no'),
-                  total_rent = $22,
-                  total_cost = $23,
-                  working_cost = $24,
-                  mob_demob_cost = $25,
-                  food_accom_cost = $26,
-                  gst_amount = $27,
-                  notes = $28,
-                  status = $29,
-                  deal_id = $30,
-                  lead_id = $31,
-                  incidental_charges = $32,
-                  other_factors = $33,
-                  incident1 = $34,
-                  incident2 = $35,
-                  incident3 = $36,
-                  incidental_total = $37,
-                  rigger_amount = $38,
-                  helper_amount = $39,
-                  usage_load_factor = $40,
-                  risk_adjustment = $41,
-+                 riskandusagecost = $42,
-                  updated_at = CURRENT_TIMESTAMP
-                WHERE id = $43
-                RETURNING *;
-              `;
-
-              const updateValues = [
-                customer_name,
-                customer_contact,
-                machine_type,
-                primary_equipment_id,
-                equipment_snapshot,
-                order_type,
-                number_of_days,
-                working_hours,
-                food_resources,
-                accom_resources,
-                site_distance,
-                usage,
-                risk_factor,
-                shift,
-                day_night,
-                shift_factor,
-                day_night_factor,
-                mob_demob,
-                mob_relaxation,
-                extra_charge,
-                other_factors_charge,
-                total_rent,
-                total_cost,
-                working_cost,
-                mob_demob_cost,
-                food_accom_cost,
-                gst_amount,
-                notes,
-                status,
-                deal_id,
-                lead_id,
-                JSON.stringify(incidentalCharges || []),
-                JSON.stringify(otherFactors || []),
-                incident1,
-                incident2,
-                incident3,
-                incidental_total,
-                rigger_amount,
-                helper_amount,
-                usage_load_factor,
-                risk_adjustment,
-+               riskandusagecost,
-                id
-              ];
-
-              const result = await client.query(updateQuery, updateValues);
-              if (result.rows.length === 0) {
-                await client.query('ROLLBACK');
-                return res.status(404).json({ success: false, message: 'Quotation not found' });
-              }
-
-              // Persist machines only when client provided a selection (otherwise keep existing persisted machines)
-              if (selMachinesArr !== null) {
-                await client.query('DELETE FROM quotation_machines WHERE quotation_id = $1', [id]);
-                if (Array.isArray(selMachinesArr) && selMachinesArr.length > 0) {
-                  const insertMachineQuery = `
-                    INSERT INTO quotation_machines (
-                      quotation_id, equipment_id, quantity, base_rate, running_cost_per_km
-                    ) VALUES ($1, $2, $3, $4, $5)
-                  `;
-                  for (const m of selMachinesArr) {
-                    const equipmentId = m.id ?? m.equipmentId ?? null;
-                    if (!equipmentId) continue;
-                    const quantity = m.quantity ?? m.qty ?? 1;
-                    const baseRate = m.baseRate ?? m.base_rate ?? m.price ?? 0;
-                    const runningCost = m.runningCostPerKm ?? m.running_cost_per_km ?? 0;
-                    await client.query(insertMachineQuery, [id, equipmentId, quantity, baseRate, runningCost]);
-                  }
-                }
-              }
-
-              await client.query('COMMIT');
-
-              return res.status(200).json({
-                success: true,
-                message: 'Quotation updated successfully',
-                data: result.rows[0]
-              });
-            } catch (err) {
-              try { await client.query('ROLLBACK'); } catch (_) { /* ignore */ }
-              console.error('Error updating quotation:', err);
-              return res.status(500).json({ success: false, message: 'Failed to update quotation', error: err.message });
-            } finally {
-              client.release();
-            }
-          } catch (error) {
-            console.error('Error updating quotation (outer):', error);
-            return res.status(500).json({
-              success: false,
-              message: 'Internal server error',
-              error: error.message
-            });
-          }
-        });
+    } finally {
+      client.release();
+    }
+  } catch (error) {
+    console.error('Error updating quotation:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Internal server error',
+      error: error.message
+    });
+  }
+});
 
 /**
  * DELETE /api/quotations/:id
@@ -1180,7 +1106,7 @@ router.post('/print', authenticateToken, async (req, res) => {
     });
 
   } catch (error) {
-    console.error('❌ [QuotationRoutes] Print generation_FAILED:', error);
+    console.error('❌ [QuotationRoutes] Print generation failed:', error);
     console.error('❌ [QuotationRoutes] Error stack:', error.stack);
     res.status(500).json({
       success: false,
@@ -1189,6 +1115,7 @@ router.post('/print', authenticateToken, async (req, res) => {
     });
   }
 });
+
 
 
 /**
@@ -1206,7 +1133,7 @@ async function getQuotationWithFullDetails(quotationId) {
         c.email as customer_email,
         c.phone as customer_phone,
         c.address as customer_address,
-        c.company_name as customer_company
+        c.company as customer_company
       FROM quotations q
       LEFT JOIN customers c ON q.customer_id = c.id
       WHERE q.id = $1 AND q.deleted_at IS NULL
@@ -1261,10 +1188,6 @@ async function getQuotationWithFullDetails(quotationId) {
         phone: '+91-XXXX-XXXX',
         email: 'info@aspcranes.com'
       },
-
-      // Include equipment selection persisted on quotation
-      primaryEquipmentId: quotation.primary_equipment_id || null,
-      equipmentSnapshot: quotation.equipment_snapshot ? (typeof quotation.equipment_snapshot === 'string' ? JSON.parse(quotation.equipment_snapshot) : quotation.equipment_snapshot) : [],
       
       items: itemsResult.rows || []
     };

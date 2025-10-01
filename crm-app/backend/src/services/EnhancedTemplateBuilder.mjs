@@ -274,6 +274,7 @@ export class EnhancedTemplateBuilder {
         };
 
       case TEMPLATE_ELEMENT_TYPES.ITEMS_TABLE:
+      case 'table': // Support legacy 'table' type from database
         return {
           ...baseElement,
           content: {
@@ -383,6 +384,7 @@ export class EnhancedTemplateBuilder {
         };
 
       case TEMPLATE_ELEMENT_TYPES.ITEMS_TABLE:
+      case 'table': // Support legacy 'table' type from database
         return {
           ...baseStyle,
           border: '1px solid #e5e7eb',
@@ -600,8 +602,8 @@ export class EnhancedTemplateBuilder {
       case 'header':
         return `
           <div class="${elementClass}" style="${elementStyle}">
-            <h1>${element.content?.title || 'Header Title'}</h1>
-            ${element.content?.subtitle ? `<h2>${element.content.subtitle}</h2>` : ''}
+            <h1>${this.replacePlaceholders(element.content?.title || 'Header Title', data)}</h1>
+            ${element.content?.subtitle ? `<h2>${this.replacePlaceholders(element.content.subtitle, data)}</h2>` : ''}
           </div>`;
 
       case TEMPLATE_ELEMENT_TYPES.COMPANY_INFO:
@@ -609,7 +611,7 @@ export class EnhancedTemplateBuilder {
         const companyFields = element.content?.fields || ['Company Information'];
         return `
           <div class="${elementClass}" style="${elementStyle}">
-            ${companyFields.map(field => `<div>${field}</div>`).join('')}
+            ${companyFields.map(field => `<div>${this.replacePlaceholders(field, data)}</div>`).join('')}
           </div>`;
 
       case TEMPLATE_ELEMENT_TYPES.CLIENT_INFO:
@@ -638,7 +640,20 @@ export class EnhancedTemplateBuilder {
 
       case TEMPLATE_ELEMENT_TYPES.ITEMS_TABLE:
       case 'items_table':
+      case 'table': // Support legacy 'table' type from database
         return this.renderItemsTable(element, data);
+
+      case 'section': // Legacy section -> custom text
+        return this.renderCustomText({ ...element, type: 'custom_text' }, data);
+
+      case 'field': // Legacy field -> quotation info
+        return this.renderQuotationInfo({ ...element, type: 'quotation_info' }, data);
+
+      case 'customer': // Legacy customer -> client info
+        return this.renderClientInfo({ ...element, type: 'client_info' }, data);
+
+      case 'total': // Legacy total -> totals
+        return this.renderTotals({ ...element, type: 'totals' }, data);
 
       case TEMPLATE_ELEMENT_TYPES.TOTALS:
       case 'totals':
@@ -646,17 +661,19 @@ export class EnhancedTemplateBuilder {
 
       case TEMPLATE_ELEMENT_TYPES.TERMS:
       case 'terms':
+        const termsTitle = element.content?.title || 'Terms & Conditions';
+        const termsText = element.content?.text || element.content?.defaultText || 'Terms and conditions apply.';
         return `
           <div class="${elementClass}" style="${elementStyle}">
-            ${element.content?.showTitle ? `<h3>${element.content?.title || 'Terms & Conditions'}</h3>` : '<h3>Terms & Conditions</h3>'}
-            <div class="terms-content">${element.content?.text || element.content?.defaultText || 'Terms and conditions apply.'}</div>
+            ${element.content?.showTitle ? `<h3>${this.replacePlaceholders(termsTitle, data)}</h3>` : '<h3>Terms & Conditions</h3>'}
+            <div class="terms-content">${this.replacePlaceholders(termsText, data)}</div>
           </div>`;
 
       case TEMPLATE_ELEMENT_TYPES.CUSTOM_TEXT:
       case 'custom_text':
         return `
           <div class="${elementClass}" style="${elementStyle}">
-            ${element.content?.text || 'Custom text content'}
+            ${this.replacePlaceholders(element.content?.text || 'Custom text content', data)}
           </div>`;
 
       case TEMPLATE_ELEMENT_TYPES.SIGNATURE:
@@ -715,13 +732,25 @@ export class EnhancedTemplateBuilder {
    * Render items table
    */
   renderItemsTable(element, data) {
-    const items = data?.items || [];
-    const columns = element.content?.columns || [
-      { key: 'description', label: 'Description', width: '40%', alignment: 'left' },
-      { key: 'quantity', label: 'Qty', width: '15%', alignment: 'center' },
-      { key: 'rate', label: 'Rate', width: '20%', alignment: 'right' },
-      { key: 'amount', label: 'Amount', width: '25%', alignment: 'right' }
+    const items = data?.items || data?.selectedMachines || [];
+    
+    // Enhanced column configuration based on frontend Items Table
+    const defaultColumns = [
+      { key: 'no', label: 'S.No.', width: '8%', alignment: 'center' },
+      { key: 'description', label: 'Description/Equipment Name', width: '35%', alignment: 'left' },
+      { key: 'jobType', label: 'Job Type', width: '12%', alignment: 'center' },
+      { key: 'quantity', label: 'Quantity', width: '10%', alignment: 'center' },
+      { key: 'duration', label: 'Duration/Days', width: '12%', alignment: 'center' },
+      { key: 'rate', label: 'Rate', width: '12%', alignment: 'right' },
+      { key: 'rental', label: 'Total Rental', width: '15%', alignment: 'right' },
+      { key: 'mobDemob', label: 'Mob/Demob', width: '12%', alignment: 'right' }
     ];
+    
+    // Filter columns based on element configuration
+    const columnConfig = element.content?.columns || {};
+    const columns = defaultColumns.filter(col => 
+      columnConfig[col.key] !== false // Show column if not explicitly disabled
+    );
 
     return `
       <div class="element-items-table" style="${this.generateElementStyle(element.style || {})}">
@@ -757,15 +786,25 @@ export class EnhancedTemplateBuilder {
    */
   renderTotals(element, data) {
     const totals = data?.totals || {};
+    console.log('🔍 [DEBUG] Totals data received:', totals);
+    
     const fields = element.content?.fields || [
       { label: 'Subtotal', value: '{{totals.subtotal}}', showIf: 'always' },
       { label: 'Total', value: '{{totals.total}}', showIf: 'always', emphasized: true }
     ];
     
+    // Process placeholders in field values immediately
+    const processedFields = fields.map(field => ({
+      ...field,
+      value: this.replacePlaceholders(field.value, data)
+    }));
+    
+    console.log('🔍 [DEBUG] Processed field values:', processedFields.map(f => f.value));
+    
     return `
       <div class="element-totals" style="${this.generateElementStyle(element.style || {})}">
         <table class="totals-table" style="width: 100%; max-width: 300px; margin-left: auto;">
-          ${fields.map(field => {
+          ${processedFields.map(field => {
             const showField = this.shouldShowTotalField(field, data);
             if (!showField) return '';
             
@@ -777,6 +816,105 @@ export class EnhancedTemplateBuilder {
           }).filter(row => row).join('')}
         </table>
       </div>`;
+  }
+
+  /**
+   * Render custom text section
+   */
+  renderCustomText(element, data) {
+    const content = element.content?.text || element.content?.title || 'Custom Text';
+    const title = element.content?.title;
+    
+    // Process placeholders in content and title
+    const processedContent = this.replacePlaceholders(content, data);
+    const processedTitle = title ? this.replacePlaceholders(title, data) : null;
+    
+    return `
+      <div class="element-custom-text" style="${this.generateElementStyle(element.style || {})}">
+        ${processedTitle ? `<h3 style="margin: 0 0 10px 0; font-weight: bold;">${processedTitle}</h3>` : ''}
+        <div style="line-height: 1.5;">${processedContent}</div>
+      </div>`;
+  }
+
+  /**
+   * Render quotation info section
+   */
+  renderQuotationInfo(element, data) {
+    const quotation = data?.quotation || {};
+    console.log('🔍 [DEBUG] Quotation data received:', quotation);
+    
+    const fields = element.content?.fields || [
+      'Quotation No: {{quotation.number}}',
+      'Date: {{quotation.date}}',
+      'Valid Until: {{quotation.validUntil}}'
+    ];
+    
+    return `
+      <div class="element-quotation-info" style="${this.generateElementStyle(element.style || {})}">
+        ${fields.map(field => `
+          <div style="margin: 5px 0;">${this.replacePlaceholders(field, data)}</div>
+        `).join('')}
+      </div>`;
+  }
+
+  /**
+   * Render client info section
+   */
+  renderClientInfo(element, data) {
+    const client = data?.client || {};
+    const title = element.content?.title || 'Bill To:';
+    
+    // Process placeholders in title and content
+    const processedTitle = this.replacePlaceholders(title, data);
+    
+    return `
+      <div class="element-client-info" style="${this.generateElementStyle(element.style || {})}">
+        <h4 style="margin: 0 0 10px 0; font-weight: bold;">${processedTitle}</h4>
+        <div style="line-height: 1.5;">
+          <div>${client.name || 'Client Name'}</div>
+          <div>${client.company || ''}</div>
+          <div>${client.address || 'Client Address'}</div>
+          <div>${client.phone || ''}</div>
+          <div>${client.email || ''}</div>
+        </div>
+      </div>`;
+  }
+
+  /**
+   * Replace placeholders in text with actual data
+   */
+  replacePlaceholders(text, data) {
+    console.log('🔍 [DEBUG] Replacing placeholders in text:', text);
+    console.log('🔍 [DEBUG] Data for replacement:', JSON.stringify(data, null, 2));
+    
+    let result = text
+      // Quotation placeholders
+      .replace(/\{\{quotation\.number\}\}/g, data?.quotation?.number || 'Q-001')
+      .replace(/\{\{quotation\.date\}\}/g, data?.quotation?.date || new Date().toLocaleDateString())
+      .replace(/\{\{quotation\.validUntil\}\}/g, data?.quotation?.validUntil || 'N/A')
+      .replace(/\{\{quotation\.terms\}\}/g, data?.quotation?.terms || 'Standard terms apply')
+      
+      // Client placeholders
+      .replace(/\{\{client\.name\}\}/g, data?.client?.name || 'Client Name')
+      .replace(/\{\{client\.company\}\}/g, data?.client?.company || 'Client Company')
+      .replace(/\{\{client\.address\}\}/g, data?.client?.address || 'Client Address')
+      .replace(/\{\{client\.phone\}\}/g, data?.client?.phone || 'Client Phone')
+      .replace(/\{\{client\.email\}\}/g, data?.client?.email || 'client@email.com')
+      
+      // Company placeholders
+      .replace(/\{\{company\.name\}\}/g, data?.company?.name || 'Company Name')
+      .replace(/\{\{company\.address\}\}/g, data?.company?.address || 'Company Address')
+      .replace(/\{\{company\.phone\}\}/g, data?.company?.phone || 'Company Phone')
+      .replace(/\{\{company\.email\}\}/g, data?.company?.email || 'company@email.com')
+      
+      // Totals placeholders
+      .replace(/\{\{totals\.subtotal\}\}/g, data?.totals?.subtotal || '₹0')
+      .replace(/\{\{totals\.tax\}\}/g, data?.totals?.tax || '₹0')
+      .replace(/\{\{totals\.total\}\}/g, data?.totals?.total || '₹0')
+      .replace(/\{\{totals\.discount\}\}/g, data?.totals?.discount || '₹0');
+      
+    console.log('🔍 [DEBUG] Result after replacement:', result);
+    return result;
   }
 
   /**
@@ -1010,16 +1148,24 @@ export class EnhancedTemplateBuilder {
       },
       items: [
         {
+          no: 1,
           description: 'Tower Crane Rental - Potain MC 175',
-          quantity: '30 days',
+          jobType: 'monthly',
+          quantity: 1,
+          duration: '30 days',
           rate: '₹25,000',
-          amount: '₹7,50,000'
+          rental: '₹7,50,000',
+          mobDemob: '₹1,00,000'
         },
         {
+          no: 2,
           description: 'Mobile Crane - Liebherr LTM 1090',
-          quantity: '5 days',
+          jobType: 'daily',
+          quantity: 1,
+          duration: '5 days',
           rate: '₹15,000',
-          amount: '₹75,000'
+          rental: '₹75,000',
+          mobDemob: '₹20,000'
         }
       ],
       totals: {

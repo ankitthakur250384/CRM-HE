@@ -230,6 +230,10 @@ router.get('/:id/preview/iframe', async (req, res) => {
     const { id: quotationId } = req.params;
     const { templateId } = req.query;
     
+    // Minimal headers for iframe embedding - avoid browser security warnings
+    res.setHeader('X-Frame-Options', 'SAMEORIGIN');
+    res.setHeader('Content-Security-Policy', "frame-ancestors 'self'");
+    
     console.log('🖼️ [Preview] Generating iframe preview for quotation:', quotationId);
     console.log('🖼️ [Preview] Bypassing auth for iframe request');
     

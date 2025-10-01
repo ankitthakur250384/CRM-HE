@@ -140,37 +140,65 @@ class TemplateService {
           {
             "id": "header-1",
             "type": "header",
-            "content": "ASP CRANES - Professional Equipment Solutions",
+            "content": "{{company.name}} - Professional Equipment Solutions",
             "visible": true,
             "style": {"fontSize": "24px", "color": "#0052CC", "textAlign": "center"}
           },
           {
+            "id": "company-info-1",
+            "type": "company",
+            "content": "{{company.address}}\n{{company.phone}} | {{company.email}}",
+            "visible": true,
+            "style": {"fontSize": "12px", "textAlign": "center"}
+          },
+          {
+            "id": "quotation-header-1",
+            "type": "section",
+            "content": "QUOTATION NO: {{quotation.quotation_number}}\nDate: {{quotation.created_at}}",
+            "visible": true,
+            "style": {"fontSize": "14px", "fontWeight": "bold"}
+          },
+          {
             "id": "customer-info-1",
             "type": "customer",
-            "content": "Bill To Information",
+            "content": "Bill To:\n{{customer.name}}\n{{customer.company}}\n{{customer.address}}\nPhone: {{customer.phone}}\nEmail: {{customer.email}}",
             "visible": true,
             "style": {"fontSize": "14px"}
           },
           {
-            "id": "quotation-details-1",
-            "type": "field",
-            "content": "Quotation Details - Generated automatically",
+            "id": "job-details-1",
+            "type": "section",
+            "content": "Job Type: {{quotation.order_type}}\nDuration: {{quotation.number_of_days}} days\nWorking Hours: {{quotation.working_hours}} hours/day",
             "visible": true,
             "style": {"fontSize": "14px"}
           },
           {
-            "id": "items-table-1",
-            "type": "table",
-            "content": "Equipment and Services",
+            "id": "equipment-table-1",
+            "type": "equipment_table",
+            "content": "Equipment Details",
             "visible": true,
-            "style": {}
+            "style": {"fontSize": "12px"}
+          },
+          {
+            "id": "charges-table-1",
+            "type": "charges_table",
+            "content": "Additional Charges",
+            "visible": true,
+            "style": {"fontSize": "12px"}
           },
           {
             "id": "totals-1",
             "type": "total",
             "content": "Cost Summary",
             "visible": true,
-            "style": {}
+            "style": {"fontSize": "14px"}
+          },
+          {
+            "id": "terms-1",
+            "type": "terms",
+            "content": "Terms & Conditions:\n• All Risks on \"The Hirer\".\n• Payment terms: 30 days\n• Prices are exclusive of GST",
+            "visible": true,
+            "style": {"fontSize": "10px"}
           }
         ];
         
@@ -220,31 +248,122 @@ class TemplateService {
     const customerPhone = quotationData.customer?.phone || '+91 98765 43210';
     const customerAddress = quotationData.customer?.address || 'Mumbai, Maharashtra';
     
-    // Process quotation items
+    // Process equipment items with proper rate vs working cost mapping
     const items = quotationData.items || [];
-    const processedItems = items.map(item => ({
-      description: item.description || 'Equipment Rental',
-      quantity: item.quantity || 1,
-      unit: 'Each',
-      rate: item.unit_price || 0,
-      amount: item.total || 0
-    }));
+    const processedEquipment = items.map((item, index) => {
+      const capacity = item.max_lifting_capacity ? `${item.max_lifting_capacity}` : 'N/A';
+      const equipmentName = item.equipment_name || `Equipment ${index + 1}`;
+      
+      // Base rate from equipment table (what we charge per day/month)
+      const baseRate = parseFloat(item.base_rate) || 0;
+      
+      // Calculate working cost based on order type and duration
+      const days = parseInt(quotationData.number_of_days) || 1;
+      const quantity = parseInt(item.quantity) || 1;
+      let workingCost = 0;
+      
+      if (quotationData.order_type === 'monthly') {
+        // For monthly, working cost = base rate * days * quantity
+        workingCost = baseRate * days * quantity;
+      } else {
+        // For daily/other types, working cost = base rate * days * quantity
+        workingCost = baseRate * days * quantity;
+      }
+      
+      return {
+        no: index + 1,
+        capacity: capacity,
+        equipmentName: equipmentName,
+        jobType: quotationData.order_type || 'Unloading work',
+        jobDuration: `${quotationData.number_of_days || 1} ${quotationData.order_type === 'monthly' ? 'Month' : 'Days'}`,
+        rental: `${workingCost.toLocaleString('en-IN')} + GST 18%`,
+        mob: 'Included', // Will be updated if mob/demob charges exist
+        demob: 'Included', // Will be updated if mob/demob charges exist
+        baseRate: baseRate, // Base rate from equipment table
+        workingCost: workingCost, // Calculated working cost
+        description: `${equipmentName} ${capacity}`,
+        quantity: quantity,
+        unit: quotationData.order_type === 'monthly' ? 'Month' : 'Days',
+        rate: baseRate, // Rate column shows base rate
+        amount: workingCost // Amount column shows working cost
+      };
+    });
     
-    // If no items, create a default item
-    if (processedItems.length === 0) {
-      processedItems.push({
-        description: 'Equipment Rental',
+    // If no equipment items, create a default one
+    if (processedEquipment.length === 0) {
+      processedEquipment.push({
+        no: 1,
+        capacity: '130MT',
+        equipmentName: 'Telescopic Mobile Crane XCMG QY 130K',
+        jobType: 'Unloading work',
+        jobDuration: `${quotationData.number_of_days || 1} Month`,
+        rental: '7,85,000 + GST 18%',
+        mob: '10,000/- + GST 18%',
+        demob: '10,000/- + GST 18%',
+        baseRate: 5000,
+        workingCost: 785000,
+        description: 'Telescopic Mobile Crane XCMG QY 130K',
         quantity: 1,
-        unit: 'Days',
+        unit: 'Month',
         rate: 5000,
-        amount: 5000
+        amount: 785000
       });
     }
     
-    const totalAmount = quotationData.total_amount || 0;
-    const taxRate = quotationData.tax_rate || 18;
-    const subtotal = totalAmount / (1 + taxRate / 100);
-    const tax = totalAmount - subtotal;
+    // Process additional charges
+    const additionalCharges = [];
+    
+    // Add mobilization/demobilization charges if they exist
+    // Note: These should come from quotation data - for now using defaults
+    const mobDemobCharges = {
+      mobilization: 10000,
+      demobilization: 10000
+    };
+    
+    if (mobDemobCharges.mobilization > 0) {
+      additionalCharges.push({
+        description: 'Mobilization Charges',
+        amount: mobDemobCharges.mobilization,
+        gst: mobDemobCharges.mobilization * 0.18
+      });
+    }
+    
+    if (mobDemobCharges.demobilization > 0) {
+      additionalCharges.push({
+        description: 'De-Mobilization Charges', 
+        amount: mobDemobCharges.demobilization,
+        gst: mobDemobCharges.demobilization * 0.18
+      });
+    }
+    
+    // Add incidental charges if they exist
+    // Note: Should come from quotation.incidental_charges - for now using defaults
+    const incidentalCharges = [];
+    if (quotationData.rigger_amount && quotationData.rigger_amount > 0) {
+      incidentalCharges.push({
+        type: 'Rigger',
+        amount: quotationData.rigger_amount
+      });
+    }
+    
+    if (quotationData.helper_amount && quotationData.helper_amount > 0) {
+      incidentalCharges.push({
+        type: 'Helper',
+        amount: quotationData.helper_amount
+      });
+    }
+    
+    // Calculate totals
+    const equipmentSubtotal = processedEquipment.reduce((sum, item) => sum + item.workingCost, 0);
+    const additionalChargesSubtotal = additionalCharges.reduce((sum, charge) => sum + charge.amount, 0);
+    const subtotal = equipmentSubtotal + additionalChargesSubtotal;
+    const gstAmount = subtotal * 0.18;
+    const totalAmount = subtotal + gstAmount;
+    
+    // Format date
+    const createdDate = quotationData.created_at ? 
+      new Date(quotationData.created_at).toLocaleDateString('en-IN') : 
+      new Date().toLocaleDateString('en-IN');
     
     return {
       company: {
@@ -253,6 +372,15 @@ class TemplateService {
         phone: "+91 99999 88888",
         email: "sales@aspcranes.com",
         website: "www.aspcranes.com"
+      },
+      quotation: {
+        quotation_number: quotationData.quotation_number || quotationData.id || 'ASP-Q-001',
+        created_at: createdDate,
+        order_type: quotationData.order_type || 'monthly',
+        number_of_days: quotationData.number_of_days || 1,
+        working_hours: quotationData.working_hours || 8,
+        machine_type: quotationData.machine_type || 'Mobile Crane',
+        status: quotationData.status || 'Draft'
       },
       // Support both formats for customer data
       customer: {
@@ -271,19 +399,46 @@ class TemplateService {
         phone: customerPhone,
         email: customerEmail
       },
-      quotation: {
-        number: quotationData.quotation_number || quotationData.id || `QTN-${Date.now()}`,
-        date: quotationData.created_at ? new Date(quotationData.created_at).toLocaleDateString('en-IN') : new Date().toLocaleDateString('en-IN'),
-        validUntil: quotationData.valid_until ? new Date(quotationData.valid_until).toLocaleDateString('en-IN') : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toLocaleDateString('en-IN'),
-        items: processedItems,
+      
+      // Equipment details with proper rate vs working cost
+      equipment: processedEquipment,
+      
+      // Additional charges (mob/demob, etc.)
+      additionalCharges: additionalCharges,
+      
+      // Incidental charges (rigger, helper, etc.)
+      incidentalCharges: incidentalCharges,
+      
+      // Legacy items for backward compatibility
+      items: processedEquipment.map(eq => ({
+        description: eq.description,
+        quantity: eq.quantity,
+        unit: eq.unit,
+        rate: eq.rate,
+        amount: eq.amount
+      })),
+      
+      // Summary totals
+      summary: {
+        equipmentSubtotal: equipmentSubtotal.toFixed(2),
+        additionalChargesSubtotal: additionalChargesSubtotal.toFixed(2),
+        subtotal: subtotal.toFixed(2),
+        gstRate: '18%',
+        gstAmount: gstAmount.toFixed(2),
+        total: totalAmount.toFixed(2),
+        currency: 'INR'
+      },
+      
+      // Totals for template rendering
+      totals: {
         subtotal: subtotal,
-        tax: tax,
+        tax: gstAmount,
         total: totalAmount
       },
+      
       // Legacy support
-      items: processedItems,
       total_amount: totalAmount,
-      quotation_number: quotationData.quotation_number
+      quotation_number: quotationData.quotation_number || quotationData.id
     };
   }
 }

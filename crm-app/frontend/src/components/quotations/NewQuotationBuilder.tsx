@@ -405,11 +405,9 @@ const NewQuotationBuilder: React.FC<NewQuotationBuilderProps> = ({
     const mobDemobCost = Math.max(15000, formData.siteDistance * 200);
     console.log(`🚚 Mob/Demob cost: max(15000, ${formData.siteDistance} × 200) = ${mobDemobCost}`);
     
-    // Food and accommodation
-    const foodCost = formData.foodResources === 'ASP Provided' ? 2500 * formData.numberOfDays : 0;
-    const accomCost = formData.accomResources === 'ASP Provided' ? 4000 * formData.numberOfDays : 0;
-    const foodAccomCost = foodCost + accomCost;
-    console.log(`🍽️ Food & Accommodation: ${foodCost} + ${accomCost} = ${foodAccomCost}`);
+    // Food and accommodation - removed hardcoded values, should use dynamic calculation
+    const foodAccomCost = 0; // This will be calculated dynamically based on database configuration
+    console.log(`🍽️ Food & Accommodation: Calculated dynamically in quotation creation`);
     
     // Risk factor adjustment
     const riskMultiplier = {

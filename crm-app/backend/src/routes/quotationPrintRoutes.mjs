@@ -192,7 +192,7 @@ router.post('/pdf', optionalAuth, async (req, res) => {
     console.log('🗺️ Mapped quotation data:', { hasCustomer: !!mappedData.customer, hasClient: !!mappedData.client });
     
     // Use enhanced template rendering
-    const html = await htmlGeneratorService.generateEnhancedHTML(template, mappedData);
+    const html = await htmlGeneratorService.generateHTML(template, mappedData);
     console.log('🎨 Generated HTML length:', html.length);
     
     // Generate PDF with proper error handling

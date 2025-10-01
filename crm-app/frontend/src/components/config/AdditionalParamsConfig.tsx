@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { useState, useEffect } from 'react';
 import { Save, RefreshCw, Percent, AlertTriangle, Clock, Moon, Wrench } from 'lucide-react';
 import { Input } from '../common/Input';
@@ -9,17 +8,23 @@ import { Card, CardHeader, CardTitle, CardContent } from '../common/Card';
 
 export function AdditionalParamsConfig() {
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [params, setParams] = useState({
+  const [isSaving, setIsSaving] = useState(false);  const [params, setParams] = useState({
+    riggerAmount: 40000,
+    helperAmount: 12000,
+    incidentalOptions: [
+      { value: "incident1", label: "Incident 1 - ₹5,000", amount: 5000 },
+      { value: "incident2", label: "Incident 2 - ₹10,000", amount: 10000 },
+      { value: "incident3", label: "Incident 3 - ₹15,000", amount: 15000 }
+    ],
     usageFactors: {
-      normal: 1.0,
-      medium: 1.2,
-      heavy: 1.5
+      normal: 0,
+      medium: 20,
+      heavy: 50
     },
     riskFactors: {
       low: 0,
-      medium: 8000,
-      high: 15000
+      medium: 10,
+      high: 20
     },
     shiftFactors: {
       single: 1.0,
@@ -28,25 +33,14 @@ export function AdditionalParamsConfig() {
     dayNightFactors: {
       day: 1.0,
       night: 1.3
-    },
-    // default incidental options
-    incidentalOptions: [
-      { value: 'incident1', label: 'Incident 1', amount: 5000 },
-      { value: 'incident2', label: 'Incident 2', amount: 10000 },
-      { value: 'incident3', label: 'Incident 3', amount: 15000 }
-    ],
-    // keep rigger/helper defaults if needed
-    riggerAmount: 40000,
-    helperAmount: 12000
+    }
   });
 
-  const [errors, setErrors] = useState({});
-
-  const [toast, setToast] = useState({
-    show: false,
-    title: '',
-    variant: undefined
-  });
+  const [toast, setToast] = useState<{
+    show: boolean;
+    title: string;
+    variant?: 'success' | 'error' | 'warning';
+  }>({ show: false, title: '' });
 
   useEffect(() => {
     fetchConfig();
@@ -78,9 +72,9 @@ export function AdditionalParamsConfig() {
           ...params.dayNightFactors,
           ...(config?.dayNightFactors || {})
         },
-        incidentalOptions: config?.incidentalOptions && Array.isArray(config.incidentalOptions) ? config.incidentalOptions : params.incidentalOptions,
-        riggerAmount: config?.riggerAmount ?? params.riggerAmount,
-        helperAmount: config?.helperAmount ?? params.helperAmount
+        incidentalOptions: config?.incidentalOptions || params.incidentalOptions,
+        riggerAmount: config?.riggerAmount !== undefined ? config.riggerAmount : params.riggerAmount,
+        helperAmount: config?.helperAmount !== undefined ? config.helperAmount : params.helperAmount
       };
       
       setParams(safeConfig);
@@ -92,53 +86,15 @@ export function AdditionalParamsConfig() {
     }
   };
 
-  const showToast = (title, variant = 'success') => {
+  const showToast = (title: string, variant: 'success' | 'error' | 'warning' = 'success') => {
     setToast({ show: true, title, variant });
     setTimeout(() => setToast({ show: false, title: '' }), 3000);
   };
 
-  const validate = () => {
-    const newErrors = {};
-    // Validate incidental amounts
-    (params.incidentalOptions || []).forEach((opt) => {
-      if (opt.amount === undefined || opt.amount === null) {
-        newErrors[opt.value] = 'Amount is required';
-      } else if (Number(opt.amount) < 0) {
-        newErrors[opt.value] = 'Amount cannot be negative';
-      }
-    });
-
-    // rigger/helper amounts
-    if (params.riggerAmount === undefined || params.riggerAmount === null) {
-      newErrors['riggerAmount'] = 'Rigger amount is required';
-    } else if (Number(params.riggerAmount) < 0) {
-      newErrors['riggerAmount'] = 'Rigger amount cannot be negative';
-    }
-    if (params.helperAmount === undefined || params.helperAmount === null) {
-      newErrors['helperAmount'] = 'Helper amount is required';
-    } else if (Number(params.helperAmount) < 0) {
-      newErrors['helperAmount'] = 'Helper amount cannot be negative';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
   const handleSave = async () => {
     try {
-      if (!validate()) {
-        showToast('Please fix validation errors before saving', 'error');
-        return;
-      }
       setIsSaving(true);
-      // Ensure incidentalOptions are numbers
-      const normalized = {
-        ...params,
-        incidentalOptions: (params.incidentalOptions || []).map((o) => ({ ...o, amount: Number(o.amount) })) ,
-        riggerAmount: Number(params.riggerAmount),
-        helperAmount: Number(params.helperAmount)
-      };
-      await updateAdditionalParamsConfig(normalized);
+      await updateAdditionalParamsConfig(params);
       showToast('Parameters updated successfully');
     } catch (error) {
       showToast('Error saving parameters', 'error');
@@ -153,64 +109,76 @@ export function AdditionalParamsConfig() {
         <RefreshCw className="w-6 h-6 animate-spin text-primary-600" />
       </div>
     );
-    }
+  }
 
-    const RateInput = ({
-        value,
-        onChange,
-        label,
-        isPercentage = false,
-        errorKey
-    }) => (
-        <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-                {label}
-            </label>
-            <div className="relative mt-1">
-                {!isPercentage && (
-                    <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <span className="text-gray-500 sm:text-sm">₹</span>
-                    </div>
-                )}
-                <Input
-                    type="number"
-                    value={value ?? ''} // ✅ Ensures input is always controlled (prevents cursor jump)
-                    onChange={(e) => {
-                        const raw = e.target.value; // ✅ Capture raw string
-                        const parsed = parseFloat(raw); // ✅ Parse safely
-                        onChange(raw === '' ? '' : isNaN(parsed) ? 0 : parsed); // ✅ Allow clearing, prevent NaN
-                    }}
-                    className={isPercentage ? "pr-8" : "pl-7"}
-                    min="0"
-                />
-                {isPercentage && (
-                    <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                        <Percent className="h-4 w-4 text-gray-400" />
-                    </div>
-                )}
-            </div>
-            {errorKey && errors?.[errorKey] && ( // ✅ Optional chaining prevents crash if errors is undefined
-                <div className="text-xs text-red-600 mt-1">{errors[errorKey]}</div>
-            )}
+  const RateInput = ({ 
+    value, 
+    onChange, 
+    label, 
+    isPercentage = false 
+  }: { 
+    value: number; 
+    onChange: (value: number) => void; 
+    label: string;
+    isPercentage?: boolean;
+  }) => (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        {label}
+      </label>
+      <div className="relative mt-1">
+        {!isPercentage && (
+          <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+            <span className="text-gray-500 sm:text-sm">₹</span>
+          </div>
+        )}
+        <Input
+          type="number"
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className={isPercentage ? "pr-8" : "pl-7"}
+          min="0"
+        />
+        {isPercentage && (
+          <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+            <Percent className="h-4 w-4 text-gray-400" />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  const MultiplierInput = ({ 
+    value, 
+    onChange, 
+    label 
+  }: { 
+    value: number; 
+    onChange: (value: number) => void; 
+    label: string;
+  }) => (
+    <div>
+      <label className="block text-sm font-medium text-gray-700 mb-1">
+        {label}
+      </label>
+      <div className="relative mt-1">
+        <Input
+          type="number"
+          value={value}
+          onChange={(e) => onChange(Number(e.target.value))}
+          className="pr-8"
+          min="0.1"
+          step="0.1"
+        />
+        <div className="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+          <span className="text-gray-500 sm:text-sm">x</span>
         </div>
-    );
-
-
-
-  const setIncidentAmount = (key, amount) => {
-    setParams((prev) => {
-      const opts = Array.isArray(prev.incidentalOptions) ? [...prev.incidentalOptions] : [];
-      const idx = opts.findIndex((o) => o.value === key);
-      const normalizedAmount = amount === null ? 0 : Number(amount);
-      if (idx >= 0) {
-        opts[idx] = { ...opts[idx], amount: normalizedAmount };
-      } else {
-        opts.push({ value: key, label: key, amount: normalizedAmount });
-      }
-      return { ...prev, incidentalOptions: opts };
-    });
-    setErrors(prev => ({ ...prev, [key]: '' }));
-  };
+      </div>
+      <p className="text-xs text-gray-500 mt-1">
+        {value === 1.0 ? 'No change' : `${((value - 1) * 100).toFixed(0)}% ${value > 1 ? 'increase' : 'decrease'}`}
+      </p>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -299,23 +267,21 @@ export function AdditionalParamsConfig() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <RateInput
-              label="Single Shift"
+            <MultiplierInput
+              label="Single Shift Factor"
               value={params.shiftFactors.single}
               onChange={(value) => setParams(prev => ({
                 ...prev,
                 shiftFactors: { ...prev.shiftFactors, single: value }
               }))}
-              isPercentage
             />
-            <RateInput
-              label="Double Shift"
+            <MultiplierInput
+              label="Double Shift Factor"
               value={params.shiftFactors.double}
               onChange={(value) => setParams(prev => ({
                 ...prev,
                 shiftFactors: { ...prev.shiftFactors, double: value }
               }))}
-              isPercentage
             />
           </CardContent>
         </Card>
@@ -328,81 +294,24 @@ export function AdditionalParamsConfig() {
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <RateInput
+            <MultiplierInput
               label="Day Factor"
               value={params.dayNightFactors.day}
               onChange={(value) => setParams(prev => ({
                 ...prev,
                 dayNightFactors: { ...prev.dayNightFactors, day: value }
               }))}
-              isPercentage
             />
-            <RateInput
+            <MultiplierInput
               label="Night Factor"
               value={params.dayNightFactors.night}
               onChange={(value) => setParams(prev => ({
                 ...prev,
                 dayNightFactors: { ...prev.dayNightFactors, night: value }
               }))}
-              isPercentage
             />
           </CardContent>
         </Card>
-
-        {/* Incidental Charges Card */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-primary-500" />
-              <CardTitle>Incidental Charges</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            {params.incidentalOptions?.map((opt) => (
-              <div key={opt.value} className="grid grid-cols-1 md:grid-cols-2 gap-2 items-center">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700">{opt.label}</label>
-                  <div className="text-xs text-gray-500">Default: ₹{opt.amount?.toLocaleString('en-IN') || 0}</div>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Input
-                    type="number"
-                    min="0"
-                    value={opt.amount}
-                    onChange={(e) => setIncidentAmount(opt.value, Number(e.target.value))}
-                    className="w-40"
-                  />
-                  {errors[opt.value] && <div className="text-xs text-red-600">{errors[opt.value]}</div>}
-                </div>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-
-        {/* Rigger & Helper Defaults */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="h-5 w-5 text-primary-500" />
-              <CardTitle>Rigger & Helper Charges</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <RateInput
-              label="Rigger Default Amount"
-              value={params.riggerAmount}
-              onChange={(value) => setParams(prev => ({ ...prev, riggerAmount: value }))}
-              errorKey={'riggerAmount'}
-            />
-            <RateInput
-              label="Helper Default Amount"
-              value={params.helperAmount}
-              onChange={(value) => setParams(prev => ({ ...prev, helperAmount: value }))}
-              errorKey={'helperAmount'}
-            />
-          </CardContent>
-        </Card>
-
       </div>
 
       <div className="flex justify-end pt-4 border-t border-gray-200">
@@ -426,4 +335,4 @@ export function AdditionalParamsConfig() {
       )}
     </div>
   );
-}
+} 

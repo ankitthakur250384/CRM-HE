@@ -7,16 +7,16 @@ const buttonVariants = cva(
   {
     variants: {
       variant: {
-        default: 'bg-gradient-to-r from-brand-blue to-brand-blue/90 text-white shadow-lg hover:shadow-xl hover:shadow-brand-blue/25 hover:scale-[1.02] focus:ring-brand-blue/30 active:scale-[0.98]',
+        default: 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg hover:shadow-xl hover:shadow-blue-500/25 hover:scale-[1.02] focus:ring-blue-500/30 active:scale-[0.98] font-medium',
         destructive: 'bg-gradient-to-r from-red-600 to-red-700 text-white shadow-lg hover:shadow-xl hover:shadow-red-500/25 hover:scale-[1.02] focus:ring-red-500/30 active:scale-[0.98]',
-        outline: 'border-2 border-brand-blue text-brand-blue bg-transparent hover:bg-brand-blue hover:text-white hover:scale-[1.02] focus:ring-brand-blue/30 active:scale-[0.98]',
+        outline: 'border-2 border-gray-300 text-gray-700 bg-transparent hover:bg-gray-50 hover:text-gray-900 hover:border-gray-400 hover:scale-[1.02] focus:ring-gray-400/30 active:scale-[0.98]',
         secondary: 'bg-gradient-to-r from-gray-100 to-gray-200 text-gray-900 shadow-sm hover:shadow-md hover:from-gray-200 hover:to-gray-300 hover:scale-[1.02] focus:ring-gray-400/30 active:scale-[0.98]',
         ghost: 'text-gray-700 hover:bg-gray-100 hover:text-gray-900 focus:ring-gray-400/30 hover:scale-[1.02] active:scale-[0.98]',
-        link: 'text-brand-blue underline-offset-4 hover:underline hover:text-brand-blue/80 focus:ring-brand-blue/30',
+        link: 'text-blue-600 underline-offset-4 hover:underline hover:text-blue-700 focus:ring-blue-500/30',
         success: 'bg-gradient-to-r from-green-600 to-green-700 text-white shadow-lg hover:shadow-xl hover:shadow-green-500/25 hover:scale-[1.02] focus:ring-green-500/30 active:scale-[0.98]',
         warning: 'bg-gradient-to-r from-amber-500 to-amber-600 text-white shadow-lg hover:shadow-xl hover:shadow-amber-500/25 hover:scale-[1.02] focus:ring-amber-500/30 active:scale-[0.98]',
         gradient: 'bg-gradient-to-r from-brand-blue via-purple-600 to-brand-blue text-white shadow-lg hover:shadow-xl hover:shadow-purple-500/25 hover:scale-[1.02] focus:ring-purple-500/30 active:scale-[0.98]',
-        accent: 'bg-gradient-to-r from-brand-gold via-brand-gold to-brand-gold/95 text-brand-dark shadow-xl hover:shadow-2xl hover:shadow-brand-gold/40 hover:scale-[1.05] hover:from-brand-gold/90 hover:to-brand-gold hover:brightness-110 focus:ring-brand-gold/50 active:scale-[0.98] font-semibold transform',
+        accent: 'bg-gradient-to-r from-yellow-400 via-yellow-500 to-yellow-600 text-gray-900 shadow-xl hover:shadow-2xl hover:shadow-yellow-500/40 hover:scale-[1.05] hover:from-yellow-300 hover:to-yellow-500 hover:brightness-110 focus:ring-yellow-500/50 active:scale-[0.98] font-semibold transform',
       },
       size: {
         xs: 'h-7 px-2 text-xs rounded-md',
