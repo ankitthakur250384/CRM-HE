@@ -377,12 +377,12 @@ router.get('/:id', async (req, res) => {
             // Enhanced fields for Items Table compatibility
             no: index + 1, // Serial number
             description: machine.equipment_name,
-            capacity: `${machine.max_lifting_capacity || 0}MT`,
-            jobType: quotation.order_type || 'daily',
-            duration: `${duration} ${duration === 1 ? 'day' : 'days'}`,
-            rate: `₹${baseRate.toLocaleString('en-IN')}`,
-            rental: `₹${rental.toLocaleString('en-IN')}`,
-            mobDemob: `₹${mobDemobTotal.toLocaleString('en-IN')}`
+            jobType: quotation.order_type || 'daily', // Order type from quotations table
+            quantity: quantity,
+            duration: `${duration} ${duration === 1 ? 'day' : 'days'}`, // From quotations.number_of_days
+            rate: `₹${baseRate.toLocaleString('en-IN')}`, // Base rate
+            rental: `₹${(quotation.working_cost || rental).toLocaleString('en-IN')}`, // Working cost from quotations or calculated
+            mobDemob: `₹${mobDemobTotal.toLocaleString('en-IN')}` // Mob/demob cost
           };
         }),
         calculations: {

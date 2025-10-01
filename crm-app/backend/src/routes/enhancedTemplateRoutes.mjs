@@ -300,13 +300,20 @@ router.get('/sample-data', async (req, res) => {
           items: machinesResult.rows.map((machine, index) => {
             const dailyRate = machine.base_rate || quotation.total_rent || 10000;
             const totalDays = quotation.number_of_days || 1;
+            const workingCost = quotation.working_cost || (dailyRate * totalDays);
+            const mobDemobCost = quotation.mob_demob_cost || 0;
+            
             const item = {
+              no: index + 1,
               description: `${machine.equipment_name || machine.equipment_type || quotation.machine_type || 'Equipment'} - ${machine.category || 'Rental Service'}`,
-              quantity: `${totalDays} days`,
+              jobType: quotation.order_type || quotation.job_type || 'Standard',
+              quantity: machine.quantity || 1,
+              duration: totalDays,
               rate: `₹${dailyRate.toLocaleString('en-IN')}/day`,
-              amount: `₹${(dailyRate * totalDays).toLocaleString('en-IN')}`
+              rental: `₹${workingCost.toLocaleString('en-IN')}`,
+              mobDemob: mobDemobCost > 0 ? `₹${mobDemobCost.toLocaleString('en-IN')}` : '₹0'
             };
-            console.log('🔍 [DEBUG] Created equipment item:', item);
+            console.log('🔍 [DEBUG] Created equipment item (8-column format):', item);
             return item;
           }),
           totals: {

@@ -737,12 +737,11 @@ export class EnhancedTemplateBuilder {
     // Enhanced column configuration based on frontend Items Table
     const defaultColumns = [
       { key: 'no', label: 'S.No.', width: '8%', alignment: 'center' },
-      { key: 'description', label: 'Description/Equipment Name', width: '30%', alignment: 'left' },
-      { key: 'capacity', label: 'Capacity/Specifications', width: '15%', alignment: 'center' },
-      { key: 'jobType', label: 'Job Type', width: '10%', alignment: 'center' },
+      { key: 'description', label: 'Description/Equipment Name', width: '35%', alignment: 'left' },
+      { key: 'jobType', label: 'Job Type', width: '12%', alignment: 'center' },
       { key: 'quantity', label: 'Quantity', width: '10%', alignment: 'center' },
       { key: 'duration', label: 'Duration/Days', width: '12%', alignment: 'center' },
-      { key: 'rate', label: 'Rate/Day', width: '12%', alignment: 'right' },
+      { key: 'rate', label: 'Rate', width: '12%', alignment: 'right' },
       { key: 'rental', label: 'Total Rental', width: '15%', alignment: 'right' },
       { key: 'mobDemob', label: 'Mob/Demob', width: '12%', alignment: 'right' }
     ];
@@ -1151,7 +1150,6 @@ export class EnhancedTemplateBuilder {
         {
           no: 1,
           description: 'Tower Crane Rental - Potain MC 175',
-          capacity: '175MT',
           jobType: 'monthly',
           quantity: 1,
           duration: '30 days',
@@ -1162,7 +1160,6 @@ export class EnhancedTemplateBuilder {
         {
           no: 2,
           description: 'Mobile Crane - Liebherr LTM 1090',
-          capacity: '90MT',
           jobType: 'daily',
           quantity: 1,
           duration: '5 days',

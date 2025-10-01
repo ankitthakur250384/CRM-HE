@@ -627,11 +627,10 @@ const PropertiesPanel: React.FC<PropertiesPanelProps> = ({ selectedElement, onUp
                 {[
                   { key: 'no', label: 'S.No.' },
                   { key: 'description', label: 'Description/Equipment Name' },
-                  { key: 'capacity', label: 'Capacity/Specifications' },
                   { key: 'jobType', label: 'Job Type' },
                   { key: 'quantity', label: 'Quantity' },
                   { key: 'duration', label: 'Duration/Days' },
-                  { key: 'rate', label: 'Rate/Day (Base Rate)' },
+                  { key: 'rate', label: 'Rate' },
                   { key: 'rental', label: 'Total Rental (Working Cost)' },
                   { key: 'mobDemob', label: 'Mob/Demob' }
                 ].map(col => (
@@ -1730,8 +1729,7 @@ const EnhancedTemplateBuilder: React.FC<EnhancedTemplateBuilderProps> = ({ quota
         columns: { 
           no: true, 
           description: true, 
-          capacity: true, 
-          jobType: false, 
+          jobType: true, 
           quantity: true, 
           duration: true, 
           rate: true, 
