@@ -1180,11 +1180,14 @@ const EnhancedTemplateBuilder: React.FC<EnhancedTemplateBuilderProps> = ({ quota
         console.log('✅ Sample data loaded successfully:', result.data);
         console.log('📊 Items array:', result.data.items);
         console.log('🔢 Items count:', result.data.items?.length || 0);
+        return result.data;
       } else {
         console.error('Failed to load sample data:', result.message);
+        return null;
       }
     } catch (error) {
       console.error('Error loading sample data:', error);
+      return null;
     }
   };
 
@@ -1313,9 +1316,19 @@ const EnhancedTemplateBuilder: React.FC<EnhancedTemplateBuilderProps> = ({ quota
 
   // Preview functions
   const generatePreview = async () => {
-    if (!previewData) return;
-
     setIsLoading(true);
+    
+    // Ensure we have sample data before generating preview
+    let dataToUse = previewData;
+    if (!dataToUse) {
+      console.log('🔄 No preview data available, loading sample data first...');
+      dataToUse = await loadSampleData();
+      if (!dataToUse) {
+        console.error('❌ Failed to load sample data for preview');
+        setIsLoading(false);
+        return;
+      }
+    }
     try {
       const token = localStorage.getItem('jwt-token');
       const headers: Record<string, string> = {
@@ -1333,7 +1346,7 @@ const EnhancedTemplateBuilder: React.FC<EnhancedTemplateBuilderProps> = ({ quota
         headers,
         body: JSON.stringify({
           templateData: template,
-          quotationData: previewData,
+          quotationData: dataToUse,
           format: 'html'
         })
       });

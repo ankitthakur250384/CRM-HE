@@ -562,48 +562,10 @@ export function QuotationCreation() {
               }));
             }
             
-            // Recalculate Risk & Usage with updated equipment rates while preserving other values
+            // Trigger full recalculation when equipment data changes (fixes exponential Risk & Usage growth)
             setTimeout(() => {
-              console.log('[QuotationCreation] Recalculating Risk & Usage with updated equipment rates');
-              
-              // Get individual Risk and Usage factors from configuration
-              const riskFactors = additionalParams?.riskFactors || { low: 0, medium: 10, high: 20 };
-              const usageFactors = additionalParams?.usageFactors || { normal: 0, medium: 20, heavy: 50 };
-              
-              // Use the ACTUAL selected values from form, not hardcoded defaults
-              const selectedRiskFactor = formData.riskFactor || 'low';
-              const selectedUsage = formData.usage || 'normal';
-              const riskPercentage = riskFactors[selectedRiskFactor as keyof typeof riskFactors] || 0;
-              const usagePercentage = usageFactors[selectedUsage as keyof typeof usageFactors] || 0;
-              
-              // Calculate total monthly base rate
-              const totalMonthlyBaseRate = (formData.selectedMachines || []).reduce((total, machine) => {
-                const equipmentDetails = equipmentData?.find(eq => eq.id === machine.id || eq.id === machine.equipmentId);
-                const monthlyRate = equipmentDetails?.baseRates?.monthly || equipmentDetails?.baseRateMonthly || 3000; // fallback to 3000
-                return total + (monthlyRate * machine.quantity);
-              }, 0);
-              
-              // Calculate Risk and Usage separately
-              const riskAdjustment = totalMonthlyBaseRate * (riskPercentage / 100);
-              const usageLoadFactor = totalMonthlyBaseRate * (usagePercentage / 100);
-              const newRiskUsageTotal = riskAdjustment + usageLoadFactor;
-              
-              console.log('[QuotationCreation] Updated Risk & Usage calculation (individual factors):', {
-                oldValue: (calculations as any)?.riskUsageTotal,
-                newValue: newRiskUsageTotal,
-                totalMonthlyBaseRate,
-                riskPercentage,
-                usagePercentage,
-                riskAdjustment,
-                usageLoadFactor
-              });
-              
-              // Update only the riskUsageTotal in calculations
-              setCalculations(prev => ({
-                ...prev,
-                riskUsageTotal: newRiskUsageTotal
-              }));
-              
+              console.log('[QuotationCreation] Equipment data updated, triggering full recalculation to fix exponential growth');
+              calculateQuotation();
               setIsLoadingExistingData(false);
             }, 500);
           }, 100);
