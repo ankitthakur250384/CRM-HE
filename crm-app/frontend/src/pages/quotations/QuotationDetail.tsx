@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '../../components/ui/button';
-import QuotationPrintSystem from '../../components/quotations/QuotationPrintSystem';
 import { ArrowLeft, Edit, FileText, Settings, Eye, Printer, Download, Mail, X } from 'lucide-react';
 interface Quotation {
   id: string;
@@ -561,17 +560,6 @@ const QuotationDetail: React.FC = () => {
                   <p className="text-gray-500">Click "Show Preview" to view the quotation preview.</p>
                 </div>
               )}
-            </div>
-
-            <div className="bg-white rounded-lg shadow-sm border p-6">
-              <h2 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-                <Settings className="h-5 w-5 mr-2" />
-                Advanced Print & Export Options
-              </h2>
-              <QuotationPrintSystem 
-                quotationId={quotation.id}
-                onClose={() => navigate('/quotations')}
-              />
             </div>
           </div>
         </div>
