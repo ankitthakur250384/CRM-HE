@@ -561,9 +561,32 @@ export function QuotationCreation() {
               }));
             }
             
-            // calculateQuotation(); // Commented out to preserve loaded values
-            // Clear the loading flag after a short delay to allow auto-calculations again
+            // Recalculate Risk & Usage with updated equipment rates while preserving other values
             setTimeout(() => {
+              console.log('[QuotationCreation] Recalculating Risk & Usage with updated equipment rates');
+              
+              // Get the risk usage percentage from configuration
+              const riskUsagePercentage = additionalParams?.riskUsagePercentage || 5.0;
+              
+              // Calculate new Risk & Usage based on monthly base rates from equipment
+              const newRiskUsageTotal = (formData.selectedMachines || []).reduce((total, machine) => {
+                const equipmentDetails = equipmentData?.find(eq => eq.id === machine.id || eq.id === machine.equipmentId);
+                const monthlyRate = equipmentDetails?.baseRates?.monthly || equipmentDetails?.baseRateMonthly || 3000; // fallback to 3000
+                return total + (monthlyRate * machine.quantity);
+              }, 0) * (riskUsagePercentage / 100);
+              
+              console.log('[QuotationCreation] Updated Risk & Usage calculation:', {
+                oldValue: (calculations as any)?.riskUsageTotal,
+                newValue: newRiskUsageTotal,
+                riskUsagePercentage
+              });
+              
+              // Update only the riskUsageTotal in calculations
+              setCalculations(prev => ({
+                ...prev,
+                riskUsageTotal: newRiskUsageTotal
+              }));
+              
               setIsLoadingExistingData(false);
             }, 500);
           }, 100);
@@ -867,8 +890,8 @@ export function QuotationCreation() {
       
       if (formData.mobRelaxation > 0) {
         const beforeRelaxation = mobDemobCost;
-        mobDemobCost = mobDemobCost * (1 - (formData.mobRelaxation / 100));
-        console.log(`🚚 Applied ${formData.mobRelaxation}% relaxation: ₹${beforeRelaxation} -> ₹${mobDemobCost}`);
+        mobDemobCost = Math.max(0, mobDemobCost - formData.mobRelaxation);
+        console.log(`🚚 Applied ₹${formData.mobRelaxation} relaxation discount: ₹${beforeRelaxation} -> ₹${mobDemobCost}`);
       }
     } else {
       console.log("🚚 No mob/demob calculation: siteDistance =", formData.siteDistance);

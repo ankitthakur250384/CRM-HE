@@ -177,8 +177,8 @@ const QuotationDetail: React.FC = () => {
           'X-Bypass-Auth': 'development-only-123'
         },
         body: JSON.stringify({ 
-          quotationId: id,
-          templateId: 'default' // Use default template
+          quotationId: id
+          // templateId not specified - backend will use default template
         })
       });
 
