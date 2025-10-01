@@ -565,20 +565,34 @@ export function QuotationCreation() {
             setTimeout(() => {
               console.log('[QuotationCreation] Recalculating Risk & Usage with updated equipment rates');
               
-              // Get the risk usage percentage from configuration
-              const riskUsagePercentage = additionalParams?.riskUsagePercentage || 5.0;
+              // Get individual Risk and Usage factors from configuration
+              const riskFactors = additionalParams?.riskFactors || { low: 0, medium: 10, high: 20 };
+              const usageFactors = additionalParams?.usageFactors || { normal: 0, medium: 20, heavy: 50 };
               
-              // Calculate new Risk & Usage based on monthly base rates from equipment
-              const newRiskUsageTotal = (formData.selectedMachines || []).reduce((total, machine) => {
+              // Use medium risk and usage as defaults
+              const riskPercentage = riskFactors.medium || 10;
+              const usagePercentage = usageFactors.medium || 20;
+              
+              // Calculate total monthly base rate
+              const totalMonthlyBaseRate = (formData.selectedMachines || []).reduce((total, machine) => {
                 const equipmentDetails = equipmentData?.find(eq => eq.id === machine.id || eq.id === machine.equipmentId);
                 const monthlyRate = equipmentDetails?.baseRates?.monthly || equipmentDetails?.baseRateMonthly || 3000; // fallback to 3000
                 return total + (monthlyRate * machine.quantity);
-              }, 0) * (riskUsagePercentage / 100);
+              }, 0);
               
-              console.log('[QuotationCreation] Updated Risk & Usage calculation:', {
+              // Calculate Risk and Usage separately
+              const riskAdjustment = totalMonthlyBaseRate * (riskPercentage / 100);
+              const usageLoadFactor = totalMonthlyBaseRate * (usagePercentage / 100);
+              const newRiskUsageTotal = riskAdjustment + usageLoadFactor;
+              
+              console.log('[QuotationCreation] Updated Risk & Usage calculation (individual factors):', {
                 oldValue: (calculations as any)?.riskUsageTotal,
                 newValue: newRiskUsageTotal,
-                riskUsagePercentage
+                totalMonthlyBaseRate,
+                riskPercentage,
+                usagePercentage,
+                riskAdjustment,
+                usageLoadFactor
               });
               
               // Update only the riskUsageTotal in calculations
@@ -936,13 +950,27 @@ export function QuotationCreation() {
       return total + (monthlyRate * machine.quantity);
     }, 0);
 
-    // Get Risk & Usage percentage from configuration (single combined percentage)
-    const riskUsagePercentage = additionalParams?.riskUsagePercentage || 5.0; // Default 5% if not configured
+    // Get individual Risk and Usage factors from configuration
+    const riskFactors = additionalParams?.riskFactors || { low: 0, medium: 10, high: 20 };
+    const usageFactors = additionalParams?.usageFactors || { normal: 0, medium: 20, heavy: 50 };
+    
+    // For now, use medium risk (10%) and medium usage (20%) as defaults
+    // TODO: Add UI to allow selection of individual risk/usage types per equipment
+    const defaultRiskType = 'medium'; // Can be 'low', 'medium', or 'high'
+    const defaultUsageType = 'medium'; // Can be 'normal', 'medium', or 'heavy'
+    
+    const riskPercentage = riskFactors[defaultRiskType as keyof typeof riskFactors] || 10;
+    const usagePercentage = usageFactors[defaultUsageType as keyof typeof usageFactors] || 20;
 
-    console.log("🔧 Risk & Usage calculation:", {
+    console.log("🔧 Risk & Usage calculation (individual factors):", {
       selectedMachines: formData.selectedMachines.length,
       totalMonthlyBaseRate,
-      riskUsagePercentage,
+      riskFactors,
+      usageFactors,
+      selectedRiskType: defaultRiskType,
+      selectedUsageType: defaultUsageType,
+      riskPercentage,
+      usagePercentage,
       equipmentBreakdown: formData.selectedMachines.map(m => ({
         name: m.name,
         quantity: m.quantity,
@@ -951,12 +979,10 @@ export function QuotationCreation() {
       }))
     });
 
-    // Calculate Risk & Usage as X% of Monthly Base Rate
-    const riskUsageTotal = totalMonthlyBaseRate * (riskUsagePercentage / 100);
-
-    // Keep individual calculations for backward compatibility (will be phased out)
-    const riskAdjustment = riskUsageTotal * 0.5; // Half for risk
-    const usageLoadFactor = riskUsageTotal * 0.5; // Half for usage
+    // Calculate Risk and Usage separately using individual factors
+    const riskAdjustment = totalMonthlyBaseRate * (riskPercentage / 100);
+    const usageLoadFactor = totalMonthlyBaseRate * (usagePercentage / 100);
+    const riskUsageTotal = riskAdjustment + usageLoadFactor;
 
     // Additional charges
     const extraCharges = Number(formData.extraCharge) || 0;
