@@ -311,6 +311,23 @@ function processTemplateElement(
         <img src="${imageSrc}" alt="${imageAlt}" style="max-width: 100%; height: auto;" />
       </div>`;
       
+    case 'job_details':
+      return `<div class="job-details-section" ${wrapperStyle}>
+        <h3>🏗️ Job Details</h3>
+        <div class="job-info">
+          <div><strong>Job Type:</strong> ${quotation.orderType || 'Monthly'}</div>
+          <div><strong>Duration:</strong> ${quotation.numberOfDays || 1} ${quotation.orderType === 'monthly' ? 'Month(s)' : 'Day(s)'}</div>
+          <div><strong>Working Hours:</strong> ${quotation.workingHours || 8} hours/day</div>
+          <div><strong>Machine Type:</strong> ${quotation.machineType || 'Mobile Crane'}</div>
+        </div>
+      </div>`;
+
+    case 'equipment_table':
+      return renderEquipmentTable(quotation, calculations, wrapperStyle);
+
+    case 'charges_table':
+      return renderChargesTable(quotation, calculations, wrapperStyle);
+
     case 'total':
     case 'cost_summary':
       return `<div class="cost-summary" ${wrapperStyle}>
@@ -871,6 +888,90 @@ function replaceTemplatePlaceholders(content: string, quotation: Quotation, quot
     // Legacy placeholders
     .replace(/\{\{quote_date\}\}/g, quoteDate)
     .replace(/\{\{quote_number\}\}/g, quoteNumber);
+}
+
+function renderEquipmentTable(
+  quotation: Quotation,
+  calculations: QuotationCalculations,
+  wrapperStyle: string
+): string {
+  return `<div class="comprehensive-equipment-section" ${wrapperStyle}>
+    <h3>🏗️ Equipment & Services Details</h3>
+    <table class="equipment-table">
+      <thead>
+        <tr>
+          <th>No.</th>
+          <th>Capacity</th>
+          <th>Job Type</th>
+          <th>Job Duration</th>
+          <th>Rental</th>
+          <th>Mob.</th>
+          <th>De-Mob</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>1</td>
+          <td>130MT</td>
+          <td>${quotation.orderType || 'Unloading work'}</td>
+          <td>${quotation.numberOfDays || 1} ${quotation.orderType === 'monthly' ? 'Month' : 'Days'}</td>
+          <td>₹${calculations.workingCost?.toLocaleString('en-IN') || '0'} + GST 18%</td>
+          <td>₹${calculations.mobDemobCost ? (calculations.mobDemobCost/2).toLocaleString('en-IN') : '10,000'}/- + GST 18%</td>
+          <td>₹${calculations.mobDemobCost ? (calculations.mobDemobCost/2).toLocaleString('en-IN') : '10,000'}/- + GST 18%</td>
+        </tr>
+        <tr class="total-row">
+          <td colspan="4"><strong>Total</strong></td>
+          <td><strong>₹${calculations.workingCost?.toLocaleString('en-IN') || '0'} + GST 18%</strong></td>
+          <td><strong>₹${calculations.mobDemobCost ? (calculations.mobDemobCost/2).toLocaleString('en-IN') : '10,000'}/- + GST 18%</strong></td>
+          <td><strong>₹${calculations.mobDemobCost ? (calculations.mobDemobCost/2).toLocaleString('en-IN') : '10,000'}/- + GST 18%</strong></td>
+        </tr>
+      </tbody>
+    </table>
+  </div>`;
+}
+
+function renderChargesTable(
+  _quotation: Quotation,
+  calculations: QuotationCalculations,
+  wrapperStyle: string
+): string {
+  const hasCharges = calculations.incidentalCost > 0 || calculations.extraCharges > 0;
+  
+  if (!hasCharges) {
+    return '';
+  }
+
+  return `<div class="charges-section" ${wrapperStyle}>
+    <h3>💳 Additional Charges</h3>
+    <table class="charges-table">
+      <thead>
+        <tr>
+          <th>Description</th>
+          <th>Amount</th>
+          <th>GST (18%)</th>
+          <th>Total</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${calculations.incidentalCost > 0 ? `
+          <tr>
+            <td>Incidental Charges</td>
+            <td>₹${calculations.incidentalCost.toLocaleString('en-IN')}</td>
+            <td>₹${(calculations.incidentalCost * 0.18).toLocaleString('en-IN')}</td>
+            <td>₹${(calculations.incidentalCost * 1.18).toLocaleString('en-IN')}</td>
+          </tr>
+        ` : ''}
+        ${calculations.extraCharges > 0 ? `
+          <tr>
+            <td>Extra Charges</td>
+            <td>₹${calculations.extraCharges.toLocaleString('en-IN')}</td>
+            <td>₹${(calculations.extraCharges * 0.18).toLocaleString('en-IN')}</td>
+            <td>₹${(calculations.extraCharges * 1.18).toLocaleString('en-IN')}</td>
+          </tr>
+        ` : ''}
+      </tbody>
+    </table>
+  </div>`;
 }
 
 function getDefaultTerms(): string {

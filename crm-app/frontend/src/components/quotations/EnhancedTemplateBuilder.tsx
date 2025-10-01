@@ -104,7 +104,10 @@ const ELEMENT_TYPES = {
   COMPANY_INFO: 'company_info',
   CLIENT_INFO: 'client_info',
   QUOTATION_INFO: 'quotation_info',
+  JOB_DETAILS: 'job_details',
   ITEMS_TABLE: 'items_table',
+  EQUIPMENT_TABLE: 'equipment_table',
+  CHARGES_TABLE: 'charges_table',
   TOTALS: 'totals',
   TERMS: 'terms',
   FOOTER: 'footer',
@@ -163,8 +166,35 @@ const PlaceholderLibrary: React.FC<PlaceholderLibraryProps> = ({ previewData }) 
       placeholders: [
         { code: '{{items.table}}', source: 'equipment join quotation_machines', description: 'Complete equipment table' },
         { code: '{{equipment.name}}', source: 'equipment.name', description: 'Equipment name' },
-        { code: '{{equipment.rate}}', source: 'quotation_machines.rate', description: 'Hourly/daily rate' },
-        { code: '{{equipment.quantity}}', source: 'quotation_machines.quantity', description: 'Quantity/duration' }
+        { code: '{{equipment.capacity}}', source: 'equipment.max_lifting_capacity', description: 'Equipment capacity (e.g., 130MT)' },
+        { code: '{{equipment.rate}}', source: 'quotation_machines.base_rate', description: 'Base rate from equipment table' },
+        { code: '{{equipment.workingCost}}', source: 'calculated working cost', description: 'Calculated working cost' },
+        { code: '{{equipment.quantity}}', source: 'quotation_machines.quantity', description: 'Quantity/duration' },
+        { code: '{{equipment.jobType}}', source: 'quotations.order_type', description: 'Job type (monthly, daily, etc.)' },
+        { code: '{{equipment.jobDuration}}', source: 'quotations.number_of_days', description: 'Job duration with units' }
+      ]
+    },
+    jobDetails: {
+      icon: '📋',
+      title: 'Job Information',
+      color: 'bg-cyan-50 border-cyan-200',
+      placeholders: [
+        { code: '{{quotation.order_type}}', source: 'quotations.order_type', description: 'Order type (monthly, daily, etc.)' },
+        { code: '{{quotation.number_of_days}}', source: 'quotations.number_of_days', description: 'Duration in days' },
+        { code: '{{quotation.working_hours}}', source: 'quotations.working_hours', description: 'Working hours per day' },
+        { code: '{{quotation.machine_type}}', source: 'quotations.machine_type', description: 'Type of machine/equipment' }
+      ]
+    },
+    charges: {
+      icon: '💳',
+      title: 'Additional Charges',
+      color: 'bg-orange-50 border-orange-200',
+      placeholders: [
+        { code: '{{charges.mobilization}}', source: 'calculated mob charges', description: 'Mobilization charges' },
+        { code: '{{charges.demobilization}}', source: 'calculated demob charges', description: 'Demobilization charges' },
+        { code: '{{charges.rigger}}', source: 'configuration rigger amount', description: 'Rigger charges' },
+        { code: '{{charges.helper}}', source: 'configuration helper amount', description: 'Helper charges' },
+        { code: '{{charges.incidental}}', source: 'quotation incidental charges', description: 'Other incidental charges' }
       ]
     },
     financial: {
@@ -299,7 +329,10 @@ const ElementLibrary: React.FC<ElementLibraryProps> = ({ onAddElement, onLogoUpl
     { type: ELEMENT_TYPES.COMPANY_INFO, icon: Layout, label: 'Company Info', color: 'bg-green-100 text-green-600' },
     { type: ELEMENT_TYPES.CLIENT_INFO, icon: Layout, label: 'Client Info', color: 'bg-purple-100 text-purple-600' },
     { type: ELEMENT_TYPES.QUOTATION_INFO, icon: FileText, label: 'Quote Details', color: 'bg-orange-100 text-orange-600' },
+    { type: ELEMENT_TYPES.JOB_DETAILS, icon: Grid, label: 'Job Details', color: 'bg-cyan-100 text-cyan-600' },
     { type: ELEMENT_TYPES.ITEMS_TABLE, icon: Table, label: 'Items Table', color: 'bg-indigo-100 text-indigo-600' },
+    { type: ELEMENT_TYPES.EQUIPMENT_TABLE, icon: Table, label: 'Equipment Table', color: 'bg-yellow-100 text-yellow-600' },
+    { type: ELEMENT_TYPES.CHARGES_TABLE, icon: Calculator, label: 'Charges Table', color: 'bg-orange-100 text-orange-600' },
     { type: ELEMENT_TYPES.TOTALS, icon: Calculator, label: 'Totals', color: 'bg-red-100 text-red-600' },
     { type: ELEMENT_TYPES.TERMS, icon: FileText, label: 'Terms', color: 'bg-gray-100 text-gray-600' },
     { type: ELEMENT_TYPES.CUSTOM_TEXT, icon: Type, label: 'Custom Text', color: 'bg-yellow-100 text-yellow-600' },
